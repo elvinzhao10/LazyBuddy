@@ -142,8 +142,31 @@ The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
 - `AGENTS.md` → `workbuddy.md`
 - Codex task spawning → WorkBuddy subagent invocation with `isolation: true`
 
+## v0.5 Update — Subagents & Orchestration (2026-07-09)
+
+12 agent role definitions created in `lazyworkbuddy-plugin/agents/`:
+
+**LazyCodex-mapped agents (8):**
+- `lazyworkbuddy-orchestrator.md` — Sisyphus orchestrator (source: start-work/SKILL.md)
+- `lazyworkbuddy-planner.md` — Prometheus planner (source: ulw-plan/SKILL.md)
+- `lazyworkbuddy-explorer.md` — Codebase explorer (source: explorer.toml)
+- `lazyworkbuddy-implementer.md` — Implementation executor (source: lazycodex-executor.toml)
+- `lazyworkbuddy-verifier.md` — Oracle verifier (source: lazycodex-gate-reviewer.toml)
+- `lazyworkbuddy-reviewer.md` — Momus+Metis reviewer (source: momus.toml + metis.toml)
+- `lazyworkbuddy-qa-executor.md` — QA executor (source: lazycodex-qa-executor.toml)
+- `lazyworkbuddy-gate-reviewer.md` — Final gate Oracle (source: lazycodex-gate-reviewer.toml)
+
+**WorkBuddy-native agents (4):**
+- `lazyworkbuddy-librarian.md` — Memory maintenance (source: librarian.toml)
+- `lazyworkbuddy-migration-planner.md` — Host-adapter planning (Lazyworkbuddy innovation)
+- `lazyworkbuddy-context-indexer.md` — Repo structure indexing (source: init-deep skill Phase 1)
+- `lazyworkbuddy-security-auditor.md` — Security review (source: review-work Agent 4)
+
+**Status shifts from v0.4:**
+- All 12 agents: `planned` → `implemented` (valid YAML frontmatter with model, tools, disallowedTools)
+- Agent roles section of initial method map: `adapted` → `implemented`
+- 4 orchestration docs created: agent-inventory, agent-orchestration, handoff-protocol, parallelism-policy
 
 
----
 
 _This ledger is authoritative. Every parity claim must be verified against `reference/lazycodex/` before updating. Updated by the Librarian (v0.9+) and manually until then._

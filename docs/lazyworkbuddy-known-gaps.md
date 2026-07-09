@@ -128,6 +128,12 @@
 
 Skills that are platform-agnostic (git-master: git commands only; debugging: phase loop and safety invariants; programming: language discipline axioms) required no adaptation beyond path and variable name translations.
 
+### G-015: review-work "Context Miner" lane has no dedicated agent
+- **LazyCodex:** `review-work` SKILL.md defines 5 review lanes; lane 5 ("Context Miner") mines git history, GitHub issues, and cross-references for missed context.
+- **Lazyworkbuddy:** The `review-work` skill references this lane, and `docs/lazyworkbuddy-agent-orchestration.md` includes it in the review diagram, but there is no `lazyworkbuddy-context-miner.md` agent file. The `context-indexer` agent is a different role (init-deep repo layout indexing, not review-time context mining). The lane currently uses a generic autonomous agent.
+- **Impact:** Low — the lane is functional via generic spawning; a named agent would improve routing clarity.
+- **Target version:** v0.9 (hardening) — either create a dedicated `context-miner` agent or document that the lane reuses the `explorer` agent with a context-mining message.
+
 ---
 
 _This file is updated by the Librarian after every accepted change that reveals new gaps, and after every version that resolves existing gaps._

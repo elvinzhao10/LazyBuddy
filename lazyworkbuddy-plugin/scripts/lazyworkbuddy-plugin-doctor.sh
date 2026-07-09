@@ -113,12 +113,15 @@ for skill in $EXPECTED_SKILLS; do
     fi
 done
 
-# 9. Empty dirs have .gitkeep
+# 9. Empty dirs check — must have real content OR .gitkeep
 for dir in agents mcp scripts schemas tests docs; do
-    if [ -f "${PLUGIN_ROOT}/${dir}/.gitkeep" ]; then
+    file_count=$(find "${PLUGIN_ROOT}/${dir}" -maxdepth 1 -type f ! -name '.gitkeep' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$file_count" -gt 0 ]; then
+        check "Directory content: ${dir}/" ok
+    elif [ -f "${PLUGIN_ROOT}/${dir}/.gitkeep" ]; then
         check "Gitkeep: ${dir}/.gitkeep" ok
     else
-        check "Gitkeep: ${dir}/.gitkeep" "missing"
+        check "Directory: ${dir}/" "empty and missing .gitkeep"
     fi
 done
 
