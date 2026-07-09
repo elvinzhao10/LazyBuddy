@@ -1,18 +1,155 @@
 ---
 name: start-work
-description: "PLACEHOLDER — start-work skill. Implemented in v0.4+ (Skills and command workflows)."
+description: "Execute a work plan with orchestrated subagent delegation and verified completion evidence. Loads a plan from .lazyworkbuddy/plans/, creates run state in .lazyworkbuddy/runs/<run_id>/, decomposes tasks, delegates to worker subagents, verifies evidence, marks progress. The orchestrator NEVER implements directly. Triggers: start work, execute plan, continue plan, resume plan, run the plan, start-work."
 ---
 
 # start-work
 
-> **PLACEHOLDER** — This Skill is not yet implemented. It will be available in **v0.4** when the LazyCodex Skill semantics are ported to WorkBuddy-native format.
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)
 
-## Status
+## Purpose
 
-🔧 Scaffold (v0.3) — structural placeholder only. YAML frontmatter stubbed; runtime behavior arrives in v0.4.
+Execute a work plan until every top-level checkbox is complete. This skill is the orchestrator (Sisyphus) — it delegates ALL implementation, test, QA, and review work to spawned subagents. The root agent NEVER writes product code, NEVER edits product files, NEVER runs QA itself. It exclusively manages plan selection, run state, decomposition, dispatch, verdicts, and evidence records.
 
-## LazyCodex Source
+## Trigger Conditions
 
-This Skill will be adapted from `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md`.
+- User invokes `/start-work [plan-name]`
+- User says "execute plan", "start the plan", "run the plan"
+- Stop/SubagentStop hook re-injects after continuation check (v0.6+)
 
-_See `docs/lazyworkbuddy-command-constitution.md` for the design spec._
+## Required Context
+
+Before executing:
+- Read the plan from `.lazyworkbuddy/plans/<slug>.md`
+- Read `.lazyworkbuddy/runs/<run_id>/state.json` if resuming
+- Read `workbuddy.md` for project conventions
+- Read `.workbuddy/rules/lazyworkbuddy-verification.md` for evidence standards
+
+## Tool Access
+
+- Allowed: Read, Grep, Glob, Write, Edit (ONLY to `.lazyworkbuddy/` and plan files), Bash (verification only), Agent (subagent spawning)
+- **Disallowed on product paths:** Write, Edit — NEVER modify product code directly
+- **Orchestrator-only constraint:** Root NEVER implements, writes tests, or runs QA. Spawn a worker for every implementation unit.
+
+## Step-by-Step Procedure
+
+### Phase 1: Select the plan
+
+1. Read `.lazyworkbuddy/runs/<run_id>/state.json` if it exists (resume)
+2. List plans under `.lazyworkbuddy/plans/`
+3. If plan-name provided: select matching plan
+4. If exactly one active/paused run exists: resume it
+5. If exactly one plan exists and no active run: select it
+6. If no selectable plan: enter **No-plan bootstrap** — invoke `ulw-plan` to create a plan, then continue
+
+### Phase 2: Create or update run state
+
+Write `.lazyworkbuddy/runs/<run_id>/state.json` with:
+- `schema_version: 2`
+- `run_id`, `plan_reference`, `plan_name`
+- `status: "active"`, `session_ids: ["<session_id>"]`
+- `tier: { level: "LIGHT" | "HEAVY", justification: "..." }`
+- `checkboxes: []` — one entry per plan todo
+
+### Phase 3: Execute the next checkbox
+
+1. Find the first unchecked checkbox in the plan
+2. Classify tier (LIGHT/HEAVY) per ultrawork triage rules
+3. Decompose into atomic sub-tasks
+4. **DELEGATE EVERYTHING.** Spawn worker subagents for ALL independent sub-tasks in parallel using WorkBuddy Agent tool. Each subagent message must include: TASK, DELIVERABLE, SCOPE, VERIFY.
+5. For LIGHT: direct implementation. For HEAVY: failing-first proof then implementation.
+
+**Each subagent task message must include:**
+- Goal and exact files/directories in scope
+- Baseline characterization test (if touching existing behavior)
+- Implementation constraints from plan and project rules
+- Automated verification commands
+- One Manual-QA channel (exact tool + exact invocation + binary observable)
+- The 9 adversarial classes that apply to this sub-task
+
+**The 9 adversarial classes** (from LazyCodex `start-work` source line 118; a class applies when its trigger fact holds — probe each applicable one, record non-applicable with a one-line reason):
+1. `malformed_input` — new input parsing
+2. `prompt_injection` — untrusted external text
+3. `cancel_resume` — resumable or long-running flows
+4. `stale_state` — generated or cached artifacts
+5. `dirty_worktree` — uncommitted user files in scope
+6. `hung_commands` — long external commands
+7. `flaky_tests` — new or timing-sensitive tests
+8. `misleading_success_output` — log-based success claims
+9. `repeated_interruptions` — mid-operation interrupts
+
+### Phase 4: Verify and record evidence
+
+For each checkbox, complete FIVE gates:
+1. **Plan reread:** Confirm checkbox and acceptance criteria
+2. **Automated verification:** Run tests, typecheck, lint, build
+3. **Manual-QA channel:** Capture real artifact (screenshot, curl output)
+4. **Adversarial QA:** Probe every applicable ultraqa class
+5. **Cleanup:** Tear down QA resources; capture receipts
+
+Append evidence to `.lazyworkbuddy/runs/<run_id>/events.jsonl`.
+
+**Sisyphus completion contract:**
+- Worker returns `DoneClaim` → Verifier runs `AdversarialVerify` → `confirmed` → `FullyDone`
+- `confirmed` is the ONLY pass verdict
+- Verifier MUST be independent from executor
+
+### Phase 5: Mark progress
+
+Only after all 5 gates pass:
+1. Edit plan checkbox: `- [ ]` → `- [x]`
+2. Append `checkbox-completed` event to ledger
+3. Continue to next checkbox. Do NOT ask whether to continue.
+
+### Completion
+
+When all checkboxes + Final Verification Wave are done:
+1. Run final verification commands
+2. Run the Global Review Gate (`/review-work` — 5-agent review)
+3. All review lanes must PASS
+4. Print `ORCHESTRATION COMPLETE`
+
+## Expected Output Artifacts
+
+- `.lazyworkbuddy/runs/<run_id>/state.json` — run state with completed checkboxes
+- `.lazyworkbuddy/runs/<run_id>/events.jsonl` — evidence ledger with DoneClaim + AdversarialVerify entries
+- `.lazyworkbuddy/runs/<run_id>/evidence/` — Manual-QA artifacts
+- Plan file with checkboxes marked `[x]`
+
+## Verification Gates
+
+1. All plan checkboxes completed by subagents (not root)
+2. Every checkbox has DoneClaim + AdversarialVerify in events.jsonl
+3. Manual-QA artifacts exist and are verifiable
+4. 5-agent review passes all lanes
+5. `ORCHESTRATION COMPLETE` printed with artifacts and cleanup receipts
+
+## Failure Behavior
+
+- If a subagent's DoneClaim fails AdversarialVerify: re-dispatch with exact failure feedback
+- If a subagent times out or returns inconclusive: respawn smaller scoped task
+- If iteration cap hit: pause; record `run_paused` event
+- If state corruption: restore from latest checkpoint
+
+## Handoff Format
+
+```
+ORCHESTRATION COMPLETE
+  Plan: .lazyworkbuddy/plans/<slug>.md
+  Checkboxes: N/N completed
+  Verification: [commands + results]
+  Review: [5-lane verdict]
+  Artifacts: [paths]
+  Cleanup: [receipts]
+```
+
+## WorkBuddy-Native Features
+
+- **Subagent spawning:** WorkBuddy Agent tool replaces `multi_agent_v1.spawn_agent`; `isolation: true` replaces `fork_context: false`
+- **`.lazyworkbuddy/runs/`:** Run state replaces `.omo/boulder.json` + `.omo/start-work/`
+- **Hooks:** Stop/SubagentStop hooks (v0.6) drive continuation loop
+- **State ledger:** `state.json` + `events.jsonl` follow the schema in `docs/lazyworkbuddy-state-ledger-design.md`
+
+---
+
+_Adapted from LazyCodex start-work. Preserved: orchestrator-delegate discipline, 5 verification gates, Sisyphus completion contract, Boulder state, evidence ledger. Adapted: all Codex tool names → WorkBuddy equivalents; `.omo/` → `.lazyworkbuddy/`; plan scaffolding script → inline plan reading. The "NO DIRECT IMPLEMENTATION" rule is preserved verbatim._

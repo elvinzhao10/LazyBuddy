@@ -1,18 +1,42 @@
 ---
-description: "PLACEHOLDER — /ulw-plan command. Implemented in v0.4+ (Skills and command workflows)."
+description: "Create a decision-complete work plan. Prometheus planner mode — explores, researches, writes a plan to .lazyworkbuddy/plans/. Never writes product code. Produces plans consumed by /start-work."
 ---
+
 # /ulw-plan
 
-> **PLACEHOLDER** — This command is not yet implemented. It will be available in **v0.4** when Skill content is ported from LazyCodex.
+Create a decision-complete work plan. The planner explores the codebase, researches unknowns, evaluates alternatives, and writes a structured plan. Never writes product code — planning only.
 
 ## Usage
 
 ```
-/ulw-plan [arguments]
+/ulw-plan "what to build"
 ```
 
-## Status
+## Inputs
 
-🔧 Scaffold (v0.3) — structural placeholder only. Runtime behavior arrives in v0.4.
+- User's build request (natural language description)
+- Workspace context (`workbuddy.md`, project structure, existing plans)
+- Codebase state (via explorer subagents)
 
-_See `docs/lazyworkbuddy-command-constitution.md` for the design spec._
+## Outputs
+
+- Plan file written to `.lazyworkbuddy/plans/<slug>.md`
+- Decision log with alternatives considered and rationale
+- Task decomposition with dependency graph
+
+## Success Criteria
+
+1. Plan file written and self-contained
+2. Every decision has a documented rationale
+3. Task decomposition is granular and dependency-ordered
+4. Approval gate presented (awaits user "approved" or `/start-work`)
+
+## Constitution
+
+Link to command constitution: `../../docs/lazyworkbuddy-command-constitution.md`
+
+Do not claim completion without verification.
+
+## Skill
+
+See `../skills/ulw-plan/SKILL.md` for the full workflow logic, exploration phases, decision framework, and Prometheus planner constraints.

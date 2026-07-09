@@ -8,12 +8,12 @@
 
 | # | Command | LazyCodex Equivalent | Status | v0 Target |
 |---|---------|---------------------|--------|-----------|
-| 1 | `/init-deep` | `$init-deep` | 🔧 | v0.4 |
-| 2 | `/ulw-plan` | `$ulw-plan` | 🔧 | v0.4 |
-| 3 | `/start-work` | `$start-work` | 🔧 | v0.4 |
-| 4 | `/ulw-loop` | `$ulw-loop` | 🔧 | v0.4 |
-| 5 | `/review-work` | `review-work` skill | 🔧 | v0.4 |
-| 6 | `/ultrawork` | `ultrawork` skill | 🔧 | v0.4 |
+| 1 | `/init-deep` | `$init-deep` | ✅ | v0.4 |
+| 2 | `/ulw-plan` | `$ulw-plan` | ✅ | v0.4 |
+| 3 | `/start-work` | `$start-work` | ✅ | v0.4 |
+| 4 | `/ulw-loop` | `$ulw-loop` | ✅ | v0.4 |
+| 5 | `/review-work` | `review-work` skill | ✅ | v0.4 |
+| 6 | `/ultrawork` | `ultrawork` skill | ✅ | v0.4 |
 
 ## Extended Skills (19)
 
@@ -21,10 +21,10 @@
 
 | # | Skill | LazyCodex Equivalent | Status | v0 Target |
 |---|-------|---------------------|--------|-----------|
-| 7 | `programming` | `programming` skill | 🔧 | v0.4 |
-| 8 | `remove-ai-slops` | `remove-ai-slops` skill | 🔧 | v0.4 |
-| 9 | `git-master` | `git-master` skill | 🔧 | v0.4 |
-| 10 | `debugging` | `debugging` skill | 🔧 | v0.4 |
+| 7 | `programming` | `programming` skill | ✅ | v0.4 |
+| 8 | `remove-ai-slops` | `remove-ai-slops` skill | ✅ | v0.4 |
+| 9 | `git-master` | `git-master` skill | ✅ | v0.4 |
+| 10 | `debugging` | `debugging` skill | ✅ | v0.4 |
 | 11 | `refactor` | `refactor` skill | 🔧 | v0.4 |
 | 12 | `frontend` | `frontend-ui-ux` skill | 🔧 | v0.4 |
 | 13 | `lsp` | `LSP` skill | 🔧 | v0.4 |
@@ -45,8 +45,8 @@
 
 | # | Skill | Status | v0 Target | Description |
 |---|-------|--------|-----------|-------------|
-| 26 | `librarian` | 🔧 | v0.9 | Memory/index/parity maintenance |
-| 27 | `migration-planner` | 🔧 | v0.10 | Cross-platform migration workflow |
+| 26 | `librarian` | ✅ | v0.9 | Memory/index/parity maintenance |
+| 27 | `migration-planner` | ✅ | v0.10 | Cross-platform migration workflow |
 
 ## Agents (9)
 
@@ -56,8 +56,8 @@
 | 2 | `planner` | Prometheus / `plan` | 🔧 | v0.5 |
 | 3 | `explorer` | `explorer` | 🔧 | v0.5 |
 | 4 | `implementer` | Spawned worker | 🔧 | v0.5 |
-| 5 | `verifier` | Oracle | 🔧 | v0.5 |
-| 6 | `reviewer` | `momus` + `metis` | 🔧 | v0.5 |
+| 5 | `verifier` | Oracle | ✅ | v0.5 |
+| 6 | `reviewer` | `momus` + `metis` | ✅ | v0.5 |
 | 7 | `qa-executor` | `lazycodex-qa-executor` | 🔧 | v0.5 |
 | 8 | `gate-reviewer` | `lazycodex-gate-reviewer` | 🔧 | v0.5 |
 | 9 | `librarian` | `librarian` | 🔧 | v0.9 |
@@ -96,13 +96,13 @@
 
 | Category | Total | ✅ Implemented | 🔧 Planned | ✨ Added | ⛔ Skipped |
 |----------|-------|----------------|------------|----------|-----------|
-| Core Commands | 6 | 0 | 6 | 0 | 0 |
-| Extended Skills | 19 | 0 | 15 | 0 | 4 |
-| Lazyworkbuddy Skills | 2 | 0 | 2 | 0 | 0 |
-| Agents | 9 | 0 | 9 | 0 | 0 |
+| Core Commands | 6 | 6 | 0 | 0 | 0 |
+| Extended Skills | 19 | 4 | 11 | 0 | 4 |
+| Lazyworkbuddy Skills | 2 | 2 | 0 | 0 | 0 |
+| Agents | 9 | 2 | 7 | 0 | 0 |
 | Hooks | 12 | 0 | 7 | 5 | 0 |
 | MCP Servers | 8 | 0 | 2 | 3 | 3 |
-| **TOTAL** | **56** | **0** | **41** | **8** | **7** |
+| **TOTAL** | **56** | **14** | **27** | **8** | **7** |
 
 ---
 

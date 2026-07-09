@@ -1,18 +1,45 @@
 ---
-description: "PLACEHOLDER — /init-deep command. Implemented in v0.4+ (Skills and command workflows)."
+description: "Generate hierarchical project memory for the current WorkBuddy workspace. Inspects repo structure, identifies language/runtime/test/build commands, scores directories by complexity, generates workbuddy.md at root and subdirectory variants, and produces a .lazyworkbuddy/context/ knowledge base."
 ---
+
 # /init-deep
 
-> **PLACEHOLDER** — This command is not yet implemented. It will be available in **v0.4** when Skill content is ported from LazyCodex.
+Generate hierarchical project memory. Scores directories by complexity, produces `workbuddy.md` at root and subdirectory variants, and writes a `.lazyworkbuddy/context/` knowledge base for future agents.
 
 ## Usage
 
 ```
-/init-deep [arguments]
+/init-deep [--create-new] [--max-depth=N]
 ```
 
-## Status
+## Inputs
 
-🔧 Scaffold (v0.3) — structural placeholder only. Runtime behavior arrives in v0.4.
+- Current workspace directory tree
+- Project manifests (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, etc.)
+- Existing `workbuddy.md` if present (update mode)
+- CI/CD configuration, test directories, existing docs
 
-_See `docs/lazyworkbuddy-command-constitution.md` for the design spec._
+## Outputs
+
+- `workbuddy.md` at root (50-150 lines, quality-gate passing)
+- Subdirectory `workbuddy.md` variants where complexity score warrants
+- `.lazyworkbuddy/context/index.md` — structured project overview
+- `.lazyworkbuddy/context/commands.json` — discovered dev/test/build/lint commands
+- `.lazyworkbuddy/context/project-map.json` — directory-to-purpose mapping
+
+## Success Criteria
+
+1. Root `workbuddy.md` exists and is 50-150 lines
+2. No generic filler content
+3. Hierarchy is correct (child does not repeat parent)
+4. `.lazyworkbuddy/context/` files exist and are parseable
+
+## Constitution
+
+Link to command constitution: `../../docs/lazyworkbuddy-command-constitution.md`
+
+Do not claim completion without verification.
+
+## Skill
+
+See `../skills/init-deep/SKILL.md` for the full workflow logic, phase-by-phase procedure, scoring matrix, and verification gates.

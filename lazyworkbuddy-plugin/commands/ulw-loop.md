@@ -1,18 +1,44 @@
 ---
-description: "PLACEHOLDER — /ulw-loop command. Implemented in v0.4+ (Skills and command workflows)."
+description: "Verified completion loop for open-ended tasks. Creates goals with binding success criteria, decomposes into evidence-bound steps, runs until all criteria have real-surface proof. Manages goal state in .lazyworkbuddy/ulw-loop/."
 ---
+
 # /ulw-loop
 
-> **PLACEHOLDER** — This command is not yet implemented. It will be available in **v0.4** when Skill content is ported from LazyCodex.
+Verified completion loop for open-ended tasks. Creates binding goals with success criteria, decomposes into evidence-bound steps, and iterates until every criterion has verified proof. Delegates implementation waves to `/start-work` when needed.
 
 ## Usage
 
 ```
-/ulw-loop [arguments]
+/ulw-loop "task" [--completion-promise=TEXT] [--strategy=reset|continue]
 ```
 
-## Status
+## Inputs
 
-🔧 Scaffold (v0.3) — structural placeholder only. Runtime behavior arrives in v0.4.
+- Task description (natural language)
+- Completion promise (binding success criteria, optional)
+- Strategy: `reset` (fresh start) or `continue` (resume from `.lazyworkbuddy/ulw-loop/` state)
+- Workspace context via `workbuddy.md`
 
-_See `docs/lazyworkbuddy-command-constitution.md` for the design spec._
+## Outputs
+
+- `.lazyworkbuddy/ulw-loop/goals.json` — binding success criteria
+- `.lazyworkbuddy/ulw-loop/evidence.jsonl` — per-goal evidence log
+- Completed work artifacts (via delegated `/start-work` waves)
+- Final evidence report showing every criterion met
+
+## Success Criteria
+
+1. All success criteria have verified evidence
+2. Evidence is self-contained (another agent can re-verify from the evidence alone)
+3. No evidence claim without an observed value
+4. Iteration cap respected (100 normal, 500 ultrawork)
+
+## Constitution
+
+Link to command constitution: `../../docs/lazyworkbuddy-command-constitution.md`
+
+Do not claim completion without verification.
+
+## Skill
+
+See `../skills/ulw-loop/SKILL.md` for the full workflow logic, goal creation protocol, evidence binding rules, and iteration management.

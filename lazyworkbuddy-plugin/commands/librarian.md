@@ -1,18 +1,44 @@
 ---
-description: "PLACEHOLDER — /librarian command. Implemented in v0.4+ (Skills and command workflows)."
+description: "Memory, index, and parity maintenance agent. Maintains the command index, parity ledger, known gaps doc, and project memory. Runs after every version change that adds or modifies components. Ensures documentation remains the source of truth."
 ---
+
 # /librarian
 
-> **PLACEHOLDER** — This command is not yet implemented. It will be available in **v0.4** when Skill content is ported from LazyCodex.
+Memory, index, and parity maintenance agent. Updates the command index, parity ledger, known gaps doc, and project memory after every accepted change. Ensures all documentation stays consistent and authoritative.
 
 ## Usage
 
 ```
-/librarian [arguments]
+/librarian [--scope=all|index|parity|gaps|memory]
 ```
 
-## Status
+## Inputs
 
-🔧 Scaffold (v0.3) — structural placeholder only. Runtime behavior arrives in v0.4.
+- Current state of all docs in `docs/`
+- Current skill, command, agent, and hook registrations in plugin manifest
+- Latest parity assessment against `reference/lazycodex/`
+- Version changelog for the current release
 
-_See `docs/lazyworkbuddy-command-constitution.md` for the design spec._
+## Outputs
+
+- Updated `docs/lazyworkbuddy-command-index.md` with status changes
+- Updated `docs/lazyworkbuddy-parity-ledger.md` with new entries and status shifts
+- Updated `docs/lazyworkbuddy-known-gaps.md` with new gaps or resolutions
+- Updated project memory (`workbuddy.md`) if structural changes warrant
+
+## Success Criteria
+
+1. Command index statuses match actual implementation state
+2. Parity ledger has an entry for every ported component
+3. Known gaps document captures every discovered semantic deviation
+4. Cross-references between docs are consistent
+
+## Constitution
+
+Link to command constitution: `../../docs/lazyworkbuddy-command-constitution.md`
+
+Do not claim completion without verification.
+
+## Skill
+
+See `../skills/librarian/SKILL.md` for the full maintenance protocol, doc consistency checks, and parity verification procedure.

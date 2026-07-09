@@ -1,18 +1,42 @@
 ---
-description: "PLACEHOLDER — /reviewer command. Implemented in v0.4+ (Skills and command workflows)."
+description: "Multi-dimensional code and design reviewer. Reviews implementation across 5 dimensions: correctness, code quality, security, design coherence, and context completeness. Issues PASS/FAIL/INCONCLUSIVE per dimension with actionable findings."
 ---
+
 # /reviewer
 
-> **PLACEHOLDER** — This command is not yet implemented. It will be available in **v0.4** when Skill content is ported from LazyCodex.
+Multi-dimensional code and design reviewer. Reviews implementation across 5 independent dimensions: correctness, code quality, security, design coherence, and context completeness. Each dimension issues a PASS/FAIL/INCONCLUSIVE verdict with specific, actionable findings.
 
 ## Usage
 
 ```
-/reviewer [arguments]
+/reviewer [--dimensions=all|correctness,security,...] [--files=<glob>]
 ```
 
-## Status
+## Inputs
 
-🔧 Scaffold (v0.3) — structural placeholder only. Runtime behavior arrives in v0.4.
+- Changed files (diff against base or plan scope)
+- Plan reference and acceptance criteria
+- Implementation evidence from `.lazyworkbuddy/runs/<run_id>/`
 
-_See `docs/lazyworkbuddy-command-constitution.md` for the design spec._
+## Outputs
+
+- Per-dimension verdict: PASS | FAIL | INCONCLUSIVE
+- Actionable findings with file:line references
+- Aggregate verdict (all 5 must PASS)
+
+## Success Criteria
+
+1. All 5 dimensions have a terminal verdict
+2. Every FAIL includes a specific, actionable finding
+3. Every INCONCLUSIVE documents what's missing
+4. Findings reference exact file:line locations
+
+## Constitution
+
+Link to command constitution: `../../docs/lazyworkbuddy-command-constitution.md`
+
+Do not claim completion without verification.
+
+## Skill
+
+See `../skills/reviewer/SKILL.md` for the full review protocol, per-dimension criteria, review evidence format, and the Momus/Metis review framework.

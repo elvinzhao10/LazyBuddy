@@ -108,6 +108,40 @@ The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
 - All 8 core command/skill entries: remain `adapted` (structure exists; semantics not yet implemented)
 - Hook scaffold: new `added` entry (hooks.json structure exists; logic not yet implemented)
 
+## v0.4 Update — Skills & Commands Ported (2026-07-09)
+
+14 skills ported from LazyCodex with full WorkBuddy-native adaptation:
+
+**Skills with preserved LazyCodex semantics:**
+- `init-deep` — hierarchical project memory generation (workbuddy.md + `.lazyworkbuddy/context/`)
+- `ulw-plan` — decision-complete work planning (Prometheus planner)
+- `start-work` — Sisyphus orchestrator with evidence verification
+- `ulw-loop` — verified completion loop with binding success criteria
+- `ultrawork` — tier triage, Manual-QA channels, bootstrap
+- `review-work` — 5-agent parallel post-implementation review
+- `programming` — strict coding discipline (7 axioms, TDD, 250 LOC ceiling)
+- `remove-ai-slops` — behavior-preserving cleanup with regression tests
+- `git-master` — git workflow discipline (COMMIT/REBASE/HISTORY/STATUS modes)
+- `debugging` — hypothesis-driven debugger (2 disciplines, 11-phase loop, 8 safety invariants)
+- `verifier` — independent evidence verification (AdversarialVerify)
+- `reviewer` — multi-dimensional review (Momus/Metis framework)
+- `librarian` — memory/index/parity maintenance
+- `migration-planner` — cross-platform migration workflow
+
+**8 command files written** replacing v0.3 placeholders. Each command includes usage syntax, inputs, outputs, success criteria, link to skill, and link to constitution.
+
+**Status shifts from v0.3:**
+- 14 skills: `adapted` → `implemented` (full WorkBuddy-native SKILL.md with semantic preservation)
+- 8 commands: `scaffolded` → `implemented` (full command definitions replacing placeholders)
+- 6 core commands: `adapted` → `implemented` in command index
+
+**Tool translations applied across all ported files:**
+- `multi_agent_v1` / `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool
+- `.omo/` → `.lazyworkbuddy/`
+- `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`
+- `AGENTS.md` → `workbuddy.md`
+- Codex task spawning → WorkBuddy subagent invocation with `isolation: true`
+
 
 
 ---
