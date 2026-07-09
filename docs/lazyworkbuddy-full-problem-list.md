@@ -155,11 +155,16 @@ All file-editable problems fixed this pass. Doctor 47/47 PASS, smoke-test 105/10
 - [x] **P2-5.** MCP integration test harness built (`scripts/lazyworkbuddy-mcp-test.sh`) — exercises initialize + tools/list on all 8 servers + one safe tool call per server. **22/22 PASS.** Bonus: found + fixed two real protocol bugs in v0.8 servers: (1) source-map + status-dashboard didn't route `tools/call` (dispatched on tool name as top-level method) — fixed with `tools/call`→tool-name routing + `param_raw` reading `params.arguments`; (2) status-dashboard passed data files as Python scripts (`python3 "$FILE" <<HEREDOC` → `python3 - "$FILE"`) — fixed all 5 handlers. Full suite green: doctor 47/47, smoke 105/105, MCP-test 22/22, docs 91/0. (Live MCP-protocol test in an agent turn still needs a session restart to load the servers, but every server is validated via direct JSON-RPC.)
 
 ### P5 — documented (host-inherent; need live run / host feature)
-- [~] **P5-1.** G-001 subagent model — live test plan documented in known-gaps G-001 (6-step procedure: spawn multi-task plan, verify subagent_start events, evidence gates, re-dispatch, compare vs sequential, mailbox substitute). Pending a real orchestrator run.
+- [~] **P5-1.** G-001 subagent model — live test plan documented in known-gaps G-001 (6-step procedure: spawn multi-task plan, verify subagent_start events, evidence gates, re-dispatch, compare vs sequential, mailbox substitute). Pending a real non-trivial orchestrator run (dogfood-v0.11 was trivial, iteration.count=0).
 - [x] **P5-2.** G-002 post-compact cache reset — PreCompact hook hardened: now stamps `last_compaction` on state.json + appends `context_compacted` event so resume logic detects stale pointers. Tested.
 - [x] **P5-3.** G-004 model routing — corrected: agent-level tiering IS configured (reasoning/xhigh for planner/verifier/gate-reviewer/reviewer; lite/low for explorer/librarian/context-indexer). Residual gap (dynamic intra-agent routing) is host-inherent. G-004 updated.
 - [ ] **P5-4.** G-006 channels — optional v0.13 add-on (deferred by design).
 - [~] **P5-5.** semantic-LSP upgrade — documented in G-003 residual gap: code-intel symbol ops are grep heuristics; if WorkBuddy adds native LSP, wire it and deprecate the grep path.
+
+### Refreshed-comparison flaws (2026-07-09 20:00) — FIXED
+- [x] **G-016 hardening.** `post-tool-use.sh` now emits a `boundary_warning` event for any Write/Edit outside `.lazyworkbuddy/` — makes the orchestrator's prose-only write-boundary AUDITABLE in events.jsonl (reviewer/gate-reviewer can flag violations). PreToolUse still can't block (can't identify caller), but drift is now observable. Tested: product-path write flagged, state-path write not.
+- [x] **G-017 progress-counter drift.** Added `scripts/state/sync-plan-state.sh` — drift-repair tool that recomputes `progress.total_checkboxes`/`completed_checkboxes` from the plan + syncs task statuses. The existing `update-plan-checkbox.sh` prevented future drift but didn't repair already-drifted counters (dogfood-v0.11 had progress 0/0 vs plan 2/2). `sync-plan-state.sh --fix` reconciled to 2/2. Verified on dogfood-v0.11.
+- [ ] **G-001 non-trivial dogfood.** Still open — needs a real multi-task orchestrator run (≥3 tasks, forced verification failure → repair cycle, subagent orchestration) to graduate beyond iteration.count=0. This is an EXECUTION task, not a file fix — recommended as the next move.
 
 ### Final scorecard
 

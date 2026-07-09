@@ -47,6 +47,14 @@ if '$TOOL_NAME' in ('Write', 'Edit'):
     fp = ti.get('file_path', '')
     if fp:
         event['files'] = [fp]
+        # G-016: flag writes outside .lazyworkbuddy/ as boundary warnings.
+        # The orchestrator may only write .lazyworkbuddy/ state; product-code
+        # writes must come from the implementer. PreToolUse cannot block this
+        # (it cannot tell which agent is calling), so we make it AUDITABLE here:
+        # the reviewer/gate-reviewer checks events.jsonl for boundary_warnings.
+        norm = fp.replace(chr(92), '/')
+        if '.lazyworkbuddy/' not in norm and '/.workbuddy/' not in norm and not norm.endswith('workbuddy.md') and not norm.endswith('AGENTS.md'):
+            event['boundary_warning'] = 'write outside .lazyworkbuddy/ - verify caller is implementer not orchestrator (G-016)'
 elif '$TOOL_NAME' == 'Bash':
     # Redact secrets in bash commands
     cmd = ti.get('command', ti.get('description', ''))

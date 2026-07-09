@@ -169,7 +169,8 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **Why:** The orchestrator legitimately needs `Write`/`Edit` to maintain `.lazyworkbuddy/` state files (state.json, plan checkbox edits, drafts). A blanket `disallowedTools: [Write, Edit]` would break state management. WorkBuddy's `disallowedTools` is tool-granular, not path-granular, so it cannot express "Write only inside `.lazyworkbuddy/`".
 - **Impact:** Medium — a misbehaving orchestrator turn could edit product code directly, bypassing the implementer delegation invariant. Mitigated by: (a) the orchestrator's strong prose instruction, (b) the `PostToolUse` hook logging every Write/Edit to `events.jsonl`, (c) the reviewer/gate-reviewer agents catching direct edits.
 - **Mitigation (current):** Accepted as a known soft-constraint. Tracked for a future WorkBuddy feature: path-scoped tool permissions. If WorkBuddy adds path-level deny rules, enforce `Write`/`Edit` to be `.lazyworkbuddy/`-only at the platform level.
-- **Status:** Open (soft-constraint). Documented 2026-07-09.
+- **Hardening (2026-07-09, refreshed-comparison flaws):** `post-tool-use.sh` now emits a `boundary_warning` event whenever Write/Edit targets a path outside `.lazyworkbuddy/` (and not workbuddy.md/AGENTS.md config). PreToolUse still cannot block (it cannot identify the calling agent), but the violation is now AUDITABLE in `events.jsonl` — the reviewer/gate-reviewer can flag any `boundary_warning` whose caller was the orchestrator. This makes G-016 observable, not just prose.
+- **Status:** Soft-constraint + audit hook. PreToolUse blocking pending a WorkBuddy path-scoped-permissions feature.
 
 ### G-017: Plan checkbox / state.json task divergence (v0.11 dogfood finding)
 
@@ -179,6 +180,7 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **Found in:** v0.11 dogfood run — observer noted that marking T1 done updated state.json but required separate `sed` to update plan.md.
 - **Mitigation:** Suggested fix for v0.12 — add `sync-plan.sh` to validate consistency and `update-plan-checkbox.sh` to atomically update both representations.
 - **Resolution (v0.11, 2026-07-09):** RESOLVED. Created `scripts/state/update-plan-checkbox.sh` that atomically updates BOTH plan.md checkbox and state.json task. Updated `finalize-run.sh` to cross-check plan.md checkboxes before allowing completion (blocks if any unchecked). Updated `verify.sh` to auto-append verification events to active runs. Negative test confirmed: finalize-run.sh blocks with `BLOCKED: plan.md has 1 unchecked checkbox(es)` when plan.md and state.json diverge.
+- **Resolution addendum (2026-07-09, refreshed-comparison flaws):** Added `scripts/state/sync-plan-state.sh` — a drift-repair/audit tool that recomputes `progress.total_checkboxes`/`completed_checkboxes` from the plan AND syncs task statuses (checkbox checked → done). The original fix prevented future drift (atomic checkbox+task updates) but did NOT repair already-drifted progress counters — the dogfood run had `progress: 0/0` despite 2/2 plan checkboxes. `sync-plan-state.sh --fix` reconciled it to 2/2. Verified on dogfood-v0.11. The two scripts are complementary: `update-plan-checkbox.sh` prevents drift; `sync-plan-state.sh` repairs/audits it.
 
 ---
 
