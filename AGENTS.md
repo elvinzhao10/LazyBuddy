@@ -1,6 +1,6 @@
 # AGENTS.md — Lazyworkbuddy project memory
 
-> Project memory for any agent working in this workspace. Read this first.
+> LazyCodex-style compat alias. **Primary project memory is [`workbuddy.md`](workbuddy.md).** Read that first; this file is the lightweight compat layer.
 
 ## What this project is
 
@@ -22,15 +22,27 @@ This is a **version 0 build** (pre-1.0). Every phase is numbered `v0.N`, not `vN
 
 ```
 lazyworkbuddy/
-├── AGENTS.md                # this file — project memory
-├── plan/                    # versioned implementation plan (one md per version)
-│   ├── README.md            # index + benchmark contract + surface map
-│   ├── v0.0-discovery.md    # ... through v0.14-evaluation-rubric.md
+├── workbuddy.md              # PRIMARY project memory — read this first
+├── AGENTS.md                 # this file — LazyCodex compat alias
+├── plan/                     # versioned implementation plan (one md per version)
+│   ├── README.md             # index + benchmark contract + surface map
+│   ├── v0.0-discovery.md     # ... through v0.14-evaluation-rubric.md
+├── docs/                     # architecture docs, parity ledger, operating manuals
+│   ├── lazyworkbuddy-architecture-plan.md
+│   ├── lazyworkbuddy-versioned-execution-plan.md
+│   ├── lazyworkbuddy-parity-ledger.md
+│   ├── lazyworkbuddy-known-gaps.md
+│   ├── lazyworkbuddy-operating-manual.md
+│   └── ...
 ├── reference/
-│   └── lazycodex/           # canonical LazyCodex repo (read-only reference)
+│   └── lazycodex/            # canonical LazyCodex repo (read-only reference)
 ├── scripts/
-│   └── migrate-plan.py      # plan migration utility
-└── .workbuddy/              # WorkBuddy workspace config (memory, skills, etc.)
+│   └── migrate-plan.py       # plan migration utility
+├── prompts/                  # worker delegation prompts per version
+└── .workbuddy/               # WorkBuddy workspace config
+    ├── rules/                # project rules (loaded on session start)
+    ├── memory/               # daily work logs + MEMORY.md
+    └── settings.json         # permissions baseline
 ```
 
 Planned build artifacts (created in later versions):
@@ -84,7 +96,23 @@ Confirmed via [CodeBuddy plugin reference](https://staging-codebuddy.tencent.com
 | Hooks (21 in LazyCodex) | `hooks/hooks.json` with the 12+ lifecycle events above |
 | Durable progress (`.omo/`) | `.lazyworkbuddy/runs/<run_id>/` state ledger |
 
-Full detail lives in `plan/v0.0-discovery.md` (method map) and `plan/v0.1-architecture.md`.
+Full detail lives in `plan/v0.0-discovery.md` (method map), `plan/v0.1-architecture.md` (architecture), and `docs/lazyworkbuddy-parity-ledger.md` (per-method parity tracking).
+
+## Where to find everything (v0.2+)
+
+| Document | Purpose |
+|----------|---------|
+| [`workbuddy.md`](workbuddy.md) | **Primary project memory** — read this first |
+| [`.workbuddy/rules/lazyworkbuddy.md`](.workbuddy/rules/lazyworkbuddy.md) | Core operating rules (12 enforceable rules) |
+| [`.workbuddy/rules/lazyworkbuddy-verification.md`](.workbuddy/rules/lazyworkbuddy-verification.md) | Verification discipline and evidence standards |
+| [`.workbuddy/rules/lazyworkbuddy-safety.md`](.workbuddy/rules/lazyworkbuddy-safety.md) | Safety gates: deny/ask/allow patterns |
+| [`.workbuddy/rules/lazyworkbuddy-memory.md`](.workbuddy/rules/lazyworkbuddy-memory.md) | Memory maintenance policy |
+| [`docs/lazyworkbuddy-operating-manual.md`](docs/lazyworkbuddy-operating-manual.md) | Agent operating loop and escalation rules |
+| [`docs/lazyworkbuddy-command-constitution.md`](docs/lazyworkbuddy-command-constitution.md) | Command design and composition |
+| [`docs/lazyworkbuddy-command-index.md`](docs/lazyworkbuddy-command-index.md) | Master index of all commands, skills, agents |
+| [`docs/lazyworkbuddy-parity-ledger.md`](docs/lazyworkbuddy-parity-ledger.md) | Living parity tracking vs LazyCodex |
+| [`docs/lazyworkbuddy-known-gaps.md`](docs/lazyworkbuddy-known-gaps.md) | Documented deviations from LazyCodex |
+| [`docs/lazyworkbuddy-run-log-template.md`](docs/lazyworkbuddy-run-log-template.md) | Required output format for every version |
 
 ## Per-version output format
 
