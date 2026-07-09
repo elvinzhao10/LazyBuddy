@@ -207,6 +207,42 @@ Migration planner complete.
   Next step: review the adapter plan, then use /start-work to execute the port
 ```
 
+## The 9-Step Migration Workflow (v0.10)
+
+The migration lifecycle is a sequence of nine ordered steps, each producing concrete artifacts. A migration is "done" when Step 9's parity report says so. Skip no step.
+
+### Step 1: Canonical Repo Inspection
+Clone or read the source repository. For LazyCodex, use `reference/lazycodex/`. Identify every method: skills (SKILL.md files), agents (TOML/MD definitions), hooks (JSON/TOML configs), MCP servers (`.mcp.json`), and components. Produce a flat file index. **Never guess from memory** — every claim must trace to a file path and line.
+
+### Step 2: Method Extraction
+Extract exact method names and source paths. For each skill: name + trigger conditions from YAML frontmatter. For each agent: name + model + tool restriction list from TOML/YAML. For each hook: event type + script path from JSON/TOML config. For each MCP server: name + transport + exposed tools. The output is a **structured inventory** — one row per method, no ambiguity.
+
+### Step 3: Host Capability Inventory
+Survey the target host's extension model. Does it support Skills? Commands? Agents? Hooks? MCP? Rules? Dashboard? For each yes, capture: manifest format, plugin packaging story, agent model (YAML frontmatter fields, tool scoping mechanism), hook model (event types, script vs prompt hooks), MCP transport (stdio vs HTTP), and filesystem conventions (mutable state dirs vs immutable plugin dirs). This catalog is the constraint set for Step 4.
+
+### Step 4: Semantic Mapping
+Classify every source method against the host catalog:
+- **matched** — exact semantic equivalent exists natively on target (map directly)
+- **adapted** — behavior preserved, but implementation surface changes (design the adaptation)
+- **skipped** — intentionally not ported; must state reason (out of scope, platform limitation, legal boundary, superseded)
+- **added** — target-native enhancement that has no source equivalent (explicitly label as `added`; do not inflate parity counts)
+Record for each: source path, target implementation, status, and behavioral equivalence proof.
+
+### Step 5: Host-Native Adaptation
+Design each `adapted` method using host-native primitives. Replace source-specific tools with target equivalents. Replace source-specific paths with target conventions. Preserve semantic behavior; change only the invocation surface. Example: `multi_agent_v1.spawn_agent({"agent_type":"explorer"})` → WorkBuddy `Agent` tool with `message:"TASK: act as an explorer..."` and `isolation:true` (same subagent semantics, different API).
+
+### Step 6: Verification Design
+For each adapted method, define verification gates: What does success look like? What test proves it? What host-native tool runs the check? What evidence artifact confirms it? Assemble these into a **verification matrix** — a table of `<workflow, command, expected result, evidence artifact>` rows. Every row must be executable by a downstream worker.
+
+### Step 7: Implementation Sequence
+Order the port by dependency: project memory before agents, agents before hooks, hooks before run state, run state before MCP, MCP before dogfood. Create a versioned plan (v0.0 → v0.N). Each version has: objective statement, list of artifacts produced, success criteria, and verification gates from Step 6. Lazyworkbuddy's own sequence serves as the reference: v0.0 discovery → v0.1 architecture → v0.2 project memory → v0.3 plugin scaffold → v0.4 skills → v0.5 agents → v0.6 hooks → v0.7 run state → v0.8 MCP → v0.9 hardening → v0.10 migration → v0.11 dogfood → v0.12 release.
+
+### Step 8: Dogfood Run
+Run the adapted system on its own source code. The validation threshold: when you can `init-deep` your own repo and `start-work` on a real migration task, the cycle is proven. Record everything: what worked, what broke, what needed manual intervention. Update the parity ledger with every new gap discovered during the dogfood run. The dogfood run is not optional — an untested adapter is a draft.
+
+### Step 9: Final Parity Report
+Produce the final comparison: total source methods, matched/adapted/skipped/added breakdown, percentage of behavior preserved. Document every deviation in a `known-gaps` file (one row per gap: method name, what's missing, impact, mitigation). Append the summary to the parity ledger. The report must be honest — never claim parity where gaps remain. A truthful 87%-adaptation report is more valuable than a dishonest 100% claim.
+
 ## WorkBuddy-Native Features
 
 - **Agent tool:** When the source skill set is large (>5 skills), spawn explorer subagents via the WorkBuddy Agent tool to read each skill in parallel. Use `isolation: true` and a self-contained `message` that names DELIVERABLE/SCOPE/VERIFY.
@@ -214,6 +250,26 @@ Migration planner complete.
 - **Read-only enforcement:** The migration-planner is architecturally read-only for product files. WorkBuddy's tool permission model enforces this: Write and Edit are only called against `.lazyworkbuddy/adapters/` paths.
 - **Parity ledger integration:** The adapter plan creation is a first-class parity event in `.lazyworkbuddy/parity-ledger.jsonl`, linking the migration to the broader Lazyworkbuddy knowledge lifecycle.
 - **Directory convention:** All adapter artifacts live under `.lazyworkbuddy/adapters/`, following the WorkBuddy-native state directory convention (not LazyCodex `.omo/`).
+
+## Required Disciplines
+
+Every migration-planner execution must uphold these 11 disciplines. No exceptions, no shortcuts.
+
+| # | Discipline | Requirement |
+|---|-----------|-------------|
+| 1 | **Local source repo inspection** | Read source files from disk. Never reason from memory or documentation summaries. Every assertion must cite a file path and line. |
+| 2 | **Exact method names + paths** | Extract methods by name and full path. "The start-work skill" is not enough — you need `skills/start-work/SKILL.md:42` for the spawn_agent call. |
+| 3 | **Host feature inventory** | Survey the target platform's actual capabilities before mapping. Ground-truth check: what tools does it expose? What event model? What packaging format? |
+| 4 | **Behavior-vs-implementation distinction** | Preserve *what* a method does; it's fine to change *how* it does it. The adapter's job is semantic fidelity, not syntactic fidelity. |
+| 5 | **Legal / license / IP boundary** | Check source license before copying. Do not port code that is GPL into MIT projects without legal review. If uncertain, mark as `skipped` with reason "license boundary". |
+| 6 | **Semantic mapping** | Every source method gets a `matched`/`adapted`/`skipped`/`added` classification. No method is silently dropped. Skipped methods carry an explicit reason. |
+| 7 | **Creative host-native adaptation** | When no direct equivalent exists, design a creative adaptation using the host's primitives. The `multi_agent_v1.spawn_agent` → WorkBuddy `Agent` tool mapping is the canonical example: different API, same subagent semantics. |
+| 8 | **Versioned implementation plan** | Port in dependency order. Each version has an objective, artifact list, success criteria, and verification gates. Never skip versions. |
+| 9 | **Verification gates** | Every adapted method has a concrete, runnable verification gate. A downstream worker must be able to execute `doctor` and get PASS/FAIL for every row in the verification matrix. |
+| 10 | **Dogfood run** | The adapted system must run on its own source code before the migration is declared complete. If `init-deep` and `start-work` don't work on the migration itself, the adapter is a draft. |
+| 11 | **Final parity report** | Honest accounting. Count every method. Report matched/adapted/skipped/added truthfully. Document every gap in a `known-gaps` file. Append to the parity ledger. |
+
+These disciplines are not aspirational. A migration-planner run that violates any one of them has produced a draft, not a plan. Reject it and re-run.
 
 ---
 _This is a Lazyworkbuddy innovation — there is no direct LazyCodex equivalent. It formalizes the adapter pattern discovered during the v0.4 port of LazyCodex skills to WorkBuddy. The semantic mapping approach (direct map / adapted map / gap) is the same triage we applied to translate `multi_agent_v1` → WorkBuddy Agent tool, `.omo/` → `.lazyworkbuddy/`, `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`, and every Codex-specific tool invocation._
