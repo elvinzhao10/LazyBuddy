@@ -90,7 +90,25 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | State/Durability | 3 | 0 | 3 | 0 | 4 |
 | **TOTAL** | **48** | **1** | **36** | **11** | **12** |
 
-**Parity Health:** 🔧 Early stage — architecture is designed, behavior is semantically preserved, but nothing is implemented yet. Expect matched/adapted ratios to shift as each version is built.
+**Parity Health:** 🔧 Early stage — architecture is designed, behavior is semantically preserved. v0.3 plugin scaffold is built. Expect matched/adapted ratios to shift as each version is implemented.
+
+## v0.3 Update — Plugin Scaffold (2026-07-09)
+
+The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
+
+- `.workbuddy-plugin/plugin.json` — valid manifest with all required fields (name, version, skills, commands, agents, hooks, mcpServers, interface)
+- 8 placeholder commands + 8 placeholder skills (stubs for v0.4+)
+- `hooks/hooks.json` — 12 event types with empty arrays
+- `.mcp.json` — empty `mcpServers: {}`
+- 4 validation scripts (doctor, smoke-test, docs-check, parity-check)
+- README.md, CHANGELOG.md
+
+**Status shifts from v0.2:**
+- Plugin packaging: `adapted` → `scaffolded` (manifest exists, components are placeholders)
+- All 8 core command/skill entries: remain `adapted` (structure exists; semantics not yet implemented)
+- Hook scaffold: new `added` entry (hooks.json structure exists; logic not yet implemented)
+
+
 
 ---
 

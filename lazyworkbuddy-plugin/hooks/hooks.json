@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [],
+    "UserPromptSubmit": [],
+    "PreToolUse": [],
+    "PostToolUse": [],
+    "PostToolUseFailure": [],
+    "PreCompact": [],
+    "Stop": [],
+    "StopFailure": [],
+    "TaskCreated": [],
+    "TaskCompleted": [],
+    "SubagentStart": [],
+    "SubagentStop": []
+  }
+}
