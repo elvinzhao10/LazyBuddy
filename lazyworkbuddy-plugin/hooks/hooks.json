@@ -1,16 +1,137 @@
 {
   "hooks": {
-    "SessionStart": [],
-    "UserPromptSubmit": [],
-    "PreToolUse": [],
-    "PostToolUse": [],
-    "PostToolUseFailure": [],
-    "PreCompact": [],
-    "Stop": [],
-    "StopFailure": [],
-    "TaskCreated": [],
-    "TaskCompleted": [],
-    "SubagentStart": [],
-    "SubagentStop": []
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/session-start.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/user-prompt-submit.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/pre-tool-use.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/post-tool-use.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/post-tool-use-failure.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/pre-compact.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/stop-gate.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/stop-failure.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/task-created.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/task-completed.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/subagent-start.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/subagent-stop.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

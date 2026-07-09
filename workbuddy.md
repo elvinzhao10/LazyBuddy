@@ -11,7 +11,7 @@
 
 ## Versioning
 
-Pre-1.0 build: every phase is `v0.N`. Currently at **v0.2** (project memory foundation). MVP = v0.0–v0.7; strong benchmark = v0.0–v0.12.
+Pre-1.0 build: every phase is `v0.N`. Currently at **v0.6** (hooks and safety gates). MVP = v0.0–v0.7; strong benchmark = v0.0–v0.12.
 
 ## Structure
 

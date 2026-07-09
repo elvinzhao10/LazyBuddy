@@ -167,6 +167,36 @@ The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
 - Agent roles section of initial method map: `adapted` → `implemented`
 - 4 orchestration docs created: agent-inventory, agent-orchestration, handoff-protocol, parallelism-policy
 
+## v0.6 Update — Hooks & Safety Gates (2026-07-09)
+
+12 lifecycle hooks implemented with real enforcement logic:
+
+**Enforcement hooks (3):**
+- `Stop` — `stop-gate.sh` — prevents premature completion when unchecked work remains (state.json → plan checkbox parsing). Respects `stop_hook_active` and context pressure. LazyCodex source: [start-work-continuation/src/codex-hook.ts](../reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts)
+- `SubagentStop` — `subagent-stop.sh` — verifies implementer evidence (`EVIDENCE_RECORDED: <path>` validation: inside root, exists, non-empty, not symlink). Max 3 retries. LazyCodex source: [lazycodex-executor-verify/src/codex-hook.ts](../reference/lazycodex/plugins/omo/components/lazycodex-executor-verify/src/codex-hook.ts)
+- `PreToolUse` — `pre-tool-use.sh` — blocks secret access, destructive deletes, force pushes, unauthorized publishes. Returns `permissionDecision: deny`. Complements `.workbuddy/settings.json`.
+
+**Advisory hooks (9):**
+- `SessionStart` — detect active run, load summary, warn if workbuddy.md missing
+- `UserPromptSubmit` — detect command intent, warn on pasted secrets
+- `PostToolUse` — append tool-use event to events.jsonl (redacted)
+- `PostToolUseFailure` — append failure event with retry/fallback classification
+- `PreCompact` — save run checkpoint to checkpoints/
+- `StopFailure` — write failure record + recovery suggestion
+- `TaskCreated` / `TaskCompleted` — mirror tasks to events.jsonl
+- `SubagentStart` — record subagent lifecycle in events.jsonl
+
+**Status shifts from v0.5:**
+- All 12 hooks: `planned` → `implemented` (real commands + scripts)
+- hooks.json populated with production-level hook configurations
+- 4 docs created: hooks.md, permission-policy.md, safety-gates.md, hook-test-plan.md
+- `hooks/hooks.json` replaced empty scaffold with real ${CODEBUDDY_PLUGIN_ROOT} commands
+
+**Manual test verification:**
+- Stop gate: blocks with 2 remaining tasks ✓, allows on stop_hook_active ✓
+- PreToolUse: denies rm -rf ✓, denies .env access ✓, allows safe commands ✓
+- SubagentStop: allows valid evidence ✓, blocks missing evidence ✓
+
 
 
 _This ledger is authoritative. Every parity claim must be verified against `reference/lazycodex/` before updating. Updated by the Librarian (v0.9+) and manually until then._
