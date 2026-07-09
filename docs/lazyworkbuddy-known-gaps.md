@@ -178,7 +178,7 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **Impact:** Medium — `finalize-run.sh` checks state.json tasks but `stop-gate.sh` checks plan.md checkboxes. A run could finalize with state.json all-done while plan.md still shows unchecked boxes, causing stop-gate to block future continuation.
 - **Found in:** v0.11 dogfood run — observer noted that marking T1 done updated state.json but required separate `sed` to update plan.md.
 - **Mitigation:** Suggested fix for v0.12 — add `sync-plan.sh` to validate consistency and `update-plan-checkbox.sh` to atomically update both representations.
-- **Resolution:** Open. Target v0.12.
+- **Resolution (v0.11, 2026-07-09):** RESOLVED. Created `scripts/state/update-plan-checkbox.sh` that atomically updates BOTH plan.md checkbox and state.json task. Updated `finalize-run.sh` to cross-check plan.md checkboxes before allowing completion (blocks if any unchecked). Updated `verify.sh` to auto-append verification events to active runs. Negative test confirmed: finalize-run.sh blocks with `BLOCKED: plan.md has 1 unchecked checkbox(es)` when plan.md and state.json diverge.
 
 ---
 

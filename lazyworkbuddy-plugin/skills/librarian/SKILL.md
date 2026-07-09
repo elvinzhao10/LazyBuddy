@@ -104,6 +104,19 @@ If the work introduced a new risk (new dependency, increased blast radius, known
 - **RISK-<id>**: <description> — likelihood: LOW|MEDIUM|HIGH — impact: LOW|MEDIUM|HIGH — mitigation: <one-line> — status: OPEN|MITIGATED|CLOSED
 ```
 
+#### CHANGELOG.md
+
+After every accepted change, add a CHANGELOG entry. Format:
+
+```markdown
+## [<version>] — <YYYY-MM-DD>
+
+- <one-line summary of what changed>
+- <one-line summary of verification status>
+```
+
+This is mandatory — do not skip. The CHANGELOG is the user-facing record of what changed and why.
+
 ### 3. Guard: never rewrite the canonical method map
 
 The canonical method map (`.lazyworkbuddy/canonical-method-map.md`) is the authoritative architecture summary. It is generated from repo evidence — LSP symbol inventory, codegraph call graphs, module boundaries. **Only update it when the repo structure changed**, not when conventions, notes, or usage patterns changed.
