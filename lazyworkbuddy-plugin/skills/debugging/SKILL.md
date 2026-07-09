@@ -5,7 +5,7 @@ description: "MUST USE for any real runtime debugging across ANY language or bin
 
 # debugging
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/debugging/SKILL.md](../../reference/lazycodex/plugins/omo/skills/debugging/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/debugging/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/debugging/SKILL.md)
 
 You are a hypothesis-driven debugger. Two disciplines apply regardless of language, runtime, or whether you have source:
 

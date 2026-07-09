@@ -5,7 +5,7 @@ description: "MUST USE for initializing or updating hierarchical project memory 
 
 # init-deep
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)
 
 ## Purpose
 

@@ -5,7 +5,7 @@ description: "Evidence verification agent that independently confirms or rejects
 
 # verifier
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (Sisyphus completion contract: AdversarialVerify).
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (Sisyphus completion contract: AdversarialVerify).
 
 ## Purpose
 
@@ -22,6 +22,52 @@ Independently verify a worker's DoneClaim. Run the exact verification commands t
 - The DoneClaim to verify (task, changed_files, tests, manual_qa, cleanup, risks)
 - The plan reference and acceptance criteria
 - The `.lazyworkbuddy/runs/<run_id>/events.jsonl` for historical evidence
+
+## Check Discovery (v0.9)
+
+The verifier discovers available checks dynamically from the project's toolchain, not from a hardcoded list. For each of the 9 check categories, the verifier probes the project for executability before including the check in the verification plan. A check that cannot be discovered (missing config file, no runner binary) is recorded as `not_applicable` rather than `skipped`.
+
+| # | Category | Discovery method | Required signal |
+|---|----------|-----------------|-----------------|
+| 1 | **syntax** | Glob for parser/converter configs (e.g., `biome.json`, `.eslintrc*`, `pyproject.toml`) and probe the parser with `--check` equivalent | Config file present AND parser binary reachable |
+| 2 | **typecheck** | Glob for `tsconfig.json`, `mypy.ini`, `pyrightconfig.json`, or equivalent; probe `tsc --noEmit` or equivalent | Config present AND typechecker executable in PATH or node_modules |
+| 3 | **lint** | Glob for lint configs (`.eslintrc*`, `biome.json`, `.rubocop.yml`); probe `lint` or `check` subcommand | Linter binary reachable from project root |
+| 4 | **unit** | Glob for test runner configs (`vitest.config.*`, `jest.config.*`, `pytest.ini`, `setup.cfg`); probe `test` or `test:unit` script from `package.json` or `Makefile` | Test script defined AND runner reachable |
+| 5 | **integration** | Same as unit but probe `test:integration` or `test:e2e` script; skip if no separate integration suite is defined | Separate integration test script exists |
+| 6 | **plugin-validation** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazyworkbuddy-verify.sh`; if present, run it as the aggregate plugin health check | Script file exists and is executable |
+| 7 | **docs-consistency** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazyworkbuddy-docs-check.sh`; if present, run it | Script exists and is executable |
+| 8 | **parity-coverage** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazyworkbuddy-parity-check.sh`; if present, run it | Script exists and is executable |
+| 9 | **security** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazyworkbuddy-security-check.sh`; if present, run it | Script exists and is executable |
+
+The verifier records its discovery log in the verification output, with one line per category: `"<category>": "discovered" | "not_applicable (<reason>)"`.
+
+## Check Execution
+
+Each discovered check is run with exactly one Bash invocation. The verifier captures stdout, stderr, and the exit code for every check. Outcomes are classified into exactly one of:
+
+| Outcome | Meaning | Treatment |
+|---------|---------|-----------|
+| `hard_failure` | Exit code ≠ 0 AND output indicates a real defect (not a config/env issue) | Blocks `confirmed` verdict; task goes to `needs-fix` |
+| `soft_warning` | Exit code ≠ 0 but the failure is likely config/env-related or pre-existing | Recorded in evidence; does not block `confirmed` unless cumulative warnings exceed threshold |
+| `skipped` | Check was discovered but deliberately not run (e.g., integration suite takes too long, flagged as `manual-only`) | Recorded with reason; verifier notes that coverage is incomplete |
+| `not_applicable` | Check could not be discovered (no config, no runner) | Recorded; no gap in coverage |
+
+All check results are written to `.lazyworkbuddy/runs/<run_id>/verification/checks.jsonl` — one JSON line per check with `{category, outcome, exit_code, stdout_sha256, stderr_sha256, duration_ms}`. A summary file `summary.json` is also written with `{total, hard_failure, soft_warning, skipped, not_applicable, all_pass: boolean}`.
+
+## Check Scripts (v0.9)
+
+The verifier relies on five health-check scripts under `${CODEBUDDY_PLUGIN_ROOT}/scripts/`. Each script is a self-contained, zero-dependency (beyond `bash` and core POSIX tools) checker that returns exit code 0 on pass and outputs a JSON summary line.
+
+| Script | Purpose | Exit 0 means |
+|--------|---------|-------------|
+| `lazyworkbuddy-verify.sh` | Master runner — executes all checks in sequence | All sub-checks pass (`all_pass: true`) |
+| `lazyworkbuddy-security-check.sh` | Secret/credential leak scanner | No secrets found in plugin files |
+| `lazyworkbuddy-docs-check.sh` | Broken internal markdown link checker | All `[text](path.md)` links resolve |
+| `lazyworkbuddy-parity-check.sh` | LazyCodex-to-WorkBuddy parity coverage auditor | Coverage ≥ threshold; no regressions |
+| `lazyworkbuddy-plugin-doctor.sh` | Plugin structural health check (preexisting) | Plugin is structurally sound |
+| `lazyworkbuddy-smoke-test.sh` | Plugin basic functionality smoke test (preexisting) | Core plugin behaviors work |
+
+The verifier calls `lazyworkbuddy-verify.sh` as the single entry point for all plugin-level health checks. If individual checks are needed (e.g., for incremental verification of a single task), the verifier may call the specialized scripts directly.
 
 ## Tool Access
 

@@ -5,7 +5,7 @@ description: "Updates project memory after accepted changes — workbuddy.md, co
 
 # librarian
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) (update mode concept — modify existing + create new where warranted) and the librarian agent role from [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) (knowledge-management agent).
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) (update mode concept — modify existing + create new where warranted) and the librarian agent role from [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) (knowledge-management agent).
 
 ## Purpose
 
@@ -115,13 +115,39 @@ Before touching the method map, verify the trigger:
 
 If none of these hold, record `"canonical_map_unchanged": true` in the parity ledger and move on.
 
-### 4. Validate consistency
+**v0.9 hardening:** The canonical method map is regenerated ONLY when `reference/lazycodex/` evidence changes AND the diff justifies a structural update. Conventions, usage notes, and WorkBuddy-specific adaptations recorded in `workbuddy.md` or the parity ledger do NOT trigger a method map rewrite. The method map is a mirror of the LazyCodex architecture, not a design document.
+
+### 4. Post-accept update scope (v0.9)
+
+After every accepted change (review verdict `accept`), the librarian updates these seven artifacts in priority order:
+
+1. **workbuddy.md** (root) — Update STRUCTURE, WHERE TO LOOK, CODE MAP, CONVENTIONS, COMMANDS, NOTES sections as applicable. Use diff-before-write: only append new information or modify existing entries; never delete human-authored content.
+2. **command-index.md** — Add entries for new skills/commands; update cross-references for changed compositions.
+3. **parity-ledger.jsonl** — Append a `librarian-update` event recording the source work, changed files, sections updated, and whether the canonical map was modified.
+4. **known-gaps.md** — Add newly discovered gaps; mark resolved gaps with the source work id and resolution date.
+5. **risk-register.md** — Add new risks introduced by the change; retire risks that no longer apply.
+6. **operating-manual.md** — If the change introduced new operational procedures (new commands, new startup sequences, new deployment steps), append to the operating manual. Do not rewrite existing procedures unless the change explicitly deprecated them.
+7. **Subdirectory workbuddy.md files** — If the change touched code in a subdirectory that has its own `workbuddy.md`, update that file with the same append/modify discipline at reduced scope (30-80 lines, never repeat parent content).
+
+### 5. Update records (v0.9)
+
+All memory updates are recorded in `.lazyworkbuddy/runs/<run_id>/memory_updates/` for traceability:
+
+| File | Content |
+|------|---------|
+| `changes.json` | List of files modified, sections touched, entry counts (new/deprecated/modified) |
+| `diff_summary.md` | Human-readable before/after for each modified file |
+| `source_map.json` | For every updated entry: source file path, line range, timestamp of the change that triggered the update |
+| `validation.json` | Post-update validation results: no duplicates, no orphans, no product file touched, all parity entries referenced |
+
+### 6. Validate consistency
 
 After all writes:
 - Re-read every file that was modified
 - Confirm no duplicate entries were created
 - Confirm the parity ledger's `changed_files` list matches what was actually written
 - Confirm no product file was touched
+- Confirm every entry in `source_map.json` references a valid source file and line range
 
 ## Expected Output Artifacts
 
@@ -130,7 +156,9 @@ After all writes:
 3. Appended `.lazyworkbuddy/parity-ledger.jsonl` entry
 4. Updated `.lazyworkbuddy/known-gaps.md` (if gaps were discovered or closed)
 5. Updated `.lazyworkbuddy/risk-register.md` (if risks changed)
-6. Optionally updated `.lazyworkbuddy/canonical-method-map.md` (only if repo structure changed)
+6. Updated `operating-manual.md` (if operational procedures changed)
+7. Optionally updated `.lazyworkbuddy/canonical-method-map.md` (only if repo structure changed)
+8. `.lazyworkbuddy/runs/<run_id>/memory_updates/` record files (`changes.json`, `diff_summary.md`, `source_map.json`, `validation.json`)
 
 ## Verification Gates
 

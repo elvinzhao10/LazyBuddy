@@ -5,7 +5,7 @@ description: "MUST USE for planning before coding: 5+ steps, ambiguous scope, mu
 
 # ulw-plan
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md](../../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)
 
 ## Purpose
 

@@ -5,7 +5,7 @@ description: "Execute a work plan with orchestrated subagent delegation and veri
 
 # start-work
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)
 
 ## Purpose
 
@@ -151,6 +151,67 @@ The start-work orchestrator now writes all run state through the state/ and loop
 - **Phase 3 (Execute):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/next-task.sh <run_id>` to fetch the next unverified checkbox from `state.json` and mark it `in_progress`. When a task is complete, calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> done` to record completion, validation status, and evidence paths.
 - **Phase 4 (Evidence):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> done_claim "<json>"` to write each DoneClaim as a structured event in `events.jsonl`. After adversarial verification, calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> evidence --field verified_by=<agent> --field confidence=<score>` to attach verification metadata to the task.
 - **Phase 5 (Checkpoint):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/checkpoint.sh <run_id>` every N checkboxes (default N=3) to snapshot `state.json` into `checkpoints/checkpoint-<NN>.json` for crash recovery.
+
+## Worktree Discipline (v0.9 hardening)
+
+When work involves branch/PR changes:
+- Create a git worktree: `git worktree add ../worktree-<run_id> main`
+- Verify with `git worktree list --porcelain`
+- Record `worktree_path` in `state.json`
+- All implementation happens in the worktree; review artifacts reference the worktree path
+- See LazyCodex source: start-work Phase 2 lines 71-92
+
+## Debugging Runtime Audit (v0.9 hardening)
+
+After the 5-agent review gate and before `ORCHESTRATION COMPLETE`:
+- Name 3+ failure hypotheses for the implemented work
+- Run distinguishing checks for each hypothesis
+- Append results to `events.jsonl`
+- See LazyCodex source: start-work Completion phase lines 176-184
+
+## DoneClaim/AdversarialVerify JSON Schema (v0.9 hardening)
+
+```json
+DoneClaim: {
+  "task": "<task id/title>",
+  "changed_files": ["absolute paths"],
+  "tests": ["exact command + result"],
+  "manual_qa": ["artifact paths"],
+  "adversarial_classes": {
+    "malformed_input": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "prompt_injection": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "cancel_resume": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "stale_state": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "dirty_worktree": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "hung_commands": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "flaky_tests": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "misleading_success_output": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "repeated_interruptions": {"probed": bool, "result": "PASS|FAIL|N-A"}
+  },
+  "cleanup": ["receipt paths"],
+  "risks": ["known risks or empty"]
+}
+AdversarialVerify: {
+  "verdict": "confirmed|false-positive|needs-fix|needs-human-review",
+  "evidence": ["command+result per claim"],
+  "repro": "exact repro command",
+  "confidence": 0.0-1.0,
+  "adversarial_classes": {
+    "malformed_input": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "prompt_injection": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "cancel_resume": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "stale_state": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "dirty_worktree": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "hung_commands": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "flaky_tests": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "misleading_success_output": {"probed": bool, "result": "PASS|FAIL|N-A"},
+    "repeated_interruptions": {"probed": bool, "result": "PASS|FAIL|N-A"}
+  },
+  "gap_analysis": {"missing_test_gap": "description or N-A"}
+}
+```
+
+See LazyCodex source: start-work SKILL.md lines 136-160
 
 ## WorkBuddy-Native Features
 

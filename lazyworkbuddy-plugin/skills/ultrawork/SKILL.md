@@ -5,7 +5,7 @@ description: "Binding ultrawork mode directive. Injects tier triage (LIGHT/HEAVY
 
 # ultrawork
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md](../../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)
 
 <ultrawork-mode>
 
@@ -256,6 +256,40 @@ ULTRAWORK COMPLETE — <one-line goal summary>
 
   Next: librarian update recommended
 ```
+
+## Subagent Transition Barriers (v0.9 hardening)
+
+The following transition barriers prevent premature state changes while subagents are active:
+
+- **Don't mark `update_plan` done while a subagent holds evidence.** Wait for the subagent to return its Deliverable before marking any parent checkbox complete.
+- **Don't spawn plan-feedback before research returns.** Research subagents (explorer, librarian) must return their findings before a plan agent can incorporate them.
+- **Don't write final answer while subagents are open.** The root agent must not declare completion or write a final summary while any spawned subagent is still running or has not yet returned its deliverable.
+- **2-silent-wait / escalation at 4 silent responses.** If a subagent produces 2 consecutive turns with no new output, wait silently. If it reaches 4 silent turns, escalate to the user with the subagent's last known state and the blocked deliverable.
+
+See LazyCodex source: ultrawork SKILL.md lines 291-302
+
+## GREEN-step PR/Branch Refresh (v0.9)
+
+Before starting GREEN-dependent work, refresh the PR/branch/issue state:
+
+- `git fetch` to update remote tracking branches
+- `git status` to confirm worktree is clean with no unexpected changes
+- Check PR comments and issue status for new feedback or blockers
+- Re-read the plan to confirm no upstream changes invalidate the current step
+
+See LazyCodex source: ultrawork lines 226-230
+
+## Atomic Commits (v0.9)
+
+Each accepted checkbox = one atomic conventional commit:
+
+- Format: `type(scope): description`
+- Types: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`
+- Scope: the affected module or skill name
+- Description: imperative mood, ≤ 72 chars
+- One commit per completed checkbox — no batching, no squashing unrelated changes
+
+See LazyCodex source: ultrawork lines 330-337
 
 ## WorkBuddy-Native Features
 

@@ -5,7 +5,7 @@ description: "Post-implementation review agent. Reviews changed files against or
 
 # reviewer
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) (5-agent review); [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 5 (Global Review and Debugging Gate).
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) (5-agent review); [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 5 (Global Review and Debugging Gate).
 
 ## Purpose
 
@@ -41,19 +41,61 @@ This skill is **read-only** — it reviews but never modifies.
 - Read the full diff and file contents
 - Read the verifier's evidence report
 
-### 2. Review dimensions
+### 2. Review dimensions (v0.9)
 
-**Intent match:** Does the implementation achieve what was asked? Check every sub-requirement.
+The reviewer evaluates every change across 7 mandatory dimensions. Each dimension produces a PASS/FAIL/WATCH grade and contributes to the final accept/revise/reject decision.
 
-**Scope check:** Any overreach — features added beyond the plan? Any under-reach — requirements missed?
+| # | Dimension | What it checks | FAIL condition |
+|---|-----------|---------------|----------------|
+| 1 | **Intent match** | Does the implementation achieve every sub-requirement from the plan? | Any acceptance criterion is unmet |
+| 2 | **Scope (overreach detection)** | Are there changes beyond what the plan specified? (Overreach) Are any plan requirements missing? (Under-reach) | Unauthorized file changes outside the plan scope |
+| 3 | **Test coverage** | Do new behaviors have failing-first tests? Are edge cases covered? E2E scenarios for user-visible outcomes? | New behavior has zero tests or tests are tautological |
+| 4 | **Documentation** | Are new public APIs documented? Are architectural decisions explained? Are parity deviations recorded in `known-gaps.md`? | Public API added without doc; parity deviation unrecorded |
+| 5 | **Regression check** | Do existing tests still pass? Does the diff touch code paths shared by other features? | Existing test suite fails on the changed branch |
+| 6 | **LazyCodex semantic preservation** | If the change has a LazyCodex equivalent, does the behavior match the reference? If not, is the deviation justified and documented? | Undocumented behavioral divergence from LazyCodex reference |
+| 7 | **WorkBuddy adaptation justification** | If a LazyCodex concept was adapted (not preserved verbatim), is the adaptation rationale documented in the parity ledger? | Adaptation present but no parity-ledger entry explaining why |
 
-**Test coverage:** Do new behaviors have failing-first tests? Are edge cases covered? E2E scenarios for user-visible outcomes?
+### 3. Accept/reject/revise decision tree (v0.9)
 
-**Documentation:** Are new public APIs documented? Are architectural decisions explained?
+```
+                    ┌─────────────────────┐
+                    │ All 7 dimensions     │
+                    │ reviewed?           │
+                    └─────────┬───────────┘
+                              │
+                    ┌─────────▼───────────┐
+                    │ Any FAIL in          │
+                    │ dimensions 1-5?     │
+                    └─────────┬───────────┘
+                    ┌─────YES─┴─NO──────┐
+                    ▼                   ▼
+            ┌─────────────┐    ┌─────────────────┐
+            │ Is the FAIL   │    │ Any FAIL in      │
+            │ fixable in    │    │ dimensions 6-7?  │
+            │ ≤1 round?    │    │ (parity/adaptation)│
+            └──────┬───────┘    └────────┬──────────┘
+            ┌─YES──┴─NO──┐          ┌─YES─┴─NO──┐
+            ▼            ▼           ▼           ▼
+        ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
+        │ revise │  │ reject │  │ revise │  │ accept │
+        │        │  │        │  │(doc-only)│        │
+        └────────┘  └────────┘  └────────┘  └────────┘
+```
 
-**LazyCodex parity:** If the change has a LazyCodex equivalent, does the behavior match? If not, is the deviation documented in `docs/lazyworkbuddy-known-gaps.md`?
+- **accept**: All 7 dimensions PASS or have only documented, justified WATCH items. No blocking issues.
+- **revise**: One or more dimensions FAIL but the issues are concrete, specific, and fixable in one round by the implementer. Reviewer provides exact file:line references and suggested fixes.
+- **reject**: Fundamental issue — wrong approach, security flaw, irrecoverable parity break, or the implementer has exhausted retry budget (≥3 consecutive revisions for the same task without resolution).
 
-**Code quality:** Follows project conventions? No code smells (250 LOC, >3 params, redundant verification, negative naming)? See `programming` skill for specific checks.
+### Output
+
+All review artifacts are written to `.lazyworkbuddy/runs/<run_id>/review/`:
+
+| File | Content |
+|------|---------|
+| `dimensions.json` | Per-dimension grades: `{dimension, grade, findings[], file_refs[]}` |
+| `verdict.json` | Final decision: `{verdict, blocked_by[], retry_count, reviewer_agent_id}` |
+| `findings.md` | Human-readable summary with file:line references and suggested fixes |
+| `cross-lane-consistency.json` | If 5-agent review was invoked, cross-lane consistency check results |
 
 ### 3. Issue decision
 

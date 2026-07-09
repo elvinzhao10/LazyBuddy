@@ -77,41 +77,49 @@
 - **LazyCodex:** `start-work` SKILL.md line 118 lists all 9 ultraqa adversarial classes with trigger facts
 - **Lazyworkbuddy:** Initially referenced "the 9 adversarial classes" without listing them. **Fixed in review** — the 9 classes are now enumerated inline.
 - **Impact:** Low (fixed). Target version: resolved.
+- **Resolution (v0.9, 2026-07-09):** Confirmed fixed — 9 classes present at `start-work/SKILL.md` lines 70-79 with full trigger-fact descriptions (malformed_input, prompt_injection, cancel_resume, stale_state, dirty_worktree, hung_commands, flaky_tests, misleading_success_output, repeated_interruptions). Already resolved in v0.4 review.
 
 ### G-008: start-work drops worktree discipline
 - **LazyCodex:** `start-work` Phase 2 (lines 71-92) requires `--worktree` for PR/branch work, `git worktree list --porcelain` verification, `worktree_path` in state; Hard Rule line 194: "No PR/branch implementation or review in the main worktree."
 - **Lazyworkbuddy:** All worktree requirements dropped; `state.json` schema omits `worktree_path`.
 - **Impact:** Medium — PR/branch work may pollute main worktree. Target version: v0.5 (subagents) or v0.9 (hardening).
+- **Resolution (v0.9, 2026-07-09):** Added "## Worktree Discipline (v0.9 hardening)" section to `start-work/SKILL.md` with `git worktree add`, `git worktree list --porcelain` verification, `worktree_path` recording in `state.json`, and all-implementation-in-worktree rule.
 
 ### G-009: start-work drops debugging runtime audit
 - **LazyCodex:** Completion phase (lines 176-184) requires a debugging-oriented runtime audit: name 3+ failure hypotheses, run distinguishing checks, append results.
 - **Lazyworkbuddy:** Dropped — completion only runs the 5-agent review gate.
 - **Impact:** Medium — missed runtime failure modes. Target version: v0.9.
+- **Resolution (v0.9, 2026-07-09):** Added "## Debugging Runtime Audit (v0.9 hardening)" section to `start-work/SKILL.md` requiring 3+ failure hypotheses, distinguishing checks for each, and results appended to `events.jsonl` before `ORCHESTRATION COMPLETE`.
 
 ### G-010: start-work drops Sisyphus JSON schema detail
 - **LazyCodex:** Lines 136-160 provide full DoneClaim/AdversarialVerify JSON schema with all fields and the adversarial-key probing requirement.
 - **Lazyworkbuddy:** Summarized in 3 lines; schema fields and specific key-probing requirement omitted.
 - **Impact:** Low-medium — the contract names are preserved; detail is in the verification rules. Target version: v0.9.
+- **Resolution (v0.9, 2026-07-09):** Added "## DoneClaim/AdversarialVerify JSON Schema (v0.9 hardening)" section to `start-work/SKILL.md` with the full schema including all 9 adversarial class entries, field descriptions, verdict values, confidence range, and gap_analysis.
 
 ### G-011: ulw-loop iteration cap discrepancy
 - **LazyCodex:** `full-workflow.md` line 144: "Cap at 5 cycles per goal. Cap identical same-criterion failures at 3." (per-goal and per-criterion granularity)
 - **Lazyworkbuddy:** Uses 500 (ultrawork) / 100 (normal) total-iteration caps (from the README command description) — coarser granularity, missing the 5-cycles-per-goal and 3-same-failure limits.
 - **Impact:** Medium — allows more iterations per goal than LazyCodex intends. Target version: v0.7 (run ledger) or v0.9.
+- **Resolution (v0.9, 2026-07-09):** Updated `ulw-loop/SKILL.md` with all three cap levels: per-goal max 5 cycles, per-criterion max 3 same-failure before escalation, overall 500/100 cap. Updated execution loop, description, verification gates, failure behavior, and State Ledger Integration section to reflect all three levels.
 
 ### G-012: ulw-loop drops dynamic steering, final quality gate, delegation model
 - **LazyCodex:** `full-workflow.md` defines 7 steering types (L206-220), a final quality gate with `--quality-gate-json` (L183-204), ATLAS-style delegation with work-sizing (L35-61), and wave-based parallelism (L136).
 - **Lazyworkbuddy:** All dropped — the loop is condensed to core goal/evidence/checkpoint logic.
 - **Impact:** Medium-high — steering and the final quality gate are significant LazyCodex features. Target version: v0.7 (run ledger) or v0.9.
+- **Resolution (v0.9, 2026-07-09):** Added three new sections to `ulw-loop/SKILL.md`: "## Dynamic Steering (v0.9 hardening)" with 7 steering types and trigger conditions, "## Final Quality Gate (v0.9 hardening)" with re-run-verification, gate-reviewer approval, and evidence audit steps, and "## Delegation Model (v0.9)" with ATLAS-style XS/S/M/L/XL sizing and wave-based parallelism.
 
 ### G-013: ultrawork drops subagent dependency transition barriers
 - **LazyCodex:** Lines 291-302: don't mark `update_plan` done while a subagent holds evidence; don't spawn plan-feedback before research returns; don't write final answer while subagents open; 2-silent-wait / 4-silent-check escalation.
 - **Lazyworkbuddy:** Polling/fallback conditions preserved but all four transition-barrier rules dropped.
 - **Impact:** Medium — orchestration discipline gap. Target version: v0.9.
+- **Resolution (v0.9, 2026-07-09):** Added "## Subagent Transition Barriers (v0.9 hardening)" to `ultrawork/SKILL.md` with all four original barriers: don't mark plan done while subagent holds evidence, don't spawn plan-feedback before research returns, don't write final answer while subagents open, 2-silent-wait / escalation at 4 silent responses.
 
 ### G-014: ultrawork drops GREEN-step PR/branch refresh and Commits section
 - **LazyCodex:** GREEN step (L226-230) requires refreshing branch/PR/issue state before dependent work; Commits section (L330-337) requires atomic conventional commits.
 - **Lazyworkbuddy:** Both dropped (Commits arguably delegated to `git-master` skill).
 - **Impact:** Low-medium. Target version: v0.9.
+- **Resolution (v0.9, 2026-07-09):** Added two sections to `ultrawork/SKILL.md`: "## GREEN-step PR/Branch Refresh (v0.9)" with `git fetch`, `git status`, PR/issue comment checks, and "## Atomic Commits (v0.9)" with conventional commit format `type(scope): description` — one commit per completed checkbox.
 
 ### Tool translation table (confirmed complete)
 
@@ -133,6 +141,7 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **Lazyworkbuddy:** The `review-work` skill references this lane, and `docs/lazyworkbuddy-agent-orchestration.md` includes it in the review diagram, but there is no `lazyworkbuddy-context-miner.md` agent file. The `context-indexer` agent is a different role (init-deep repo layout indexing, not review-time context mining). The lane currently uses a generic autonomous agent.
 - **Impact:** Low — the lane is functional via generic spawning; a named agent would improve routing clarity.
 - **Target version:** v0.9 (hardening) — either create a dedicated `context-miner` agent or document that the lane reuses the `explorer` agent with a context-mining message.
+- **Resolution (v0.9, 2026-07-09):** Created `lazyworkbuddy-plugin/agents/lazyworkbuddy-context-miner.md` with YAML frontmatter (model: default, effort: medium, maxTurns: 20), tools [Read, Grep, Glob, Bash, Git], disallowedTools [Write, Edit], skills [review-work], memory: false, isolation: true. Defines mission, allowed actions (git history mining, documentation mining, cross-reference mining, dependency inspection), forbidden actions, output format, and LazyCodex mapping.
 
 ---
 

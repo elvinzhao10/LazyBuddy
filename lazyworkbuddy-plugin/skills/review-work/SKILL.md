@@ -5,7 +5,7 @@ description: "Post-implementation review orchestrator. Launches 5 parallel WorkB
 
 # review-work
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)
 
 ## Purpose
 

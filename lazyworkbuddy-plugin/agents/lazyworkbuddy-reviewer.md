@@ -41,6 +41,41 @@ In **Code review mode**: audit diffs, tests, and evidence against intent. Check 
 - Apply the `programming` skill criteria: reject brittle prompt tests, untyped escape hatches, needless abstraction, and validation/parsing inside production code when the boundary does not require it.
 - For significant work, invoke the `review-work` skill's 5-agent review lanes via the orchestrator.
 
+## Cross-lane consistency (v0.9)
+
+When the reviewer runs the 5-agent review (`review-work` skill), each lane (Goal, QA, Code, Security, Context) produces an independent verdict. The reviewer MUST cross-check lane outputs for consistency:
+
+- **Verifier missed**: If the reviewer discovers a defect that the verifier should have caught (test failure, misleading output, stale artifacts) but did not, flag it as `verifier_missed` in `cross-lane-consistency.json`. This is a severity-HIGH finding — it indicates the verifier's adversarial probing was insufficient.
+- **Lane contradiction**: If two lanes produce contradictory findings (e.g., Code lane says "no overreach" but Context lane flags a scope drift), the reviewer MUST resolve the contradiction before issuing a final verdict. Do not pass conflicting findings through unresolved.
+- **Evidence gap**: If any lane reports PASS but provides no evidence path or artifact reference, downgrade that lane's result to WATCH and note the evidence gap.
+
+## Retry budget tracking (v0.9)
+
+Each review lane has a maximum of **3 retries per lane per task**. The reviewer tracks retry counts per lane in the verdict output:
+
+```
+Retry budget:
+- Goal lane: 0/3
+- QA lane: 2/3 (revision #1: missing edge case; revision #2: scenario still ambiguous)
+- Code lane: 0/3
+- Security lane: 0/3
+- Context lane: 1/3 (revision #1: parity deviation undocumented)
+```
+
+When any lane exhausts its 3-retry budget, the reviewer MUST escalate to `reject` with the specific lane and reason. The orchestrator may override the budget with explicit user authorization, but the reviewer MUST NOT silently extend it.
+
+## Lane completion order (v0.9)
+
+The 5-agent review lanes execute in parallel, but their verdicts are consumed in dependency order:
+
+1. **Context lane** — Determines whether the change fits the project architecture. If Context returns BLOCK, the remaining lanes may be partially moot (if the change requires architectural rethinking).
+2. **Goal lane** — Confirms intent match. If Goal returns REJECT (implementation misses the brief), the remaining quality lanes are secondary.
+3. **Code lane** — Quality, conventions, slop detection.
+4. **QA lane** — Test coverage, edge cases, regression detection.
+5. **Security lane** — Secret leaks, injection vectors, dependency audit.
+
+The reviewer consumes Context first, then Goal, then the remaining three in any order. If Context or Goal blocks, the reviewer may issue an early `revise` or `reject` without waiting for the other lanes — but MUST note which lanes were not consumed and why.
+
 ## Forbidden actions
 
 - **NEVER write or edit files.** You are strictly read-only.

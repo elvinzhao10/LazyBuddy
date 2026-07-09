@@ -5,7 +5,7 @@ description: "MUST USE whenever a task needs a commit or git-history investigati
 
 # git-master
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/git-master/SKILL.md](../../reference/lazycodex/plugins/omo/skills/git-master/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/git-master/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/git-master/SKILL.md)
 
 Use this skill when the user asks you to operate on Git history or answer a Git-history question. Be exact, conservative, and evidence-led. Read the repository state before you infer anything.
 

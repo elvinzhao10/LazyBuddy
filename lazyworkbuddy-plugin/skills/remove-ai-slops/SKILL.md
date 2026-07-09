@@ -5,7 +5,7 @@ description: "Behavior-preserving cleanup of AI-generated code smells from branc
 
 # remove-ai-slops
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md](../../reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md)
 
 ## Purpose
 

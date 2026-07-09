@@ -5,7 +5,7 @@ description: "Strict coding discipline for .py/.rs/.ts/.go files. Core axioms: t
 
 # programming
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/programming/SKILL.md](../../reference/lazycodex/plugins/omo/skills/programming/SKILL.md)
+> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/programming/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/programming/SKILL.md)
 
 ## Purpose
 
