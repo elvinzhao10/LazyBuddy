@@ -217,3 +217,28 @@ State ledger infrastructure created:
 **End-to-end test verified:** create → add plan/tasks → next-task → update-task → checkpoint → stop-gate blocks → finalize refuses → classify-failure → events.jsonl populated (3 events)
 
 _This ledger is authoritative. Every parity claim must be verified against `reference/lazycodex/` before updating. Updated by the Librarian (v0.9+) and manually until then._
+
+## v0.8 Update — MCP Servers & Dashboard (2026-07-09)
+
+5 MCP servers implemented providing 30 structured tools:
+
+- **run-ledger** (9 tools): wraps v0.7 state scripts — create_run, list_runs, latest_run, read_state, summarize_run, append_event, update_task, create_checkpoint, recover_run
+- **parity** (5 tools): reads parity-ledger.md + known-gaps.md — read_canonical_method_map, list_methods, compare_method_status, update_parity_ledger, generate_gap_report
+- **verification** (6 tools): wraps v0.7 loop scripts + verification-matrix.md — discover_checks, run_check, record_gate_result, list_gate_results, create_repair_task, summarize_verification
+- **source-map** (5 tools): reads reference/lazycodex/ + .lazyworkbuddy/context/ — index_repo, search_method_evidence, read_evidence_excerpt, list_source_paths, compute_file_hash
+- **status-dashboard** (5 tools): aggregates from all other servers — show_run_status, show_task_graph, show_verification_matrix, show_parity_coverage, show_pending_approvals
+
+**Additional v0.8 deliverables:**
+- Dashboard mockup (dashboard.html) — static HTML with placeholder data; interactive MCP integration deferred to v0.9
+- 5 MCP prompt commands: /lazyworkbuddy:status, :new-run, :resume, :verify, :parity-report
+- 4 docs: mcp-and-tools.md, mcp-security.md, dashboard-design.md, enhancement-log.md
+- .mcp.json populated with all 5 servers (bash command, required: false)
+
+**Design decisions:**
+- Shell + python3 for JSON-RPC (no Node.js dependency)
+- All servers required: false (graceful degradation — skills fall back to direct v0.7 script calls)
+- Run-ledger tools use v0.7 state scripts directly (thin wrapper, not reimplementation)
+
+**Status shifts from v0.7:**
+- MCP Servers: planned → implemented (5 servers, 30 tools)
+- state.json progress tracking: matched (same schema as v0.7)

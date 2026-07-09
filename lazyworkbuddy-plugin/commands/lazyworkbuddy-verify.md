@@ -1,0 +1,16 @@
+---
+description: "Run Lazyworkbuddy verification checks using verification MCP tools"
+---
+# /lazyworkbuddy:verify
+> Lazyworkbuddy v0.8 MCP command
+
+## Usage
+/lazyworkbuddy:verify [run_id] [--gate <gate_name>]
+
+## What it does
+Uses verification MCP tools (`discover_checks`, `run_check`, `record_gate_result`) to execute verification gates for current run.
+
+## Success criteria
+All verification gates executed; gate results recorded with pass/fail/repair status.
+
+Do not claim completion without verification.
