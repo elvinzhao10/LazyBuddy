@@ -1,0 +1,19 @@
+# External reference repos (re-clone with: git clone https://github.com/code-yeongyu/lazycodex.git reference/lazycodex)
+reference/
+
+# WorkBuddy workspace state (managed by the WorkBuddy app)
+.workbuddy/
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor
+*.swp
+*.swo
