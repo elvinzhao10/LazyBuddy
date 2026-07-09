@@ -11,7 +11,7 @@
 
 ## Versioning
 
-Pre-1.0 build: every phase is `v0.N`. Currently at **v0.7** (durable run ledger — MVP complete). Strong benchmark = v0.0–v0.12.
+Pre-1.0 build: every phase is `v0.N`. Currently at **v0.10** (migration planner — hardening + cross-host adapter complete). Strong benchmark = v0.0–v0.12.
 
 ## Structure
 

@@ -6,13 +6,19 @@ ID=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',0))" 
 CWD="${CWD:-.}"
 reply() { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"result\":$1}"; }
 err()  { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"error\":{\"code\":-32603,\"message\":\"$1\"}}"; }
-param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('params',{}).get('$1',''))" 2>/dev/null <<<"$INPUT"; }
+param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); p=d.get('params',{}); a=p.get('arguments',p); print(a.get('$1',''))" 2>/dev/null <<<"$INPUT"; }
 resolve_run() {
   local rid="${1:-$(bash "$CWD/scripts/state/latest-run.sh" 2>/dev/null || echo "")}"
   [ -z "$rid" ] && { err "no run_id and no active runs"; exit 1; }
   [ ! -f "$CWD/scripts/state/$rid/state.json" ] && { err "state file not found"; exit 1; }
   echo "$CWD/scripts/state/$rid/state.json"
 }
+
+# Route tools/call -> tool name (MCP protocol: params.name holds the tool)
+if [ "$METHOD" = "tools/call" ]; then
+    METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('params',{}).get('name',''))" 2>/dev/null <<<"$INPUT" || echo "")
+fi
+
 case "$METHOD" in
   initialize)
     reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"0.8.0"}}'
@@ -28,7 +34,7 @@ case "$METHOD" in
     ;;
   show_run_status)
     SF=$(resolve_run "$(param_raw "run_id")") || exit 0
-    RESULT=$(python3 "$SF" <<'PYEOF'
+    RESULT=$(python3 - "$SF" <<'PYEOF'
 import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); t=s.get('tasks',[]); d=sum(1 for x in t if x.get('status')=='done')
 g=s.get('verification_gates',[]); gd=sum(1 for x in g if x.get('status')=='passed')
@@ -39,7 +45,7 @@ PYEOF
     ;;
   show_task_graph)
     SF=$(resolve_run "$(param_raw "run_id")") || exit 0
-    RESULT=$(python3 "$SF" <<'PYEOF'
+    RESULT=$(python3 - "$SF" <<'PYEOF'
 import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); t=s.get('tasks',[]); n=[{'id':x.get('id',''),'title':x.get('title',''),'status':x.get('status','')} for x in t]; e=[{'from':d,'to':x.get('id','')} for x in t for d in x.get('depends_on',[])]; print(json.dumps({'nodes':n,'edges':e}))
 PYEOF
@@ -48,7 +54,7 @@ PYEOF
     ;;
   show_verification_matrix)
     SF=$(resolve_run "$(param_raw "run_id")") || exit 0
-    RESULT=$(python3 "$SF" <<'PYEOF'
+    RESULT=$(python3 - "$SF" <<'PYEOF'
 import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); g=[{'name':x.get('name',''),'status':x.get('status',''),'result':x.get('result','')} for x in s.get('verification_gates',[])]; print(json.dumps(g))
 PYEOF
@@ -58,7 +64,7 @@ PYEOF
   show_parity_coverage)
     F="$CWD/docs/lazyworkbuddy-parity-ledger.md"
     [ ! -f "$F" ] && { err "parity ledger not found: $F"; exit 0; }
-    RESULT=$(python3 "$F" <<'PYEOF'
+    RESULT=$(python3 - "$F" <<'PYEOF'
 import json,sys,re
 with open(sys.argv[1]) as f: lines=f.readlines()
 c={'matched':0,'adapted':0,'skipped':0,'added':0}
@@ -77,7 +83,7 @@ PYEOF
     ;;
   show_pending_approvals)
     SF=$(resolve_run "$(param_raw "run_id")") || exit 0
-    RESULT=$(python3 "$SF" <<'PYEOF'
+    RESULT=$(python3 - "$SF" <<'PYEOF'
 import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); p=[g for g in s.get('human_gates',[]) if g.get('status','')=='pending']
 if s.get('review_status','')=='pending': p.append({'name':'review','status':'pending','result':''})

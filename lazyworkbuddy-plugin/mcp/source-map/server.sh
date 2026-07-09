@@ -6,7 +6,12 @@ ID=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',0))" 
 CWD="${CWD:-.}"
 reply() { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"result\":$1}"; }
 err()  { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"error\":{\"code\":-32603,\"message\":\"$1\"}}"; }
-param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('params',{}).get('$1',''))" 2>/dev/null <<<"$INPUT"; }
+param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); p=d.get('params',{}); a=p.get('arguments',p); print(a.get('$1',''))" 2>/dev/null <<<"$INPUT"; }
+
+# Route tools/call -> tool name (MCP protocol: params.name holds the tool)
+if [ "$METHOD" = "tools/call" ]; then
+    METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('params',{}).get('name',''))" 2>/dev/null <<<"$INPUT" || echo "")
+fi
 
 case "$METHOD" in
   initialize)

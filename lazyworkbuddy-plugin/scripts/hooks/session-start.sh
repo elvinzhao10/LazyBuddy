@@ -8,6 +8,11 @@ CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print
 
 echo "(Lazyworkbuddy v0.6): Session starting — checking project state..."
 
+# Bootstrap the .lazyworkbuddy/ directory tree so skills/agents that read
+# plans/, context/, drafts/, or runs/ don't crash on a fresh workspace.
+# create-run.sh creates runs/<run_id>/ on demand; this ensures the parents exist.
+mkdir -p "$CWD/.lazyworkbuddy"/{plans,context,drafts,runs}
+
 # Check for project memory
 if [ -f "$CWD/workbuddy.md" ]; then
     echo "(Lazyworkbuddy): Project memory found (workbuddy.md)."

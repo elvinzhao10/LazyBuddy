@@ -15,6 +15,14 @@
 - **Why:** Platform difference — WorkBuddy does not have `multi_agent_v1`. The WorkBuddy Agent tool is the closest equivalent.
 - **Impact:** Medium — parallel agent orchestration may have different performance characteristics. Mailbox/`WORKING:`/`BLOCKED:` signaling patterns may need adaptation.
 - **Mitigation:** Investigated in v0.5 (subagents). If parallelism is degraded, fall back to sequential execution.
+- **Live test plan (P5-1, 2026-07-09):** Cannot be fully verified without a real orchestrator run. Test procedure for when one is available:
+  1. Run `/start-work` on a multi-task plan with independent tasks.
+  2. Confirm the orchestrator spawns multiple implementer subagents (check `events.jsonl` for `subagent_start` events with distinct agent_ids).
+  3. Verify the orchestrator polls/handles completions and re-dispatches failures (no deadlock, no lost DoneClaim).
+  4. Confirm the `SubagentStop` evidence gate fires per subagent (blocks missing `EVIDENCE_RECORDED`).
+  5. Compare wall-clock time + token use vs a sequential baseline to quantify the parallelism benefit.
+  6. If mailbox signaling (`WORKING:`/`BLOCKED:`) is needed for coordination, document the WorkBuddy-native substitute (the orchestrator polls TaskList/agent status instead of mailbox reads).
+- **Status:** Open — pending a live orchestrator run. The plumbing (Agent tool, isolation, SubagentStart/SubagentStop hooks, events.jsonl logging) is built; only the live behavioral test remains.
 
 ### G-002: Hook count (12 vs 21)
 
@@ -24,19 +32,30 @@
 - **Impact:** Low — the skipped hooks are either Codex-specific infrastructure or handled by WorkBuddy natively.
 - **Mitigation:** 5 new hooks added (`PostToolUseFailure`, `StopFailure`, `SubagentStart`, `TaskCreated`, `TaskCompleted`) that enhance LazyCodex's design.
 
-### G-003: MCP server count (3-5 vs 5)
+### G-003: MCP server parity (resolved — context-tooling substitutes built)
 
 - **LazyCodex:** 5 MCP servers: `grep_app`, `context7`, `codegraph`, `git_bash`, `lsp`.
-- **Lazyworkbuddy:** 3-5 servers: `run-ledger`, `verification`, `parity-dashboard`, `git`, plus optional externals.
-- **Why:** `codegraph` and `lsp` are Codex-specific. `grep_app` and `context7` are external services.
-- **Impact:** Low — the 3 Lazyworkbuddy-specific MCP servers add capabilities LazyCodex doesn't have (structured run ledger, verification runner, parity dashboard).
-- **Mitigation:** External services can be added as v0.13 add-ons.
+- **Lazyworkbuddy:** 8 WorkBuddy-native servers: `run-ledger`, `parity`, `verification`, `source-map`, `status-dashboard` (run-management, v0.8) + `context-graph`, `code-intel`, `docs` (context-tooling substitutes, v0.11).
+- **Substitution map (2026-07-09, P2 resolved):**
+  - `codegraph` → **`context-graph`** MCP (blast_radius, file_deps, symbol_search, symbol_refs, repo_overview). Heuristic grep-based, not a full call graph — but provides the blast-radius/centrality queries LazyCodex's codegraph exposed.
+  - `lsp` → **`code-intel`** MCP (diagnostics, typecheck, find_references, goto_definition, symbols). `diagnostics` runs the project's REAL linter/typechecker (tsc/eslint/ruff/pyright/mypy/go vet/cargo); symbol ops are grep heuristics (NOT a real LSP daemon — no workspace rename, no semantic goto-def).
+  - `context7` → **`docs`** MCP (get_library_docs). Fetches README/description from npm + pypi registries via curl; auto-picks the better result; optional topic-section extraction.
+  - `git_bash` → **covered by WorkBuddy native Bash** (git_bash was Windows-only; redundant on WorkBuddy which has cross-platform Bash). No server built — by design.
+  - `grep_app` → **covered by WorkBuddy native Grep + WebSearch** (Grep for local regex search; WebSearch for cross-repo). No server built — by design.
+- **Why:** `codegraph`/`lsp` rely on external closed-source binaries (`@colbymchenry/codegraph`, `@oh-my-opencode/lsp-core`); a clean-room WorkBuddy-native build uses grep + real project tooling instead. `git_bash`/`grep_app` are redundant with WorkBuddy's native tools.
+- **Residual gap (accepted):** symbol ops are heuristic (grep), not semantic. A real LSP daemon would give precise goto-def/rename/diagnostics. If WorkBuddy adds native LSP integration, wire it and deprecate the grep heuristics. Tracked as P5 (host-inherent).
+- **Resolution (v0.11, 2026-07-09):** 3 context-tooling MCP servers built + 2 documented as covered-by-native. Context-server parity CLOSED. See `mcp/{context-graph,code-intel,docs}/server.py`.
 
-### G-004: Model routing
+### G-004: Model routing (partially resolved — agent-level tiering exists)
 
-- **LazyCodex:** Multi-model routing: `quick` → `gpt-5.4-mini`, `ultrabrain` → high-reasoning GPT, coding → Codex-tuned GPT. Task-category-based model selection.
-- **Lazyworkbuddy:** Single model strategy for now. Agent `model` field may not support dynamic routing.
-- **Why:** WorkBuddy's agent model configuration is simpler. LazyCodex's multi-model routing is a sophisticated optimization.
+- **LazyCodex:** Multi-model routing: `quick` → `gpt-5.4-mini`, `ultrabrain` → high-reasoning GPT, coding → Codex-tuned GPT. Task-category-based DYNAMIC model selection at runtime.
+- **Lazyworkbuddy:** Agent-level tiering IS configured via `model` + `effort` frontmatter fields:
+  - **High-reasoning tier** (`model: reasoning`, `effort: xhigh`): planner, verifier, gate-reviewer, reviewer — the judgment/planning roles.
+  - **Standard tier** (`model: default`, `effort: high`): orchestrator, implementer, migration-planner; (`effort: medium`): qa-executor, context-miner.
+  - **Low-cost tier** (`model: lite`, `effort: low`): explorer, librarian, context-indexer — the read-only/indexing roles.
+- **Why:** WorkBuddy's agent `model`/`effort` fields are per-agent-definition, not per-task-category-at-runtime. LazyCodex picks the model dynamically based on the task; WorkBuddy picks it based on which agent is spawned (which is itself a form of category routing).
+- **Impact:** Low. The static per-agent tiering achieves most of the cost/quality tradeoff LazyCodex's dynamic routing does — spawning the right agent already selects the right tier. The only loss is fine-grained intra-agent routing (e.g. a planner using a cheaper model for a trivial sub-step), which has minor quota impact and no correctness impact.
+- **Resolution (2026-07-09):** Agent-level tiering verified across all 13 agents. Residual gap (dynamic intra-agent routing) accepted as host-inherent — WorkBuddy does not expose runtime model selection per turn. No further action unless WorkBuddy adds it.
 - **Impact:** Medium — may use more expensive model for simple tasks. No correctness impact (all tasks still complete; just less quota-efficient).
 - **Mitigation:** Document as known gap. If multi-model routing becomes critical, investigate WorkBuddy model selection options.
 
@@ -64,7 +83,7 @@
 |-----|-----------|------------|
 | G-001 (subagent model) | v0.5 | Thorough investigation; document exact mapping |
 | G-002 (hook count) | v0.6 | Final hook configuration; verify all 12 work |
-| G-003 (MCP servers) | v0.8 | Implement 3 servers; document external service availability |
+| G-003 (MCP servers) | v0.8 | Implemented 5 WorkBuddy-native servers; context-server parity (context7/codegraph/lsp) remains open as P2 |
 | G-004 (model routing) | v0.12 | Document as permanent gap unless WorkBuddy adds support |
 | G-005 (marketplace install) | v0.3 | Document install path; test on clean workspace |
 | G-006 (persistent session) | v0.7 | State ledger provides equivalent durability |
@@ -142,6 +161,15 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **Impact:** Low — the lane is functional via generic spawning; a named agent would improve routing clarity.
 - **Target version:** v0.9 (hardening) — either create a dedicated `context-miner` agent or document that the lane reuses the `explorer` agent with a context-mining message.
 - **Resolution (v0.9, 2026-07-09):** Created `lazyworkbuddy-plugin/agents/lazyworkbuddy-context-miner.md` with YAML frontmatter (model: default, effort: medium, maxTurns: 20), tools [Read, Grep, Glob, Bash, Git], disallowedTools [Write, Edit], skills [review-work], memory: false, isolation: true. Defines mission, allowed actions (git history mining, documentation mining, cross-reference mining, dependency inspection), forbidden actions, output format, and LazyCodex mapping.
+
+### G-016: Orchestrator "never write product code" is prose-only, not platform-enforced
+
+- **LazyCodex:** The orchestrator role's write boundary is enforced by Codex's tool routing (the orchestrator agent type is not granted Write/Edit to product paths).
+- **Lazyworkbuddy:** `agents/lazyworkbuddy-orchestrator.md` has `disallowedTools: []` while `tools` includes `Write, Edit`. The body repeats "NEVER write or edit product code," but there is **no platform-level enforcement** — the boundary relies on the model honoring the prose instruction.
+- **Why:** The orchestrator legitimately needs `Write`/`Edit` to maintain `.lazyworkbuddy/` state files (state.json, plan checkbox edits, drafts). A blanket `disallowedTools: [Write, Edit]` would break state management. WorkBuddy's `disallowedTools` is tool-granular, not path-granular, so it cannot express "Write only inside `.lazyworkbuddy/`".
+- **Impact:** Medium — a misbehaving orchestrator turn could edit product code directly, bypassing the implementer delegation invariant. Mitigated by: (a) the orchestrator's strong prose instruction, (b) the `PostToolUse` hook logging every Write/Edit to `events.jsonl`, (c) the reviewer/gate-reviewer agents catching direct edits.
+- **Mitigation (current):** Accepted as a known soft-constraint. Tracked for a future WorkBuddy feature: path-scoped tool permissions. If WorkBuddy adds path-level deny rules, enforce `Write`/`Edit` to be `.lazyworkbuddy/`-only at the platform level.
+- **Status:** Open (soft-constraint). Documented 2026-07-09.
 
 ---
 

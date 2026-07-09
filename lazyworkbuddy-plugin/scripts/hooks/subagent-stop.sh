@@ -70,7 +70,12 @@ block_with_retry() {
         manage_attempts "$CWD" "$SESSION_ID" "$AGENT_ID" "clear"
         exit 0
     fi
-    echo "{\"decision\":\"block\",\"reason\":\"$reason (attempt $att/$MAX_ATTEMPTS)\"}"
+    # Correct WorkBuddy contract (per docs/cli/hooks): {"continue":false,"reason":"..."} + exit 0
+    # prevents the SubagentStop and surfaces the reason. {"decision":"block"} is DEPRECATED.
+    python3 -c "
+import json, sys
+print(json.dumps({'continue': False, 'reason': f'{sys.argv[1]} (attempt {sys.argv[2]}/{sys.argv[3]})'}))
+" "$reason" "$att" "$MAX_ATTEMPTS"
     exit 0
 }
 

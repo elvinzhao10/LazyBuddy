@@ -73,7 +73,9 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | `TaskCompleted` hook | Progress update on task completion | **added** | Enhances LazyCodex: explicit task lifecycle events |
 | `run-ledger` MCP | Structured run state access | **added** | WorkBuddy-native advantage over file-only access |
 | `verification` MCP | Structured verification test runner | **added** | WorkBuddy-native advantage |
-| `parity-dashboard` MCP | Compare Lazyworkbuddy vs LazyCodex behavior | **added** | WorkBuddy-native advantage; parity visualization |
+| `parity` MCP | Compare Lazyworkbuddy vs LazyCodex behavior | **added** | WorkBuddy-native advantage; parity visualization |
+| `source-map` MCP | Index/search LazyCodex source evidence | **added** | WorkBuddy-native advantage; traceability to reference repo |
+| `status-dashboard` MCP | Aggregate run/task/verification/parity status | **added** | WorkBuddy-native advantage; unified status view |
 | Checkpoint protocol | Periodic state snapshots | **added** | Enhances LazyCodex: explicit crash recovery (not in original) |
 | Migration planner Skill | Reusable cross-platform adapter | **added** | Generalizes our adaptation methodology |
 | `state.json` progress tracking | Explicit completion_percentage | **added** | Enhances LazyCodex: explicit progress (LazyCodex's boulder.json is implicit) |
@@ -86,11 +88,11 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | Core Workflows | 10 | 1 | 9 | 0 | 0 |
 | Agent Roles | 9 | 0 | 9 | 0 | 0 |
 | Hooks | 21 | 0 | 14 | 7 | 5 |
-| MCP Servers | 5 | 0 | 1 | 4 | 3 |
+| MCP Servers | 5 | 0 | 0 | 5 | 5 |
 | State/Durability | 3 | 0 | 3 | 0 | 4 |
-| **TOTAL** | **48** | **1** | **36** | **11** | **12** |
+| **TOTAL** | **48** | **1** | **35** | **12** | **14** |
 
-**Parity Health:** 🔧 Early stage — architecture is designed, behavior is semantically preserved. v0.3 plugin scaffold is built. Expect matched/adapted ratios to shift as each version is implemented.
+**Parity Health:** ✅ v0.10 — architecture designed, behavior semantically preserved, all phases through v0.10 implemented. MCP servers are WorkBuddy-native (run-ledger/parity/verification/source-map/status-dashboard); LazyCodex's 5 context servers (context7/codegraph/lsp/git_bash/grep_app) are NOT ported — tracked as gap G-003 and P2 in the full problem list.
 
 ## v0.3 Update — Plugin Scaffold (2026-07-09)
 
@@ -98,8 +100,8 @@ The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
 
 - `.workbuddy-plugin/plugin.json` — valid manifest with all required fields (name, version, skills, commands, agents, hooks, mcpServers, interface)
 - 8 placeholder commands + 8 placeholder skills (stubs for v0.4+)
-- `hooks/hooks.json` — 12 event types with empty arrays
-- `.mcp.json` — empty `mcpServers: {}`
+- `hooks/hooks.json` — 12 event types with empty arrays (populated with real commands in v0.6)
+- `.mcp.json` — empty `mcpServers: {}` (populated with 5 WorkBuddy-native servers in v0.8 — see v0.8 Update below)
 - 4 validation scripts (doctor, smoke-test, docs-check, parity-check)
 - README.md, CHANGELOG.md
 

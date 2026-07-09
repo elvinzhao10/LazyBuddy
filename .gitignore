@@ -4,6 +4,9 @@ reference/
 # WorkBuddy workspace state (managed by the WorkBuddy app)
 .workbuddy/
 
+# Lazyworkbuddy runtime state (runs, checkpoints, context — regenerated per session)
+.lazyworkbuddy/
+
 # macOS
 .DS_Store
 

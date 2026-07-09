@@ -40,7 +40,8 @@ EOF
 # Test: should block
 echo '{"hook_event_name":"Stop","session_id":"session-abc","turn_id":"t1","transcript_path":"/tmp/tx.txt","cwd":"'$PWD'","model":"default","permission_mode":"default","stop_hook_active":false}' | bash scripts/hooks/stop-gate.sh
 
-# Expected: {"decision":"block","reason":"..."} with remaining count 2
+# Expected: {"continue": false, "reason": "..."} with remaining count 2
+# (Correct WorkBuddy contract per docs/cli/hooks. {"decision":"block"} is DEPRECATED.)
 ```
 
 ## Test 2: Stop Gate — Allows on Complete Work
@@ -74,7 +75,8 @@ echo '{"hook_event_name":"Stop","session_id":"session-abc","turn_id":"t1","trans
 # Test: implementer subagent with no EVIDENCE_RECORDED
 echo '{"hook_event_name":"SubagentStop","agent_type_name":"lazyworkbuddy-implementer","agent_id":"agent-1","session_id":"sess-1","turn_id":"t1","transcript_path":"/tmp/tx.txt","cwd":"'$PWD'","model":"default","permission_mode":"default","last_assistant_message":"I wrote the code.","stop_hook_active":false}' | bash scripts/hooks/subagent-stop.sh
 
-# Expected: {"decision":"block","reason":"No EVIDENCE_RECORDED found..."}
+# Expected: {"continue": false, "reason": "No EVIDENCE_RECORDED found..."}
+# (Correct WorkBuddy contract per docs/cli/hooks. {"decision":"block"} is DEPRECATED.)
 ```
 
 ## Test 5: SubagentStop — Validates Real Evidence

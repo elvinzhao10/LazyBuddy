@@ -42,7 +42,7 @@ Final gate reviewer. Read-only. Assume the work has already failed — executors
 
 ## Required context files
 
-`.lazyworkbuddy/evidence/<goal>/` (all QA artifacts), `.lazyworkbuddy/evidence/<goal>-code-review.md`, `.lazyworkbuddy/plans/<plan>.md` (goal, criteria, adversarial classes), `.lazyworkbuddy/ledger.jsonl`, `git diff` against base.
+`.lazyworkbuddy/runs/<run_id>/evidence/<goal>/` (all QA artifacts), `.lazyworkbuddy/runs/<run_id>/evidence/<goal>-code-review.md`, `.lazyworkbuddy/plans/<plan>.md` (goal, criteria, adversarial classes), `.lazyworkbuddy/runs/<run_id>/events.jsonl`, `git diff` against base.
 
 ## Output format
 

@@ -116,8 +116,16 @@ NEXT_TASK=$(echo "$UNCHECKED" | cut -d' ' -f2-)
 PLAN_NAME=$(basename "$PLAN_PATH" .md)
 
 # --- Block stop with continuation directive ---
-# LazyCodex source: start-work-continuation/src/codex-hook.ts lines 12-15
-cat << EOF
-{"decision":"block","reason":"Lazyworkbuddy has ${REMAINING} unfinished task(s) in plan \`${PLAN_NAME}\`. Next: ${NEXT_TASK}\n\nRun /start-work ${PLAN_NAME} to continue. Stay in this session — the Stop hook will re-inject the orchestrator on the next turn."}
-EOF
+# Correct WorkBuddy contract (per docs/cli/hooks): {"continue":false,"reason":"..."} + exit 0
+# prevents the stop and surfaces the reason to the Agent, continuing the conversation.
+# NOTE: {"decision":"block"} is DEPRECATED and does NOT block with exit 0.
+python3 -c "
+import json, sys
+remaining, plan_name, next_task = sys.argv[1], sys.argv[2], sys.argv[3]
+reason = (
+    f'Lazyworkbuddy has {remaining} unfinished task(s) in plan \`{plan_name}\`. Next: {next_task}\n\n'
+    f'Run /start-work {plan_name} to continue. Stay in this session — the Stop hook will re-inject the orchestrator on the next turn.'
+)
+print(json.dumps({'continue': False, 'reason': reason}))
+" "$REMAINING" "$PLAN_NAME" "$NEXT_TASK"
 exit 0

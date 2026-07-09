@@ -2,7 +2,7 @@
 
 > LazyCodex agent harness reborn inside WorkBuddy.
 
-**Status:** 🔧 Scaffold (v0.3.0) — structural skeleton only. Skills, agents, and hooks are implemented in v0.4+.
+**Status:** ✅ v0.10.0 — skills, commands, agents, hooks, state ledger, MCP, hardening, and migration planner all implemented. (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
 
 ## What this plugin provides
 
@@ -19,13 +19,13 @@ Lazyworkbuddy brings the LazyCodex/OmO agent harness to WorkBuddy:
 
 | Directory | Purpose | Status |
 |-----------|---------|--------|
-| `skills/` | 25+ WorkBuddy Skills (workflow knowledge) | 🔧 8 placeholders (v0.4+) |
-| `commands/` | Slash command entry points | 🔧 8 placeholders (v0.4+) |
-| `agents/` | 9+ WorkBuddy subagents | 🔧 Empty (v0.5+) |
-| `hooks/hooks.json` | 12 lifecycle hooks | 🔧 Structure only (v0.6+) |
-| `mcp/` | MCP server implementations | 🔧 Empty (v0.8+) |
-| `scripts/` | Validation and verification scripts | ✅ 4 scripts (doctor, smoke-test, docs-check, parity-check) |
-| `schemas/` | State ledger schemas | 🔧 Empty (v0.7+) |
+| `skills/` | 14 WorkBuddy Skills (workflow knowledge) | ✅ Implemented (v0.4) |
+| `commands/` | Slash command entry points | ✅ Implemented (v0.4) |
+| `agents/` | 13 WorkBuddy subagents | ✅ Implemented (v0.5) |
+| `hooks/hooks.json` | 12 lifecycle hooks (3 enforcement + 9 advisory) | ✅ Implemented (v0.6) |
+| `mcp/` | 5 MCP servers (run-ledger, parity, verification, source-map, status-dashboard) | ✅ Implemented (v0.8) |
+| `scripts/` | State ledger (10) + loop (5) + hooks (12) + validation scripts | ✅ Implemented (v0.6–v0.7) |
+| `schemas/` | State ledger schemas | ✅ Documented in docs/lazyworkbuddy-state-schema.md (v0.7) |
 
 ## Install
 
@@ -73,14 +73,14 @@ rm -rf ~/.workbuddy/plugins/lazyworkbuddy
 |---------|-------|--------|
 | v0.1 | Architecture | ✅ Complete |
 | v0.2 | Project memory | ✅ Complete |
-| v0.3 | Plugin scaffold | ✅ Current |
-| v0.4 | Skills & commands | 🔧 Next |
-| v0.5 | Subagents | 📋 Planned |
-| v0.6 | Hooks & safety | 📋 Planned |
-| v0.7 | Run ledger & loop | 📋 Planned |
-| v0.8 | MCP & dashboard | 📋 Planned |
-| v0.9 | Hardening | 📋 Planned |
-| v0.10 | Migration planner | 📋 Planned |
+| v0.3 | Plugin scaffold | ✅ Complete |
+| v0.4 | Skills & commands | ✅ Complete |
+| v0.5 | Subagents | ✅ Complete |
+| v0.6 | Hooks & safety | ✅ Complete |
+| v0.7 | Run ledger & loop | ✅ Complete |
+| v0.8 | MCP & dashboard | ✅ Complete |
+| v0.9 | Hardening | ✅ Complete |
+| v0.10 | Migration planner | ✅ Complete |
 | v0.11 | Dogfood | 📋 Planned |
 | v0.12 | Release | 📋 Planned |
 
