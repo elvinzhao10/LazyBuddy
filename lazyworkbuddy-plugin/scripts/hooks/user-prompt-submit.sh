@@ -5,7 +5,7 @@
 set -euo pipefail
 
 INPUT=$(cat)
-MESSAGE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('user_prompt', d.get('message','')))" 2>/dev/null || echo "")
+MESSAGE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('user_prompt','') or d.get('prompt','') or d.get('message',''))" 2>/dev/null || echo "")
 
 if [ -z "$MESSAGE" ]; then
     exit 0

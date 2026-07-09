@@ -2,6 +2,14 @@
 
 > LazyCodex agent harness reborn inside WorkBuddy.
 
+## Quick Start
+
+Lazyworkbuddy is a WorkBuddy plugin that brings the LazyCodex/OmO agent harness to your workspace.
+
+1. **Install** — `ln -s "$(pwd)/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy`
+2. **Verify** — `./lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh`
+3. **Use** — run `/init-deep`, then `/ulw-plan`, then `/start-work`
+
 **Status:** ✅ v0.10.0 — skills, commands, agents, hooks, state ledger, MCP, hardening, and migration planner all implemented. (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
 
 ## What this plugin provides
