@@ -1,5 +1,15 @@
 # Lazyworkbuddy Plugin Changelog
 
+## v0.11.0 — Dogfood Run (2026-07-09)
+
+- **Dogfood run completed** — full lifecycle (init-deep → ulw-plan → start-work → verify → review → finalize) on a real task
+- **Fixed** stale plugin description in `.workbuddy/settings.json` (suggested enabling plugin when already enabled)
+- **Created** `docs/lazyworkbuddy-dogfood-run.md` — comprehensive dogfood report with UX problems, parity gaps, and suggested fixes
+- **Discovered G-016** — plan checkbox / state.json task inconsistency (two representations can diverge)
+- **Identified 5 v0.12 improvements** — plan sync script, CHANGELOG auto-update, verify auto-events, plan-task sync, finalize cross-check
+- **4 events recorded** in events.jsonl: run_created → task_updated → verification_passed → run_completed
+- All verification: doctor 47/47, smoke-test 105/105, verify.sh all_pass:true
+
 ## v0.10.0 — Migration Planner (2026-07-09)
 
 - **Hardened** `migration-planner` Skill with the 9-step migration workflow + 11 disciplines

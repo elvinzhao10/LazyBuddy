@@ -171,6 +171,15 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **Mitigation (current):** Accepted as a known soft-constraint. Tracked for a future WorkBuddy feature: path-scoped tool permissions. If WorkBuddy adds path-level deny rules, enforce `Write`/`Edit` to be `.lazyworkbuddy/`-only at the platform level.
 - **Status:** Open (soft-constraint). Documented 2026-07-09.
 
+### G-017: Plan checkbox / state.json task divergence (v0.11 dogfood finding)
+
+- **LazyCodex:** `boulder-reader.ts` in `start-work-continuation` parses plan.md checkboxes as the single source of truth — there is no separate state.json task model. The plan IS the state.
+- **Lazyworkbuddy:** Two representations exist: (a) plan.md `- [ ]`/`- [x]` checkboxes parsed by `stop-gate.sh`, and (b) state.json `tasks[]` array manipulated by `next-task.sh`/`update-task.sh`/`finalize-run.sh`. These can diverge — a task can be "done" in state.json but "unchecked" in plan.md.
+- **Impact:** Medium — `finalize-run.sh` checks state.json tasks but `stop-gate.sh` checks plan.md checkboxes. A run could finalize with state.json all-done while plan.md still shows unchecked boxes, causing stop-gate to block future continuation.
+- **Found in:** v0.11 dogfood run — observer noted that marking T1 done updated state.json but required separate `sed` to update plan.md.
+- **Mitigation:** Suggested fix for v0.12 — add `sync-plan.sh` to validate consistency and `update-plan-checkbox.sh` to atomically update both representations.
+- **Resolution:** Open. Target v0.12.
+
 ---
 
 _This file is updated by the Librarian after every accepted change that reveals new gaps, and after every version that resolves existing gaps._
