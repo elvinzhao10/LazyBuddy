@@ -94,6 +94,14 @@ Review verdict: accept | revise | reject
 
 Register the review decision in `.lazyworkbuddy/runs/<run_id>/events.jsonl`. If `accept`, hand off to librarian for memory update. If `revise`, hand back to implementer with feedback.
 
+## State Ledger Integration (v0.7)
+
+The reviewer now writes review decisions through the state/ script layer for durable, queryable audit trails.
+
+- **Review decision recording:** After completing all review dimensions (intent match, scope check, test coverage, documentation, LazyCodex parity, code quality), the reviewer calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> review_verdict "<json>"` to write the full review decision — including `verdict` (accept/revise/reject), each dimension's pass/fail status, blocking issues, and code quality findings — as a structured event in `events.jsonl`.
+- **State synchronization:** After the event is written, the reviewer calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> review --field verdict=<verdict> --field dimensions=<passed_count>/<total>` to update `review_status` in `state.json`. If the verdict is `accept`, the `review_gate` field on the task is marked `passed`; otherwise, it's marked `blocked` with the specific reasons.
+- **Review independence:** Like the verifier, the reviewer runs as an isolated Agent (`isolation: true`) to ensure the review is independent from both the executor and the verifier.
+
 ## WorkBuddy-Native Features
 
 - **Subagent isolation:** Reviewer runs as independent subagent (`isolation: true`)

@@ -111,6 +111,14 @@ ULW-LOOP: {complete | incomplete}
   Adversarial checks: {summary}
 ```
 
+## State Ledger Integration (v0.7)
+
+The ulw-loop now integrates with the state/ and loop/ scripts for durable iteration management and failure recovery.
+
+- **Loop iteration:** Each cycle begins by calling `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/run-cycle.sh <run_id>`. This script increments `state.json`'s `iteration.count`, checks the `iteration.max` cap (500 for ultrawork, 100 for normal), and writes a `cycle_start` event to `events.jsonl`. When the cap is exceeded, the script exits with code 2, causing the loop to stop with an `incomplete` status.
+- **Failure classification:** When a cycle fails, the loop calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/classify-failure.sh <run_id> <error_output>` to analyze the failure. The script classifies it into one of: `stall`, `flaky`, `unreachable`, or `corruption`, and writes a `failure_classified` event to `events.jsonl` with the classification and confidence. Based on the classification, `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/create-repair-task.sh <run_id> <classification>` creates a repair task in `state.json`'s `tasks[]` array.
+- **Iteration tracking:** The loop reads `state.json`'s `iteration.count` and `iteration.max` fields at the start of every cycle. If `count >= max`, no new cycles are started and the run is finalized via `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/finalize-run.sh <run_id>`.
+
 ## WorkBuddy-Native Features
 
 - **Subagent spawning:** Implementation and QA delegated to WorkBuddy Agent tool

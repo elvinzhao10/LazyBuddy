@@ -44,7 +44,7 @@ for run_dir in "$RUNS_DIR"/*/; do
     state_file="${run_dir}state.json"
     if [ -f "$state_file" ]; then
         STATUS=$(python3 -c "import json; d=json.load(open('$state_file')); print(d.get('status',''))" 2>/dev/null || echo "")
-        if [ "$STATUS" = "active" ] || [ "$STATUS" = "paused" ]; then
+        if [ "$STATUS" = "active" ] || [ "$STATUS" = "paused" ] || [ "$STATUS" = "executing" ] || [ "$STATUS" = "verifying" ] || [ "$STATUS" = "reviewing" ] || [ "$STATUS" = "blocked" ] || [ "$STATUS" = "created" ] || [ "$STATUS" = "planning" ]; then
             ACTIVE_RUN="$run_dir"
             ACTIVE_STATE="$state_file"
             break

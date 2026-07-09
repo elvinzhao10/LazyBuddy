@@ -102,6 +102,14 @@ Verifier verdict: {confirmed | false-positive | needs-fix | needs-human-review}
   Adversarial: {class-by-class results}
 ```
 
+## State Ledger Integration (v0.7)
+
+The verifier now writes verification results through the state/ script layer for durable, auditable evidence.
+
+- **Verification results:** After completing all checks (automated tests, Manual-QA reproduction, adversarial probe), the verifier calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> adversarial_verify "<json>"` to write the full AdversarialVerify verdict — including `verdict`, `confidence`, `evidence[]`, `repro`, and `adversarial_classes{}` — as a structured event in `events.jsonl`. Each event is a single JSON object on one line in JSONL format.
+- **State synchronization:** After writing the event, the verifier reads `state.json` and updates the task's `verification_gates` field by calling `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> verify --field verdict=<verdict> --field confidence=<score>`. This keeps `state.json`'s task entries in sync with the detailed evidence in `events.jsonl`.
+- **Independence guarantee:** The verifier runs as an isolated Agent (`isolation: true`) with no shared context, ensuring the adversarial check is truly independent from the executor's claims.
+
 ## WorkBuddy-Native Features
 
 - **Subagent isolation:** Verifier runs as isolated subagent with no parent history (`isolation: true`)

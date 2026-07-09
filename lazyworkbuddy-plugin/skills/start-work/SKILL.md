@@ -143,6 +143,15 @@ ORCHESTRATION COMPLETE
   Cleanup: [receipts]
 ```
 
+## State Ledger Integration (v0.7)
+
+The start-work orchestrator now writes all run state through the state/ and loop/ script layer.
+
+- **Phase 2 (Create state):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/create-run.sh <run_id> "<objective>"` to create the run directory with `state.json`, `events.jsonl`, and all subdirectories (`evidence/`, `checkpoints/`, `verification/`, `review/`, `agent_outputs/`, `artifacts/`, `memory_updates/`). The script also initializes `status: "planning"` and `iteration.count: 0`.
+- **Phase 3 (Execute):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/next-task.sh <run_id>` to fetch the next unverified checkbox from `state.json` and mark it `in_progress`. When a task is complete, calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> done` to record completion, validation status, and evidence paths.
+- **Phase 4 (Evidence):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> done_claim "<json>"` to write each DoneClaim as a structured event in `events.jsonl`. After adversarial verification, calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> evidence --field verified_by=<agent> --field confidence=<score>` to attach verification metadata to the task.
+- **Phase 5 (Checkpoint):** Calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/checkpoint.sh <run_id>` every N checkboxes (default N=3) to snapshot `state.json` into `checkpoints/checkpoint-<NN>.json` for crash recovery.
+
 ## WorkBuddy-Native Features
 
 - **Subagent spawning:** WorkBuddy Agent tool replaces `multi_agent_v1.spawn_agent`; `isolation: true` replaces `fork_context: false`

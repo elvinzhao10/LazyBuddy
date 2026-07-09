@@ -197,6 +197,23 @@ The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
 - PreToolUse: denies rm -rf ✓, denies .env access ✓, allows safe commands ✓
 - SubagentStop: allows valid evidence ✓, blocks missing evidence ✓
 
+## v0.7 Update — State Ledger & Autonomous Loop (2026-07-09)
 
+State ledger infrastructure created:
+
+- **.lazyworkbuddy/ directory:** context/, runs/<run_id>/{state.json, events.jsonl, plan.md, checkpoints/, evidence/, verification/, review/, agent_outputs/, artifacts/, memory_updates/, final_report.md}
+- **10 state scripts:** create-run.sh, load-run.sh, update-task.sh, append-event.sh, checkpoint.sh, recover-run.sh, summarize-run.sh, validate-state.sh, list-runs.sh, latest-run.sh
+- **5 loop scripts:** next-task.sh, run-cycle.sh, classify-failure.sh, create-repair-task.sh, finalize-run.sh
+- **5 docs:** loop-protocol.md, checkpoint-format.md, runbook.md, state-schema.md, run-log-example.md
+- **5 skills updated** with State Ledger Integration sections (start-work, ulw-loop, verifier, reviewer, librarian)
+- **Hook compatibility:** stop-gate.sh updated to accept full lifecycle status values (created|planning|executing|blocked|verifying|reviewing) as active states
+
+**Status shifts from v0.6:**
+- Boulder progress (`.omo/boulder.json`): `adapted` → `implemented` (state.json + events.jsonl)
+- Evidence ledger (`.omo/start-work/ledger.jsonl`): `adapted` → `implemented` (events.jsonl)
+- Checkpoint protocol: `added` → `implemented`
+- Run state durability: `added` → `implemented`
+
+**End-to-end test verified:** create → add plan/tasks → next-task → update-task → checkpoint → stop-gate blocks → finalize refuses → classify-failure → events.jsonl populated (3 events)
 
 _This ledger is authoritative. Every parity claim must be verified against `reference/lazycodex/` before updating. Updated by the Librarian (v0.9+) and manually until then._

@@ -160,6 +160,14 @@ Librarian update complete.
   Parity ledger entry: appended
 ```
 
+## State Ledger Integration (v0.7)
+
+The librarian now writes memory update records through the state/ script layer, linking each update to the originating run's evidence trail.
+
+- **Memory update recording:** After completing all memory file updates (workbuddy.md, command-index.md, parity-ledger.jsonl, known-gaps.md, risk-register.md, canonical-method-map.md), the librarian calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> librarian_update "<json>"` to write a structured record to `events.jsonl`. The JSON payload includes `source_work`, `changed_files[]`, `sections_updated[]`, `new_entries`, `deprecated_entries`, and `canonical_map_unchanged`.
+- **Traceability:** Each `librarian_update` event in `events.jsonl` creates a durable link between the originating run's execution trail and the project memory changes, enabling future agents to trace why a convention was added or a gap was closed.
+- **Read-mostly discipline:** The librarian uses the state/ scripts only for writing events — it never modifies `state.json` directly. All memory file writes use WorkBuddy's standard Read/Edit/Write tools, restricted exclusively to `.lazyworkbuddy/` paths.
+
 ## WorkBuddy-Native Features
 
 - **Agent tool:** Librarian runs as a dedicated agent spawned by the orchestrator. When spawned, use `"message":"TASK: act as a librarian — update durable memory after accepted changes. DELIVERABLE: updated memory files + parity ledger entry. SCOPE: .lazyworkbuddy/ files only. VERIFY: re-read all modified files, confirm no duplicates, confirm no product file touched."`
