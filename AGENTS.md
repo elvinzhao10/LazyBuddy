@@ -10,7 +10,7 @@ When the user types `onboard`:
 
 1. Read this guide and ask which installed host/version they are using: **WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**.
 2. Follow only that host's setup path. Perform safe repository and CLI steps automatically.
-3. Report each completed action and its observed result, including the final verification output.
+3. Report each completed action and its observed result, including `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` after installation and the final verification output.
 4. Stop before account, marketplace, or app-setting changes. Give exact manual directions for those steps.
 5. End by explaining that the copied repository can be deleted after installation, or retained to explore and study the project.
 

@@ -26,6 +26,7 @@ PARITY_RESULT="skipped (script not found or not executable)"
 SECURITY_RESULT="skipped (script not found or not executable)"
 MCP_RESULT="skipped (script not found or not executable)"
 HOOK_RESULT="skipped (script not found or not executable)"
+LOAD_RESULT="skipped (script not found or not executable)"
 
 run_check() {
     local script="$1"
@@ -76,9 +77,10 @@ run_check "${SCRIPTS_DIR}/lazybuddy-parity-check.sh"   PARITY_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
 run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
+run_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"parity\":\"${PARITY_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"all_pass\":${ALL_PASS}}"
+json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"parity\":\"${PARITY_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

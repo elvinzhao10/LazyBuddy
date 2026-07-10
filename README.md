@@ -11,7 +11,7 @@ LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **WorkBu
 1. Copy or clone [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy) into a local folder.
 2. Open that folder in your chosen host and type `onboard`.
 
-The agent reads `AGENTS.md`, asks which installed version you are using (**WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**), then performs the matching safe setup steps. It reports what it started and configured, verifies the expected result, and gives exact manual directions for anything it cannot perform.
+The agent reads `AGENTS.md`, asks which installed version you are using (**WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**), then performs the matching safe setup steps. It runs `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` after installation, reports the exact loaded component count, verifies the expected result, and gives exact manual directions for anything it cannot perform. When a host opens a new repository, LazyBuddy's SessionStart hook repeats that check so a partial plugin load is visible immediately.
 
 After onboarding, you can delete the copied repository if you only needed the installed setup, or keep it to explore and study how LazyBuddy works.
 

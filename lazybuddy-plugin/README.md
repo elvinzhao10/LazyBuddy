@@ -7,7 +7,7 @@
 LazyBuddy provides compatible CodeBuddy and WorkBuddy manifests. CodeBuddy CLI uses `.codebuddy-plugin/plugin.json`; WorkBuddy uses `.workbuddy-plugin/plugin.json`; CodeBuddy IDE uses the bundled skills and MCP definitions through its IDE settings.
 
 1. **Install** — add this repository as a CodeBuddy marketplace, then install `lazybuddy@lazybuddy`.
-2. **Verify** — `./lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh`
+2. **Verify** — `./lazybuddy-plugin/scripts/lazybuddy-load-check.sh`, then `./lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh`
 3. **Use** — run `/lazy-init-deep`, then `/lazy-ulw-plan`, then `/lazy-start-work`
 
 **Status:** v0.12.0 release-hardening package with Todo 6 gates recorded. See the canonical current status in the repository [README](../README.md).

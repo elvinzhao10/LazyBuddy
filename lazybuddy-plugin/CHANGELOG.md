@@ -1,5 +1,10 @@
 # LazyBuddy Plugin Changelog
 
+## v0.15.0-alpha.1 — Fresh Workspace Load Check (2026-07-11)
+
+- Added an exact 14-skill, 15-command, 13-agent, 12-hook, and 8-MCP readiness check.
+- Run the check during onboarding and from the host-executed SessionStart hook, so a newly opened repository reports partial plugin loading immediately.
+
 ## v0.12.0 — Release Hardening (2026-07-09)
 
 - **Added** final release docs package: root README, quickstart, and final parity report.

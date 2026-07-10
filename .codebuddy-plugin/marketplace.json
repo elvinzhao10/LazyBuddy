@@ -9,7 +9,7 @@
       "name": "lazybuddy",
       "source": "./lazybuddy-plugin",
       "description": "Evidence-gated planning, execution, and review workflows.",
-      "version": "0.13.0"
+      "version": "0.15.0-alpha.1"
     }
   ]
 }

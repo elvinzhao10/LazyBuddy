@@ -5,13 +5,20 @@ set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo "{}")
 CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd','.'))" 2>/dev/null || echo ".")
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
-echo "(LazyBuddy v0.6): Session starting — checking project state..."
+echo "(LazyBuddy v0.15.0-alpha.1): Session starting — checking project state..."
 
 # Bootstrap the .lazybuddy/ directory tree so skills/agents that read
 # plans/, context/, drafts/, or runs/ don't crash on a fresh workspace.
 # create-run.sh creates runs/<run_id>/ on demand; this ensures the parents exist.
 mkdir -p "$CWD/.lazybuddy"/{plans,context,drafts,runs}
+
+if load_check=$(bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh" 2>&1); then
+    echo "$load_check"
+else
+    echo "(LazyBuddy): $load_check"
+fi
 
 # Check for project memory
 if [ -f "$CWD/workbuddy.md" ]; then
