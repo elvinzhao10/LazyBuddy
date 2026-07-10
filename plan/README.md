@@ -18,9 +18,9 @@ This directory holds the versioned implementation plan for Lazyworkbuddy — a W
 | [v0.9-hardening.md](v0.9-hardening.md) | Hardening | Quality gates and memory updates |
 | [v0.10-migration.md](v0.10-migration.md) | Migration | Reusable cross-platform adapter system |
 | [v0.11-dogfood.md](v0.11-dogfood.md) | Dogfood | End-to-end self-test |
-| [v0.12-release.md](v0.12-release.md) | Release | Final release and parity report |
-| [v0.13-add-ons.md](v0.13-add-ons.md) | Add-ons | Optional automation, channels, dashboard |
-| [v0.14-evaluation-rubric.md](v0.14-evaluation-rubric.md) | Rubric | Final evaluation scoring |
+| [v0.12-release.md](v0.12-release.md) | Diagnostics & release hardening | Diagnosis, fixes, release preparation |
+
+> **v0.13** (release) is the final phase. Add-ons (automation runner, channels, MCP apps dashboard) are deferred to v1 (post-1.0).
 
 ## Implementation order
 
