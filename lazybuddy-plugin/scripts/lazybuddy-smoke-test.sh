@@ -101,18 +101,6 @@ if [ -f "$HOOKS_FILE" ]; then
     done
 fi
 
-# 4. Check plugin.json has the expected capabilities
-MANIFEST="${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
-if [ -f "$MANIFEST" ]; then
-    for cap in "Hooks" "MCP Tools" "Workflow" "Context Injection" "Agent Orchestration" "Verification"; do
-        if grep -q "\"${cap}\"" "$MANIFEST"; then
-            check "Manifest capability: ${cap}" ok
-        else
-            check "Manifest capability: ${cap}" "missing"
-        fi
-    done
-fi
-
 echo ""
 echo "=== Results ==="
 echo "Passed: ${PASS}"

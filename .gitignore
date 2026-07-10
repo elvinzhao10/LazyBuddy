@@ -1,14 +1,12 @@
 # External reference repos (re-clone with: git clone https://github.com/code-yeongyu/lazycodex.git dev/reference/lazycodex)
 dev/
 
-# WorkBuddy workspace state (managed by the WorkBuddy app)
+# Host-managed workspace state
+.codebuddy/
 .workbuddy/
 
-# LazyBuddy runtime state (runs, checkpoints, context — regenerated per session)
-.lazybuddy/
-
-# Pre-rename LazyWorkBuddy state; retained so local sessions do not become
-# release artifacts after upgrading to LazyBuddy.
+# LazyBuddy runtime state (regenerated per session)
+.lazycodebuddy/
 .lazyworkbuddy/
 
 # LazyCodex-compatible runtime state (test artifacts)

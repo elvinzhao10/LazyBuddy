@@ -8,13 +8,13 @@ LazyBuddy is a WorkBuddy-native adaptation of the LazyCodex/OmO agent harness. I
 
 | Platform | Skills | Commands | Hooks | MCP servers |
 |---|---|---|---|---|
-| **WorkBuddy** | WorkBuddy plugin marketplace | auto | host-managed | host-managed |
+| **WorkBuddy** | import bundled skills | host settings | host-managed | host settings |
 | **CodeBuddy IDE** | import bundled skills | IDE slash commands | IDE hooks/settings | IDE MCP settings |
-| **CodeBuddy CLI** | plugin marketplace | auto | auto | auto (`.mcp.json`) |
+| **CodeBuddy CLI** | import bundled skills | CLI settings | CLI settings | CLI MCP settings |
 
-- **WorkBuddy** → install LazyBuddy through the WorkBuddy plugin marketplace.
+- **WorkBuddy** → import the bundled skills and configure hooks/MCP through WorkBuddy settings.
 - **CodeBuddy IDE** → import the bundled skills and configure the bundled MCP servers through the IDE settings.
-- **CodeBuddy CLI** → install LazyBuddy through the included CodeBuddy marketplace entry.
+- **CodeBuddy CLI** → configure the bundled skills and `.mcp.json` through CLI settings.
 
 ## Step A — Install
 
@@ -24,19 +24,14 @@ LazyBuddy is a WorkBuddy-native adaptation of the LazyCodex/OmO agent harness. I
    ```bash
    git clone https://github.com/elvinzhao10/LazyBuddy.git
    ```
-2. Add the repository marketplace and install the plugin:
-   ```bash
-   codebuddy plugin marketplace add elvinzhao10/LazyBuddy --name lazybuddy
-   codebuddy plugin install lazybuddy@lazybuddy --scope project
-   codebuddy plugin validate lazybuddy-plugin
-   ```
+2. Import the `lazybuddy-plugin/skills/` bundles and configure `lazybuddy-plugin/.mcp.json` in CodeBuddy CLI settings.
 3. Verify:
    ```bash
    bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
    ```
    Expected: `Doctor check: ALL PASS` (50 checks).
 
-**WorkBuddy:** add this repository in the WorkBuddy plugin marketplace and install `lazybuddy-plugin/`. The compatible `.workbuddy-plugin/plugin.json` manifest provides the same component paths for the WorkBuddy host.
+**WorkBuddy:** import the applicable `lazybuddy-plugin/skills/*/SKILL.md` bundles, then configure hooks and MCP through WorkBuddy settings.
 
 **CodeBuddy IDE:** import the applicable `lazybuddy-plugin/skills/*/SKILL.md` bundles, then add the desired `.mcp.json` server definitions through the IDE MCP settings. CodeBuddy's CLI marketplace installer is not used by the IDE.
 
@@ -57,7 +52,7 @@ bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh      # smoke test
 ## Verify
 
 ```bash
-bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh    # expect: 50 PASS, 0 FAIL
+bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh    # expect: 41 PASS, 0 FAIL
 ```
 
 ## What gets installed
