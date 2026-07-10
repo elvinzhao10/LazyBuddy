@@ -1,11 +1,11 @@
 ---
 description: "Generate Lazyworkbuddy parity coverage report using parity MCP tools"
 ---
-# /lazyworkbuddy:parity-report
+# /lazy-parity-report
 > Lazyworkbuddy v0.8 MCP command
 
 ## Usage
-/lazyworkbuddy:parity-report [--gap-only]
+/lazy-parity-report [--gap-only]
 
 ## What it does
 Uses parity MCP tools (`read_canonical_method_map`, `list_methods`, `generate_gap_report`) to produce a parity coverage report comparing Lazyworkbuddy vs LazyCodex.

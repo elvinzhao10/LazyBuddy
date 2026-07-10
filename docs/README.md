@@ -70,7 +70,7 @@
 
 | Doc | Purpose |
 |-----|---------|
-| [evaluation.md](lazyworkbuddy-evaluation.md) | Full LazyCodex parity assessment: strengths, weaknesses, future improvements |
+| [evaluation.md](../lazyworkbuddy-evaluation.md) | Full LazyCodex parity assessment: strengths, weaknesses, future improvements |
 | [known-gaps.md](lazyworkbuddy-known-gaps.md) | 17 documented deviations from LazyCodex |
 | [parity-ledger.md](lazyworkbuddy-parity-ledger.md) | Living parity tracking (per-method status) |
 | [risk-register.md](lazyworkbuddy-risk-register.md) | Ranked risks with mitigations |

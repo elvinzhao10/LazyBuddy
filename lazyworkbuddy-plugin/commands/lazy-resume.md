@@ -1,11 +1,11 @@
 ---
 description: "Resume the latest active Lazyworkbuddy run"
 ---
-# /lazyworkbuddy:resume
+# /lazy-resume
 > Lazyworkbuddy v0.8 MCP command
 
 ## Usage
-/lazyworkbuddy:resume [run_id]
+/lazy-resume [run_id]
 
 ## What it does
 Resumes latest active run using run-ledger MCP (`latest_run`, `read_state`, `summarize_run`). Loads task graph, checkpoints, and re-entry context.
