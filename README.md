@@ -1,8 +1,8 @@
 # Lazyworkbuddy
 
-> **A practice project: realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO agent harness for Codex) on the [WorkBuddy](https://www.codebuddy.cn) platform.**
+> **A practice project: realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO agent harness) on the [WorkBuddy](https://www.codebuddy.cn) platform.**
 >
-> This repo is **no longer maintained**. It was built as a learning exercise to study how an agent harness like LazyCodex can be adapted to a different host platform. The entire realization process — architecture, plan, prompts, evaluation — is open-sourced here to help others studying agent-harness design and cross-platform adaptation.
+> This repo is **no longer maintained**. It was built as a learning exercise to study how an agent harness like LazyCodex can be adapted to a different host platform. The entire realization process is open-sourced to help others studying agent-harness design and cross-platform adaptation.
 
 ## What this is
 
@@ -10,52 +10,45 @@
 
 **Original project credit:** LazyCodex/omo is Copyright (c) 2026 Yeongyu Kim, licensed under MIT. This project derives concepts and semantics from that work but contains no copied source code, prompts, or protected material. See [NOTICE](NOTICE) for full license provenance.
 
-## What's in this repo
+## Quick Install (Let WorkBuddy configure itself)
 
-```
-lazyworkbuddy/
-├── lazyworkbuddy-plugin/     # The installable WorkBuddy plugin (103 files)
-│   ├── .workbuddy-plugin/    #   Plugin manifest (plugin.json)
-│   ├── skills/               #   14 Skills (init-deep, ulw-plan, start-work, ...)
-│   ├── agents/               #   13 agent role definitions (orchestrator, planner, ...)
-│   ├── commands/             #   15 slash commands
-│   ├── hooks/                #   12 lifecycle hook scripts + hooks.json
-│   ├── mcp/                  #   8 MCP servers (run-ledger, parity, verification, ...)
-│   ├── scripts/              #   State/loop/check scripts (27 total)
-│   └── .mcp.json             #   MCP server config
-├── docs/                     # Architecture docs, protocols, evaluation, templates
-│   ├── project-memory/       #   workbuddy.md + AGENTS.md (project memory used during dev)
-│   ├── templates/            #   7 reusable migration templates
-│   └── examples/             #   Example run logs
-├── plan/                     # Versioned implementation plan (v0.0 → v0.12)
-├── prompts/                  # 11 worker delegation prompts (one per version)
-├── .github/                  # CI workflow + issue/PR templates
-├── LICENSE                   # MIT
-└── NOTICE                    # MIT provenance for derived works
-```
+The easiest way to install: **give this repo to WorkBuddy and let it handle everything.**
 
-## Installation
+### Option A: Let WorkBuddy auto-discover the plugin
 
-### Prerequisites
-
-- [WorkBuddy](https://www.codebuddy.cn) (CodeBuddy) desktop app
-- Python 3.13+ (for hook scripts and MCP servers)
-- Bash (macOS/Linux, or Git Bash on Windows)
-
-### Steps
-
-1. **Clone this repo:**
+1. **Clone this repo** anywhere on your machine:
    ```bash
    git clone https://github.com/YOUR_USERNAME/lazyworkbuddy.git
-   cd lazyworkbuddy
    ```
 
-2. **Install the plugin** (symlink to WorkBuddy's plugins directory):
+2. **Open WorkBuddy** and start a new session in the cloned directory.
+
+3. **Tell WorkBuddy:**
+   > "Install the lazyworkbuddy plugin from `lazyworkbuddy-plugin/` in this repo. Read the plugin.json, enable the plugin, and activate all hooks and MCP servers."
+
+4. WorkBuddy will:
+   - Read `lazyworkbuddy-plugin/.workbuddy-plugin/plugin.json` (the manifest)
+   - Load all 14 Skills from `skills/`
+   - Register all 13 Agents from `agents/`
+   - Wire all 12 Hooks from `hooks/hooks.json`
+   - Start all 8 MCP servers from `.mcp.json`
+   - Enable the plugin in `.workbuddy/settings.json`
+
+5. **Verify:**
    ```bash
-   ln -s "$(pwd)/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy
+   bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
+   ```
+   Expected: `Doctor check: ALL PASS`
+
+### Option B: Manual install (if auto-discover doesn't work)
+
+1. **Clone and symlink:**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/lazyworkbuddy.git
+   ln -s "$(pwd)/lazyworkbuddy/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy
    ```
 
-3. **Enable the plugin** in `.workbuddy/settings.json`:
+2. **Enable in `.workbuddy/settings.json`:**
    ```json
    {
      "plugin": {
@@ -66,98 +59,124 @@ lazyworkbuddy/
    }
    ```
 
-4. **Verify the installation:**
-   ```bash
-   bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
-   ```
-   Expected: `Doctor check: ALL PASS` (50/50 checks).
+3. **Restart WorkBuddy** and verify with `doctor.sh`.
 
-5. **Restart WorkBuddy** — the plugin, hooks, and MCP servers activate on next session.
-
-## Usage
+## How to Use
 
 ### Core commands
 
-| Command | Purpose |
-|---------|---------|
-| `/init-deep` | Generate hierarchical project memory (run first in a new workspace) |
-| `/ulw-plan` | Create a decision-complete work plan (Prometheus-style planning) |
-| `/start-work` | Execute a plan with orchestrated subagents + verification |
-| `/ulw-loop` | Verified completion loop for open-ended tasks |
-| `/ultrawork` | Binding high-precision mode (tier triage, evidence gates) |
-| `/review-work` | 5-agent parallel review gate |
-| `/verifier` | Run verification checks and summarize results |
-| `/reviewer` | Review changed files and produce accept/reject/revise |
-| `/librarian` | Update memory, parity ledger, known gaps after changes |
+| Command | Purpose | When to use |
+|---------|---------|-------------|
+| `/init-deep` | Generate hierarchical project memory | First time in a new workspace |
+| `/ulw-plan` | Create a decision-complete work plan | Before any multi-file or ambiguous change |
+| `/start-work` | Execute a plan with orchestrated subagents | When a plan is approved and ready to build |
+| `/ulw-loop` | Verified completion loop | For open-ended tasks needing evidence-backed done |
+| `/ultrawork` | Binding high-precision mode | When maximum rigor and evidence are required |
+| `/review-work` | 5-agent parallel review gate | After every significant implementation |
+| `/verifier` | Run verification checks | After implementation, before claiming done |
+| `/reviewer` | Review changed files | After verification, before accepting |
+| `/librarian` | Update memory after changes | After accepted changes |
 
-### Quick start
+### Quick start workflow
 
 ```
-# In a WorkBuddy session:
-/init-deep                    # generates project memory
-/ulw-plan "implement X"      # creates a plan
-/start-work                   # executes the plan with verification
-/review-work                  # 5-agent review gate
+/init-deep                         # generates project memory
+/ulw-plan "implement feature X"   # creates a plan with checkboxes
+/start-work                        # executes plan with subagents + verification
+/review-work                       # 5-agent review gate (all must pass)
 ```
 
-### MCP tools
+### What WorkBuddy gets
 
-8 MCP servers provide 30+ structured tools: run state management, parity tracking, verification, source mapping, and a status dashboard. See [docs/lazyworkbuddy-mcp-and-tools.md](docs/lazyworkbuddy-mcp-and-tools.md).
+| Component | Count | What it does |
+|-----------|-------|--------------|
+| Skills | 14 | init-deep, ulw-plan, start-work, ulw-loop, ultrawork, review-work, verifier, reviewer, librarian, migration-planner, programming, git-master, debugging, remove-ai-slops |
+| Agents | 13 | orchestrator, planner, explorer, implementer, verifier, reviewer, qa-executor, gate-reviewer, librarian, migration-planner, context-indexer, security-auditor, context-miner |
+| Commands | 15 | Slash commands for each workflow |
+| Hooks | 12 | Stop (blocks premature completion), SubagentStop (verifies evidence), PreToolUse (blocks destructive ops), + 9 lifecycle hooks |
+| MCP servers | 8 | run-ledger, parity, verification, source-map, status-dashboard (run management) + context-graph, code-intel, docs (context tooling) |
+| State scripts | 17 | create-run, update-task, checkpoint, recover-run, finalize-run, next-task, run-cycle, etc. |
 
-### Hooks
+### How enforcement works
 
-12 lifecycle hooks enforce deterministic behavior: the Stop hook blocks premature completion, the SubagentStop hook verifies evidence, the PreToolUse hook blocks destructive operations. See [docs/lazyworkbuddy-hooks.md](docs/lazyworkbuddy-hooks.md).
+The harness is **binding, not advisory**:
 
-## Evaluation: LazyCodex parity
+- **Stop hook** — if you try to end a session with unchecked plan items, it blocks and tells you what's left
+- **SubagentStop hook** — when an implementer claims done, it verifies the `EVIDENCE_RECORDED` path points to a real non-empty file inside `.lazyworkbuddy/`
+- **PreToolUse hook** — blocks `rm -rf`, secret file access, force pushes, and unauthorized publishes
+- **Finalize-run** — refuses to mark a run complete unless all verification gates passed AND the reviewer accepted AND all plan checkboxes are checked
+
+## LazyCodex Parity Evaluation
 
 ### Summary
 
 | Dimension | LazyCodex | Lazyworkbuddy | Coverage |
 |-----------|-----------|---------------|----------|
-| Skills | 25 | 14 | 56% (14 ported + 4 WorkBuddy-native) |
-| Agent roles | 10 | 13 | 100% + 3 enhancements |
-| Hooks | 21 | 12 | 57% (9 skipped = Codex-specific infra) |
-| MCP servers | 5 | 8 | 100% + 3 enhancements (context-tooling substitutes) |
+| Skills | 25 | 14 + 4 native | 56% (core workflows fully ported; secondary skills skipped) |
+| Agent roles | 10 | 13 | 100% + 3 enhancements (context-miner, security-auditor, migration-planner) |
+| Hooks | 21 | 12 | 57% (9 skipped = Codex-specific infra: LSP, codegraph, telemetry, auto-update) |
+| MCP servers | 5 | 8 | 100% + 3 context-tooling substitutes |
 | Plugin fields | 12 | 12 | 100% |
-| State ledger | boulder.json | state.json + events.jsonl | Adapted (richer schema) |
+| State ledger | boulder.json | state.json + events.jsonl | Adapted (richer schema, same semantics) |
 | Completion contract | DoneClaim/AdversarialVerify/FullyDone | Same | Matched (verbatim) |
 
 ### What's fully ported
 
-- **Core workflow semantics:** tier triage (LIGHT/HEAVY), PIN→RED→GREEN→SURFACE→CLEAN loop, 5 verification gates, Sisyphus completion contract (DoneClaim → AdversarialVerify → FullyDone)
+- **Core workflow semantics:** tier triage (LIGHT/HEAVY), PIN→RED→GREEN→SURFACE→CLEAN loop, 5 verification gates, Sisyphus completion contract
 - **Orchestrator-delegate pattern:** orchestrator never implements directly; spawns implementer subagents
 - **5-agent parallel review:** Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner — ALL-MUST-PASS
-- **Durable run state:** `.lazyworkbuddy/runs/<run_id>/` with state.json, events.jsonl, checkpoints, evidence, verification, review
-- **Evidence verification:** SubagentStop hook validates `EVIDENCE_RECORDED` paths (inside root, exists, non-empty, not symlink)
+- **Durable run state:** `.lazyworkbuddy/runs/<run_id>/` with state.json, events.jsonl, checkpoints, evidence
+- **Evidence verification:** SubagentStop hook validates evidence paths (exists, non-empty, not symlink, inside root)
 - **Premature-completion blocking:** Stop hook parses plan checkboxes and blocks if unchecked work remains
-- **Context-pressure detection:** hooks pass through gracefully when context is degraded
 
 ### Known gaps (17 documented)
 
-The 17 gaps are documented in [docs/lazyworkbuddy-known-gaps.md](docs/lazyworkbuddy-known-gaps.md). Key categories:
+See [docs/lazyworkbuddy-known-gaps.md](docs/lazyworkbuddy-known-gaps.md). Key categories:
+- **Host-inherent (can't fix):** 21→12 hooks (LSP/codegraph/telemetry skipped); single-model routing; no path-scoped tool permissions in WorkBuddy
+- **Resolved in v0.9:** worktree discipline, debugging audit, Sisyphus schema, iteration caps, dynamic steering, transition barriers (9 gaps)
+- **Resolved in v0.12:** G-016 (audit hook), G-017 (plan/state drift sync)
 
-- **Host-inherent (can't fix):** 21→12 hooks (LSP/codegraph/telemetry/auto-update skipped or native-substituted); single-model vs multi-tier routing; path-scoped tool permissions don't exist in WorkBuddy
-- **Resolved in v0.9 hardening:** worktree discipline, debugging audit, Sisyphus JSON schema, iteration caps, dynamic steering, transition barriers (9 gaps G-007–G-015)
-- **Resolved in v0.12 diagnostics:** G-016 (audit hook for orchestrator write-boundary), G-017 (plan/state drift sync)
+## Version History
 
-### Capability labels
+| Tag | Phase | Key deliverable |
+|-----|-------|-----------------|
+| `v0.0` | Discovery | LazyCodex method map, WorkBuddy host surface map |
+| `v0.1` | Architecture | Three-layer model, plugin design, state ledger design |
+| `v0.2` | Project memory | workbuddy.md, 4 rule files, settings.json, command constitution |
+| `v0.3` | Plugin scaffold | Installable plugin shell (manifest, placeholders, validation scripts) |
+| `v0.4` | Skills & commands | 14 Skills ported from LazyCodex (2,154 lines) |
+| `v0.5` | Subagents | 13 agent role definitions + 4 orchestration docs |
+| `v0.6` | Hooks & safety | 12 lifecycle hook scripts with real enforcement |
+| `v0.7` | Run ledger | 15 state/loop scripts, durable `.lazyworkbuddy/` run state |
+| `v0.8` | MCP & dashboard | 8 MCP servers (30+ tools), optional HTML dashboard |
+| `v0.9` | Hardening | Verifier/reviewer/librarian hardened, 9 known gaps resolved |
+| `v0.10` | Migration | 7 templates + self-adapter doc + migration planner |
+| `v0.11` | Dogfood | End-to-end self-test PASS, 5 UX problems found + fixed |
+| `v0.12` | Diagnostics | G-016 audit hook, G-017 drift sync, enhanced doctor/verify |
 
-| Label | Meaning | Examples |
-|-------|---------|----------|
-| `semantic` | Structured/parsed source of truth | state.json, events.jsonl, DoneClaim schema |
-| `project-tool-backed` | Invokes real project scripts/checkers | doctor.sh, verify.sh, security-check.sh |
-| `heuristic` | Grep-based approximation (not full semantic engine) | context-graph MCP, code-intel MCP symbol ops |
-| `state-only` | State management without behavioral enforcement | settings.json permission patterns |
+> **MVP = v0.0–v0.7.** Strong benchmark = v0.0–v0.12. Add-ons deferred to v1.
 
-## Project structure (study guide)
+## Repository structure
 
-This repo doubles as a study guide for cross-platform agent-harness adaptation:
-
-- **[plan/](plan/)** — 13 versioned phases (v0.0 discovery → v0.12 release), each with objectives, steps, and verification criteria
-- **[prompts/](prompts/)** — 11 worker delegation prompts showing how each phase was briefed to an AI worker
-- **[docs/](docs/)** — 44 docs covering architecture, protocols, operations, parity tracking, migration planning, and evaluation
-- **[docs/project-memory/](docs/project-memory/)** — The workbuddy.md and AGENTS.md project memory files used during development
-- **[docs/templates/](docs/templates/)** — 7 reusable templates for adapting agent harnesses to new platforms
+```
+lazyworkbuddy/
+├── lazyworkbuddy-plugin/     # THE installable WorkBuddy plugin
+│   ├── .workbuddy-plugin/    #   Plugin manifest (plugin.json)
+│   ├── skills/               #   14 Skills (init-deep, ulw-plan, start-work, ...)
+│   ├── agents/               #   13 agent role definitions
+│   ├── commands/             #   15 slash commands
+│   ├── hooks/                #   12 lifecycle hook scripts + hooks.json
+│   ├── mcp/                  #   8 MCP servers
+│   ├── scripts/              #   State/loop/check scripts (27 total)
+│   └── .mcp.json             #   MCP server config
+├── docs/                     # Architecture docs, protocols, templates
+├── plan/                     # Versioned implementation plan (v0.0 → v0.12)
+├── prompts/                  # Worker delegation prompts (study reference)
+├── .github/                  # CI workflow + issue/PR templates
+├── README.md                 # This file
+├── LICENSE                   # MIT
+└── NOTICE                    # MIT provenance for derived works
+```
 
 ## Disclaimer
 
@@ -171,6 +190,6 @@ The entire realization process — architecture decisions, versioned plan, worke
 
 ## License
 
-[MIT](LICENSE) — same license as the original [lazycodex/omo](https://github.com/code-yeongyu/lazycodex) project.
+[MIT](LICENSE) — same license as the original [lazycodex/omo](https://github.com/code-yeongyu/lazycodex).
 
 Portions derived from lazycodex/omo, Copyright (c) 2026 Yeongyu Kim. See [NOTICE](NOTICE) for full provenance.

@@ -68,14 +68,8 @@
 | [migration-examples.md](lazyworkbuddy-migration-examples.md) | Example scenarios |
 | [templates/](templates/) | 7 reusable templates for adapting to new hosts |
 
-## Evaluation & Dogfood
+## Examples
 
 | Doc | Purpose |
 |-----|---------|
-| [dogfood-run.md](lazyworkbuddy-dogfood-run.md) | v0.11 end-to-end self-test report |
-| [full-orchestration-evaluation.md](lazyworkbuddy-full-orchestration-evaluation.md) | Full-orchestration fidelity evaluation |
-| [full-problem-list.md](lazyworkbuddy-full-problem-list.md) | Complete problem list with fix status |
-| [evaluation-vs-lazytrae-lazycodex.md](lazyworkbuddy-evaluation-vs-lazytrae-lazycodex.md) | Comparative evaluation |
-| [final-parity-report.md](lazyworkbuddy-final-parity-report.md) | Final parity comparison |
-| [enhancement-log.md](lazyworkbuddy-enhancement-log.md) | Enhancement log |
 | [examples/](examples/) | Example run logs |
