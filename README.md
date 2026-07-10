@@ -108,7 +108,7 @@ The harness is **binding, not advisory**:
 
 ## LazyCodex Parity Evaluation
 
-**Overall: ~70% structural, ~85% semantic.** Core workflow semantics fully ported; structural gaps are in secondary/tooling layers. See [docs/lazyworkbuddy-evaluation.md](docs/lazyworkbuddy-evaluation.md) for the full assessment.
+**Overall: ~70% structural, ~85% semantic.** Core workflow semantics fully ported; structural gaps are in secondary/tooling layers. See [lazyworkbuddy-evaluation.md](lazyworkbuddy-evaluation.md) for the full assessment.
 
 ### Summary
 
@@ -189,6 +189,10 @@ The entire realization process — architecture decisions, versioned plan, worke
 - Cross-platform adaptation (Codex → WorkBuddy tool translation)
 - Clean-room reimplementation (preserving semantics without copying code)
 - Evidence-based completion (DoneClaim/AdversarialVerify/FullyDone contract)
+
+## Related
+
+- **[LazyTrae](https://github.com/elvinzhao10/Trae)** — the sibling project: the same LazyCodex/OmO harness realized on the Trae IDE. Where LazyWorkBuddy bets on host hook blocking, LazyTrae moves the completion gate into a CLI/MCP layer (Trae hooks can't block). Comparing the two shows how host binding drives divergence.
 
 ## License
 
