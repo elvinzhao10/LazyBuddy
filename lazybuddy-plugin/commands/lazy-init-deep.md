@@ -26,6 +26,7 @@ Generate hierarchical project memory. Scores directories by complexity, produces
 - `.lazybuddy/context/index.md` — structured project overview
 - `.lazybuddy/context/commands.json` — discovered dev/test/build/lint commands
 - `.lazybuddy/context/project-map.json` — directory-to-purpose mapping
+- Plugin load-check result from `bash "${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-load-check.sh"`
 
 ## Success Criteria
 
@@ -33,6 +34,7 @@ Generate hierarchical project memory. Scores directories by complexity, produces
 2. No generic filler content
 3. Hierarchy is correct (child does not repeat parent)
 4. `.lazybuddy/context/` files exist and are parseable
+5. Plugin load check passes before discovery and is included in the completion report
 
 ## Constitution
 

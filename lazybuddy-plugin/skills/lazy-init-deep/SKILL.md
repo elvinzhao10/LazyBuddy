@@ -29,6 +29,16 @@ Before generating, inspect:
 - Test directories and test runner configuration
 - CI/CD configuration (`.github/workflows/`, `Makefile`, etc.)
 
+## Mandatory plugin load check
+
+Before any repository discovery, run:
+
+```bash
+bash "${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-load-check.sh"
+```
+
+This is required every time `lazy-init-deep` is invoked, including an existing workspace. Record its exact skills, commands, agents, hooks, and MCP counts in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+
 ## Tool Access
 
 This skill is **read-only** — it never modifies product code.
@@ -39,14 +49,16 @@ This skill is **read-only** — it never modifies product code.
 
 ### Phase 1: Discovery + Analysis (concurrent)
 
-1. **Fire exploration in parallel.** Spawn subagents (WorkBuddy Agent tool) to map structure, entry points, conventions, anti-patterns, build/CI, and test patterns. Use `isolation: true` (no parent history) for each.
+1. **Confirm plugin readiness.** Run the mandatory plugin load check above and report its observed counts before mapping the workspace.
 
-2. **While subagents run**, in the main session:
+2. **Fire exploration in parallel.** Spawn subagents (WorkBuddy Agent tool) to map structure, entry points, conventions, anti-patterns, build/CI, and test patterns. Use `isolation: true` (no parent history) for each.
+
+3. **While subagents run**, in the main session:
    - Run structural analysis: `find . -type d` for directory depth, `find . -type f` for file counts, code concentration by extension
    - Read existing `workbuddy.md` if present
    - Check for LSP diagnostics on key files
 
-3. **Collect subagent results.** Merge bash analysis + subagent findings.
+4. **Collect subagent results.** Merge bash analysis + subagent findings.
 
 ### Phase 2: Scoring & Location Decision
 
@@ -119,6 +131,7 @@ After completion, report:
 ```
 === init-deep Complete ===
 Mode: {update | create-new}
+Plugin load check: {PASS | repaired then PASS}
 Files:
   [OK] ./workbuddy.md (root, {N} lines)
 Dirs Analyzed: {N}
@@ -135,6 +148,7 @@ Hierarchy:
 - **Skills:** Self-referencing — this is itself a WorkBuddy Skill
 - **Project memory:** Writes to `workbuddy.md` (WorkBuddy-native project memory format)
 - **`.lazybuddy/`:** Context knowledge base goes in the run state directory
+- **Load status:** `lazybuddy-load-check.sh` must pass before repository discovery
 
 ---
 
