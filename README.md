@@ -15,30 +15,44 @@ The agent reads `AGENTS.md`, asks which installed version you are using (**WorkB
 
 After onboarding, you can delete the copied repository if you only needed the installed setup, or keep it to explore and study how LazyBuddy works.
 
+## A first task, from request to evidence
+
+Start by describing the outcome and how you will recognize success, not the commands you think the agent should run. For example:
+
+> Add project search. Results must work on a real project, have tests, and be checked in the UI before you call it done.
+
+For a small, well-bounded change, ask normally. The agent should select the relevant skills from the task. For a larger or uncertain task, use this path:
+
+```text
+/lazy-init-deep                         # once for a new or unfamiliar repository
+/lazy-ulw-plan "add project search"    # explore, decide, and write the plan
+# review and approve the plan
+/lazy-start-work                        # execute the planned work with evidence
+/lazy-review-work                       # independently review significant work
+```
+
+Use `/lazy-ulw-loop "goal"` only when the outcome is long-running or open-ended and needs checkpoints. Use `/lazy-ultrawork "task"` when a change needs maximum precision and an evidence-grade review gate. Finish any meaningful change with the real user surface as well as automated checks: run the CLI, use the page, or exercise the API. A passing test alone is evidence, not the whole result.
+
+## Choosing skills and commands
+
+Skills are the agent's playbooks. You normally invoke them by stating the job in plain language; use a slash command when you want to force a particular workflow.
+
+| Situation | Say or run | Why |
+|---|---|---|
+| New or confusing repository | `/lazy-init-deep` | Builds project memory and local instructions before work starts. |
+| Multi-file, ambiguous, or architectural work | `/lazy-ulw-plan "…"` | Produces a decision-complete plan before changing code. |
+| An approved plan | `/lazy-start-work` | Delegates planned work and verifies its evidence. |
+| A bug | “Debug why … fails” | Selects the debugging playbook: reproduce, form hypotheses, then fix and prove it. |
+| Behavior-preserving cleanup | “Refactor … without changing behavior” | Uses the refactor discipline; keep verification in place. |
+| Git work | “Commit these changes” | Uses the Git workflow to inspect, stage, and commit intentionally. |
+| A large finished change | `/lazy-review-work` | Runs independent goal, QA, quality, security, and context review. |
+| A long-running goal | `/lazy-ulw-loop "…"` | Keeps durable state and continues until evidence proves completion. |
+
+The mindset is simple: choose the **smallest** workflow that matches the risk, make acceptance criteria explicit, and do not accept “done” without observable evidence. The agent should ask for a decision only when it genuinely needs the project owner's choice.
+
 ## Commands
 
-All commands are `lazy-` prefixed.
-
-| Command | Purpose |
-|---|---|
-| `/lazy-init-deep` | Generate hierarchical project memory |
-| `/lazy-ulw-plan` | Decision-complete work plan |
-| `/lazy-start-work` | Execute a plan with orchestrated subagents |
-| `/lazy-ulw-loop` | Verified completion loop |
-| `/lazy-ultrawork` | Binding high-precision mode |
-| `/lazy-review-work` | 5-agent parallel review gate |
-| `/lazy-verifier` `/lazy-reviewer` `/lazy-librarian` | Verify / review / update memory |
-
-## Workflow
-
-```
-/lazy-init-deep                         # generate project memory
-/lazy-ulw-plan "implement feature X"   # decision-complete plan
-/lazy-start-work                        # execute with subagents + verification
-/lazy-review-work                       # 5-agent review gate (all must pass)
-```
-
-Five phases: **Explore → Plan → Implement → Verify → Manually QA**. Each step closes only after **five evidence gates**: plan reread, automated verification, manual-QA, adversarial QA, cleanup.
+All commands are `lazy-` prefixed. The main controls are `/lazy-init-deep`, `/lazy-ulw-plan`, `/lazy-start-work`, `/lazy-ulw-loop`, `/lazy-ultrawork`, and `/lazy-review-work`; `/lazy-verifier`, `/lazy-reviewer`, and `/lazy-librarian` are targeted tools for verification, review, and project memory.
 
 ## Enforcement
 
