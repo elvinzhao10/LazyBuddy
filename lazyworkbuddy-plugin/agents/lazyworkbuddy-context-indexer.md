@@ -18,6 +18,7 @@ skills:
 memory: false
 isolation: true
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazyworkbuddy-context-indexer (Context Indexer)
 

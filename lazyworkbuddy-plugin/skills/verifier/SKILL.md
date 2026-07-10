@@ -2,6 +2,7 @@
 name: verifier
 description: "Evidence verification agent that independently confirms or rejects DoneClaims. Discovers available checks, runs them with exact commands, summarizes results, and issues confirmed/false-positive/needs-fix/needs-human-review verdicts with confidence scores. MUST be independent from executor. Triggers: verify, check this, verify implementation, check evidence, run verification."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # verifier
 

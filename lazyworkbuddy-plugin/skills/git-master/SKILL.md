@@ -2,6 +2,7 @@
 name: git-master
 description: "MUST USE whenever a task needs a commit or git-history investigation. Covers atomic commits, staging, commit-message style, rebase, squash, fixup/autosquash, blame, bisect, reflog, git log -S/-G, and questions like who wrote this or when was this added. Do not use for ordinary code edits unless the user asks for git work."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # git-master
 

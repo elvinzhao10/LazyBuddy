@@ -2,6 +2,7 @@
 name: reviewer
 description: "Post-implementation review agent. Reviews changed files against original intent and LazyCodex parity. Checks for overreach, missing tests, missing docs, and architectural regressions. Produces accept/reject/revise decision. MUST be independent from implementer. Triggers: review this, check this work, code review, review changes."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # reviewer
 

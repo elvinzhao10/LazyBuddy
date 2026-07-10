@@ -2,6 +2,7 @@
 name: remove-ai-slops
 description: "Behavior-preserving cleanup of AI-generated code smells from branch diff or explicit file list. Locks behavior with regression tests FIRST, then runs categorized parallel cleanup via WorkBuddy Agent tool subagents in batches of 5. Covers: obvious comments, over-defensive code, excessive complexity, needless abstraction, boundary violations, dead code, duplication, performance equivalences, missing tests, oversized modules. PROOF REQUIRED before removing any guard. Triggers: remove slop, clean AI code, deslop, clean up AI-generated code, remove AI slop, strip slop, ai-slop cleanup."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # remove-ai-slops
 

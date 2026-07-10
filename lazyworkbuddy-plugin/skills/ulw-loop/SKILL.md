@@ -2,6 +2,7 @@
 name: ulw-loop
 description: "Goal-like verified completion loop that decomposes work into systematic, evidence-bound steps. Creates goals with binding success criteria, records evidence through real-surface channels, runs until all criteria are verified. Per-goal: max 5 cycles. Per-failure: max 3 same-criterion failures before escalation. Overall cap: 500 iterations (ultrawork) / 100 (normal). Stop/SubagentStop hooks drive continuation. Triggers: ulw-loop, ulw, durable goal execution, evidence-led work, checkpointed long-running delivery, loop this task."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # ulw-loop
 

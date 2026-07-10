@@ -2,6 +2,7 @@
 name: ultrawork
 description: "Binding ultrawork mode directive. Injects tier triage (LIGHT/HEAVY), mandatory success criteria with failing-first proofs, Manual-QA channels (HTTP/tmux/browser/CLI), and the full PIN→RED→GREEN→SURFACE→CLEAN execution loop. Caps at 500 iterations. Triggered by: ultrawork, ulw, /ultrawork, or ultrawork keyword in any prompt — the UserPromptSubmit hook detects and activates."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # ultrawork
 

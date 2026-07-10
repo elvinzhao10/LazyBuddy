@@ -118,7 +118,7 @@ Each risk is scored on two axes:
 | **Score** | 10 (HIGH): S=5, L=2 |
 | **Description** | Despite clean-room discipline, an agent may inadvertently reproduce LazyCodex source verbatim — especially when porting Skills where the source is actively read during adaptation. |
 | **Impact** | License violation (MIT license requires attribution; verbatim copy without attribution violates terms). Project credibility damage. |
-| **Source** | [AGENTS.md](../AGENTS.md) Core Rule #8 (no secrets) and clean-room adaptation requirement. |
+| **Source** | [AGENTS.md](project-memory/AGENTS.md) Core Rule #8 (no secrets) and clean-room adaptation requirement. |
 | **Mitigation** | All ported Skills must be semantically equivalent, not textually equivalent. Grep for LazyCodex-specific phrases in all written files. Document adaptation decisions in each Skill's comments. |
 | **Contingency** | If verbatim copies are found: re-express the same semantics in different language. |
 | **Monitoring** | v0.4 acceptance test: diff each ported Skill against LazyCodex source → no identical blocks >50 chars. |

@@ -24,6 +24,7 @@ skills:
 memory: true
 isolation: false
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazyworkbuddy-orchestrator (Sisyphus)
 

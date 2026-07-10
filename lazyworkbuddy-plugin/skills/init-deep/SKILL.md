@@ -2,6 +2,7 @@
 name: init-deep
 description: "MUST USE for initializing or updating hierarchical project memory in a Workspace. Inspects repo structure, identifies language/runtime/test/build commands, scores directories by complexity, generates .lazyworkbuddy/context/ knowledge base. Triggers: init-deep, initialize project, create project memory, update project memory, understand this codebase, what's in this repo, map this project."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # init-deep
 

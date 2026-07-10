@@ -2,6 +2,7 @@
 name: ulw-plan
 description: "MUST USE for planning before coding: 5+ steps, ambiguous scope, multiple modules, architecture decisions, or any request to plan, break work down, or create a work plan. Read-only planning consultant (Prometheus) that grounds in the codebase, asks only blocking questions, waits for explicit approval, then writes ONE decision-complete work plan. Triggers: ulw-plan, plan this, make a plan, plan before coding, break this down, start planning, plan mode, design first."
 ---
+<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # ulw-plan
 
