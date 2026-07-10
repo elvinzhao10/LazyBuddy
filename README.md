@@ -180,6 +180,16 @@ lazyworkbuddy/
 └── NOTICE                    # MIT provenance for derived works
 ```
 
+## Related
+
+- **[LazyTrae](https://github.com/elvinzhao10/Trae)** — the sibling project: the same LazyCodex/OmO harness realized on the Trae IDE. Where LazyWorkBuddy bets on host hook blocking, LazyTrae moves the completion gate into a CLI/MCP layer (Trae hooks can't block). Comparing the two shows how host binding drives divergence.
+
+## License
+
+[MIT](LICENSE) — same license as the original [lazycodex/omo](https://github.com/code-yeongyu/lazycodex).
+
+Portions derived from lazycodex/omo, Copyright (c) 2026 Yeongyu Kim. See [NOTICE](NOTICE) for full provenance.
+
 ## Disclaimer
 
 **This is a practice project.** It was built to study how LazyCodex's agent-harness design can be adapted to a different host platform (WorkBuddy). The repo is **no longer maintained**.
@@ -190,12 +200,7 @@ The entire realization process — architecture decisions, versioned plan, worke
 - Clean-room reimplementation (preserving semantics without copying code)
 - Evidence-based completion (DoneClaim/AdversarialVerify/FullyDone contract)
 
-## Related
+## Acknowledgments
 
-- **[LazyTrae](https://github.com/elvinzhao10/Trae)** — the sibling project: the same LazyCodex/OmO harness realized on the Trae IDE. Where LazyWorkBuddy bets on host hook blocking, LazyTrae moves the completion gate into a CLI/MCP layer (Trae hooks can't block). Comparing the two shows how host binding drives divergence.
-
-## License
-
-[MIT](LICENSE) — same license as the original [lazycodex/omo](https://github.com/code-yeongyu/lazycodex).
-
-Portions derived from lazycodex/omo, Copyright (c) 2026 Yeongyu Kim. See [NOTICE](NOTICE) for full provenance.
+- **[Yeongyu Kim](https://github.com/code-yeongyu)** — creator of [lazycodex/OmO](https://github.com/code-yeongyu/lazycodex), whose MIT-licensed work made this practice project possible
+- **[WorkBuddy](https://www.codebuddy.cn)** — the platform this was built for
