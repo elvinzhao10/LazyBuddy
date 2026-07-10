@@ -6,7 +6,7 @@ description: "Behavior-preserving cleanup of AI-generated code smells. Locks beh
 
 # remove-ai-slops
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md)
 
 ## Purpose
 

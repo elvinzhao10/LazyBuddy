@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # task-completed.sh — TaskCompleted hook: mirror completion + update run progress in state.json.
-# LazyCodex source: reference/lazycodex/plugins/omo/hooks/task-completed.json
+# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/task-completed.json
 # Always exits 0.
 set -euo pipefail
 

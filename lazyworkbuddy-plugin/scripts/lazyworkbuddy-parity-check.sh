@@ -1,7 +1,7 @@
 #!/bin/bash
 # lazyworkbuddy-parity-check.sh — LazyCodex-to-WorkBuddy parity coverage auditor (v0.9)
 #
-# Compares lazyworkbuddy-plugin/ structure against reference/lazycodex/plugins/omo/.
+# Compares lazyworkbuddy-plugin/ structure against dev/reference/lazycodex/plugins/omo/.
 # Checks: plugin.json fields, skills count, hooks events, agents count.
 # Outputs coverage percentage and missing items as JSON.
 # Exit code 0 if coverage >= 70%; exit code 1 if coverage < 70%.
@@ -18,10 +18,10 @@ else
 fi
 
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
-REF_PLUGIN_JSON="${PROJECT_ROOT}/reference/lazycodex/plugins/omo/.codex-plugin/plugin.json"
-REF_SKILLS_DIR="${PROJECT_ROOT}/reference/lazycodex/plugins/omo/skills"
-REF_HOOKS_DIR="${PROJECT_ROOT}/reference/lazycodex/plugins/omo/hooks"
-REF_AGENTS_DIR="${PROJECT_ROOT}/reference/lazycodex/plugins/omo/components/ultrawork/agents"
+REF_PLUGIN_JSON="${PROJECT_ROOT}/dev/reference/lazycodex/plugins/omo/.codex-plugin/plugin.json"
+REF_SKILLS_DIR="${PROJECT_ROOT}/dev/reference/lazycodex/plugins/omo/skills"
+REF_HOOKS_DIR="${PROJECT_ROOT}/dev/reference/lazycodex/plugins/omo/hooks"
+REF_AGENTS_DIR="${PROJECT_ROOT}/dev/reference/lazycodex/plugins/omo/components/ultrawork/agents"
 
 WB_PLUGIN_JSON="${PLUGIN_ROOT}/.workbuddy-plugin/plugin.json"
 WB_SKILLS_DIR="${PLUGIN_ROOT}/skills"

@@ -12,7 +12,7 @@ Lazyworkbuddy commands follow LazyCodex's command philosophy:
 
 3. **Commands compose.** `/lazy-start-work` can invoke `/lazy-ulw-plan` (no-plan bootstrap). `/lazy-start-work` can invoke `/lazy-review-work` (completion gate). `/lazy-ulw-loop` delegates to `/lazy-start-work` for implementation waves.
 
-**LazyCodex source:** [README.md](../reference/lazycodex/README.md) Commands section — the three pillar commands with their invocation syntax.
+**LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Commands section — the three pillar commands with their invocation syntax.
 
 ## Command Structure
 
@@ -54,7 +54,7 @@ Cross-references to composing commands.
 
 **Invocation:** `/lazy-init-deep [--create-new] [--max-depth=N]`
 
-**LazyCodex equivalent:** `$init-deep` — traced to [skills/init-deep/SKILL.md](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md).
+**LazyCodex equivalent:** `$init-deep` — traced to [skills/init-deep/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md).
 
 **Composition:** Standalone. Run first in any new workspace.
 
@@ -66,7 +66,7 @@ Cross-references to composing commands.
 
 **Invocation:** `/lazy-ulw-plan "what to build"`
 
-**LazyCodex equivalent:** `$ulw-plan` — traced to [skills/ulw-plan/SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md).
+**LazyCodex equivalent:** `$ulw-plan` — traced to [skills/ulw-plan/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md).
 
 **Composition:** Produces plans consumed by `/lazy-start-work`. Can be called from `/lazy-start-work` (no-plan bootstrap).
 
@@ -78,7 +78,7 @@ Cross-references to composing commands.
 
 **Invocation:** `/lazy-start-work [plan-name] [--worktree <path>]`
 
-**LazyCodex equivalent:** `$start-work` — traced to [skills/start-work/SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md).
+**LazyCodex equivalent:** `$start-work` — traced to [skills/start-work/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md).
 
 **Composition:** Consumes `/lazy-ulw-plan` output. Invokes `/lazy-review-work` on completion. Driven by Stop/SubagentStop hooks for continuation.
 
@@ -90,7 +90,7 @@ Cross-references to composing commands.
 
 **Invocation:** `/lazy-ulw-loop "task" [--completion-promise=TEXT] [--strategy=reset|continue]`
 
-**LazyCodex equivalent:** `$ulw-loop` — traced to [skills/ulw-loop/SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md).
+**LazyCodex equivalent:** `$ulw-loop` — traced to [skills/ulw-loop/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md).
 
 **Composition:** Can delegate implementation waves to `/lazy-start-work`. Manages its own goal state in `.lazyworkbuddy/ulw-loop/`.
 
@@ -102,7 +102,7 @@ Cross-references to composing commands.
 
 **Invocation:** `/lazy-review-work`
 
-**LazyCodex equivalent:** `review-work` skill — traced to [skills/review-work/SKILL.md](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md).
+**LazyCodex equivalent:** `review-work` skill — traced to [skills/review-work/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md).
 
 **Composition:** Invoked by `/lazy-start-work` on completion. Also invocable standalone after any implementation.
 
@@ -114,7 +114,7 @@ Cross-references to composing commands.
 
 **Invocation:** `/lazy-ultrawork`
 
-**LazyCodex equivalent:** `ultrawork` skill — traced to [skills/ultrawork/SKILL.md](../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md).
+**LazyCodex equivalent:** `ultrawork` skill — traced to [skills/ultrawork/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md).
 
 **Composition:** Modifies all other workflows when active. Detected by `UserPromptSubmit` hook.
 
@@ -155,4 +155,4 @@ ORCHESTRATION COMPLETE
 
 ---
 
-_Command design traces to LazyCodex README Commands section and the SKILL.md files for all 6 core skills in `reference/lazycodex/plugins/omo/skills/`._
+_Command design traces to LazyCodex README Commands section and the SKILL.md files for all 6 core skills in `dev/reference/lazycodex/plugins/omo/skills/`._

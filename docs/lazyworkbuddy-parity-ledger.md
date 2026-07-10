@@ -16,12 +16,12 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 
 | LazyCodex Method | LazyCodex Source | Lazyworkbuddy Implementation | Status | Notes |
 |-----------------|------------------|------------------------------|--------|-------|
-| Deep init (`$init-deep`) | [init-deep/SKILL.md](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) | `/lazy-init-deep` command + `init-deep` Skill + context indexer | **adapted** | Hierarchical memory generation; output target changed from AGENTS.md to workbuddy.md |
-| Planning (`$ulw-plan`) | [ulw-plan/SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) | WorkBuddy Plan Mode + `/lazy-ulw-plan` command + planner agent | **adapted** | Prometheus semantics preserved; WorkBuddy Plan Mode replaces Codex-specific plan mode |
-| Execution (`$start-work`) | [start-work/SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) | `/lazy-start-work` command + orchestrator agent + bounded executor | **adapted** | Orchestrator-delegate pattern preserved; WorkBuddy Agent tool replaces `multi_agent_v1` |
-| Verified loop (`$ulw-loop`) | [ulw-loop/SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) | `/lazy-ulw-loop` command + run ledger + hooks | **adapted** | Goal-evidence loop preserved; `.lazyworkbuddy/` replaces `.omo/` |
-| Ultrawork mode | [ultrawork/SKILL.md](../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md) | `/lazy-ultrawork` command + `ultrawork` Skill | **adapted** | Tier triage, Manual-QA channels, bootstrap — all preserved |
-| 5-agent review | [review-work/SKILL.md](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) | `/lazy-review-work` command + WorkBuddy subagents | **adapted** | 5 independent lanes preserved; WorkBuddy Agent tool replaces Codex task spawning |
+| Deep init (`$init-deep`) | [init-deep/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) | `/lazy-init-deep` command + `init-deep` Skill + context indexer | **adapted** | Hierarchical memory generation; output target changed from AGENTS.md to workbuddy.md |
+| Planning (`$ulw-plan`) | [ulw-plan/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) | WorkBuddy Plan Mode + `/lazy-ulw-plan` command + planner agent | **adapted** | Prometheus semantics preserved; WorkBuddy Plan Mode replaces Codex-specific plan mode |
+| Execution (`$start-work`) | [start-work/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) | `/lazy-start-work` command + orchestrator agent + bounded executor | **adapted** | Orchestrator-delegate pattern preserved; WorkBuddy Agent tool replaces `multi_agent_v1` |
+| Verified loop (`$ulw-loop`) | [ulw-loop/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) | `/lazy-ulw-loop` command + run ledger + hooks | **adapted** | Goal-evidence loop preserved; `.lazyworkbuddy/` replaces `.omo/` |
+| Ultrawork mode | [ultrawork/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md) | `/lazy-ultrawork` command + `ultrawork` Skill | **adapted** | Tier triage, Manual-QA channels, bootstrap — all preserved |
+| 5-agent review | [review-work/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) | `/lazy-review-work` command + WorkBuddy subagents | **adapted** | 5 independent lanes preserved; WorkBuddy Agent tool replaces Codex task spawning |
 | Project memory | AGENTS.md (root + subdirs) | `workbuddy.md` + `.workbuddy/rules/` | **adapted** | Root file renamed; hierarchical subdir approach preserved in concept |
 | Boulder progress | `.omo/boulder.json` | `.lazyworkbuddy/runs/<run_id>/state.json` | **adapted** | Schema expanded with checkpoints and explicit progress tracking |
 | Evidence ledger | `.omo/start-work/ledger.jsonl` | `.lazyworkbuddy/runs/<run_id>/events.jsonl` | **adapted** | Format preserved; additional event types added |
@@ -31,8 +31,8 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 
 | LazyCodex Role | LazyCodex Source | Lazyworkbuddy Agent | Status | Notes |
 |---------------|------------------|---------------------|--------|-------|
-| Orchestrator (Sisyphus) | [start-work/SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) | `orchestrator` agent | **adapted** | Never-implements-directly rule preserved |
-| Planner (Prometheus) | [ulw-plan/SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) | `planner` agent | **adapted** | Never-writes-product-code rule preserved |
+| Orchestrator (Sisyphus) | [start-work/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) | `orchestrator` agent | **adapted** | Never-implements-directly rule preserved |
+| Planner (Prometheus) | [ulw-plan/SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) | `planner` agent | **adapted** | Never-writes-product-code rule preserved |
 | Explorer | Installed to `~/.codex/agents/` | `explorer` agent | **adapted** | Read-only exploration; same role semantics |
 | Librarian | Installed to `~/.codex/agents/` | `librarian` agent | **adapted** | Memory/index/parity maintenance |
 | Oracle (Verifier) | Referenced in start-work + review-work | `verifier` agent + `gate-reviewer` agent | **adapted** | Split into two agents for cleaner responsibility |
@@ -45,25 +45,25 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 
 | LazyCodex Hook | LazyCodex Source | Lazyworkbuddy Hook | Status | Notes |
 |---------------|------------------|--------------------|--------|-------|
-| Session rules loading | [session-start-loading-project-rules.json](../reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json) | `SessionStart` | **adapted** | Same purpose; WorkBuddy native event |
-| Ultrawork trigger | [user-prompt-submit-checking-ultrawork-trigger.json](../reference/lazycodex/plugins/omo/hooks/user-prompt-submit-checking-ultrawork-trigger.json) | `UserPromptSubmit` | **adapted** | Keyword detection preserved |
-| Loop steering | [user-prompt-submit-checking-ulw-loop-steering.json](../reference/lazycodex/plugins/omo/hooks/user-prompt-submit-checking-ulw-loop-steering.json) | `UserPromptSubmit` | **adapted** | Merged into single UserPromptSubmit hook |
-| Prompt-time rule loading | [user-prompt-submit-loading-project-rules.json](../reference/lazycodex/plugins/omo/hooks/user-prompt-submit-loading-project-rules.json) | `UserPromptSubmit` | **adapted** | Project rules loaded on prompt submit; merged with SessionStart loading |
-| Budget enforcement | [pre-tool-use-enforcing-unlimited-goal-budget.json](../reference/lazycodex/plugins/omo/hooks/pre-tool-use-enforcing-unlimited-goal-budget.json) | `PreToolUse` | **adapted** | Budget enforcement preserved |
-| Comment checking | [post-tool-use-checking-comments.json](../reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-comments.json) | `PostToolUse` | **adapted** | Diagnostics checking merged into PostToolUse |
-| LSP diagnostics | [post-tool-use-checking-lsp-diagnostics.json](../reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-lsp-diagnostics.json) | WorkBuddy native LSP | **skipped** | WorkBuddy has native LSP integration — no hook needed |
-| Rule matching | [post-tool-use-matching-project-rules.json](../reference/lazycodex/plugins/omo/hooks/post-tool-use-matching-project-rules.json) | `PostToolUse` | **adapted** | Merged into PostToolUse |
-| Start-work continuation (Stop) | [stop-checking-start-work-continuation.json](../reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json) | `Stop` | **adapted** | Continuation re-injection preserved |
-| Start-work continuation (SubagentStop) | [subagent-stop-checking-start-work-continuation.json](../reference/lazycodex/plugins/omo/hooks/subagent-stop-checking-start-work-continuation.json) | `SubagentStop` | **adapted** | Same behavior; merged with evidence verification |
-| Executor evidence verify | [subagent-stop-verifying-lazycodex-executor-evidence.json](../reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json) | `SubagentStop` | **adapted** | Evidence verification preserved; matcher pattern adapted |
-| Bootstrap provisioning | [session-start-checking-bootstrap-provisioning.json](../reference/lazycodex/plugins/omo/hooks/session-start-checking-bootstrap-provisioning.json) | `SessionStart` | **adapted** | Merged into SessionStart |
-| Auto-update check | [session-start-checking-auto-update.json](../reference/lazycodex/plugins/omo/hooks/session-start-checking-auto-update.json) | (none) | **skipped** | WorkBuddy plugin update mechanism differs |
-| Codegraph bootstrap | [session-start-checking-codegraph-bootstrap.json](../reference/lazycodex/plugins/omo/hooks/session-start-checking-codegraph-bootstrap.json) | (none) | **skipped** | Codegraph is Codex-specific; not applicable to WorkBuddy |
-| Telemetry recording | [session-start-recording-session-telemetry.json](../reference/lazycodex/plugins/omo/hooks/session-start-recording-session-telemetry.json) | (none) | **skipped** | Telemetry handled differently in WorkBuddy |
-| Git Bash MCP recommend | [pre-tool-use-recommending-git-bash-mcp.json](../reference/lazycodex/plugins/omo/hooks/pre-tool-use-recommending-git-bash-mcp.json) | `PreToolUse` | **adapted** | Tool recommendation merged |
+| Session rules loading | [session-start-loading-project-rules.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json) | `SessionStart` | **adapted** | Same purpose; WorkBuddy native event |
+| Ultrawork trigger | [user-prompt-submit-checking-ultrawork-trigger.json](../dev/reference/lazycodex/plugins/omo/hooks/user-prompt-submit-checking-ultrawork-trigger.json) | `UserPromptSubmit` | **adapted** | Keyword detection preserved |
+| Loop steering | [user-prompt-submit-checking-ulw-loop-steering.json](../dev/reference/lazycodex/plugins/omo/hooks/user-prompt-submit-checking-ulw-loop-steering.json) | `UserPromptSubmit` | **adapted** | Merged into single UserPromptSubmit hook |
+| Prompt-time rule loading | [user-prompt-submit-loading-project-rules.json](../dev/reference/lazycodex/plugins/omo/hooks/user-prompt-submit-loading-project-rules.json) | `UserPromptSubmit` | **adapted** | Project rules loaded on prompt submit; merged with SessionStart loading |
+| Budget enforcement | [pre-tool-use-enforcing-unlimited-goal-budget.json](../dev/reference/lazycodex/plugins/omo/hooks/pre-tool-use-enforcing-unlimited-goal-budget.json) | `PreToolUse` | **adapted** | Budget enforcement preserved |
+| Comment checking | [post-tool-use-checking-comments.json](../dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-comments.json) | `PostToolUse` | **adapted** | Diagnostics checking merged into PostToolUse |
+| LSP diagnostics | [post-tool-use-checking-lsp-diagnostics.json](../dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-lsp-diagnostics.json) | WorkBuddy native LSP | **skipped** | WorkBuddy has native LSP integration — no hook needed |
+| Rule matching | [post-tool-use-matching-project-rules.json](../dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-matching-project-rules.json) | `PostToolUse` | **adapted** | Merged into PostToolUse |
+| Start-work continuation (Stop) | [stop-checking-start-work-continuation.json](../dev/reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json) | `Stop` | **adapted** | Continuation re-injection preserved |
+| Start-work continuation (SubagentStop) | [subagent-stop-checking-start-work-continuation.json](../dev/reference/lazycodex/plugins/omo/hooks/subagent-stop-checking-start-work-continuation.json) | `SubagentStop` | **adapted** | Same behavior; merged with evidence verification |
+| Executor evidence verify | [subagent-stop-verifying-lazycodex-executor-evidence.json](../dev/reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json) | `SubagentStop` | **adapted** | Evidence verification preserved; matcher pattern adapted |
+| Bootstrap provisioning | [session-start-checking-bootstrap-provisioning.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-checking-bootstrap-provisioning.json) | `SessionStart` | **adapted** | Merged into SessionStart |
+| Auto-update check | [session-start-checking-auto-update.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-checking-auto-update.json) | (none) | **skipped** | WorkBuddy plugin update mechanism differs |
+| Codegraph bootstrap | [session-start-checking-codegraph-bootstrap.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-checking-codegraph-bootstrap.json) | (none) | **skipped** | Codegraph is Codex-specific; not applicable to WorkBuddy |
+| Telemetry recording | [session-start-recording-session-telemetry.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-recording-session-telemetry.json) | (none) | **skipped** | Telemetry handled differently in WorkBuddy |
+| Git Bash MCP recommend | [pre-tool-use-recommending-git-bash-mcp.json](../dev/reference/lazycodex/plugins/omo/hooks/pre-tool-use-recommending-git-bash-mcp.json) | `PreToolUse` | **adapted** | Tool recommendation merged |
 | Post-compact resets (all 3) | Various | `PreCompact` | **adapted** | All cache resets merged into single PreCompact |
-| Thread title hygiene | [post-tool-use-checking-thread-title-hygiene.json](../reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-thread-title-hygiene.json) | (none) | **skipped** | WorkBuddy thread management differs |
-| Codegraph init guidance | [post-tool-use-checking-codegraph-init-guidance.json](../reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-codegraph-init-guidance.json) | (none) | **skipped** | Not applicable |
+| Thread title hygiene | [post-tool-use-checking-thread-title-hygiene.json](../dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-thread-title-hygiene.json) | (none) | **skipped** | WorkBuddy thread management differs |
+| Codegraph init guidance | [post-tool-use-checking-codegraph-init-guidance.json](../dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-codegraph-init-guidance.json) | (none) | **skipped** | Not applicable |
 
 ### Lazyworkbuddy-Only Additions
 
@@ -191,8 +191,8 @@ The plugin scaffold (`lazyworkbuddy-plugin/`) is now structurally complete:
 12 lifecycle hooks implemented with real enforcement logic:
 
 **Enforcement hooks (3):**
-- `Stop` — `stop-gate.sh` — prevents premature completion when unchecked work remains (state.json → plan checkbox parsing). Respects `stop_hook_active` and context pressure. LazyCodex source: [start-work-continuation/src/codex-hook.ts](../reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts)
-- `SubagentStop` — `subagent-stop.sh` — verifies implementer evidence (`EVIDENCE_RECORDED: <path>` validation: inside root, exists, non-empty, not symlink). Max 3 retries. LazyCodex source: [lazycodex-executor-verify/src/codex-hook.ts](../reference/lazycodex/plugins/omo/components/lazycodex-executor-verify/src/codex-hook.ts)
+- `Stop` — `stop-gate.sh` — prevents premature completion when unchecked work remains (state.json → plan checkbox parsing). Respects `stop_hook_active` and context pressure. LazyCodex source: [start-work-continuation/src/codex-hook.ts](../dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts)
+- `SubagentStop` — `subagent-stop.sh` — verifies implementer evidence (`EVIDENCE_RECORDED: <path>` validation: inside root, exists, non-empty, not symlink). Max 3 retries. LazyCodex source: [lazycodex-executor-verify/src/codex-hook.ts](../dev/reference/lazycodex/plugins/omo/components/lazycodex-executor-verify/src/codex-hook.ts)
 - `PreToolUse` — `pre-tool-use.sh` — blocks secret access, destructive deletes, force pushes, unauthorized publishes. Returns `permissionDecision: deny`. Complements `.workbuddy/settings.json`.
 
 **Advisory hooks (9):**
@@ -235,7 +235,7 @@ State ledger infrastructure created:
 
 **End-to-end test verified:** create → add plan/tasks → next-task → update-task → checkpoint → stop-gate blocks → finalize refuses → classify-failure → events.jsonl populated (3 events)
 
-_This ledger is authoritative. Every parity claim must be verified against `reference/lazycodex/` before updating. Updated by the Librarian (v0.9+) and manually until then._
+_This ledger is authoritative. Every parity claim must be verified against `dev/reference/lazycodex/` before updating. Updated by the Librarian (v0.9+) and manually until then._
 
 ## v0.8 Update — MCP Servers & Dashboard (2026-07-09)
 
@@ -244,7 +244,7 @@ _This ledger is authoritative. Every parity claim must be verified against `refe
 - **run-ledger** (9 tools): wraps v0.7 state scripts — create_run, list_runs, latest_run, read_state, summarize_run, append_event, update_task, create_checkpoint, recover_run
 - **parity** (5 tools): reads parity-ledger.md + known-gaps.md — read_canonical_method_map, list_methods, compare_method_status, update_parity_ledger, generate_gap_report
 - **verification** (6 tools): wraps v0.7 loop scripts + verification-matrix.md — discover_checks, run_check, record_gate_result, list_gate_results, create_repair_task, summarize_verification
-- **source-map** (5 tools): reads reference/lazycodex/ + .lazyworkbuddy/context/ — index_repo, search_method_evidence, read_evidence_excerpt, list_source_paths, compute_file_hash
+- **source-map** (5 tools): reads dev/reference/lazycodex/ + .lazyworkbuddy/context/ — index_repo, search_method_evidence, read_evidence_excerpt, list_source_paths, compute_file_hash
 - **status-dashboard** (5 tools): aggregates from all other servers — show_run_status, show_task_graph, show_verification_matrix, show_parity_coverage, show_pending_approvals
 
 **Additional v0.8 deliverables:**

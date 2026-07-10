@@ -100,7 +100,7 @@ Evidence discipline is mandatory: for every success criterion, name the exact sc
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-executor.toml`
+- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-executor.toml`
 - Key translated behaviors:
   - LazyCodex `edit`, `write`, `apply_patch` → WorkBuddy `Write` and `Edit` tools.
   - LazyCodex `read` → WorkBuddy `Read`.

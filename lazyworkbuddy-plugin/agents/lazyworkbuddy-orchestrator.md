@@ -118,7 +118,7 @@ The orchestrator then routes every DoneClaim to an independent verifier before m
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` (Sisyphus orchestrator role)
+- Source: `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` (Sisyphus orchestrator role)
 - Key translated behaviors:
   - LazyCodex `multi_agent_v1.spawn_agent` → WorkBuddy `Agent` tool
   - LazyCodex `fork_context: false` → WorkBuddy `isolation: true` on subagent definitions

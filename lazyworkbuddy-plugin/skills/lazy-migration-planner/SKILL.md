@@ -26,7 +26,7 @@ A host-adapter plan answers one question: "What must change for these skills to 
 ## Required Context
 
 - **Canonical source skills:** The full skill set under `${CODEBUDDY_PLUGIN_ROOT}/skills/` or the specified source directory
-- **Reference skills:** The LazyCodex originals under `reference/lazycodex/plugins/omo/skills/` (if adapting from LazyCodex)
+- **Reference skills:** The LazyCodex originals under `dev/reference/lazycodex/plugins/omo/skills/` (if adapting from LazyCodex)
 - **Target platform spec:** The target harness's tool catalog, agent model, directory conventions, and capability boundaries
 - **Existing adapter docs:** Any prior adapter plans under `.lazyworkbuddy/adapters/`
 - **Parity ledger:** `.lazyworkbuddy/parity-ledger.jsonl` for prior migration decisions
@@ -213,7 +213,7 @@ Migration planner complete.
 The migration lifecycle is a sequence of nine ordered steps, each producing concrete artifacts. A migration is "done" when Step 9's parity report says so. Skip no step.
 
 ### Step 1: Canonical Repo Inspection
-Clone or read the source repository. For LazyCodex, use `reference/lazycodex/`. Identify every method: skills (SKILL.md files), agents (TOML/MD definitions), hooks (JSON/TOML configs), MCP servers (`.mcp.json`), and components. Produce a flat file index. **Never guess from memory** — every claim must trace to a file path and line.
+Clone or read the source repository. For LazyCodex, use `dev/reference/lazycodex/`. Identify every method: skills (SKILL.md files), agents (TOML/MD definitions), hooks (JSON/TOML configs), MCP servers (`.mcp.json`), and components. Produce a flat file index. **Never guess from memory** — every claim must trace to a file path and line.
 
 ### Step 2: Method Extraction
 Extract exact method names and source paths. For each skill: name + trigger conditions from YAML frontmatter. For each agent: name + model + tool restriction list from TOML/YAML. For each hook: event type + script path from JSON/TOML config. For each MCP server: name + transport + exposed tools. The output is a **structured inventory** — one row per method, no ambiguity.

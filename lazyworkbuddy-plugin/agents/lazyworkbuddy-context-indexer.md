@@ -73,7 +73,7 @@ Return three file paths with sizes and entry counts.
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` (Phase 1 discovery agents)
+- Source: `dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` (Phase 1 discovery agents)
 - Key translations:
   - LazyCodex explore background agents → single-agent Bash/Grep/Glob discovery
   - LazyCodex scoring matrix and directory decision rules preserved exactly

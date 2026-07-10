@@ -101,7 +101,7 @@ Before reporting, verify:
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/components/ultrawork/agents/explorer.toml`
+- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/explorer.toml`
 - Key translated behaviors:
   - LazyCodex `lsp_goto_definition`, `lsp_find_references`, `lsp_symbols`, `lsp_diagnostics` → WorkBuddy does not have native LSP tools; compensate with Grep for symbol/usage searches and Read for definition inspection.
   - LazyCodex `ast-grep` skill → WorkBuddy does not have ast-grep natively; compensate with Grep using structural regex patterns.

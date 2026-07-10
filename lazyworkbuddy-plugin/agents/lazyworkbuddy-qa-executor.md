@@ -86,7 +86,7 @@ risks: [list of observed concerns]
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-qa-executor.toml`
+- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-qa-executor.toml`
 - Key translated behaviors:
   - LazyCodex `.omo/evidence/<goal>/` → `.lazyworkbuddy/evidence/<goal>/`
   - LazyCodex `manualQa` matrix format preserved exactly

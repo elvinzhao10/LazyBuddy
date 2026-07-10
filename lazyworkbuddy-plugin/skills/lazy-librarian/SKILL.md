@@ -6,7 +6,7 @@ description: "Update project memory after accepted changes: workbuddy.md, comman
 
 # librarian
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) (update mode concept — modify existing + create new where warranted) and the librarian agent role from [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) (knowledge-management agent).
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) (update mode concept — modify existing + create new where warranted) and the librarian agent role from [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) (knowledge-management agent).
 
 ## Purpose
 
@@ -129,7 +129,7 @@ Before touching the method map, verify the trigger:
 
 If none of these hold, record `"canonical_map_unchanged": true` in the parity ledger and move on.
 
-**v0.9 hardening:** The canonical method map is regenerated ONLY when `reference/lazycodex/` evidence changes AND the diff justifies a structural update. Conventions, usage notes, and WorkBuddy-specific adaptations recorded in `workbuddy.md` or the parity ledger do NOT trigger a method map rewrite. The method map is a mirror of the LazyCodex architecture, not a design document.
+**v0.9 hardening:** The canonical method map is regenerated ONLY when `dev/reference/lazycodex/` evidence changes AND the diff justifies a structural update. Conventions, usage notes, and WorkBuddy-specific adaptations recorded in `workbuddy.md` or the parity ledger do NOT trigger a method map rewrite. The method map is a mirror of the LazyCodex architecture, not a design document.
 
 ### 4. Post-accept update scope (v0.9)
 

@@ -6,7 +6,7 @@ description: "Verified completion loop for open-ended tasks. Creates goals with 
 
 # ulw-loop
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md)
 
 ## Purpose
 

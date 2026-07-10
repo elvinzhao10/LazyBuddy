@@ -16,7 +16,7 @@ Version boundary source: [plan/README.md](../plan/README.md) Version Sequence Ov
 ### Objective
 Establish the `.workbuddy/` foundation: project memory (`workbuddy.md`), project rules, and the command constitution that mirrors LazyCodex's `AGENTS.md` + rule-loading hooks.
 
-**LazyCodex source:** `init-deep` skill ([reference](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)), rules skill, and `session-start-loading-project-rules` hook ([reference](../reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json)).
+**LazyCodex source:** `init-deep` skill ([reference](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)), rules skill, and `session-start-loading-project-rules` hook ([reference](../dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json)).
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -66,7 +66,7 @@ Delete all created files. No existing files are modified — this is a pure crea
 ### Objective
 Create the installable `lazyworkbuddy-plugin/` shell with a valid `.workbuddy-plugin/plugin.json` manifest, empty component directories, and a working install/uninstall story.
 
-**LazyCodex source:** `plugins/omo/.codex-plugin/plugin.json` ([reference](../reference/lazycodex/plugins/omo/.codex-plugin/plugin.json)) — the omo plugin manifest (21 hooks, 5 MCP servers, 25 skills).
+**LazyCodex source:** `plugins/omo/.codex-plugin/plugin.json` ([reference](../dev/reference/lazycodex/plugins/omo/.codex-plugin/plugin.json)) — the omo plugin manifest (21 hooks, 5 MCP servers, 25 skills).
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -117,12 +117,12 @@ Delete the `lazyworkbuddy-plugin/` directory. No other files affected.
 Port the core LazyCodex skills into WorkBuddy-native SKILL.md format: `init-deep`, `ulw-plan`, `start-work`, `ulw-loop`, `ultrawork`, `review-work`.
 
 **LazyCodex source:**
-- `skills/init-deep/SKILL.md` ([reference](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md))
-- `skills/ulw-plan/SKILL.md` ([reference](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md))
-- `skills/start-work/SKILL.md` ([reference](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md))
-- `skills/ulw-loop/SKILL.md` ([reference](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md))
-- `skills/ultrawork/SKILL.md` ([reference](../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md))
-- `skills/review-work/SKILL.md` ([reference](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md))
+- `skills/init-deep/SKILL.md` ([reference](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md))
+- `skills/ulw-plan/SKILL.md` ([reference](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md))
+- `skills/start-work/SKILL.md` ([reference](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md))
+- `skills/ulw-loop/SKILL.md` ([reference](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md))
+- `skills/ultrawork/SKILL.md` ([reference](../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md))
+- `skills/review-work/SKILL.md` ([reference](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md))
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -183,7 +183,7 @@ Delete created skill and command files from `lazyworkbuddy-plugin/`.
 ### Objective
 Create WorkBuddy agent definitions for the 9 LazyCodex agent roles: planner, implementer, verifier, reviewer, librarian, explorer, QA executor, gate reviewer, orchestrator.
 
-**LazyCodex source:** Agent roles installed to `~/.codex/agents/`: `explorer`, `librarian`, `plan`, `momus`, `metis`, `lazycodex-code-reviewer`, `lazycodex-qa-executor`, `lazycodex-gate-reviewer` — traced via `start-work` skill Codex mapping table ([reference](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 17-19) and `review-work` skill ([reference](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) line 20).
+**LazyCodex source:** Agent roles installed to `~/.codex/agents/`: `explorer`, `librarian`, `plan`, `momus`, `metis`, `lazycodex-code-reviewer`, `lazycodex-qa-executor`, `lazycodex-gate-reviewer` — traced via `start-work` skill Codex mapping table ([reference](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 17-19) and `review-work` skill ([reference](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) line 20).
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -241,9 +241,9 @@ Delete created agent files.
 Implement the 12 lifecycle hooks that enforce deterministic behavior: continuation, evidence verification, rule loading, budget enforcement, and cache management.
 
 **LazyCodex source:** 21 hooks in `plugins/omo/hooks/` — subset mapped to WorkBuddy's 26 event types. Key hooks:
-- `stop-checking-start-work-continuation.json` ([reference](../reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json))
-- `subagent-stop-verifying-lazycodex-executor-evidence.json` ([reference](../reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json))
-- `session-start-loading-project-rules.json` ([reference](../reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json))
+- `stop-checking-start-work-continuation.json` ([reference](../dev/reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json))
+- `subagent-stop-verifying-lazycodex-executor-evidence.json` ([reference](../dev/reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json))
+- `session-start-loading-project-rules.json` ([reference](../dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json))
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -309,9 +309,9 @@ Delete hooks.json and all hook scripts. Behavior falls back to no hooks.
 Implement the `.lazyworkbuddy/runs/<run_id>/` schema: state.json, events.jsonl, checkpoints, and the loop protocol that enables resumable autonomous runs.
 
 **LazyCodex source:**
-- `.omo/boulder.json` schema: `start-work` Skill Phase 2 ([reference](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 72-90)
-- `.omo/start-work/ledger.jsonl`: Phase 4 ([reference](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 128-130)
-- Sisyphus completion contract: DoneClaim/AdversarialVerify/FullyDone ([reference](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 132-161)
+- `.omo/boulder.json` schema: `start-work` Skill Phase 2 ([reference](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 72-90)
+- `.omo/start-work/ledger.jsonl`: Phase 4 ([reference](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 128-130)
+- Sisyphus completion contract: DoneClaim/AdversarialVerify/FullyDone ([reference](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 132-161)
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -369,7 +369,7 @@ Since state files are under `.lazyworkbuddy/` (not committed), errors do not aff
 ### Objective
 Create MCP servers for run ledger access, verification tools, and an optional dashboard. Port LazyCodex's 5 MCP servers to equivalents.
 
-**LazyCodex source:** `plugins/omo/.mcp.json` ([reference](../reference/lazycodex/plugins/omo/.mcp.json)) — 5 servers: `grep_app`, `context7`, `codegraph`, `git_bash`, `lsp`.
+**LazyCodex source:** `plugins/omo/.mcp.json` ([reference](../dev/reference/lazycodex/plugins/omo/.mcp.json)) — 5 servers: `grep_app`, `context7`, `codegraph`, `git_bash`, `lsp`.
 
 ### Files to Create/Modify
 | Action | File | Purpose |
@@ -426,8 +426,8 @@ Delete `.mcp.json` and MCP server files. Skills fall back to direct file access.
 Harden the verification, review, and memory maintenance workflows: verifier false-positive rate reduction, reviewer consistency, and librarian automated memory updates.
 
 **LazyCodex source:**
-- Verifier: Sisyphus completion contract in `start-work` Skill ([reference](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 132-161)
-- Reviewer: `review-work` Skill 5-agent review ([reference](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md))
+- Verifier: Sisyphus completion contract in `start-work` Skill ([reference](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 132-161)
+- Reviewer: `review-work` Skill 5-agent review ([reference](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md))
 - Librarian: Implied in `init-deep` update mode and parity ledger maintenance
 
 ### Files to Create/Modify
@@ -588,7 +588,7 @@ Dogfood results are under `.lazyworkbuddy/` and `docs/` — no product code affe
 ### Objective
 Produce the final release package: complete plugin, project memory, parity report, and known gaps documentation. This is the "LazyCodex reborn inside WorkBuddy" deliverable.
 
-**LazyCodex source:** The entire `reference/lazycodex/` repo — compare our recreation against it exhaustively.
+**LazyCodex source:** The entire `dev/reference/lazycodex/` repo — compare our recreation against it exhaustively.
 
 ### Files to Create/Modify
 | Action | File | Purpose |

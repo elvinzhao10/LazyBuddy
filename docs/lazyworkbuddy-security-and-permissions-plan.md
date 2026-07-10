@@ -26,7 +26,7 @@ Lazyworkbuddy operates within WorkBuddy's permission model. This document define
 | **Gate Reviewer** | ✓ | ✗ | ✓ (read-only) | ✗ | ✗ | ✗ |
 | **Librarian** | ✓ | ✓ (only `.workbuddy/`, `docs/`) | ✗ | ✗ | ✗ | ✗ |
 
-**LazyCodex source:** Agent roles in [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Codex Harness Tool Compatibility table and role descriptions.
+**LazyCodex source:** Agent roles in [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Codex Harness Tool Compatibility table and role descriptions.
 
 ### Enforcement Mechanism
 
@@ -46,7 +46,7 @@ memory: false
 isolation: true  # isolated context, no parent history
 ```
 
-**Agent isolation:** `isolation: true` ensures the agent does not receive parent conversation history, matching LazyCodex's `fork_context: false` pattern (traced to [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) line 20: "Use `fork_context: false` to start the child with only the initial prompt").
+**Agent isolation:** `isolation: true` ensures the agent does not receive parent conversation history, matching LazyCodex's `fork_context: false` pattern (traced to [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) line 20: "Use `fork_context: false` to start the child with only the initial prompt").
 
 ### Destructive Action Gate
 
@@ -55,7 +55,7 @@ Any action that modifies files outside the workspace, deletes files, or makes ex
 2. **Hook interception:** `PreToolUse` hook can block destructive actions for non-orchestrator agents
 3. **User confirmation:** For external actions (API calls, deployments, PR creation), require explicit user approval
 
-**LazyCodex source:** [ultrawork SKILL.md](../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md) safety boundaries — "Ask one focused question only when the objective is missing, destructive, or has a safety/product ambiguity."
+**LazyCodex source:** [ultrawork SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md) safety boundaries — "Ask one focused question only when the objective is missing, destructive, or has a safety/product ambiguity."
 
 ---
 
@@ -92,7 +92,7 @@ WorkBuddy hooks run with plugin-level permissions. All 12 hooks we use are **rea
 # 6. Return clean exit codes (0 = success, 1 = warning, 2 = error)
 ```
 
-**LazyCodex source:** Hook timeout of 10 seconds in [stop-checking-start-work-continuation.json](../reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json) line 9: `"timeout": 10`.
+**LazyCodex source:** Hook timeout of 10 seconds in [stop-checking-start-work-continuation.json](../dev/reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json) line 9: `"timeout": 10`.
 
 ### Hook Injection Safety
 
@@ -117,7 +117,7 @@ The `UserPromptSubmit` hook scans for keywords and injects Skill directives. To 
 
 ### Redaction in Evidence (events.jsonl)
 
-**LazyCodex source:** [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) line 180: "Evidence hygiene is mandatory: redact or mask secrets and sensitive user data before writing `.omo/start-work/ledger.jsonl`."
+**LazyCodex source:** [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) line 180: "Evidence hygiene is mandatory: redact or mask secrets and sensitive user data before writing `.omo/start-work/ledger.jsonl`."
 
 ```json
 // BEFORE redaction — NEVER write this
@@ -268,4 +268,4 @@ exit 0
 
 ---
 
-_All permission boundaries trace to LazyCodex agent role descriptions and safety rules in `reference/lazycodex/plugins/omo/skills/`. WorkBuddy-native enforcement mechanisms verified against [CodeBuddy docs](https://www.codebuddy.cn/docs/cli/hooks)._
+_All permission boundaries trace to LazyCodex agent role descriptions and safety rules in `dev/reference/lazycodex/plugins/omo/skills/`. WorkBuddy-native enforcement mechanisms verified against [CodeBuddy docs](https://www.codebuddy.cn/docs/cli/hooks)._

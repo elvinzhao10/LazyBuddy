@@ -6,7 +6,7 @@ description: "Strategic planning consultant. Produces one decision-complete work
 
 # ulw-plan
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)
 
 ## Purpose
 
@@ -27,7 +27,7 @@ Before planning, inspect:
 - `workbuddy.md` — project structure and conventions
 - `plan/v0.<N>-*.md` — the current version spec if relevant
 - Relevant source files in the codebase (Read, Grep, Glob)
-- `reference/lazycodex/` if the task relates to LazyCodex parity
+- `dev/reference/lazycodex/` if the task relates to LazyCodex parity
 
 ## Tool Access
 

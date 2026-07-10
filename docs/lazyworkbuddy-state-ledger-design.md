@@ -7,11 +7,11 @@
 The state ledger is the durable progress system that enables resumable autonomous runs. It mirrors LazyCodex's `.omo/` directory but uses WorkBuddy-native conventions and adds checkpointing for resilience.
 
 **LazyCodex source:**
-- `.omo/boulder.json`: [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 2, lines 72-90
+- `.omo/boulder.json`: [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 2, lines 72-90
 - `.omo/start-work/ledger.jsonl`: Phase 4, lines 128-130
 - Sisyphus completion contract: Phase 4, lines 132-161 (DoneClaim, AdversarialVerify, FullyDone)
-- `.omo/plans/`: [ulw-plan SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) — scaffolded plan files
-- `.omo/ulw-loop/`: [ulw-loop SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) — CLI-managed goal state
+- `.omo/plans/`: [ulw-plan SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) — scaffolded plan files
+- `.omo/ulw-loop/`: [ulw-loop SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) — CLI-managed goal state
 
 ---
 
@@ -137,7 +137,7 @@ The state ledger is the durable progress system that enables resumable autonomou
 | (implicit) | `checkpoints` | Added: checkpoint tracking |
 | (implicit) | `checkboxes[]` | Added: per-checkbox state with DoneClaim + AdversarialVerify |
 
-**LazyCodex source:** Boulder state schema in [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 75-89.
+**LazyCodex source:** Boulder state schema in [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 75-89.
 
 ### State Transitions
 
@@ -208,7 +208,7 @@ Each line is a JSON object. Events are **append-only** — never modify existing
 | `run_failed` | Run cannot continue | failure_reason |
 | `run_aborted` | User aborted the run | aborted_by |
 
-**LazyCodex source:** Ledger events described in [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (lines 128-130) and Sisyphus completion contract (lines 132-161).
+**LazyCodex source:** Ledger events described in [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (lines 128-130) and Sisyphus completion contract (lines 132-161).
 
 ### DoneClaim Format
 
@@ -283,7 +283,7 @@ Each line is a JSON object. Events are **append-only** — never modify existing
 }
 ```
 
-**LazyCodex source:** Sisyphus completion contract in [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 132-161.
+**LazyCodex source:** Sisyphus completion contract in [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) lines 132-161.
 
 ---
 
@@ -362,7 +362,7 @@ LOOP:
   11. GOTO 1
 ```
 
-**LazyCodex source:** Iteration caps of 500 (ultrawork mode) / 100 (normal mode) are documented in the [README.md](../reference/lazycodex/README.md) Commands table for `$ulw-loop`: "Caps at 500 iterations in ultrawork mode, 100 in normal mode." Note: this is an *iteration* cap on the verification loop, distinct from ultrawork's *goal budget* rule ([ultrawork SKILL.md](../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md): "Goals are unlimited; never invent a numeric budget or limit") — the two are different concepts and must not be conflated.
+**LazyCodex source:** Iteration caps of 500 (ultrawork mode) / 100 (normal mode) are documented in the [README.md](../dev/reference/lazycodex/README.md) Commands table for `$ulw-loop`: "Caps at 500 iterations in ultrawork mode, 100 in normal mode." Note: this is an *iteration* cap on the verification loop, distinct from ultrawork's *goal budget* rule ([ultrawork SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md): "Goals are unlimited; never invent a numeric budget or limit") — the two are different concepts and must not be conflated.
 
 ### Normal Mode (100 iteration cap)
 
@@ -406,7 +406,7 @@ Brief summary of what this plan builds and why.
 - [ ] All tests pass
 ```
 
-**LazyCodex source:** Plan template in [ulw-plan SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) — script-scaffolded with TL;DR block and `## Todos` region.
+**LazyCodex source:** Plan template in [ulw-plan SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) — script-scaffolded with TL;DR block and `## Todos` region.
 
 ---
 
@@ -441,4 +441,4 @@ Brief summary of what this plan builds and why.
 
 ---
 
-_State ledger design traces to LazyCodex `.omo/` conventions in `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` and `ulw-loop/SKILL.md`. Schema extensions (checkpoints, explicit progress, iteration tracking) are Lazyworkbuddy additions that enhance LazyCodex's design._
+_State ledger design traces to LazyCodex `.omo/` conventions in `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` and `ulw-loop/SKILL.md`. Schema extensions (checkpoints, explicit progress, iteration tracking) are Lazyworkbuddy additions that enhance LazyCodex's design._

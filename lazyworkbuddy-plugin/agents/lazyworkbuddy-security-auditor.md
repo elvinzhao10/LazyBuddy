@@ -84,7 +84,7 @@ Orchestrator invokes as review-work lane 4: TASK, DIFF, CHANGED_FILES, CONTEXT, 
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/skills/review-work/SKILL.md` (Agent 4: Security Auditor)
+- Source: `dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md` (Agent 4: Security Auditor)
 - Key translations:
   - LazyCodex `task(subagent_type="oracle", ...)` → standalone agent with `model: reasoning`
   - 10-item security checklist and severity levels (CRITICAL/HIGH/MEDIUM/LOW) preserved exactly

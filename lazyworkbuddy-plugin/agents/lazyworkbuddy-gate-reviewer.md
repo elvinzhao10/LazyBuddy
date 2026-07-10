@@ -70,7 +70,7 @@ Orchestrator delivers: TASK, EVIDENCE_DIR, PLAN, LEDGER, DIFF, CHANGED_FILES. Re
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-gate-reviewer.toml`
+- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-gate-reviewer.toml`
 - Key translations:
   - `.omo/evidence/<goal>-gate-review.md` → `.lazyworkbuddy/evidence/<goal>-gate-review.md`
   - APPROVE/REJECT binary verdict preserved exactly

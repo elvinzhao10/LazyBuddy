@@ -6,7 +6,7 @@ description: "Execute a work plan with orchestrated subagent delegation and veri
 
 # start-work
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)
 
 ## Purpose
 

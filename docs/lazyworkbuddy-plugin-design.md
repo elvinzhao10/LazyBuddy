@@ -6,7 +6,7 @@
 
 The Lazyworkbuddy plugin (`lazyworkbuddy-plugin/`) is the installable WorkBuddy plugin that provides the LazyCodex agent harness. It packages Skills, Commands, Agents, Hooks, MCP servers, and verification scripts into a single installable unit.
 
-**LazyCodex source:** [plugins/omo/.codex-plugin/plugin.json](../reference/lazycodex/plugins/omo/.codex-plugin/plugin.json) — the omo plugin manifest (version 4.16.0, 21 hooks, 5 MCP servers, 25 skills).
+**LazyCodex source:** [plugins/omo/.codex-plugin/plugin.json](../dev/reference/lazycodex/plugins/omo/.codex-plugin/plugin.json) — the omo plugin manifest (version 4.16.0, 21 hooks, 5 MCP servers, 25 skills).
 
 ---
 
@@ -215,7 +215,7 @@ lazyworkbuddy-plugin/
 | 5 | `/lazy-review-work` | `/lazy-review-work` | `review-work` |
 | 6 | `/lazy-ultrawork` | `/lazy-ultrawork` | `ultrawork` |
 
-Command invocation syntax follows LazyCodex conventions (traced to [README.md](../reference/lazycodex/README.md) Commands section) but uses WorkBuddy slash command format.
+Command invocation syntax follows LazyCodex conventions (traced to [README.md](../dev/reference/lazycodex/README.md) Commands section) but uses WorkBuddy slash command format.
 
 ### Agents (13)
 
@@ -285,7 +285,7 @@ git clone https://github.com/lazyworkbuddy ~/.workbuddy/plugins/lazyworkbuddy
 ln -s /path/to/lazyworkbuddy-plugin ~/.workbuddy/plugins/lazyworkbuddy
 ```
 
-**LazyCodex source:** [README.md](../reference/lazycodex/README.md) Install section — "npx lazycodex-ai install" and Codex marketplace path.
+**LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Install section — "npx lazycodex-ai install" and Codex marketplace path.
 
 ### Post-Install
 
@@ -311,7 +311,7 @@ On first session after install:
 # - Run state: .lazyworkbuddy/ writable ✓
 ```
 
-**LazyCodex source:** [README.md](../reference/lazycodex/README.md) "Verify it worked" section — `npx lazycodex-ai doctor`.
+**LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) "Verify it worked" section — `npx lazycodex-ai doctor`.
 
 ### Uninstall
 
@@ -324,7 +324,7 @@ rm -rf .workbuddy/rules/lazyworkbuddy.md
 rm -rf .lazyworkbuddy/
 ```
 
-**LazyCodex source:** [README.md](../reference/lazycodex/README.md) Uninstall section — "npx lazycodex-ai uninstall".
+**LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Uninstall section — "npx lazycodex-ai uninstall".
 
 ### Upgrade
 
@@ -338,7 +338,7 @@ cd ~/.workbuddy/plugins/lazyworkbuddy && git pull
 # - Hooks marked as Modified → re-approve
 ```
 
-**LazyCodex source:** [README.md](../reference/lazycodex/README.md) Marketplace upgrade — "codex plugin marketplace upgrade sisyphuslabs".
+**LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Marketplace upgrade — "codex plugin marketplace upgrade sisyphuslabs".
 
 ---
 
@@ -348,7 +348,7 @@ cd ~/.workbuddy/plugins/lazyworkbuddy && git pull
 
 LazyCodex is a single `omo` plugin that packages everything. We follow the same pattern: one `lazyworkbuddy` plugin with all components. This keeps install simple and ensures components are versioned together.
 
-**LazyCodex source:** [plugin.json](../reference/lazycodex/plugins/omo/.codex-plugin/plugin.json) — single plugin with skills, hooks, mcpServers.
+**LazyCodex source:** [plugin.json](../dev/reference/lazycodex/plugins/omo/.codex-plugin/plugin.json) — single plugin with skills, hooks, mcpServers.
 
 ### Why Skills + Commands (not just Commands)?
 

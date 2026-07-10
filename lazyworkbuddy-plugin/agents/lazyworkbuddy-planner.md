@@ -189,8 +189,8 @@ After approval and plan file written:
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/components/ultrawork/skills/ulw-plan/SKILL.md` (Prometheus planner)
-- Source agent: `reference/lazycodex/plugins/omo/components/ultrawork/agents/plan.toml`
+- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/skills/ulw-plan/SKILL.md` (Prometheus planner)
+- Source agent: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/plan.toml`
 - Key translated behaviors:
   - LazyCodex `call_omo_agent(subagent_type="explorer")` → WorkBuddy `Agent(subagent_type="lazyworkbuddy-explorer")`
   - LazyCodex `call_omo_agent(subagent_type="librarian")` → WorkBuddy `Agent(subagent_type="lazyworkbuddy-librarian")`

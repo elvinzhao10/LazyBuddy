@@ -158,8 +158,8 @@ The verifier is the **final authority** on whether a task is truly complete:
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-gate-reviewer.toml` (Oracle concept)
-- Source flow: `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` Phase 4 (Sisyphus completion contract: DoneClaim → AdversarialVerify → FullyDone)
+- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-gate-reviewer.toml` (Oracle concept)
+- Source flow: `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` Phase 4 (Sisyphus completion contract: DoneClaim → AdversarialVerify → FullyDone)
 - Key translated behaviors:
   - LazyCodex `gate-reviewer` agent → WorkBuddy `lazyworkbuddy-verifier`
   - LazyCodex's "assume work has already failed" skepticism → preserved as the verifier's core stance.

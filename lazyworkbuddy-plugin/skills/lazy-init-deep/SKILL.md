@@ -6,7 +6,7 @@ description: "Generate hierarchical project memory for the current workspace. In
 
 # init-deep
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)
 
 ## Purpose
 

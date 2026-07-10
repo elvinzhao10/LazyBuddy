@@ -6,7 +6,7 @@ description: "Strict coding discipline for .py/.rs/.ts/.go files. Type system as
 
 # programming
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/programming/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/programming/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/programming/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/programming/SKILL.md)
 
 ## Purpose
 

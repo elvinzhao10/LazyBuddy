@@ -6,10 +6,10 @@
 ```markdown
 ## What I inspected
 
-*File paths read, in this repo, in docs/, and in reference/lazycodex/*
+*File paths read, in this repo, in docs/, and in dev/reference/lazycodex/*
 
 - `plan/v0.N-<description>.md` — the spec for this version
-- `reference/lazycodex/<path>` — LazyCodex source for method parity
+- `dev/reference/lazycodex/<path>` — LazyCodex source for method parity
 - `docs/lazyworkbuddy-architecture-plan.md` — the approved architecture
 - `docs/lazyworkbuddy-versioned-execution-plan.md` — per-version quality gates
 - `<any other files read>`

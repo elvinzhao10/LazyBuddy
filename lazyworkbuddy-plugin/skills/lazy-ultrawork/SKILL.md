@@ -6,7 +6,7 @@ description: "Binding high-precision mode. Tier triage (LIGHT/HEAVY), PIN-RED-GR
 
 # ultrawork
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)
 
 <ultrawork-mode>
 

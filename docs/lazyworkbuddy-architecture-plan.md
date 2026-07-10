@@ -1,7 +1,7 @@
 # Lazyworkbuddy Architecture Plan
 
 > v0.1 — Full WorkBuddy-native architecture design
-> Traces every claim to [reference/lazycodex/](../reference/lazycodex/)
+> Traces every claim to [dev/reference/lazycodex/](../dev/reference/lazycodex/)
 
 ## Table of Contents
 
@@ -23,9 +23,9 @@ Lazyworkbuddy is a three-layer system that recreates the LazyCodex/OmO agent har
 | **Run State** | `.lazyworkbuddy/` | Durable per-run progress, checkpoints, evidence | Per-run; ephemeral after completion |
 
 This mirrors LazyCodex's architecture:
-- The `omo` plugin (= Plugin layer) provides installable Skills, Hooks, MCP servers — traced to `reference/lazycodex/plugins/omo/.codex-plugin/plugin.json`
-- `AGENTS.md` + `.codex/` config (= Project Memory layer) provides repo-local context — traced to `reference/lazycodex/README.md` (Section "Use the built-in workflows")
-- `.omo/` directory (= Run State layer) provides durable progress — traced to `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` (Phase 2: Boulder state)
+- The `omo` plugin (= Plugin layer) provides installable Skills, Hooks, MCP servers — traced to `dev/reference/lazycodex/plugins/omo/.codex-plugin/plugin.json`
+- `AGENTS.md` + `.codex/` config (= Project Memory layer) provides repo-local context — traced to `dev/reference/lazycodex/README.md` (Section "Use the built-in workflows")
+- `.omo/` directory (= Run State layer) provides durable progress — traced to `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` (Phase 2: Boulder state)
 
 ## Layer Model
 
@@ -67,14 +67,14 @@ This mirrors LazyCodex's architecture:
 
 | LazyCodex Source | WorkBuddy Implementation | Rationale |
 |-----------------|-------------------------|-----------|
-| `skills/init-deep/` ([source](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)) | `skills/init-deep/SKILL.md` | WorkBuddy Skill replaces Codex skill; same hierarchical AGENTS.md generation logic |
-| `skills/ulw-plan/` ([source](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)) | `skills/ulw-plan/SKILL.md` | Prometheus planner; WorkBuddy Plan Mode integration |
-| `skills/start-work/` ([source](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)) | `skills/start-work/SKILL.md` | Orchestrator; spawns WorkBuddy subagents instead of Codex `multi_agent_v1` |
-| `skills/ulw-loop/` ([source](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md)) | `skills/ulw-loop/SKILL.md` | Verified completion loop; .lazyworkbuddy/ state instead of .omo/ |
-| `skills/ultrawork/` ([source](../reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)) | `skills/ultrawork/SKILL.md` | Binding ultrawork directive; tier triage (LIGHT/HEAVY) |
-| `skills/review-work/` ([source](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)) | `skills/review-work/SKILL.md` | 5-agent parallel review; WorkBuddy subagent equivalents |
-| `hooks/` (21 hooks) ([source](../reference/lazycodex/plugins/omo/hooks/)) | `hooks/hooks.json` (12 hooks) | WorkBuddy-native hook events; subset mapped to LazyCodex semantics |
-| `.mcp.json` (5 servers) ([source](../reference/lazycodex/plugins/omo/.mcp.json)) | `.mcp.json` (3-5 servers) | Run ledger, verification, optional git/codegraph |
+| `skills/init-deep/` ([source](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)) | `skills/init-deep/SKILL.md` | WorkBuddy Skill replaces Codex skill; same hierarchical AGENTS.md generation logic |
+| `skills/ulw-plan/` ([source](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)) | `skills/ulw-plan/SKILL.md` | Prometheus planner; WorkBuddy Plan Mode integration |
+| `skills/start-work/` ([source](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)) | `skills/start-work/SKILL.md` | Orchestrator; spawns WorkBuddy subagents instead of Codex `multi_agent_v1` |
+| `skills/ulw-loop/` ([source](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md)) | `skills/ulw-loop/SKILL.md` | Verified completion loop; .lazyworkbuddy/ state instead of .omo/ |
+| `skills/ultrawork/` ([source](../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)) | `skills/ultrawork/SKILL.md` | Binding ultrawork directive; tier triage (LIGHT/HEAVY) |
+| `skills/review-work/` ([source](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)) | `skills/review-work/SKILL.md` | 5-agent parallel review; WorkBuddy subagent equivalents |
+| `hooks/` (21 hooks) ([source](../dev/reference/lazycodex/plugins/omo/hooks/)) | `hooks/hooks.json` (12 hooks) | WorkBuddy-native hook events; subset mapped to LazyCodex semantics |
+| `.mcp.json` (5 servers) ([source](../dev/reference/lazycodex/plugins/omo/.mcp.json)) | `.mcp.json` (3-5 servers) | Run ledger, verification, optional git/codegraph |
 
 ### Project Memory Components (from .workbuddy/)
 
@@ -166,7 +166,7 @@ TaskCreated / TaskCompleted
 
 ## LazyCodex → Lazyworkbuddy Method Trace
 
-Every claim traces to a specific file in `reference/lazycodex/`:
+Every claim traces to a specific file in `dev/reference/lazycodex/`:
 
 | LazyCodex Method | Source File | Lazyworkbuddy Implementation |
 |-----------------|-------------|------------------------------|
@@ -217,4 +217,4 @@ Confirmed via [CodeBuddy plugin reference](https://staging-codebuddy.tencent.com
 
 ---
 
-_All LazyCodex behavior claims trace to file paths in `reference/lazycodex/`. WorkBuddy capability claims trace to [CodeBuddy docs](https://www.codebuddy.cn/docs/cli/hooks) and [plugin reference](https://staging-codebuddy.tencent.com/docs/cli/plugins-reference)._
+_All LazyCodex behavior claims trace to file paths in `dev/reference/lazycodex/`. WorkBuddy capability claims trace to [CodeBuddy docs](https://www.codebuddy.cn/docs/cli/hooks) and [plugin reference](https://staging-codebuddy.tencent.com/docs/cli/plugins-reference)._

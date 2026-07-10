@@ -1,5 +1,5 @@
-# External reference repos (re-clone with: git clone https://github.com/code-yeongyu/lazycodex.git reference/lazycodex)
-reference/
+# External reference repos (re-clone with: git clone https://github.com/code-yeongyu/lazycodex.git dev/reference/lazycodex)
+dev/
 
 # WorkBuddy workspace state (managed by the WorkBuddy app)
 .workbuddy/

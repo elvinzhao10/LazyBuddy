@@ -20,14 +20,14 @@ case "$METHOD" in
   tools/list)
     reply '{"tools":[
       {"name":"index_repo","description":"Index SKILL.md files in a directory","inputSchema":{"type":"object","properties":{"path":{"type":"string"}}}},
-      {"name":"search_method_evidence","description":"Search for evidence in reference/ and docs/","inputSchema":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}},
+      {"name":"search_method_evidence","description":"Search for evidence in dev/reference/ and docs/","inputSchema":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}},
       {"name":"read_evidence_excerpt","description":"Read lines from a file","inputSchema":{"type":"object","properties":{"file_path":{"type":"string"},"start_line":{"type":"integer"},"line_count":{"type":"integer"}},"required":["file_path"]}},
-      {"name":"list_source_paths","description":"List top-level structure of reference/ and docs/","inputSchema":{"type":"object","properties":{}}},
+      {"name":"list_source_paths","description":"List top-level structure of dev/reference/ and docs/","inputSchema":{"type":"object","properties":{}}},
       {"name":"compute_file_hash","description":"Compute md5 hash and size of a file","inputSchema":{"type":"object","properties":{"file_path":{"type":"string"}},"required":["file_path"]}}
     ]}'
     ;;
   index_repo)
-    P=$(param_raw "path"); P="${P:-reference/lazycodex/plugins/omo/skills/}"
+    P=$(param_raw "path"); P="${P:-dev/reference/lazycodex/plugins/omo/skills/}"
     RESULT=$(find "$CWD/$P" -name "SKILL.md" -type f 2>/dev/null | sort | python3 <<'PYEOF'
 import json,os,sys; cwd=os.environ['CWD']; r=[]
 for f in (l.strip() for l in sys.stdin if l.strip()):
@@ -42,7 +42,7 @@ PYEOF
     RESULT=$(python3 - "$Q" <<'PYEOF'
 import json,subprocess,os,sys
 cwd=os.environ['CWD']; q=sys.argv[1]; r=[]
-for d in ['reference/lazycodex','docs']:
+for d in ['dev/reference/lazycodex','docs']:
     dp=os.path.join(cwd,d)
     if not os.path.isdir(dp): continue
     try:
@@ -73,7 +73,7 @@ def tree(d):
     p=os.path.join(cwd,d)
     if not os.path.isdir(p): return []
     return [{'name':n,'type':'dir' if os.path.isdir(os.path.join(p,n)) else 'file'} for n in sorted(os.listdir(p))]
-r={'reference':{'lazycodex':{'plugins':{'omo':tree('reference/lazycodex/plugins/omo')}}},'docs':tree('docs')}
+r={'reference':{'lazycodex':{'plugins':{'omo':tree('dev/reference/lazycodex/plugins/omo')}}},'docs':tree('docs')}
 print(json.dumps(r))
 PYEOF
 )

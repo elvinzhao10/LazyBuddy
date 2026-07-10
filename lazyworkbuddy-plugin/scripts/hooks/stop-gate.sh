@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # stop-gate.sh — Stop hook: prevent premature completion when active run has unchecked work.
-# LazyCodex source: reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts
-# Traces to: reference/lazycodex/plugins/omo/components/start-work-continuation/src/boulder-reader.ts
+# LazyCodex source: dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts
+# Traces to: dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/boulder-reader.ts
 set -euo pipefail
 
 # Read JSON payload from stdin

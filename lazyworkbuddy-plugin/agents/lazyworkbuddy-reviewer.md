@@ -213,9 +213,9 @@ For significant work, the reviewer invokes the `review-work` skill which spawns 
 
 ## LazyCodex mapping
 
-- Source (Momus): `reference/lazycodex/plugins/omo/components/ultrawork/agents/momus.toml`
-- Source (Metis): `reference/lazycodex/plugins/omo/components/ultrawork/agents/metis.toml`
-- Source (code review): `reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-code-reviewer.toml`
+- Source (Momus): `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/momus.toml`
+- Source (Metis): `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/metis.toml`
+- Source (code review): `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-code-reviewer.toml`
 - Key translated behaviors:
   - LazyCodex three separate agents (momus, metis, lazycodex-code-reviewer) → WorkBuddy single multi-mode reviewer agent.
   - LazyCodex `momus` OKAY/ITERATE/REJECT framework → preserved exactly.

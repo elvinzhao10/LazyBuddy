@@ -48,7 +48,7 @@ the same 9 steps apply.
 - **Clean-room adaptation:** Never copy protected material verbatim. Re-implement semantics from
   public behavior descriptions.
 - **Trace every claim to a source file.** Every "LazyCodex does X" cites a specific path in
-  `reference/lazycodex/`.
+  `dev/reference/lazycodex/`.
 - **Document deviations honestly.** If a method can't be adapted, say so and explain why in the
   gaps register (`docs/lazyworkbuddy-known-gaps.md`).
 - **Source inspection only.** No code is copied; all re-implementations are original work

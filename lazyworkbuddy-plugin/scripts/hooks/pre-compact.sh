@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pre-compact.sh — PreCompact hook: save checkpoint + mark state as compacted.
-# LazyCodex source: reference/lazycodex/plugins/omo/hooks/pre-compact.json
+# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/pre-compact.json
 # Best-effort — never blocks compaction. Always exits 0.
 #
 # P5-2 hardening: besides saving a checkpoint, this appends a context_compacted

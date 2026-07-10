@@ -45,7 +45,7 @@ Key gaps: no subagent isolation, no lifecycle hooks, no MCP tool abstraction, no
 
 ## Example B: Single Skill — remove-ai-slops
 
-Source: `reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md`
+Source: `dev/reference/lazycodex/plugins/omo/skills/remove-ai-slops/SKILL.md`
 
 ### Method Extraction (10 categories + 6 phases)
 

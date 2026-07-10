@@ -74,7 +74,7 @@ The Context Miner is a leaf agent in the 5-agent review. Its report is consumed 
 
 ## LazyCodex mapping
 
-- Source: `reference/lazycodex/plugins/omo/skills/review-work/SKILL.md` — Lane 5 (Context Miner)
+- Source: `dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md` — Lane 5 (Context Miner)
 - Key translated behaviors:
   - LazyCodex context-mining lane → WorkBuddy `lazyworkbuddy-context-miner` agent
   - Git history mining, docs mining, and cross-reference mining preserved as the three core mining strategies

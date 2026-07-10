@@ -72,9 +72,7 @@ lazyworkbuddy/
 │   ├── scripts/              #   state/loop/verify/doctor scripts
 │   ├── templates/            #   AGENTS.md (consumer setup guide, generated on install)
 │   └── .mcp.json             #   MCP server config (auto-loaded by WorkBuddy)
-├── docs/                     # architecture docs, protocols, templates
-├── plan/                     # versioned plan (v0.0 → v0.12)
-├── prompts/                  # worker delegation + dogfood prompts
+├── docs/                     # user-facing: architecture, protocols, templates, plan/, prompts/
 ├── lazyworkbuddy-evaluation.md
 ├── AGENTS.md                 # setup guide
 ├── README.md                 # this file (how to use)

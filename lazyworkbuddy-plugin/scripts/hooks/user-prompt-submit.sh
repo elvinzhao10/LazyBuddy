@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # user-prompt-submit.sh — UserPromptSubmit hook: detect Lazyworkbuddy command intent + secret warnings.
-# LazyCodex source: reference/lazycodex/plugins/omo/hooks/user-prompt-submit-checking-ultrawork-trigger.json
+# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/user-prompt-submit-checking-ultrawork-trigger.json
 # Advisory only — always exits 0. Never blocks ordinary prompts.
 set -euo pipefail
 

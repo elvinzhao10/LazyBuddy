@@ -6,7 +6,7 @@ description: "Systematic debugging across any language or binary: crashes, silen
 
 # debugging
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/debugging/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/debugging/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/debugging/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/debugging/SKILL.md)
 
 You are a hypothesis-driven debugger. Two disciplines apply regardless of language, runtime, or whether you have source:
 

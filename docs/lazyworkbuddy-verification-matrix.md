@@ -27,7 +27,7 @@ Principles:
 | Subdirectory AGENTS.md | Check for subdirectory workbuddy.md variants | Files exist where score >15 | Subdirectory files |
 | Hierarchy correct | Verify child does not repeat parent | No duplicate content between root and child | Diff between files |
 
-**LazyCodex source:** [init-deep SKILL.md](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) Phase 1-4.
+**LazyCodex source:** [init-deep SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) Phase 1-4.
 
 ### 2. Planning (`/lazy-ulw-plan`)
 
@@ -40,7 +40,7 @@ Principles:
 | Approval gate works | After plan presented | Status: awaiting-approval; does not execute | Chat transcript |
 | No product code written | Check git status | No product files modified | `git status` output |
 
-**LazyCodex source:** [ulw-plan SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) Intent Routing, Approval Gate.
+**LazyCodex source:** [ulw-plan SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) Intent Routing, Approval Gate.
 
 ### 3. Execution (`/lazy-start-work`)
 
@@ -55,7 +55,7 @@ Principles:
 | Checkbox marked | Read plan file after completion | `- [x]` on completed checkbox | Plan file |
 | ORCHESTRATION COMPLETE | Final output | Prints full completion block | Chat transcript |
 
-**LazyCodex source:** [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 1-5.
+**LazyCodex source:** [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 1-5.
 
 ### 4. Verified Loop (`/lazy-ulw-loop`)
 
@@ -67,7 +67,7 @@ Principles:
 | Resume after compaction | Simulate context loss → resume | Reads state → resumes from last goal | Chat transcript |
 | Completion verified by evidence | Oracle verification | Only marked done when evidence is real | events.jsonl |
 
-**LazyCodex source:** [ulw-loop SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) Non-Negotiables.
+**LazyCodex source:** [ulw-loop SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) Non-Negotiables.
 
 ### 5. Review (`/lazy-review-work`)
 
@@ -82,7 +82,7 @@ Principles:
 | All 5 must PASS | Aggregate verdict | REVIEW PASSED only if all 5 PASS | Final report |
 | INCONCLUSIVE handling | Simulate agent timeout | Lane marked INCONCLUSIVE; review not passed | Final report |
 
-**LazyCodex source:** [review-work SKILL.md](../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) Phases 0-3.
+**LazyCodex source:** [review-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) Phases 0-3.
 
 ---
 
@@ -95,7 +95,7 @@ Principles:
 | Rules loaded | Start new session | `.workbuddy/rules/lazyworkbuddy.md` loaded | Status message: `(Lazyworkbuddy): Loading Project Rules` |
 | Bootstrap checked | First session after install | Bootstrap provisioning runs if needed | Status message |
 
-**LazyCodex source:** [session-start-loading-project-rules.json](../reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json).
+**LazyCodex source:** [session-start-loading-project-rules.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json).
 
 ### Stop / SubagentStop (Continuation)
 
@@ -105,7 +105,7 @@ Principles:
 | Evidence verification | SubagentStop with executor matcher | Verifier checks DoneClaim → AdversarialVerify | Status message: `(Lazyworkbuddy): Verifying Executor Evidence` |
 | Completion stops loop | Stop after all checkboxes done | No re-injection; prints ORCHESTRATION COMPLETE | Chat transcript |
 
-**LazyCodex source:** [stop-checking-start-work-continuation.json](../reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json), [subagent-stop-verifying-lazycodex-executor-evidence.json](../reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json).
+**LazyCodex source:** [stop-checking-start-work-continuation.json](../dev/reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json), [subagent-stop-verifying-lazycodex-executor-evidence.json](../dev/reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json).
 
 ### PreToolUse (Budget Enforcement)
 
@@ -142,7 +142,7 @@ Principles:
 | AdversarialVerify format | Read a verify entry | Has verdict, evidence, repro, confidence | events.jsonl entry |
 | FullyDone transition | DoneClaim + AdversarialVerify confirmed | FullyDone recorded | events.jsonl entry |
 
-**LazyCodex source:** [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 2, 4.
+**LazyCodex source:** [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 2, 4.
 
 ### Checkpoints
 
@@ -208,4 +208,4 @@ Principles:
 
 ---
 
-_All verification steps trace to LazyCodex source files in `reference/lazycodex/`. Expected results are derived from the method semantics documented in each source file._
+_All verification steps trace to LazyCodex source files in `dev/reference/lazycodex/`. Expected results are derived from the method semantics documented in each source file._

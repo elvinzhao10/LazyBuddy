@@ -6,7 +6,7 @@ description: "Evidence verification agent. Discovers available checks, runs them
 
 # verifier
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (Sisyphus completion contract: AdversarialVerify).
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (Sisyphus completion contract: AdversarialVerify).
 
 ## Purpose
 

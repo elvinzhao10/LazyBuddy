@@ -6,7 +6,7 @@ description: "Post-implementation review orchestrator. Launches 5 parallel subag
 
 # review-work
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)
 
 ## Purpose
 

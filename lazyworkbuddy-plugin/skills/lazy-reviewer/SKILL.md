@@ -6,7 +6,7 @@ description: "Post-implementation review agent. Reviews changed files against or
 
 # reviewer
 
-> **LazyCodex source:** [reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) (5-agent review); [reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 5 (Global Review and Debugging Gate).
+> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) (5-agent review); [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 5 (Global Review and Debugging Gate).
 
 ## Purpose
 
