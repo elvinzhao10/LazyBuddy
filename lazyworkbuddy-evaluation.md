@@ -23,7 +23,7 @@ Lazyworkbuddy successfully preserves LazyCodex's **core workflow semantics** —
 ## Strengths
 
 ### 1. Core workflow fully ported
-The essential LazyCodex loop works end-to-end: `/init-deep` → `/ulw-plan` → `/start-work` → `/ulw-loop` → `/review-work`. The v0.11 dogfood run proved this with a real task (fix stale settings.json), real state records, and `finalize-run.sh` returning `RUN COMPLETE`.
+The essential LazyCodex loop works end-to-end: `/lazy-init-deep` → `/lazy-ulw-plan` → `/lazy-start-work` → `/lazy-ulw-loop` → `/lazy-review-work`. The v0.11 dogfood run proved this with a real task (fix stale settings.json), real state records, and `finalize-run.sh` returning `RUN COMPLETE`.
 
 ### 2. Binding enforcement (not advisory)
 Three hooks provide real platform-level enforcement:
