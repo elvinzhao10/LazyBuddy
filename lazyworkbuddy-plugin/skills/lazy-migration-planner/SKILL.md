@@ -1,5 +1,5 @@
 ---
-name: migration-planner
+name: lazy-migration-planner
 description: "Create host-adapter plans for porting LazyCodex semantics to a new platform. Requires canonical repo inspection and semantic mapping."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

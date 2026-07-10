@@ -1,5 +1,5 @@
 ---
-name: librarian
+name: lazy-librarian
 description: "Update project memory after accepted changes: workbuddy.md, command index, parity ledger, known gaps, risk register."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

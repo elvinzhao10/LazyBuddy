@@ -17,7 +17,7 @@ mkdir -p "$CWD/.lazyworkbuddy"/{plans,context,drafts,runs}
 if [ -f "$CWD/workbuddy.md" ]; then
     echo "(Lazyworkbuddy): Project memory found (workbuddy.md)."
 else
-    echo "(Lazyworkbuddy): ⚠ Project memory (workbuddy.md) missing. Run /init-deep to generate it."
+    echo "(Lazyworkbuddy): ⚠ Project memory (workbuddy.md) missing. Run /lazy-init-deep to generate it."
 fi
 
 # Check for project rules
@@ -36,7 +36,7 @@ if [ -d "$RUNS_DIR" ]; then
                 PLAN=$(python3 -c "import json; d=json.load(open('$state_file')); print(d.get('plan_name',''))" 2>/dev/null || echo "unknown")
                 PROGRESS=$(python3 -c "import json; d=json.load(open('$state_file')); p=d.get('progress',{}); print(f\"{p.get('completed_checkboxes',p.get('completed',0))}/{p.get('total_checkboxes',p.get('total',0))}\")" 2>/dev/null || echo "?/?")
                 echo "(Lazyworkbuddy): Active run found: $PLAN (status: $STATUS, progress: $PROGRESS)"
-                echo "(Lazyworkbuddy): Run /start-work to continue."
+                echo "(Lazyworkbuddy): Run /lazy-start-work to continue."
             fi
             break
         fi

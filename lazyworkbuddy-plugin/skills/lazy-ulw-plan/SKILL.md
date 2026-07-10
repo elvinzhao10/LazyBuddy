@@ -1,5 +1,5 @@
 ---
-name: ulw-plan
+name: lazy-ulw-plan
 description: "Strategic planning consultant. Produces one decision-complete work plan from vague or large requests. Explore-first, asks only genuine owner-decisions."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

@@ -1,5 +1,5 @@
 ---
-name: review-work
+name: lazy-review-work
 description: "Post-implementation review orchestrator. Launches 5 parallel subagents (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner) — all must pass."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

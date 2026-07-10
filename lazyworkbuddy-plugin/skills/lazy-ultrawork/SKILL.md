@@ -1,5 +1,5 @@
 ---
-name: ultrawork
+name: lazy-ultrawork
 description: "Binding high-precision mode. Tier triage (LIGHT/HEAVY), PIN-RED-GREEN-SURFACE-CLEAN loop, binding reviewer gate, evidence-grade rigor."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

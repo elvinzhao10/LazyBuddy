@@ -1,5 +1,5 @@
 ---
-name: ulw-loop
+name: lazy-ulw-loop
 description: "Verified completion loop for open-ended tasks. Creates goals with binding success criteria, decomposes into evidence-bound steps, runs until all criteria have proof."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

@@ -1,5 +1,5 @@
 ---
-name: start-work
+name: lazy-start-work
 description: "Execute a work plan with orchestrated subagent delegation and verified completion evidence. Loads a plan, selects tasks, delegates to implementers, verifies, reviews."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

@@ -1,5 +1,5 @@
 ---
-name: init-deep
+name: lazy-init-deep
 description: "Generate hierarchical project memory for the current workspace. Inspects repo structure, identifies language/runtime/test/build commands, generates .lazyworkbuddy/context/ knowledge base."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

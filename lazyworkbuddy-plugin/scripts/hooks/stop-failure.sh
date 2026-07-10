@@ -10,7 +10,7 @@ if [ -z "$CWD" ]; then CWD="$PWD"; fi
 
 RUNS_DIR="$CWD/.lazyworkbuddy/runs"
 if [ ! -d "$RUNS_DIR" ]; then
-    echo "[Lazyworkbuddy] No active runs found. Run /start-work to begin a new task."
+    echo "[Lazyworkbuddy] No active runs found. Run /lazy-start-work to begin a new task."
     exit 0
 fi
 
@@ -35,14 +35,14 @@ with open('${run_dir}events.jsonl', 'a') as f:
 
             PLAN=$(python3 -c "import json; d=json.load(open('$state_file')); print(d.get('plan_name',''))" 2>/dev/null || echo "")
             if [ -n "$PLAN" ]; then
-                echo "[Lazyworkbuddy] Run /start-work $PLAN to resume from last checkpoint."
+                echo "[Lazyworkbuddy] Run /lazy-start-work $PLAN to resume from last checkpoint."
             else
-                echo "[Lazyworkbuddy] Run /start-work to resume from last checkpoint."
+                echo "[Lazyworkbuddy] Run /lazy-start-work to resume from last checkpoint."
             fi
             exit 0
         fi
     fi
 done
 
-echo "[Lazyworkbuddy] Run /start-work to resume from last checkpoint."
+echo "[Lazyworkbuddy] Run /lazy-start-work to resume from last checkpoint."
 exit 0

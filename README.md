@@ -67,32 +67,32 @@ The easiest way to install: **give this repo to WorkBuddy and let it handle ever
 
 | Command | Purpose | When to use |
 |---------|---------|-------------|
-| `/init-deep` | Generate hierarchical project memory | First time in a new workspace |
-| `/ulw-plan` | Create a decision-complete work plan | Before any multi-file or ambiguous change |
-| `/start-work` | Execute a plan with orchestrated subagents | When a plan is approved and ready to build |
-| `/ulw-loop` | Verified completion loop | For open-ended tasks needing evidence-backed done |
-| `/ultrawork` | Binding high-precision mode | When maximum rigor and evidence are required |
-| `/review-work` | 5-agent parallel review gate | After every significant implementation |
-| `/verifier` | Run verification checks | After implementation, before claiming done |
-| `/reviewer` | Review changed files | After verification, before accepting |
-| `/librarian` | Update memory after changes | After accepted changes |
+| `/lazy-init-deep` | Generate hierarchical project memory | First time in a new workspace |
+| `/lazy-ulw-plan` | Create a decision-complete work plan | Before any multi-file or ambiguous change |
+| `/lazy-start-work` | Execute a plan with orchestrated subagents | When a plan is approved and ready to build |
+| `/lazy-ulw-loop` | Verified completion loop | For open-ended tasks needing evidence-backed done |
+| `/lazy-ultrawork` | Binding high-precision mode | When maximum rigor and evidence are required |
+| `/lazy-review-work` | 5-agent parallel review gate | After every significant implementation |
+| `/lazy-verifier` | Run verification checks | After implementation, before claiming done |
+| `/lazy-reviewer` | Review changed files | After verification, before accepting |
+| `/lazy-librarian` | Update memory after changes | After accepted changes |
 
 ### Quick start workflow
 
 ```
-/init-deep                         # generates project memory
-/ulw-plan "implement feature X"   # creates a plan with checkboxes
-/start-work                        # executes plan with subagents + verification
-/review-work                       # 5-agent review gate (all must pass)
+/lazy-init-deep                         # generates project memory
+/lazy-ulw-plan "implement feature X"   # creates a plan with checkboxes
+/lazy-start-work                        # executes plan with subagents + verification
+/lazy-review-work                       # 5-agent review gate (all must pass)
 ```
 
 ### What WorkBuddy gets
 
 | Component | Count | What it does |
 |-----------|-------|--------------|
-| Skills | 14 | init-deep, ulw-plan, start-work, ulw-loop, ultrawork, review-work, verifier, reviewer, librarian, migration-planner, programming, git-master, debugging, remove-ai-slops |
+| Skills | 14 | lazy-init-deep, lazy-ulw-plan, lazy-start-work, lazy-ulw-loop, lazy-ultrawork, lazy-review-work, lazy-verifier, lazy-reviewer, lazy-librarian, lazy-migration-planner, lazy-programming, lazy-git-master, lazy-debugging, lazy-remove-ai-slops |
 | Agents | 13 | orchestrator, planner, explorer, implementer, verifier, reviewer, qa-executor, gate-reviewer, librarian, migration-planner, context-indexer, security-auditor, context-miner |
-| Commands | 15 | Slash commands for each workflow |
+| Commands | 15 | lazy-init-deep, lazy-ulw-plan, lazy-start-work, lazy-ulw-loop, lazy-ultrawork, lazy-review-work, lazy-verifier, lazy-reviewer, lazy-librarian, lazy-migration-planner, lazy-new-run, lazy-status, lazy-resume, lazy-verify, lazy-parity-report |
 | Hooks | 12 | Stop (blocks premature completion), SubagentStop (verifies evidence), PreToolUse (blocks destructive ops), + 9 lifecycle hooks |
 | MCP servers | 8 | run-ledger, parity, verification, source-map, status-dashboard (run management) + context-graph, code-intel, docs (context tooling) |
 | State scripts | 17 | create-run, update-task, checkpoint, recover-run, finalize-run, next-task, run-cycle, etc. |

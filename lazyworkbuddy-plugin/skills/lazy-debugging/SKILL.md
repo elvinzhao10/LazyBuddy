@@ -1,5 +1,5 @@
 ---
-name: debugging
+name: lazy-debugging
 description: "Systematic debugging across any language or binary: crashes, silent failures, wrong responses, stuck processes, memory leaks, async race conditions."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

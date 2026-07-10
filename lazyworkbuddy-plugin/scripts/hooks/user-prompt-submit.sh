@@ -19,7 +19,7 @@ fi
 # --- Long-horizon work detection without command ---
 # Check if user describes multi-step work but didn't use a Lazyworkbuddy command
 KEYWORDS=("implement" "build" "create.*app" "migrate" "refactor" "setup" "deploy" "fix all" "fix multiple")
-COMMANDS=("/ultrawork" "/ulw-loop" "/ulw-plan" "/start-work")
+COMMANDS=("/lazy-ultrawork" "/lazy-ulw-loop" "/lazy-ulw-plan" "/lazy-start-work")
 
 HAS_KEYWORD=0
 for kw in "${KEYWORDS[@]}"; do
@@ -38,7 +38,7 @@ if [ "$HAS_KEYWORD" -eq 1 ]; then
         fi
     done
     if [ "$HAS_CMD" -eq 0 ]; then
-        echo "[Lazyworkbuddy TIP] Long-horizon task detected. Consider starting with /ultrawork for structured planning and execution."
+        echo "[Lazyworkbuddy TIP] Long-horizon task detected. Consider starting with /lazy-ultrawork for structured planning and execution."
     fi
 fi
 

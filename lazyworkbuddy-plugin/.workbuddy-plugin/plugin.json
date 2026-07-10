@@ -45,8 +45,8 @@
     "termsOfServiceURL": "https://github.com/lazyworkbuddy#license",
     "defaultPrompt": [
       "Use Lazyworkbuddy to plan and execute this task.",
-      "Run /ulw-plan to create a decision-complete work plan.",
-      "Run /start-work to execute the plan with verification."
+      "Run /lazy-ulw-plan to create a decision-complete work plan.",
+      "Run /lazy-start-work to execute the plan with verification."
     ],
     "brandColor": "#7C3AED",
     "screenshots": []

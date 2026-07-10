@@ -1,5 +1,5 @@
 ---
-name: programming
+name: lazy-programming
 description: "Strict coding discipline for .py/.rs/.ts/.go files. Type system as proof system, parse-don't-validate, branded primitives, exhaustive match, TDD."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

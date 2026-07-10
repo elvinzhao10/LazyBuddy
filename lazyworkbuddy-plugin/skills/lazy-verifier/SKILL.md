@@ -1,5 +1,5 @@
 ---
-name: verifier
+name: lazy-verifier
 description: "Evidence verification agent. Discovers available checks, runs them with exact commands, summarizes results as pass/fail/warning/skipped/N-A."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

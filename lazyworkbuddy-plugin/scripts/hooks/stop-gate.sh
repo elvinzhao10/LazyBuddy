@@ -124,7 +124,7 @@ import json, sys
 remaining, plan_name, next_task = sys.argv[1], sys.argv[2], sys.argv[3]
 reason = (
     f'Lazyworkbuddy has {remaining} unfinished task(s) in plan \`{plan_name}\`. Next: {next_task}\n\n'
-    f'Run /start-work {plan_name} to continue. Stay in this session — the Stop hook will re-inject the orchestrator on the next turn.'
+    f'Run /lazy-start-work {plan_name} to continue. Stay in this session — the Stop hook will re-inject the orchestrator on the next turn.'
 )
 print(json.dumps({'continue': False, 'reason': reason}))
 " "$REMAINING" "$PLAN_NAME" "$NEXT_TASK"

@@ -259,7 +259,7 @@ else
 fi
 
 # 7. Placeholder commands (8)
-EXPECTED_COMMANDS="init-deep ulw-plan start-work ulw-loop verifier reviewer librarian migration-planner"
+EXPECTED_COMMANDS="lazy-init-deep lazy-ulw-plan lazy-start-work lazy-ulw-loop lazy-verifier lazy-reviewer lazy-librarian lazy-migration-planner"
 for cmd in $EXPECTED_COMMANDS; do
     if [ -f "${PLUGIN_ROOT}/commands/${cmd}.md" ]; then
         check "Command: ${cmd}.md" ok
@@ -269,7 +269,7 @@ for cmd in $EXPECTED_COMMANDS; do
 done
 
 # 8. Placeholder skills (8)
-EXPECTED_SKILLS="init-deep ulw-plan start-work ulw-loop verifier reviewer librarian migration-planner"
+EXPECTED_SKILLS="lazy-init-deep lazy-ulw-plan lazy-start-work lazy-ulw-loop lazy-verifier lazy-reviewer lazy-librarian lazy-migration-planner"
 for skill in $EXPECTED_SKILLS; do
     if [ -f "${PLUGIN_ROOT}/skills/${skill}/SKILL.md" ]; then
         check "Skill: ${skill}/SKILL.md" ok

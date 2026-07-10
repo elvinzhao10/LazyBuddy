@@ -1,5 +1,5 @@
 ---
-name: reviewer
+name: lazy-reviewer
 description: "Post-implementation review agent. Reviews changed files against original intent and LazyCodex parity. Checks for overreach, missing tests, missing docs."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

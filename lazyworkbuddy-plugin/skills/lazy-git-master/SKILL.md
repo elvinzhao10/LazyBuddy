@@ -1,5 +1,5 @@
 ---
-name: git-master
+name: lazy-git-master
 description: "Git workflow discipline: atomic commits, staging, commit-message style, rebase, squash, fixup, cherry-pick, branch management."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->

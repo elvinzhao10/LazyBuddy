@@ -1,5 +1,5 @@
 ---
-name: remove-ai-slops
+name: lazy-remove-ai-slops
 description: "Behavior-preserving cleanup of AI-generated code smells. Locks behavior with regression tests first, then runs targeted cleanup passes."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
