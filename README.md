@@ -6,11 +6,14 @@ LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **WorkBu
 
 > **Setup?** See [AGENTS.md](AGENTS.md) (the setup guide). This README is about **how to use** the harness once installed.
 
-## Start with AI
+## Onboard with AI
 
-Open this repository in your chosen host and ask:
+1. Copy or clone [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy) into a local folder.
+2. Open that folder in your chosen host and type `onboard`.
 
-> Read `AGENTS.md`. I am using **WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**. Guide me through only that host's installation, verify the plugin after installation, and stop before changing any account or app setting.
+The agent reads `AGENTS.md`, asks which installed version you are using (**WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**), then performs the matching safe setup steps. It reports what it started and configured, verifies the expected result, and gives exact manual directions for anything it cannot perform.
+
+After onboarding, you can delete the copied repository if you only needed the installed setup, or keep it to explore and study how LazyBuddy works.
 
 ## Commands
 

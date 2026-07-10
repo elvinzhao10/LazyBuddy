@@ -4,6 +4,16 @@
 
 LazyBuddy is a WorkBuddy-native adaptation of the LazyCodex/OmO agent harness. It supports **WorkBuddy**, **CodeBuddy IDE**, and **CodeBuddy CLI**.
 
+## `onboard` protocol
+
+When the user types `onboard`:
+
+1. Read this guide and ask which installed host/version they are using: **WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**.
+2. Follow only that host's setup path. Perform safe repository and CLI steps automatically.
+3. Report each completed action and its observed result, including the final verification output.
+4. Stop before account, marketplace, or app-setting changes. Give exact manual directions for those steps.
+5. End by explaining that the copied repository can be deleted after installation, or retained to explore and study the project.
+
 ## Step 0 — Which platform are you on?
 
 | Platform | Skills | Commands | Hooks | MCP servers |
@@ -18,7 +28,9 @@ LazyBuddy is a WorkBuddy-native adaptation of the LazyCodex/OmO agent harness. I
 
 ## Step A — Install
 
-**CodeBuddy CLI:**
+**Option A — AI onboarding (recommended).** Open the copied repository in your chosen host and type `onboard`.
+
+**Option B — manual CodeBuddy CLI install:**
 
 1. Clone this repo:
    ```bash
