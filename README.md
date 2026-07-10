@@ -108,6 +108,8 @@ The harness is **binding, not advisory**:
 
 ## LazyCodex Parity Evaluation
 
+**Overall: ~70% structural, ~85% semantic.** Core workflow semantics fully ported; structural gaps are in secondary/tooling layers. See [docs/lazyworkbuddy-evaluation.md](docs/lazyworkbuddy-evaluation.md) for the full assessment.
+
 ### Summary
 
 | Dimension | LazyCodex | Lazyworkbuddy | Coverage |
