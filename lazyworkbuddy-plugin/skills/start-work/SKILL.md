@@ -1,6 +1,6 @@
 ---
 name: start-work
-description: "Execute a work plan with orchestrated subagent delegation and verified completion evidence. Loads a plan from .lazyworkbuddy/plans/, creates run state in .lazyworkbuddy/runs/<run_id>/, decomposes tasks, delegates to worker subagents, verifies evidence, marks progress. The orchestrator NEVER implements directly. Triggers: start work, execute plan, continue plan, resume plan, run the plan, start-work."
+description: "Execute a work plan with orchestrated subagent delegation and verified completion evidence. Loads a plan, selects tasks, delegates to implementers, verifies, reviews."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 

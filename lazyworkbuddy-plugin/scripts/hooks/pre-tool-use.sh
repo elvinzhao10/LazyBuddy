@@ -17,7 +17,7 @@ SECRET_PATTERNS=(
 )
 
 for pattern in "${SECRET_PATTERNS[@]}"; do
-    if echo "$TOOL_INPUT" | grep -q "$pattern"; then
+    if echo "$TOOL_INPUT" | grep -qF "$pattern"; then
         echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Access to secret-like path blocked: '"$pattern"'. Treat as DENY per .workbuddy/settings.json secret patterns."}}'
         exit 0
     fi

@@ -1,6 +1,6 @@
 ---
 name: librarian
-description: "Updates project memory after accepted changes — workbuddy.md, command index, parity ledger, known gaps, risk register. Never rewrites canonical method map unless repo evidence changes. Use after review passes, after /start-work completion, after /ulw-loop verify, or when the user says 'update memory', 'update docs', 'after review', 'librarian update'."
+description: "Update project memory after accepted changes: workbuddy.md, command index, parity ledger, known gaps, risk register."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 

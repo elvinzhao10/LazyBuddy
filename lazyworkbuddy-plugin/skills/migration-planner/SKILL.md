@@ -1,6 +1,6 @@
 ---
 name: migration-planner
-description: "Creates host-adapter plans for porting LazyCodex semantics to a new platform. Requires canonical repo inspection + semantic mapping. Read-only except for writing adapter docs under .lazyworkbuddy/adapters/. Use when porting skills to a new agent harness, migrating from Codex to another runtime, or creating platform-agnostic skill definitions. Triggers: port to, migrate to, adapter plan, create adapter, platform migration, harness adapter, port skills."
+description: "Create host-adapter plans for porting LazyCodex semantics to a new platform. Requires canonical repo inspection and semantic mapping."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 

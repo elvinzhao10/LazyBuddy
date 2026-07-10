@@ -1,6 +1,6 @@
 ---
 name: review-work
-description: "Post-implementation review orchestrator. Launches 5 parallel WorkBuddy Agent subagents (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner). ALL 5 must PASS for review to pass. INCONCLUSIVE lane = not approved. Retry budget: max 3 per lane. Triggers: review work, review my work, review changes, QA this, verify implementation, check my work, validate changes, post-implementation review."
+description: "Post-implementation review orchestrator. Launches 5 parallel subagents (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner) — all must pass."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 

@@ -1,6 +1,6 @@
 ---
 name: programming
-description: "Strict coding discipline for .py/.rs/.ts/.go files. Core axioms: type system as proof system, parse-don't-validate, branded primitives, exhaustive match, TDD (Red→Green→Refactor), 250 LOC ceiling, Given/When/Then tests. Modern toolchains: uv+basedpyright+ruff / cargo+clippy+miri / Bun+Biome+tsc / gofumpt+golangci-lint+nilaway. Triggers: write/edit Python/Rust/TypeScript/Go code, new project, TDD, refactor, type safety, exhaustive match, code smell."
+description: "Strict coding discipline for .py/.rs/.ts/.go files. Type system as proof system, parse-don't-validate, branded primitives, exhaustive match, TDD."
 ---
 <!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
