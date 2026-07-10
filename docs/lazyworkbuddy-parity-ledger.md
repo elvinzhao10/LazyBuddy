@@ -4,7 +4,7 @@
 > Updated by the Librarian after every accepted change.
 >
 > Status: `matched` (confirmed equivalent) | `adapted` (semantics preserved, implementation differs) | `skipped` (intentionally not ported) | `added` (Lazyworkbuddy-only)
-> Current release status and evidence labels live in [lazyworkbuddy-current-status.md](lazyworkbuddy-current-status.md).
+> Current release status and evidence labels live in See [README](../README.md) for current status..
 >
 > v0.12 taxonomy: `reference parity` means a LazyCodex source-backed behavior is preserved; `host-substitution` means WorkBuddy covers the use case through a different surface; `native-enhancement` means Lazyworkbuddy-only functionality; `platform-gap` means the original surface is not directly portable or not needed on WorkBuddy. Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`.
 

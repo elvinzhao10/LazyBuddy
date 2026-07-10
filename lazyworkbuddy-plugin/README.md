@@ -10,7 +10,7 @@ Lazyworkbuddy is a WorkBuddy plugin that brings the LazyCodex/OmO agent harness 
 2. **Verify** — `./lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh`
 3. **Use** — run `/init-deep`, then `/ulw-plan`, then `/start-work`
 
-**Status:** v0.12.0 release-hardening package with Todo 6 gates recorded. See the canonical current status in [lazyworkbuddy-current-status.md](../docs/lazyworkbuddy-current-status.md). (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
+**Status:** v0.12.0 release-hardening package with Todo 6 gates recorded. See the canonical current status in See [README](../README.md) for current status.. (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
 
 ## What this plugin provides
 

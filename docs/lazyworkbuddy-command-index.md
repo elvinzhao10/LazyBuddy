@@ -3,7 +3,7 @@
 > Master index of every command, Skill, and agent. Every canonical LazyCodex method must appear here or in the parity ledger.
 >
 > Status codes: ✅ implemented | 🔧 planned | ⛔ skipped (with reason) | ✨ added (Lazyworkbuddy-only)
-> Current release status, evidence labels, and component counts live in [lazyworkbuddy-current-status.md](lazyworkbuddy-current-status.md).
+> Current release status, evidence labels, and component counts live in See [README](../README.md) for current status..
 
 ## Core Commands (6)
 

@@ -9,7 +9,6 @@
 | [state-ledger-design.md](lazyworkbuddy-state-ledger-design.md) | `.lazyworkbuddy/` schema, event format, checkpoint protocol |
 | [state-schema.md](lazyworkbuddy-state-schema.md) | Full JSON schema with field descriptions |
 | [versioned-execution-plan.md](lazyworkbuddy-versioned-execution-plan.md) | Per-version plan (v0.2–v0.12) with objectives, steps, verification |
-| [current-status.md](lazyworkbuddy-current-status.md) | Current release status and evidence labels |
 
 ## Protocols
 
@@ -36,7 +35,6 @@
 | [permission-policy.md](lazyworkbuddy-permission-policy.md) | Deny/ask/allow model, PreToolUse enforcement |
 | [security-and-permissions-plan.md](lazyworkbuddy-security-and-permissions-plan.md) | 9-agent permission matrix, 5-layer model |
 | [checkpoint-format.md](lazyworkbuddy-checkpoint-format.md) | Checkpoint directory structure and recovery |
-| [quickstart.md](lazyworkbuddy-quickstart.md) | Quick start guide |
 
 ## Parity & Tracking
 
