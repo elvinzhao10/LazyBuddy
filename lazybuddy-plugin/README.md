@@ -4,9 +4,9 @@
 
 ## Quick Start
 
-LazyBuddy is a portable bundle for WorkBuddy, CodeBuddy IDE, and CodeBuddy CLI. Import its skills, hooks, and `.mcp.json` definitions through the corresponding host settings; it intentionally has no host-specific plugin manifest.
+LazyBuddy provides compatible CodeBuddy and WorkBuddy manifests. CodeBuddy CLI uses `.codebuddy-plugin/plugin.json`; WorkBuddy uses `.workbuddy-plugin/plugin.json`; CodeBuddy IDE uses the bundled skills and MCP definitions through its IDE settings.
 
-1. **Install** — clone or copy `lazybuddy-plugin/`, then import the applicable host assets.
+1. **Install** — add this repository as a CodeBuddy marketplace, then install `lazybuddy@lazybuddy`.
 2. **Verify** — `./lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh`
 3. **Use** — run `/lazy-init-deep`, then `/lazy-ulw-plan`, then `/lazy-start-work`
 
@@ -37,20 +37,25 @@ LazyBuddy brings the LazyCodex/OmO agent harness to WorkBuddy:
 
 ## Install
 
-In CodeBuddy IDE and WorkBuddy, import the applicable `skills/*/SKILL.md` bundles and configure MCP through host settings. In CodeBuddy CLI, configure the bundled `.mcp.json` definitions and invoke the included scripts from the project checkout.
+Use the included marketplace entry for CodeBuddy CLI and the compatible WorkBuddy manifest for WorkBuddy. In CodeBuddy IDE, import the individual `skills/*/SKILL.md` bundles and configure MCP through IDE settings.
 
 ### Development install
 
 ```bash
-# Verify the portable bundle
+# Add this repository as a CodeBuddy marketplace, then install project-scoped
+codebuddy plugin marketplace add elvinzhao10/LazyBuddy --name lazybuddy
+codebuddy plugin install lazybuddy@lazybuddy --scope project
+
+# Validate the installed plugin
+codebuddy plugin validate lazybuddy-plugin
 ./lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
 ```
 
 ### Marketplace install
 
 ```bash
-# CodeBuddy IDE / WorkBuddy: import skills and configure MCP in settings.
-# CodeBuddy CLI: configure lazybuddy-plugin/.mcp.json in CLI MCP settings.
+# CodeBuddy IDE: /plugin marketplace add elvinzhao10/LazyBuddy
+# CodeBuddy CLI: codebuddy plugin marketplace add elvinzhao10/LazyBuddy
 ```
 
 ## Uninstall
@@ -98,4 +103,4 @@ MIT — see [LICENSE](LICENSE) (or repository LICENSE file).
 
 ---
 
-_This is the portable WorkBuddy and CodeBuddy bundle for LazyBuddy. Host-managed `.codebuddy/` and `.workbuddy/` directories and runtime `.lazycodebuddy/` and `.lazyworkbuddy/` directories are intentionally ignored._
+_This is the installable WorkBuddy and CodeBuddy plugin for LazyBuddy. The repository-local `.workbuddy/` directory is host-managed development state and is intentionally not part of the release package._

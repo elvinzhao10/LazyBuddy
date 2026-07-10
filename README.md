@@ -52,9 +52,9 @@ Five phases: **Explore → Plan → Implement → Verify → Manually QA**. Each
 
 Practice repo; contributions welcome as learning exercises.
 
-1. **Structure:** `lazybuddy-plugin/` is the portable bundle (skills/, commands/, agents/, hooks/, mcp/, scripts/). Runtime state is host-specific: `.lazycodebuddy/` for CodeBuddy and `.lazyworkbuddy/` for WorkBuddy.
+1. **Structure:** `lazybuddy-plugin/` is the plugin (skills/, commands/, agents/, hooks/, mcp/, scripts/). State lives in `.lazybuddy/runs/<run_id>/`.
 2. **Naming discipline:** all skills & commands are `lazy-` prefixed. Keep new ones prefixed.
-3. **Test/verify:** `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` (41 PASS expected) + `lazybuddy-smoke-test.sh` (99 PASS). Update the doctor's `EXPECTED_COMMANDS`/`EXPECTED_SKILLS` if you add/rename.
+3. **Test/verify:** `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` (50 PASS expected) + `lazybuddy-smoke-test.sh` (105 PASS). Update the doctor's `EXPECTED_COMMANDS`/`EXPECTED_SKILLS` if you add/rename.
 4. **Hooks are binding:** test with doctor + smoke after any hook change.
 5. **Commit:** conventional, atomic, stage only files you changed, no `--no-verify`.
 
@@ -62,7 +62,9 @@ Practice repo; contributions welcome as learning exercises.
 
 ```
 lazybuddy/
-├── lazybuddy-plugin/     # portable CodeBuddy / WorkBuddy bundle
+├── .codebuddy-plugin/    # CodeBuddy marketplace entry
+├── lazybuddy-plugin/     # installable CodeBuddy plugin; skills also work in WorkBuddy
+│   ├── .codebuddy-plugin/    #   manifest (plugin.json)
 │   ├── skills/               #   14 Skills (lazy-*)
 │   ├── agents/               #   13 agent role definitions
 │   ├── commands/             #   15 slash commands (lazy-*)

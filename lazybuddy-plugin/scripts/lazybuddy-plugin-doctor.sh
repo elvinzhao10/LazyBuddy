@@ -1,8 +1,8 @@
 #!/bin/bash
 # noqa: SIZE_OK - standalone release-gate script kept self-contained for plugin installs.
 # lazybuddy-plugin-doctor.sh
-# Validates the portable component bundle: all component directories,
-# hook/MCP definitions, and required skills/commands are present.
+# Validates the plugin structure: manifest exists + parses as JSON,
+# all component dirs exist, all placeholder skills/commands present.
 #
 # Usage: ./scripts/lazybuddy-plugin-doctor.sh
 # Env:   CODEBUDDY_PLUGIN_ROOT (if installed), otherwise defaults to script-relative plugin root.
@@ -38,7 +38,31 @@ echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
 echo ""
 
-# 1. Component directories exist
+# 1. Manifest exists
+if [ -f "${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json" ]; then
+    check "Manifest exists" ok
+else
+    check "Manifest exists" "missing: ${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
+fi
+
+# 2. Manifest parses as JSON
+if python3 -c "import json; json.load(open('${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json'))" 2>/dev/null; then
+    check "Manifest is valid JSON" ok
+else
+    check "Manifest is valid JSON" "parse error"
+fi
+
+# 3. Required manifest fields
+MANIFEST="${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
+for field in name version skills commands agents hooks mcpServers; do
+    if python3 -c "import json; d=json.load(open('${MANIFEST}')); assert '${field}' in d" 2>/dev/null; then
+        check "Manifest field: ${field}" ok
+    else
+        check "Manifest field: ${field}" "missing"
+    fi
+done
+
+# 4. Component directories exist
 for dir in skills commands agents hooks mcp scripts schemas tests docs; do
     if [ -d "${PLUGIN_ROOT}/${dir}" ]; then
         check "Directory: ${dir}/" ok
@@ -47,7 +71,7 @@ for dir in skills commands agents hooks mcp scripts schemas tests docs; do
     fi
 done
 
-# 2. Hooks scaffold exists
+# 5. Hooks scaffold exists
 if [ -f "${PLUGIN_ROOT}/hooks/hooks.json" ]; then
     check "hooks/hooks.json exists" ok
     if python3 -c "import json; json.load(open('${PLUGIN_ROOT}/hooks/hooks.json'))" 2>/dev/null; then
@@ -59,7 +83,7 @@ else
     check "hooks/hooks.json exists" "missing"
 fi
 
-# 3. MCP scaffold exists
+# 6. MCP scaffold exists
 if [ -f "${PLUGIN_ROOT}/.mcp.json" ]; then
     check ".mcp.json exists" ok
     if python3 -c "import json; json.load(open('${PLUGIN_ROOT}/.mcp.json'))" 2>/dev/null; then
@@ -234,7 +258,7 @@ else
     check "MCP server scripts (8 executable)" "${mcp_result}"
 fi
 
-# 4. Placeholder commands (8)
+# 7. Placeholder commands (8)
 EXPECTED_COMMANDS="lazy-init-deep lazy-ulw-plan lazy-start-work lazy-ulw-loop lazy-verifier lazy-reviewer lazy-librarian lazy-migration-planner"
 for cmd in $EXPECTED_COMMANDS; do
     if [ -f "${PLUGIN_ROOT}/commands/${cmd}.md" ]; then
@@ -244,7 +268,7 @@ for cmd in $EXPECTED_COMMANDS; do
     fi
 done
 
-# 5. Placeholder skills (8)
+# 8. Placeholder skills (8)
 EXPECTED_SKILLS="lazy-init-deep lazy-ulw-plan lazy-start-work lazy-ulw-loop lazy-verifier lazy-reviewer lazy-librarian lazy-migration-planner"
 for skill in $EXPECTED_SKILLS; do
     if [ -f "${PLUGIN_ROOT}/skills/${skill}/SKILL.md" ]; then
@@ -254,7 +278,7 @@ for skill in $EXPECTED_SKILLS; do
     fi
 done
 
-# 6. Empty dirs check — must have real content OR .gitkeep
+# 9. Empty dirs check — must have real content OR .gitkeep
 for dir in agents mcp scripts schemas tests docs; do
     file_count=$(find "${PLUGIN_ROOT}/${dir}" -maxdepth 1 -type f ! -name '.gitkeep' 2>/dev/null | wc -l | tr -d ' ')
     if [ "$file_count" -gt 0 ]; then
@@ -266,7 +290,7 @@ for dir in agents mcp scripts schemas tests docs; do
     fi
 done
 
-# 7. Validation scripts exist and are executable
+# 10. Validation scripts exist and are executable
 for script in lazybuddy-smoke-test.sh lazybuddy-docs-check.sh lazybuddy-parity-check.sh; do
     if [ -f "${PLUGIN_ROOT}/scripts/${script}" ]; then
         if [ -x "${PLUGIN_ROOT}/scripts/${script}" ]; then

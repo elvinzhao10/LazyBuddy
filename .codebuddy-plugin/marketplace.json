@@ -1,0 +1,15 @@
+{
+  "name": "lazybuddy",
+  "owner": {
+    "name": "LazyBuddy"
+  },
+  "description": "LazyCodex/OmO workflow harness for CodeBuddy and WorkBuddy.",
+  "plugins": [
+    {
+      "name": "lazybuddy",
+      "source": "./lazybuddy-plugin",
+      "description": "Evidence-gated planning, execution, and review workflows.",
+      "version": "0.13.0"
+    }
+  ]
+}
