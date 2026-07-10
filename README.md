@@ -1,10 +1,16 @@
 # LazyBuddy
 
-> **A practice project:** realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO harness) on the [WorkBuddy](https://www.codebuddy.cn) platform. No longer maintained; open-sourced for learning.
+> **A practice project:** realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO harness) on the [WorkBuddy](https://www.workbuddy.cn) platform. No longer maintained; open-sourced for learning.
 
 LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **WorkBuddy**, **CodeBuddy IDE**, and **CodeBuddy CLI**.
 
 > **Setup?** See [AGENTS.md](AGENTS.md) (the setup guide). This README is about **how to use** the harness once installed.
+
+## Start with AI
+
+Open this repository in your chosen host and ask:
+
+> Read `AGENTS.md`. I am using **WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**. Guide me through only that host's installation, verify the plugin after installation, and stop before changing any account or app setting.
 
 ## Commands
 
@@ -54,7 +60,7 @@ Practice repo; contributions welcome as learning exercises.
 
 1. **Structure:** `lazybuddy-plugin/` is the plugin (skills/, commands/, agents/, hooks/, mcp/, scripts/). State lives in `.lazybuddy/runs/<run_id>/`.
 2. **Naming discipline:** all skills & commands are `lazy-` prefixed. Keep new ones prefixed.
-3. **Test/verify:** `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` (50 PASS expected) + `lazybuddy-smoke-test.sh` (105 PASS). Update the doctor's `EXPECTED_COMMANDS`/`EXPECTED_SKILLS` if you add/rename.
+3. **Test/verify:** `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` (50 PASS expected) + `lazybuddy-smoke-test.sh` (99 PASS). Update the doctor's `EXPECTED_COMMANDS`/`EXPECTED_SKILLS` if you add/rename.
 4. **Hooks are binding:** test with doctor + smoke after any hook change.
 5. **Commit:** conventional, atomic, stage only files you changed, no `--no-verify`.
 
@@ -96,4 +102,4 @@ Practice project, not production-ready, no longer maintained. For production use
 ## Acknowledgments
 
 - **[Yeongyu Kim](https://github.com/code-yeongyu)** — creator of [lazycodex/OmO](https://github.com/code-yeongyu/lazycodex)
-- **[WorkBuddy](https://www.codebuddy.cn)** — the platform this was built for
+- **[WorkBuddy](https://www.workbuddy.cn)** — the platform this was built for
