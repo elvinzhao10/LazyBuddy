@@ -1,18 +1,22 @@
 NOTICE
 
-Portions of this software are derived from lazycodex / oh-my-openagent (omo),
-Copyright (c) 2026 Yeongyu Kim, licensed under the MIT License.
+This project is a clean-room adaptation of the agent-harness design of
+omo (oh-my-openagent), Copyright (c) 2026 Yeongyu Kim.
 
-The original lazycodex/omo project is available at:
-https://github.com/code-yeongyu/lazycodex
+Upstream license note:
+- omo (oh-my-openagent) is licensed under the Sustainable Use License (SUL).
+- lazycodex is a separate, thin layer of omo; the lazycodex package is
+  MIT-licensed (the author re-licensed the ported omo source under MIT).
+  Upstream: https://github.com/code-yeongyu/oh-my-openagent
 
-This project is a clean-room adaptation that preserves LazyCodex semantics
-while reimplementing them on WorkBuddy-native surfaces (Skills, Agents,
-Hooks, MCP, plugin structure). No source code, prompts, or protected
-material was copied from the original project. All implementations are
-original work based on studying the canonical behavior.
+The lazycodex/omo source is used here only as a local, read-only reference
+(bundled under reference/lazycodex/, which is gitignored and NOT distributed).
+No upstream source code, prompts, or protected material is shipped with this
+repository. All implementations are original work based on studying the
+canonical behavior. The SUL governs omo itself; it does not extend to this
+repo's original WorkBuddy-native output.
 
-The MIT License that governs the derived portions is reproduced below.
+The MIT License of the lazycodex reference layer is reproduced below.
 
 ---
 
