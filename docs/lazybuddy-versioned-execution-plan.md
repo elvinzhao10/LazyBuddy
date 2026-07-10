@@ -1,6 +1,7 @@
 # LazyBuddy Versioned Execution Plan
 
-> v0.1 — Per-version plan for v0.2 through v0.12
+> **Archived planning document:** v0.1 plan for v0.2 through v0.12. It contains proposed paths, event counts, and bootstrap ideas that are not the v0.15 release contract.
+> Current onboarding, plugin layout, and host-load limits are in [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [the plugin README](../lazybuddy-plugin/README.md).
 > Traces version boundaries to the [plan/README.md](plan/README.md) benchmark contract
 
 ## Overview

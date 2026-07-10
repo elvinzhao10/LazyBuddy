@@ -15,6 +15,11 @@ Tools: diagnostics, typecheck, find_references, goto_definition, symbols.
 import sys, json, os, subprocess, re, shutil
 
 CWD = os.environ.get("CWD", ".")
+MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if MCP_ROOT not in sys.path:
+    sys.path.insert(0, MCP_ROOT)
+from path_boundary import resolve_repo_path
+
 USE_RG = shutil.which("rg") is not None
 EXCLUDES = [".git", "node_modules", "dist", "build", ".next", ".lazybuddy", "reference", ".workbuddy"]
 
@@ -126,7 +131,7 @@ def main():
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "0.11.0"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "0.15.0-alpha.2"}})
         return
 
     if method == "tools/list":
@@ -145,6 +150,8 @@ def main():
         try:
             if tool == "diagnostics":
                 path = args.get("path", "")
+                if path:
+                    path = os.path.relpath(resolve_repo_path(CWD, path), os.path.realpath(CWD))
                 tool_result(detect_and_run_diagnostics(path))
 
             elif tool == "typecheck":
@@ -171,7 +178,7 @@ def main():
 
             elif tool == "symbols":
                 path = args["path"]
-                fp = os.path.join(CWD, path) if not os.path.isabs(path) else path
+                fp = resolve_repo_path(CWD, path)
                 if not os.path.isfile(fp):
                     err("file not found: " + path)
                     return

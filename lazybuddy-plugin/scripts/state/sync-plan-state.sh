@@ -13,42 +13,53 @@
 set -euo pipefail
 
 RUN_ID="${1:-}"
+FIX="${2:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/state-paths.sh"
 
-if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-    echo "Error: invalid run_id" >&2
+if ! state_require_safe_run_id "$RUN_ID"; then
     exit 1
 fi
 
 CWD="${CWD:-.}"
-STATE_FILE="$CWD/.lazybuddy/runs/$RUN_ID/state.json"
+state_require_run_dir "$CWD" "$RUN_ID" || exit 1
+STATE_FILE="$STATE_RUN_DIR/state.json"
+EVENTS_FILE="$STATE_RUN_DIR/events.jsonl"
+state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
+state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
 if [ ! -f "$STATE_FILE" ]; then
     echo "Error: state.json not found for run '$RUN_ID'" >&2
     exit 1
 fi
 
-PLAN_REF=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('plan_reference',''))" 2>/dev/null || echo "")
+PLAN_REF=$(python3 - "$STATE_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as handle:
+    print(json.load(handle).get('plan_reference', ''))
+PY
+) || PLAN_REF=""
 if [ -z "$PLAN_REF" ]; then
     echo "Error: no plan_reference in state.json for run '$RUN_ID'" >&2
     exit 1
 fi
 
-if [[ "$PLAN_REF" == /* ]]; then
-    PLAN_PATH="$PLAN_REF"
-else
-    PLAN_PATH="$CWD/$PLAN_REF"
-fi
+state_resolve_plan_reference "$CWD" "$PLAN_REF" || exit 1
+PLAN_PATH="$STATE_PLAN_PATH"
+state_require_existing_run_file "$PLAN_PATH" "plan file" || exit 1
 if [ ! -f "$PLAN_PATH" ]; then
     echo "Error: plan file not found: $PLAN_PATH" >&2
     exit 1
 fi
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-TMP_FILE="$STATE_FILE.tmp.$$"
+TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
 
-python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" <<'PYEOF'
+python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" <<'PYEOF'
 import json, sys, re, os
 
-state_file, plan_path, fix, now, run_id, cwd = sys.argv[1:7]
+state_file, plan_path, fix, now, run_id, cwd, tmp_file = sys.argv[1:]
 fix = (fix == "--fix")
 
 with open(state_file) as f:
@@ -137,10 +148,9 @@ for box in plan_boxes:
             changed = True
 if changed:
     state["updated_at"] = now
-    tmp = state_file + ".tmp.%d" % os.getpid()
-    with open(tmp, "w") as f:
+    with open(tmp_file, "w") as f:
         json.dump(state, f, indent=2)
-    os.replace(tmp, state_file)
+    os.replace(tmp_file, state_file)
     # append event
     ev_file = os.path.join(os.path.dirname(state_file), "events.jsonl")
     ev = {"ts": now, "run_id": run_id, "event": "plan_state_synced", "drift_fixed": len(drift)}

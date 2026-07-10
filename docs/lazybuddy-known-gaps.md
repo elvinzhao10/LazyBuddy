@@ -1,11 +1,14 @@
 # LazyBuddy Known Gaps
 
+> **Historical gap ledger (v0.12 and earlier), not the v0.15 host-installation contract.**
+> Current onboarding and package-readiness limits live in [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [the plugin README](../lazybuddy-plugin/README.md).
+>
 > Documented deviations from original LazyCodex behavior.
 > Each gap records: what LazyCodex does, what LazyBuddy does, why the difference exists, and impact.
 > Updated by the Librarian (v0.9+) after parity checks and version implementations.
-> v0.12 release note: local release gates and dogfood replay are recorded, but heuristic MCP/code-navigation caveats remain open.
+> The v0.12 notes below are retained as historical evidence; they do not claim current host loading, MCP connection, or marketplace behavior.
 
-## Current Gaps (v0.2 baseline)
+## Historical Initial Gaps (v0.2 baseline)
 
 *No implementations yet — all gaps are architectural design decisions from v0.1.*
 
@@ -37,12 +40,12 @@
 
 - **LazyCodex:** 5 MCP servers: `grep_app`, `context7`, `codegraph`, `git_bash`, `lsp`.
 - **LazyBuddy:** 8 WorkBuddy-native servers: `run-ledger`, `parity`, `verification`, `source-map`, `status-dashboard` (run-management, v0.8) + `context-graph`, `code-intel`, `docs` (context-tooling substitutes, v0.11).
-- **Capability labels (v0.12):**
+- **Historical v0.12 capability labels:**
   - `semantic`: structured/parsed source of truth rather than grep-first approximation.
   - `project-tool-backed`: invokes real project/plugin scripts or checkers.
   - `heuristic`: grep/regex/registry metadata approximation.
   - `state-only`: reads or mutates LazyBuddy state/docs only.
-- **Parity taxonomy (v0.12):**
+- **Historical v0.12 parity taxonomy:**
   - `reference parity`: behavior directly preserves a LazyCodex source-backed method.
   - `host-substitution`: WorkBuddy implementation covers the use case but not the original runtime.
   - `native-enhancement`: LazyBuddy-only addition; not a LazyCodex parity claim.
@@ -57,7 +60,7 @@
 - **Why:** `codegraph`/`lsp` rely on external closed-source binaries (`@colbymchenry/codegraph`, `@oh-my-opencode/lsp-core`); a clean-room WorkBuddy-native build uses grep + real project tooling instead. `git_bash`/`grep_app` are redundant with WorkBuddy's native tools.
 - **Runtime evidence:** `runtime-verified` for initialize/tools-list/representative safe calls via `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh`; transcript path `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`. Any stronger claim than those exercised calls is `implemented-unverified`.
 - **Residual gap (accepted):** `context-graph` and the navigation tools in `code-intel` are heuristic, not semantic. A real LSP daemon/codegraph would provide precise workspace symbol identity, semantic goto-definition, rename, and call graph analysis. If WorkBuddy exposes native LSP/codegraph MCP surfaces later, wire them and deprecate the grep heuristics.
-- **Current status (v0.12):** Context tooling is usable and runtime-smoked, but this is honest host substitution, not full reference parity. Todo 6 release metadata/status evidence is `.omo/evidence/task-6-diagnosis-v0-12-lazybuddy.txt`.
+- **Historical v0.12 status:** Context tooling was runtime-smoked, but this was host substitution rather than full reference parity. Todo 6 release metadata/status evidence is `.omo/evidence/task-6-diagnosis-v0-12-lazybuddy.txt`.
 
 ### G-004: Model routing (partially resolved — agent-level tiering exists)
 
@@ -191,7 +194,7 @@ Skills that are platform-agnostic (git-master: git commands only; debugging: pha
 - **LazyBuddy:** Two representations exist: (a) plan.md `- [ ]`/`- [x]` checkboxes parsed by `stop-gate.sh`, and (b) state.json `tasks[]` array manipulated by `next-task.sh`/`update-task.sh`/`finalize-run.sh`. These can diverge — a task can be "done" in state.json but "unchecked" in plan.md.
 - **Impact:** Medium — `finalize-run.sh` checks state.json tasks but `stop-gate.sh` checks plan.md checkboxes. A run could finalize with state.json all-done while plan.md still shows unchecked boxes, causing stop-gate to block future continuation.
 - **Found in:** v0.11 dogfood run — observer noted that marking T1 done updated state.json but required separate `sed` to update plan.md.
-- **Mitigation:** Suggested fix for v0.12 — add `sync-plan.sh` to validate consistency and `update-plan-checkbox.sh` to atomically update both representations.
+- **Historical mitigation:** the v0.12 plan proposed `sync-plan.sh` and `update-plan-checkbox.sh` to validate both representations atomically.
 - **Resolution (v0.11, 2026-07-09):** RESOLVED. Created `scripts/state/update-plan-checkbox.sh` that atomically updates BOTH plan.md checkbox and state.json task. Updated `finalize-run.sh` to cross-check plan.md checkboxes before allowing completion (blocks if any unchecked). Updated `verify.sh` to auto-append verification events to active runs. Negative test confirmed: finalize-run.sh blocks with `BLOCKED: plan.md has 1 unchecked checkbox(es)` when plan.md and state.json diverge.
 - **Resolution addendum (2026-07-09, refreshed-comparison flaws):** Added `scripts/state/sync-plan-state.sh` — a drift-repair/audit tool that recomputes `progress.total_checkboxes`/`completed_checkboxes` from the plan AND syncs task statuses (checkbox checked → done). The original fix prevented future drift (atomic checkbox+task updates) but did NOT repair already-drifted progress counters — the dogfood run had `progress: 0/0` despite 2/2 plan checkboxes. `sync-plan-state.sh --fix` reconciled it to 2/2. Verified on dogfood-v0.11. The two scripts are complementary: `update-plan-checkbox.sh` prevents drift; `sync-plan-state.sh` repairs/audits it.
 

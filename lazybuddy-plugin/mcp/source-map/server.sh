@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
-INPUT=$(cat)
-METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<<"$INPUT" || echo "")
-ID=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',0))" 2>/dev/null <<<"$INPUT" || echo "0")
 CWD="${CWD:-.}"
-reply() { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"result\":$1}"; }
-err()  { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"error\":{\"code\":-32603,\"message\":\"$1\"}}"; }
-param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); p=d.get('params',{}); a=p.get('arguments',p); print(a.get('$1',''))" 2>/dev/null <<<"$INPUT"; }
+export CWD
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
+reply() {
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
 
-# Route tools/call -> tool name (MCP protocol: params.name holds the tool)
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "result": json.loads(sys.argv[2])}))
+PYEOF
+}
+err() {
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "error": {"code": -32603, "message": sys.argv[2]}}))
+PYEOF
+}
+param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); p=d.get('params',{}); a=p.get('arguments',p); print(a.get('$1',''))" 2>/dev/null <<<"$INPUT"; }
+safe_path() { python3 "$PLUGIN_ROOT/mcp/path_boundary.py" "$CWD" "$1"; }
+
+while IFS= read -r INPUT || [ -n "$INPUT" ]; do
+METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<<"$INPUT" || echo "")
+ID_JSON=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('id',0)))" 2>/dev/null <<<"$INPUT" || echo "0")
+
 if [ "$METHOD" = "tools/call" ]; then
     METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('params',{}).get('name',''))" 2>/dev/null <<<"$INPUT" || echo "")
 fi
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"source-map","version":"0.8.0"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"source-map","version":"0.15.0-alpha.2"}}'
     ;;
   tools/list)
     reply '{"tools":[
@@ -28,17 +45,13 @@ case "$METHOD" in
     ;;
   index_repo)
     P=$(param_raw "path"); P="${P:-dev/reference/lazycodex/plugins/omo/skills/}"
-    RESULT=$(find "$CWD/$P" -name "SKILL.md" -type f 2>/dev/null | sort | python3 <<'PYEOF'
-import json,os,sys; cwd=os.environ['CWD']; r=[]
-for f in (l.strip() for l in sys.stdin if l.strip()):
-    r.append({'path':os.path.relpath(f,cwd),'size':os.path.getsize(f)})
-print(json.dumps(r))
-PYEOF
-)
+    ROOT=$(safe_path "$P") || { err "path is outside project root"; continue; }
+    [ -d "$ROOT" ] || { err "directory not found: $P"; continue; }
+    RESULT=$(find "$ROOT" -name "SKILL.md" -type f 2>/dev/null | sort | python3 -c "import json,os,sys; cwd=os.path.realpath(sys.argv[1]); print(json.dumps([{'path':os.path.relpath(f.strip(), cwd),'size':os.path.getsize(f.strip())} for f in sys.stdin if f.strip()]))" "$CWD")
     reply "$RESULT"
     ;;
   search_method_evidence)
-    Q=$(param_raw "query"); [ -z "$Q" ] && { err "query required"; exit 0; }
+    Q=$(param_raw "query"); [ -z "$Q" ] && { err "query required"; continue; }
     RESULT=$(python3 - "$Q" <<'PYEOF'
 import json,subprocess,os,sys
 cwd=os.environ['CWD']; q=sys.argv[1]; r=[]
@@ -61,9 +74,10 @@ PYEOF
   read_evidence_excerpt)
     FP=$(param_raw "file_path"); SL=$(param_raw "start_line"); SL="${SL:-1}"
     LC=$(param_raw "line_count"); LC="${LC:-20}"
-    [ -z "$FP" ] && { err "file_path required"; exit 0; }
-    [ ! -f "$CWD/$FP" ] && { err "file not found: $FP"; exit 0; }
-    C=$(tail -n "+$SL" "$CWD/$FP" | head -n "$LC" | python3 -c "import sys,json;print(json.dumps(sys.stdin.read()))")
+    [ -z "$FP" ] && { err "file_path required"; continue; }
+    FILE=$(safe_path "$FP") || { err "path is outside project root"; continue; }
+    [ ! -f "$FILE" ] && { err "file not found: $FP"; continue; }
+    C=$(tail -n "+$SL" "$FILE" | head -n "$LC" | python3 -c "import sys,json;print(json.dumps(sys.stdin.read()))")
     reply "{\"file\":\"$FP\",\"start\":$SL,\"count\":$LC,\"content\":$C}"
     ;;
   list_source_paths)
@@ -80,13 +94,15 @@ PYEOF
     reply "$RESULT"
     ;;
   compute_file_hash)
-    FP=$(param_raw "file_path"); [ -z "$FP" ] && { err "file_path required"; exit 0; }
-    [ ! -f "$CWD/$FP" ] && { err "file not found: $FP"; exit 0; }
-    H=$(md5 -q "$CWD/$FP" 2>/dev/null || md5sum "$CWD/$FP" 2>/dev/null | cut -d' ' -f1)
-    S=$(wc -c <"$CWD/$FP" | tr -d ' ')
+    FP=$(param_raw "file_path"); [ -z "$FP" ] && { err "file_path required"; continue; }
+    FILE=$(safe_path "$FP") || { err "path is outside project root"; continue; }
+    [ ! -f "$FILE" ] && { err "file not found: $FP"; continue; }
+    H=$(md5 -q "$FILE" 2>/dev/null || md5sum "$FILE" 2>/dev/null | cut -d' ' -f1)
+    S=$(wc -c <"$FILE" | tr -d ' ')
     reply "{\"hash\":\"$H\",\"size\":$S}"
     ;;
   *)
     err "unknown method: $METHOD"
     ;;
 esac
+done

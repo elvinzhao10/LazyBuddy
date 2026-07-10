@@ -14,7 +14,7 @@ Generate hierarchical project memory for the current WorkBuddy workspace. Scores
 
 ## Trigger Conditions
 
-- User types `/lazy-init-deep` or requests project initialization
+- User types `/lazybuddy:lazy-init-deep` in a CodeBuddy-installed plugin, or requests project initialization in natural language
 - New workspace where no `workbuddy.md` exists
 - Workspace structure has changed significantly
 - User says "understand this codebase", "map this project", "create project memory"
@@ -31,13 +31,23 @@ Before generating, inspect:
 
 ## Mandatory plugin load check
 
-Before any repository discovery, run:
+Before any repository discovery, resolve the plugin root and run:
 
 ```bash
-bash "${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-load-check.sh"
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-}"
+if [ -z "$PLUGIN_ROOT" ] && [ -f "$PWD/lazybuddy-plugin/scripts/lazybuddy-load-check.sh" ]; then
+  PLUGIN_ROOT="$PWD/lazybuddy-plugin"       # copied repository root
+elif [ -z "$PLUGIN_ROOT" ] && [ -f "$PWD/scripts/lazybuddy-load-check.sh" ]; then
+  PLUGIN_ROOT="$PWD"                        # plugin root itself
+fi
+if [ -z "$PLUGIN_ROOT" ]; then
+  echo "LazyBuddy plugin root is unavailable; reopen the copied repository or install the plugin." >&2
+  exit 1
+fi
+bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
 ```
 
-This is required every time `lazy-init-deep` is invoked, including an existing workspace. Record its exact skills, commands, agents, hooks, and MCP counts in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. Record its exact skills, commands, agents, hooks, and MCP counts in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
 
 ## Tool Access
 

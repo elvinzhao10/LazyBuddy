@@ -10,7 +10,7 @@
 
 **Bypass:** None. Secrets are NEVER allowed to be accessed.
 
-**LazyCodex source:** `.workbuddy/settings.json` deny rules + evidence hygiene.
+**Policy basis:** LazyBuddy's host-neutral secret policy plus evidence hygiene.
 
 ## Gate 2: Destructive Action Gate
 

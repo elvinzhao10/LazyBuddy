@@ -43,7 +43,6 @@ append_broken() {
 for scan_dir in "${PROJECT_ROOT}/docs" "${PLUGIN_ROOT}"; do
     [ -d "$scan_dir" ] || continue
     while IFS= read -r -d '' md_file; do
-        [ "$md_file" = "${PLUGIN_ROOT}/templates/AGENTS.md" ] && continue
         file_dir="$(dirname "$md_file")"
         # Extract markdown links: [text](path) where path ends in .md
         # Strip inline code (content between backticks) first to avoid false positives

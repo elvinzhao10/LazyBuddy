@@ -1,18 +1,110 @@
 #!/usr/bin/env bash
-# run-ledger MCP server — wraps v0.7 state scripts as JSON-RPC tools
-# communicates via stdin/stdout JSON-RPC 2.0
 set -euo pipefail
-
-INPUT=$(cat)
-METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<< "$INPUT" || echo "")
-ID=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',0))" 2>/dev/null <<< "$INPUT" || echo "0")
 
 CWD="${CWD:-.}"
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
-STATEDIR="$CWD/.lazybuddy"
+source "$PLUGIN_ROOT/scripts/state/state-paths.sh"
 
-reply() { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"result\":$1}"; }
-err() { echo "{\"jsonrpc\":\"2.0\",\"id\":$ID,\"error\":{\"code\":-32603,\"message\":\"$1\"}}"; }
+reply() {
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "result": json.loads(sys.argv[2])}))
+PYEOF
+}
+
+err() {
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({
+    "jsonrpc": "2.0",
+    "id": json.loads(sys.argv[1]),
+    "error": {"code": -32603, "message": sys.argv[2] or "state operation failed"},
+}))
+PYEOF
+}
+
+result_object() {
+  python3 - "$@" <<'PYEOF'
+import json
+import sys
+
+pairs = sys.argv[1:]
+if len(pairs) % 2:
+    raise SystemExit("result_object requires key/value pairs")
+print(json.dumps(dict(zip(pairs[::2], pairs[1::2]))))
+PYEOF
+}
+
+lines_as_json_array() {
+  python3 - "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps([line for line in sys.argv[1].splitlines() if line]))
+PYEOF
+}
+
+run_state() {
+  local script="$PLUGIN_ROOT/scripts/state/$1"
+  shift
+  STATE_OUTPUT=""
+  if [ ! -x "$script" ]; then
+    err "state script not found: $(basename "$script")"
+    return 1
+  fi
+  if ! STATE_OUTPUT=$(CWD="$CWD" bash "$script" "$@" 2>&1); then
+    err "${STATE_OUTPUT:-state script failed: $(basename "$script")}"
+    return 1
+  fi
+}
+
+require_string_arg() {
+  ARG_VALUE=""
+  if ! ARG_VALUE=$(python3 - "$1" "$ARGS" <<'PYEOF'
+import json
+import sys
+
+value = json.loads(sys.argv[2]).get(sys.argv[1])
+if not isinstance(value, str) or not value:
+    raise SystemExit(1)
+print(value)
+PYEOF
+  ); then
+    err "invalid or missing string argument: $1"
+    return 1
+  fi
+}
+
+require_object_arg() {
+  ARG_VALUE=""
+  if ! ARG_VALUE=$(python3 - "$1" "$ARGS" <<'PYEOF'
+import json
+import sys
+
+value = json.loads(sys.argv[2]).get(sys.argv[1], {})
+if not isinstance(value, dict):
+    raise SystemExit(1)
+print(json.dumps(value))
+PYEOF
+  ); then
+    err "invalid object argument: $1"
+    return 1
+  fi
+}
+
+read_state_file() {
+  python3 - "$1" <<'PYEOF'
+import json
+import sys
+
+with open(sys.argv[1]) as state_file:
+    print(json.dumps(json.load(state_file)))
+PYEOF
+}
 
 TOOL_LIST='{"tools":[
   {"name":"create_run","description":"Create a new autonomous run","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"objective":{"type":"string"}},"required":["run_id","objective"]}},
@@ -26,73 +118,104 @@ TOOL_LIST='{"tools":[
   {"name":"recover_run","description":"Recover state from latest checkpoint","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}}
 ]}'
 
+while IFS= read -r INPUT || [ -n "$INPUT" ]; do
+  METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<< "$INPUT" || echo "")
+  ID_JSON=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('id',0)))" 2>/dev/null <<< "$INPUT" || echo "0")
+
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"run-ledger","version":"0.8.0"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"run-ledger","version":"0.15.0-alpha.2"}}'
     ;;
   tools/list)
     reply "$TOOL_LIST"
     ;;
   tools/call)
-    TOOL=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d['params']['name'])" 2>/dev/null <<< "$INPUT")
-    ARGS=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d['params'].get('arguments',{})))" 2>/dev/null <<< "$INPUT")
-
-    run_st() {
-      local script="$PLUGIN_ROOT/scripts/state/$1"
-      [ -x "$script" ] || { err "state script not found: $1"; return; }
-      reply "$(CWD="$CWD" bash "$script" "${@:2}" 2>&1 | python3 -c "import sys,json; json.dumps({'output':sys.stdin.read().strip()})" 2>/dev/null || echo '{}')"
-    }
-
-    run_ev() {
-      local script="$PLUGIN_ROOT/scripts/state/append-event.sh"
-      local run_id=$(echo "$ARGS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('run_id',''))" 2>/dev/null)
-      local evtype=$(echo "$ARGS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('event_type',''))" 2>/dev/null)
-      local payload=$(echo "$ARGS" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('payload',{})))" 2>/dev/null)
-      CWD="$CWD" bash "$script" "$run_id" "$evtype" "$payload" 2>&1 >/dev/null
-      reply '{"status":"ok","event_appended":true}'
-    }
+    if ! TOOL=$(python3 -c "import sys,json; d=json.load(sys.stdin); value=d['params']['name']; assert isinstance(value, str); print(value)" 2>/dev/null <<< "$INPUT"); then
+      err "invalid tools/call request"
+      continue
+    fi
+    if ! ARGS=$(python3 -c "import sys,json; d=json.load(sys.stdin); value=d['params'].get('arguments',{}); assert isinstance(value, dict); print(json.dumps(value))" 2>/dev/null <<< "$INPUT"); then
+      err "invalid tools/call arguments"
+      continue
+    fi
 
     case "$TOOL" in
       create_run)
-        RID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['run_id'])")
-        OBJ=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['objective'])")
-        CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/create-run.sh" "$RID" "$OBJ" 2>&1 >/dev/null
-        reply '{"status":"ok","run_id":"'$RID'"}'
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        require_string_arg objective || continue; OBJ="$ARG_VALUE"
+        if run_state create-run.sh "$RID" "$OBJ"; then
+          reply "$(result_object status ok run_id "$RID")"
+        fi
         ;;
       list_runs)
-        OUT=$(CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/list-runs.sh" 2>/dev/null | tail -n +3 | awk '{print $1}' | tr '\n' ',' | sed 's/,$//')
-        reply "{\"runs\":[$(echo "$OUT" | sed 's/,/","/g' | sed 's/^/"/;s/$/"/')],\"count\":$(echo "$OUT" | tr ',' '\n' | grep -c .)}"
+        if run_state list-runs.sh; then
+          RUN_LINES=$(printf '%s\n' "$STATE_OUTPUT" | tail -n +3 | awk '{print $1}' | grep -v '^$' || true)
+          RUNS=$(lines_as_json_array "$RUN_LINES")
+          COUNT=$(python3 - "$RUNS" <<'PYEOF'
+import json
+import sys
+print(len(json.loads(sys.argv[1])))
+PYEOF
+)
+          reply "{\"runs\":$RUNS,\"count\":$COUNT}"
+        fi
         ;;
-      latest_run) run_st latest-run.sh ;;
+      latest_run)
+        if run_state latest-run.sh; then
+          reply "$(result_object output "$STATE_OUTPUT")"
+        fi
+        ;;
       read_state)
-        RID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['run_id'])")
-        if [ -f "$STATEDIR/runs/$RID/state.json" ]; then
-          reply "$(python3 -c "import json; json.dumps(json.load(open('$STATEDIR/runs/$RID/state.json')))" 2>/dev/null || echo '{}')"
-        else
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        if ! state_require_run_dir "$CWD" "$RID"; then
+          err "invalid or unsafe run_id"
+        elif ! state_require_existing_run_file "$STATE_RUN_DIR/state.json" "state file"; then
           err "run not found: $RID"
+        elif ! STATE_JSON=$(read_state_file "$STATE_RUN_DIR/state.json" 2>&1); then
+          err "${STATE_JSON:-failed to read run state}"
+        else
+          reply "$STATE_JSON"
         fi
         ;;
       summarize_run)
-        RID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['run_id'])")
-        SUMMARY=$(CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/summarize-run.sh" "$RID" 2>/dev/null | grep -v '^===' | sed 's/^/"/;s/$/"/' | tr '\n' ',' | sed 's/,$//')
-        reply "{\"summary\":[$(echo "$SUMMARY" | sed 's/",""$/"/')]}"
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        if run_state summarize-run.sh "$RID"; then
+          SUMMARY_LINES=$(printf '%s\n' "$STATE_OUTPUT" | grep -v '^===' || true)
+          SUMMARY=$(lines_as_json_array "$SUMMARY_LINES")
+          reply "{\"summary\":$SUMMARY}"
+        fi
         ;;
-      append_event) run_ev ;;
+      append_event)
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        require_string_arg event_type || continue; EVENT_TYPE="$ARG_VALUE"
+        require_object_arg payload || continue; PAYLOAD="$ARG_VALUE"
+        if run_state append-event.sh "$RID" "$EVENT_TYPE" "$PAYLOAD"; then
+          reply '{"status":"ok","event_appended":true}'
+        fi
+        ;;
       update_task)
-        RID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['run_id'])")
-        TID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['task_id'])")
-        TSTAT=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['status'])")
-        CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/update-task.sh" "$RID" "$TID" "$TSTAT" 2>&1 >/dev/null
-        reply '{"status":"ok","task_id":"'$TID'","new_status":"'$TSTAT'"}'
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        require_string_arg task_id || continue; TID="$ARG_VALUE"
+        require_string_arg status || continue; TSTAT="$ARG_VALUE"
+        if run_state update-task.sh "$RID" "$TID" "$TSTAT"; then
+          reply "$(result_object status ok task_id "$TID" new_status "$TSTAT")"
+        fi
         ;;
       create_checkpoint)
-        RID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['run_id'])")
-        CP=$(CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/checkpoint.sh" "$RID" 2>/dev/null)
-        reply "{\"status\":\"ok\",\"checkpoint\":\"$CP\"}"
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        if run_state checkpoint.sh "$RID"; then
+          if [ -z "$STATE_OUTPUT" ]; then
+            err "checkpoint script returned no checkpoint path"
+          else
+            reply "$(result_object status ok checkpoint "$STATE_OUTPUT")"
+          fi
+        fi
         ;;
       recover_run)
-        RID=$(echo "$ARGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['run_id'])")
-        CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/recover-run.sh" "$RID" 2>&1 >/dev/null && reply '{"status":"ok","recovered":true}' || err "recovery failed for $RID"
+        require_string_arg run_id || continue; RID="$ARG_VALUE"
+        if run_state recover-run.sh "$RID"; then
+          reply '{"status":"ok","recovered":true}'
+        fi
         ;;
       *) err "unknown tool: $TOOL" ;;
     esac
@@ -101,3 +224,4 @@ case "$METHOD" in
     err "unsupported method: $METHOD"
     ;;
 esac
+done

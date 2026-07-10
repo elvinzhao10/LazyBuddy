@@ -11,7 +11,17 @@
 set -euo pipefail
 
 CWD="${CWD:-$(pwd)}"
-HOOKS_DIR="$CWD/lazybuddy-plugin/scripts/hooks"
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+if [ ! -d "$PLUGIN_ROOT" ]; then
+    echo "Hook pipeline test: FAIL (plugin root is missing: $PLUGIN_ROOT)" >&2
+    exit 1
+fi
+HOOKS_DIR="$PLUGIN_ROOT/scripts/hooks"
+if [ ! -d "$HOOKS_DIR" ]; then
+    echo "Hook pipeline test: FAIL (hooks directory is missing: $HOOKS_DIR)" >&2
+    exit 1
+fi
+export CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT"
 SESSION_ID="hook-pipeline-test-$$"
 STATE_DIR="$CWD/.lazybuddy/executor-verify-state"
 PASS=0
@@ -30,10 +40,23 @@ test_hook() {
     local payload="$2"
     local expect_pattern="$3"
     local output
-    output=$(echo "$payload" | bash "$HOOKS_DIR/$name" 2>&1 || true)
-    if [ -z "$expect_pattern" ] && [ -z "$output" ]; then
-        RESULTS="${RESULTS}  [PASS] $name — allowed (empty output as expected)\n"
-        PASS=$((PASS + 1))
+    local status
+    if output=$(printf '%s\n' "$payload" | bash "$HOOKS_DIR/$name" 2>&1); then
+        status=0
+    else
+        status=$?
+    fi
+    if [ "$status" -ne 0 ]; then
+        RESULTS="${RESULTS}  [FAIL] $name — exited $status: ${output:0:80}\n"
+        FAIL=$((FAIL + 1))
+    elif [ -z "$expect_pattern" ]; then
+        if [ -z "$output" ]; then
+            RESULTS="${RESULTS}  [PASS] $name — allowed (empty output as expected)\n"
+            PASS=$((PASS + 1))
+        else
+            RESULTS="${RESULTS}  [FAIL] $name — expected empty output, got: ${output:0:80}\n"
+            FAIL=$((FAIL + 1))
+        fi
     elif echo "$output" | grep -qi "$expect_pattern"; then
         RESULTS="${RESULTS}  [PASS] $name — matched expected pattern\n"
         PASS=$((PASS + 1))
@@ -50,7 +73,7 @@ echo ""
 # 1. SessionStart — should detect no active run and pass through
 test_hook "session-start.sh" \
     '{"event":"session_start","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'"}' \
-    ""
+    "SESSIONSTART_READINESS=full"
 
 # 2. UserPromptSubmit — should detect no keywords and pass through
 test_hook "user-prompt-submit.sh" \
@@ -105,7 +128,7 @@ test_hook "subagent-start.sh" \
 # 12. StopFailure — should pass through
 test_hook "stop-failure.sh" \
     '{"event":"stop_failure","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'"}' \
-    ""
+    "lazy-start-work"
 
 # 13. Stop — no active run, should allow (empty output)
 test_hook "stop-gate.sh" \
@@ -137,7 +160,7 @@ if [ "$FAIL" -eq 0 ]; then
     echo "Hook pipeline test: ALL PASS"
     echo ""
     echo "All 12 hook events produce correct output for realistic payloads."
-    echo "Plugin is enabled in .workbuddy/settings.json — hooks will fire on next live session."
+    echo "Package-level hook behavior passed; live host registration remains unchecked."
     exit 0
 else
     echo "Hook pipeline test: $FAIL FAILURES"

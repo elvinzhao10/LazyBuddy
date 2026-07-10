@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v0.12)
+# lazybuddy-verify.sh — Master verification runner (v0.15.0-alpha.2)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -17,16 +17,17 @@ fi
 
 SCRIPTS_DIR="${PLUGIN_ROOT}/scripts"
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
+export CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}"
 export CWD="${CWD:-${PROJECT_ROOT}}"
 ALL_PASS=true
-DOCTOR_RESULT="skipped (script not found or not executable)"
-SMOKE_RESULT="skipped (script not found or not executable)"
-DOCS_RESULT="skipped (script not found or not executable)"
-PARITY_RESULT="skipped (script not found or not executable)"
-SECURITY_RESULT="skipped (script not found or not executable)"
-MCP_RESULT="skipped (script not found or not executable)"
-HOOK_RESULT="skipped (script not found or not executable)"
-LOAD_RESULT="skipped (script not found or not executable)"
+DOCTOR_RESULT="fail"
+SMOKE_RESULT="fail"
+DOCS_RESULT="fail"
+PARITY_RESULT="fail"
+SECURITY_RESULT="fail"
+MCP_RESULT="fail"
+HOOK_RESULT="fail"
+LOAD_RESULT="fail"
 
 run_check() {
     local script="$1"
@@ -39,6 +40,7 @@ run_check() {
             ALL_PASS=false
         fi
     else
+        eval "${result_var}=fail"
         ALL_PASS=false
     fi
 }
@@ -57,7 +59,7 @@ run_hook_pipeline_check() {
         return
     }
     if ln -s "${PLUGIN_ROOT}" "${hook_root}/lazybuddy-plugin" 2>/dev/null; then
-        if output=$(CWD="${hook_root}" "$script" 2>&1); then
+        if output=$(CWD="${hook_root}" CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}" "$script" 2>&1); then
             eval "${result_var}=pass"
         else
             eval "${result_var}=fail"
@@ -72,8 +74,13 @@ run_hook_pipeline_check() {
 
 run_check "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-parity-check.sh"   PARITY_RESULT
+if [ -d "${PROJECT_ROOT}/dev/reference/lazycodex/plugins/omo" ]; then
+    run_check "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
+    run_check "${SCRIPTS_DIR}/lazybuddy-parity-check.sh"   PARITY_RESULT
+else
+    DOCS_RESULT="unchecked (source-only release check)"
+    PARITY_RESULT="unchecked (source-only release check)"
+fi
 run_check "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
 run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT

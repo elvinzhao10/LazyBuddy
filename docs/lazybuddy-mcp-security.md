@@ -56,6 +56,6 @@ All servers configured with `required: false`:
 The PreToolUse hook (`pre-tool-use.sh`) complements MCP security:
 - Blocks access to secret files (`.env`, `*-secret*`, etc.) — MCP tools don't touch these anyway, but the hook prevents escape
 - Blocks destructive operations (`rm -rf`, `git push --force`, etc.)
-- Complements `.workbuddy/settings.json` permissions
+- Applies the host-neutral LazyBuddy safety policy; host permission settings may add restrictions
 
 MCP tools don't bypass PreToolUse — all tool calls go through the hook pipeline.

@@ -4,9 +4,10 @@
 set -euo pipefail
 
 RUN_ID="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/state-paths.sh"
 
-if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-    echo "Error: invalid run_id" >&2
+if ! state_require_safe_run_id "$RUN_ID"; then
     exit 1
 fi
 
@@ -16,8 +17,10 @@ if [ -z "$RUN_ID" ]; then
 fi
 
 CWD="${CWD:-.}"
-STATE_FILE="$CWD/.lazybuddy/runs/$RUN_ID/state.json"
+state_require_run_dir "$CWD" "$RUN_ID" || exit 1
+STATE_FILE="$STATE_RUN_DIR/state.json"
 
+state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
 if [ ! -f "$STATE_FILE" ]; then
     echo "Error: state.json not found for run '$RUN_ID'" >&2
     exit 1

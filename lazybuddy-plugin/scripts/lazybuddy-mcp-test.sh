@@ -3,12 +3,28 @@
 # Exercises initialize + tools/list on every server, plus one safe representative
 # tool call per server. Reports pass/fail per server + tool. Exit 0 = all pass.
 #
-# Usage: bash lazybuddy-mcp-test.sh [repo-root]
+# Usage: bash lazybuddy-mcp-test.sh [plugin-root-or-repo-root]
 set -euo pipefail
 
-ROOT="${1:-$(cd "$(dirname "$0")/../.." && pwd)}"
-PLUGIN="$ROOT/lazybuddy-plugin"
-export CWD="$ROOT"
+if [ -n "${CODEBUDDY_PLUGIN_ROOT:-}" ]; then
+    PLUGIN="$CODEBUDDY_PLUGIN_ROOT"
+elif [ "$#" -gt 0 ] && [ -d "$1/.mcp.json" ]; then
+    PLUGIN="$1"
+elif [ "$#" -gt 0 ] && [ -d "$1/lazybuddy-plugin" ]; then
+    PLUGIN="$1/lazybuddy-plugin"
+else
+    PLUGIN="$(cd "$(dirname "$0")/.." && pwd)"
+fi
+PLUGIN="$(cd "$PLUGIN" 2>/dev/null && pwd)" || {
+    echo "MCP test: FAIL (plugin root is missing: ${CODEBUDDY_PLUGIN_ROOT:-$PLUGIN})" >&2
+    exit 1
+}
+[ -f "$PLUGIN/.mcp.json" ] || {
+    echo "MCP test: FAIL (missing ${PLUGIN}/.mcp.json)" >&2
+    exit 1
+}
+export CODEBUDDY_PLUGIN_ROOT="$PLUGIN"
+export CWD="${CWD:-$(pwd -P)}"
 
 PASS=0
 FAIL=0
@@ -32,7 +48,22 @@ rpc() {
     printf '%s' "$json" | bash "$PLUGIN/mcp/$server/server.sh" 2>/dev/null || echo '{}'
 }
 
+tools_call() {
+    python3 - "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {"name": "symbols", "arguments": {"path": sys.argv[1]}},
+}))
+PYEOF
+}
+
 echo "=== LazyBuddy MCP integration test (8 servers) ==="
+echo "Plugin root: $PLUGIN"
 echo ""
 
 # ── Per-server: initialize + tools/list + one safe tool call ──
@@ -50,8 +81,13 @@ OUT=$(rpc parity '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "parity/initialize" "parity" "$OUT"
 OUT=$(rpc parity '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
 check "parity/tools-list" "list_methods" "$OUT"
-OUT=$(rpc parity '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_methods","arguments":{}}}')
-check "parity/list_methods" "method\|matched\|adapted" "$OUT"
+if [ -f "$CWD/docs/lazybuddy-parity-ledger.md" ]; then
+    OUT=$(rpc parity '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_methods","arguments":{}}}')
+    check "parity/list_methods" "method\|matched\|adapted" "$OUT"
+else
+    OUT=$(rpc parity '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"lazybuddy-smoke-unknown","arguments":{}}}')
+    check "parity/no-project-ledger" "unknown tool" "$OUT"
+fi
 
 # 3. verification
 OUT=$(rpc verification '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
@@ -86,8 +122,13 @@ OUT=$(rpc code-intel '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "code-intel/initialize" "code-intel" "$OUT"
 OUT=$(rpc code-intel '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
 check "code-intel/tools-list" "diagnostics\|goto_definition" "$OUT"
-OUT=$(rpc code-intel '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"symbols","arguments":{"path":"lazybuddy-plugin/mcp/code-intel/server.py"}}}')
-check "code-intel/symbols" "symbols\|def " "$OUT"
+CODE_INTEL_PATH="${LAZYBUDDY_MCP_TEST_CODE_PATH:-README.md}"
+OUT=$(rpc code-intel "$(tools_call "$CODE_INTEL_PATH")")
+if [ -f "$CWD/$CODE_INTEL_PATH" ]; then
+    check "code-intel/symbols" "symbols\|def " "$OUT"
+else
+    check "code-intel/no-project-file" "file not found" "$OUT"
+fi
 
 # 8. docs
 OUT=$(rpc docs '{"jsonrpc":"2.0","id":1,"method":"initialize"}')

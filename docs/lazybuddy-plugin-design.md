@@ -1,6 +1,7 @@
 # LazyBuddy Plugin Design
 
-> v0.12 — Directory layout, manifest fields, component list, install/uninstall story
+> **Historical v0.12 design snapshot.** It is not a current manifest, installation, uninstall, or host-loading guide.
+> Current v0.15 manifest and onboarding details are in [the plugin README](../lazybuddy-plugin/README.md) and [AGENTS.md](../AGENTS.md).
 
 ## Overview
 
@@ -107,10 +108,10 @@ lazybuddy-plugin/
   "description": "LazyCodex agent harness reborn inside WorkBuddy — project memory, planning, execution, and verified completion.",
   "author": {
     "name": "LazyBuddy",
-    "url": "https://github.com/lazybuddy"
+    "url": "https://github.com/elvinzhao10/LazyBuddy"
   },
-  "homepage": "https://github.com/lazybuddy",
-  "repository": "https://github.com/lazybuddy",
+  "homepage": "https://github.com/elvinzhao10/LazyBuddy",
+  "repository": "https://github.com/elvinzhao10/LazyBuddy",
   "license": "MIT",
   "keywords": [
     "workbuddy",
@@ -141,9 +142,9 @@ lazybuddy-plugin/
       "Agent Orchestration",
       "Verification"
     ],
-    "websiteURL": "https://github.com/lazybuddy",
-    "privacyPolicyURL": "https://github.com/lazybuddy#privacy",
-    "termsOfServiceURL": "https://github.com/lazybuddy#license",
+    "websiteURL": "https://github.com/elvinzhao10/LazyBuddy",
+    "privacyPolicyURL": "https://github.com/elvinzhao10/LazyBuddy#privacy",
+    "termsOfServiceURL": "https://github.com/elvinzhao10/LazyBuddy#license",
     "defaultPrompt": [
       "Use LazyBuddy to plan and execute this task.",
       "Run /lazy-ulw-plan to create a decision-complete work plan.",
@@ -269,46 +270,35 @@ Command invocation syntax follows LazyCodex conventions (traced to [README.md](.
 
 ---
 
-## Install/Uninstall Story
+## Historical Install/Uninstall Story
+
+> The commands in this section are preserved as v0.12 design history and must not be used. v0.15 uses the host-managed install/uninstall flow in [AGENTS.md](../AGENTS.md); no guessed host-managed path is a supported contract.
 
 ### Install
 
 ```
-# Method 1: From WorkBuddy marketplace
-# In WorkBuddy: /plugins → Add Marketplace → enter repository URL
-# Repository: https://github.com/lazybuddy
+# Current CodeBuddy CLI flow
+codebuddy plugin marketplace add https://github.com/elvinzhao10/LazyBuddy.git --name lazybuddy
+codebuddy plugin install lazybuddy@lazybuddy --scope project
 
-# Method 2: Manual install
-git clone https://github.com/lazybuddy ~/.workbuddy/plugins/lazybuddy
-
-# Method 3: From project workspace (for development)
-ln -s /path/to/lazybuddy-plugin ~/.workbuddy/plugins/lazybuddy
+# Current WorkBuddy / CodeBuddy IDE flow
+# Use the host plugin UI, then verify a loaded /lazybuddy:lazy-<command> or skill.
 ```
 
 **LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Install section — "npx lazycodex-ai install" and Codex marketplace path.
 
-### Post-Install
+### Historical Post-Install Assumptions
 
-On first session after install:
-1. `SessionStart` hook fires
-2. Bootstrap check runs: are `.workbuddy/` and `.lazybuddy/` directories set up?
-3. If not: guide user through `init-deep` to create project memory
-4. Hooks announce the active LazyBuddy version from plugin metadata
+The v0.12 design expected automatic bootstrap. In v0.15, package readiness does not prove host loading: only after the host actually loads the plugin can SessionStart repeat the readiness check. Use `/lazybuddy:lazy-init-deep` or natural language to initialize project memory after that observation.
 
 ### Verify Install
 
 ```
-# Run health check
-/doctor
+# Package readiness only
+bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
+bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
 
-# Should report:
-# - Plugin: lazybuddy current manifest version ✓
-# - Skills: 14 loaded ✓
-# - Agents: 13 configured ✓
-# - Hooks: 12 active ✓
-# - MCP: 8 servers configured ✓
-# - Project memory: workbuddy.md present ✓
-# - Run state: .lazybuddy/ writable ✓
+# Then confirm a /lazybuddy:lazy-<command> or skill and MCP connection in a new host session.
 ```
 
 **LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) "Verify it worked" section — `npx lazycodex-ai doctor`.
@@ -316,12 +306,8 @@ On first session after install:
 ### Uninstall
 
 ```
-# Remove plugin directory
-rm -rf ~/.workbuddy/plugins/lazybuddy
-
-# Optional: clean up project-local files
-rm -rf .workbuddy/rules/lazybuddy.md
-rm -rf .lazybuddy/
+# Use the host's uninstall UI or CodeBuddy CLI uninstall command.
+# Do not delete a guessed host-managed plugin directory.
 ```
 
 **LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Uninstall section — "npx lazycodex-ai uninstall".
@@ -329,13 +315,8 @@ rm -rf .lazybuddy/
 ### Upgrade
 
 ```
-# Pull latest plugin version
-cd ~/.workbuddy/plugins/lazybuddy && git pull
-
-# On next session start:
-# - Bootstrap hook re-runs provisioning
-# - Project memory updated if needed
-# - Hooks marked as Modified → re-approve
+# Update through the host's marketplace/plugin update flow, then repeat package
+# readiness and a real host-session check.
 ```
 
 **LazyCodex source:** [README.md](../dev/reference/lazycodex/README.md) Marketplace upgrade — "codex plugin marketplace upgrade sisyphuslabs".

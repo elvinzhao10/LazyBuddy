@@ -38,29 +38,86 @@ echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
 echo ""
 
-# 1. Manifest exists
-if [ -f "${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json" ]; then
-    check "Manifest exists" ok
-else
-    check "Manifest exists" "missing: ${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
-fi
-
-# 2. Manifest parses as JSON
-if python3 -c "import json; json.load(open('${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json'))" 2>/dev/null; then
-    check "Manifest is valid JSON" ok
-else
-    check "Manifest is valid JSON" "parse error"
-fi
-
-# 3. Required manifest fields
-MANIFEST="${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
-for field in name version skills commands agents hooks mcpServers; do
-    if python3 -c "import json; d=json.load(open('${MANIFEST}')); assert '${field}' in d" 2>/dev/null; then
-        check "Manifest field: ${field}" ok
+# 1-3. Both host manifests exist, parse, and describe the same plugin contract.
+CODEBUDDY_MANIFEST="${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
+WORKBUDDY_MANIFEST="${PLUGIN_ROOT}/.workbuddy-plugin/plugin.json"
+for host_manifest in "CodeBuddy:${CODEBUDDY_MANIFEST}" "WorkBuddy:${WORKBUDDY_MANIFEST}"; do
+    HOST="${host_manifest%%:*}"
+    MANIFEST="${host_manifest#*:}"
+    if [ -f "$MANIFEST" ]; then
+        check "$HOST manifest exists" ok
     else
-        check "Manifest field: ${field}" "missing"
+        check "$HOST manifest exists" "missing: $MANIFEST"
     fi
+    if python3 - "$MANIFEST" <<'PY' 2>/dev/null
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    assert isinstance(json.load(handle), dict)
+PY
+    then
+        check "$HOST manifest is valid JSON" ok
+    else
+        check "$HOST manifest is valid JSON" "parse error"
+    fi
+    for field in name version skills commands agents hooks mcpServers; do
+        if python3 - "$MANIFEST" "$field" <<'PY' 2>/dev/null
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    data = json.load(handle)
+assert sys.argv[2] in data
+PY
+        then
+            check "$HOST manifest field: ${field}" ok
+        else
+            check "$HOST manifest field: ${field}" "missing"
+        fi
+    done
 done
+
+if agreement=$(python3 - "$CODEBUDDY_MANIFEST" "$WORKBUDDY_MANIFEST" "${PROJECT_ROOT}/.codebuddy-plugin/marketplace.json" <<'PY' 2>&1
+import json
+import os
+import sys
+
+code_path, work_path, marketplace_path = sys.argv[1:]
+with open(code_path, encoding="utf-8") as handle:
+    code = json.load(handle)
+with open(work_path, encoding="utf-8") as handle:
+    work = json.load(handle)
+if code.get("name") != "lazybuddy" or work.get("name") != "lazybuddy":
+    raise SystemExit("host manifest name must be lazybuddy")
+if not isinstance(code.get("version"), str) or code["version"] != work.get("version"):
+    raise SystemExit("host manifest versions do not agree")
+if os.path.exists(marketplace_path):
+    with open(marketplace_path, encoding="utf-8") as handle:
+        marketplace = json.load(handle)
+    entry = next((item for item in marketplace.get("plugins", []) if item.get("name") == "lazybuddy"), None)
+    if entry is None or entry.get("version") != code["version"]:
+        raise SystemExit("marketplace version does not agree with host manifests")
+print(code["version"])
+PY
+); then
+    check "Host/marketplace version agreement" ok
+    echo "  [INFO] Host/marketplace version: $agreement"
+else
+    check "Host/marketplace version agreement" "$agreement"
+fi
+
+if command -v codebuddy >/dev/null 2>&1; then
+    if validator_output=$(codebuddy plugin validate "$PLUGIN_ROOT" 2>&1); then
+        if printf '%s\n' "$validator_output" | grep -qiE 'validation failed|found [0-9]+ error'; then
+            check "CodeBuddy manifest validator" "$validator_output"
+        else
+            check "CodeBuddy manifest validator" ok
+        fi
+    else
+        check "CodeBuddy manifest validator" "$validator_output"
+    fi
+else
+    echo "  [UNCHECKED] CodeBuddy manifest validator — codebuddy CLI unavailable"
+fi
 
 # 4. Component directories exist
 for dir in skills commands agents hooks mcp scripts schemas tests docs; do

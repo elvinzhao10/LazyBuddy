@@ -1,12 +1,36 @@
 #!/usr/bin/env bash
-# verification MCP server — JSON-RPC over stdin/stdout, wraps v0.7 loop scripts
-set -euo pipefail; INPUT=$(cat)
-METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<<"$INPUT" || echo "")
-ID=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',0))" 2>/dev/null <<<"$INPUT" || echo "0")
+# verification MCP server — newline-delimited JSON-RPC over stdin/stdout
+set -euo pipefail
 CWD="${CWD:-.}"
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
-reply() { printf '{"jsonrpc":"2.0","id":%s,"result":%s}\n' "$ID" "$1"; }
-err() { printf '{"jsonrpc":"2.0","id":%s,"error":{"code":-32603,"message":"%s"}}\n' "$ID" "$1"; }
+source "$PLUGIN_ROOT/scripts/state/state-paths.sh"
+reply() {
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "result": json.loads(sys.argv[2])}))
+PYEOF
+}
+err() {
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "error": {"code": -32603, "message": sys.argv[2]}}))
+PYEOF
+}
+result_object() {
+  python3 - "$@" <<'PYEOF'
+import json
+import sys
+
+pairs = sys.argv[1:]
+if len(pairs) % 2:
+    raise SystemExit("result_object requires key/value pairs")
+print(json.dumps(dict(zip(pairs[::2], pairs[1::2]))))
+PYEOF
+}
 
 TOOL_LIST='{"tools":[
   {"name":"discover_checks","description":"Read verification-matrix.md, return checks as JSON","inputSchema":{"type":"object","properties":{"section":{"type":"string"}}}},
@@ -20,11 +44,23 @@ TOOL_LIST='{"tools":[
 arg() { echo "$ARGS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
 arg_req() { echo "$ARGS" | python3 -c "import sys,json; print(json.load(sys.stdin)['$1'])" 2>/dev/null; }
 run_script() { CWD="$CWD" bash "$PLUGIN_ROOT/scripts/$1" "$RID" "${@:2}" 2>/dev/null; }
+resolve_run_state() {
+  state_require_run_dir "$CWD" "$1" || return 1
+  state_require_existing_run_file "$STATE_RUN_DIR/state.json" "state file" || return 1
+  printf '%s\n' "$STATE_RUN_DIR/state.json"
+}
+require_run_events() {
+  state_require_run_dir "$CWD" "$1" || return 1
+  state_require_existing_run_file "$STATE_RUN_DIR/state.json" "state file" || return 1
+  state_require_existing_run_file "$STATE_RUN_DIR/events.jsonl" "events file"
+}
 
 py_discover() {
-  SECTION="$1" python3 << 'PYEOF'
+  local matrix="$CWD/docs/lazybuddy-verification-matrix.md"
+  [ -f "$matrix" ] || return 1
+  SECTION="$1" MATRIX="$matrix" python3 << 'PYEOF'
 import json, os; cwd = os.environ.get('CWD', '.'); sect = os.environ.get('SECTION', '')
-text = open(os.path.join(cwd, 'docs/lazybuddy-verification-matrix.md')).read()
+text = open(os.environ['MATRIX']).read()
 checks, cur = [], ''
 for line in text.split('\n'):
     if line.startswith('## '): cur = line.strip('# ').strip()
@@ -37,9 +73,13 @@ print(json.dumps(checks))
 PYEOF
 }
 
+while IFS= read -r INPUT || [ -n "$INPUT" ]; do
+  METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<<"$INPUT" || echo "")
+  ID_JSON=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('id',0)))" 2>/dev/null <<<"$INPUT" || echo "0")
+
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"0.8.0"}}' ;;
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"0.15.0-alpha.2"}}' ;;
   tools/list) reply "$TOOL_LIST" ;;
   tools/call)
     TNAME=$(python3 -c "import sys,json; print(json.load(sys.stdin)['params']['name'])" 2>/dev/null <<<"$INPUT")
@@ -47,34 +87,45 @@ case "$METHOD" in
     RID=$(arg run_id)
     case "$TNAME" in
       discover_checks)
-        SECT=$(arg section); reply "$(py_discover "$SECT")" ;;
+        SECT=$(arg section)
+        if ! CHECKS=$(py_discover "$SECT" 2>/dev/null); then
+          err "verification matrix not found in project docs"
+          continue
+        fi
+        reply "$CHECKS" ;;
       run_check)
+        resolve_run_state "$RID" >/dev/null || { err "invalid or unsafe run_id"; continue; }
         TID=$(arg_req task_id); EMSG=$(arg_req error_message)
         CLASS=$(run_script loop/classify-failure.sh "$TID" "$EMSG")
-        printf '{"jsonrpc":"2.0","id":%s,"result":{"status":"ok","classification":"%s"}}\n' "$ID" "$CLASS" ;;
+        reply "$(result_object status ok classification "$CLASS")" ;;
       record_gate_result)
+        resolve_run_state "$RID" >/dev/null || { err "invalid or unsafe run_id"; continue; }
+        require_run_events "$RID" || { err "invalid or unsafe run_id"; continue; }
+        export STATE_RUN_DIR
         GNAME=$(arg_req gate_name); GST=$(arg_req status); GRES=$(arg result); NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        mkdir -p "$CWD/.lazybuddy/runs/$RID"
+        export RID GNAME GST GRES NOW
         python3 -c "
 import json, os; cwd=os.environ['CWD']; rid=os.environ['RID']
 ev=dict(ts=os.environ['NOW'], run_id=rid, event='gate_result', gate=os.environ['GNAME'], status=os.environ['GST'], result=os.environ.get('GRES',''))
-with open(os.path.join(cwd,'.lazybuddy/runs',rid,'events.jsonl'),'a') as f: f.write(json.dumps(ev)+'\n')
+with open(os.environ['STATE_RUN_DIR'] + '/events.jsonl','a') as f: f.write(json.dumps(ev)+'\n')
 "
-        printf '{"jsonrpc":"2.0","id":%s,"result":{"status":"ok","gate":"%s","gate_result":"%s"}}\n' "$ID" "$GNAME" "$GST" ;;
+        reply "$(result_object status ok gate "$GNAME" gate_result "$GST")" ;;
       list_gate_results)
-        SF="$CWD/.lazybuddy/runs/$RID/state.json"
-        [ -f "$SF" ] && reply "$(python3 -c "import json; d=json.load(open('$SF')); print(json.dumps(d.get('verification_gates',[])))")" || err "run not found: $RID" ;;
+        SF=$(resolve_run_state "$RID") || { err "invalid or unsafe run_id"; continue; }
+        reply "$(python3 -c "import json; d=json.load(open('$SF')); print(json.dumps(d.get('verification_gates',[])))")" ;;
       create_repair_task)
+        resolve_run_state "$RID" >/dev/null || { err "invalid or unsafe run_id"; continue; }
         FTID=$(arg_req failed_task_id); CLS=$(arg_req classification)
         NEWID=$(run_script loop/create-repair-task.sh "$FTID" "$CLS")
-        printf '{"jsonrpc":"2.0","id":%s,"result":{"status":"ok","repair_task_id":"%s"}}\n' "$ID" "$NEWID" ;;
+        reply "$(result_object status ok repair_task_id "$NEWID")" ;;
       summarize_verification)
-        SF="$CWD/.lazybuddy/runs/$RID/state.json"
-        [ -f "$SF" ] || { err "run not found: $RID"; continue; }
-        reply "$(export RID CWD; python3 << 'PYEOF'
+        SF=$(resolve_run_state "$RID") || { err "invalid or unsafe run_id"; continue; }
+        require_run_events "$RID" || { err "invalid or unsafe run_id"; continue; }
+        export RID CWD SF STATE_RUN_DIR
+        reply "$(python3 << 'PYEOF'
 import json, os; cwd=os.environ.get('CWD','.'); rid=os.environ['RID']
-sf=os.path.join(cwd,'.lazybuddy/runs',rid,'state.json')
-ef=os.path.join(cwd,'.lazybuddy/runs',rid,'events.jsonl')
+sf=os.environ['SF']
+ef=os.environ['STATE_RUN_DIR'] + '/events.jsonl'
 state=json.load(open(sf)); events=[]
 if os.path.exists(ef):
     with open(ef) as f:
@@ -94,3 +145,4 @@ PYEOF
     esac ;;
   *) err "unsupported method: $METHOD" ;;
 esac
+done

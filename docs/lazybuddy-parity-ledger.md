@@ -1,12 +1,12 @@
 # LazyBuddy Parity Ledger
 
-> Living ledger tracking LazyBuddy vs LazyCodex parity.
-> Updated by the Librarian after every accepted change.
+> **Historical parity ledger (v0.12 and earlier).** It records prior adaptation evidence and is not the v0.15 host-installation contract.
+> Current onboarding, manifest, and package-readiness status live in [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [the plugin README](../lazybuddy-plugin/README.md).
 >
 > Status: `matched` (confirmed equivalent) | `adapted` (semantics preserved, implementation differs) | `skipped` (intentionally not ported) | `added` (LazyBuddy-only)
-> Current release status and evidence labels live in See [README](../README.md) for current status..
+> Current release status and evidence labels live in [README.md](../README.md).
 >
-> v0.12 taxonomy: `reference parity` means a LazyCodex source-backed behavior is preserved; `host-substitution` means WorkBuddy covers the use case through a different surface; `native-enhancement` means LazyBuddy-only functionality; `platform-gap` means the original surface is not directly portable or not needed on WorkBuddy. Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`.
+> The v0.12 taxonomy below is historical: `reference parity` means a LazyCodex source-backed behavior is preserved; `host-substitution` means a host covered the use case through a different surface; `native-enhancement` means LazyBuddy-only functionality; `platform-gap` means the original surface was not directly portable or not needed on that host. Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`.
 
 ## Initial Method Map (v0.2 baseline)
 
@@ -74,7 +74,7 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | `SubagentStart` hook | Track subagent lifecycle | **added** | Enhances LazyCodex: explicit subagent lifecycle for debugging |
 | `TaskCreated` hook | Run ledger entry on task creation | **added** | Enhances LazyCodex: task-level tracking in state ledger |
 | `TaskCompleted` hook | Progress update on task completion | **added** | Enhances LazyCodex: explicit task lifecycle events |
-| `run-ledger` MCP | Structured run state access | **added** | `native-enhancement`; `project-tool-backed`, `state-only`; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) |
+| `run-ledger` MCP | Structured run state access | **added** | Historical `native-enhancement`; `project-tool-backed`, `state-only`; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) |
 | `verification` MCP | Structured verification test runner | **added** | `native-enhancement`; `project-tool-backed`, `state-only`; initialize/tools-list `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) |
 | `parity` MCP | Compare LazyBuddy vs LazyCodex behavior | **added** | `native-enhancement`; `state-only`; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) |
 | `source-map` MCP | Index/search LazyCodex source evidence | **added** | `native-enhancement`; `heuristic` search/index plus direct excerpt/hash tools; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) |
@@ -109,7 +109,7 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | State/Durability | 3 | 0 | 3 | 0 | 4 |
 | **TOTAL** | **48** | **1** | **38** | **9** | **14** |
 
-**Parity Health:** v0.12 local release hardening is runtime-verified for doctor, aggregate verify, MCP smoke, hook pipeline, docs check, dogfood replay, and plugin metadata `0.12.0` (evidence: `.omo/evidence/task-6-diagnosis-v0-12-lazybuddy.txt`). MCP status is intentionally mixed: `context-graph`, `code-intel`, and `docs` are `host-substitution` surfaces with `heuristic-substitute` limits; `git_bash` and `grep_app` are `platform-gap` host coverage; `run-ledger`, `parity`, `verification`, `source-map`, and `status-dashboard` are `native-enhancement`, not LazyCodex reference parity.
+**Historical v0.12 parity health:** local release hardening was runtime-verified for doctor, aggregate verify, MCP smoke, hook pipeline, docs check, dogfood replay, and plugin metadata `0.12.0` (evidence: `.omo/evidence/task-6-diagnosis-v0-12-lazybuddy.txt`). MCP status was intentionally mixed: `context-graph`, `code-intel`, and `docs` were `host-substitution` surfaces with `heuristic-substitute` limits; `git_bash` and `grep_app` were `platform-gap` host coverage; `run-ledger`, `parity`, `verification`, `source-map`, and `status-dashboard` were `native-enhancement`, not LazyCodex reference parity.
 
 ## v0.3 Update — Plugin Scaffold (2026-07-09)
 
@@ -249,9 +249,9 @@ _This ledger is authoritative. Every parity claim must be verified against `dev/
 
 **Additional v0.8 deliverables:**
 - Dashboard mockup (dashboard.html) — static HTML with placeholder data; interactive MCP integration deferred to v0.9
-- 5 MCP prompt commands: /lazybuddy:status, :new-run, :resume, :verify, :parity-report
+- 5 MCP prompt commands (historical names): /lazybuddy:lazy-status, /lazybuddy:lazy-new-run, /lazybuddy:lazy-resume, /lazybuddy:lazy-verify, /lazybuddy:lazy-parity-report
 - 4 docs: mcp-and-tools.md, mcp-security.md, dashboard-design.md, enhancement-log.md
-- Historical v0.8 state: `.mcp.json` populated with the then-current 5 servers (bash command, required: false); current v0.12 runtime has 8 servers.
+- Historical v0.8 state: `.mcp.json` populated with the then-current 5 servers (bash command, required: false); the historical v0.12 snapshot had 8 servers.
 
 **Design decisions:**
 - Shell + python3 for JSON-RPC (no Node.js dependency)
@@ -259,7 +259,7 @@ _This ledger is authoritative. Every parity claim must be verified against `dev/
 - Run-ledger tools use v0.7 state scripts directly (thin wrapper, not reimplementation)
 
 **Status shifts from v0.7:**
-- MCP Servers: planned → implemented for historical v0.8 scope (5 servers, 30 tools); current v0.12 runtime has 8 servers / 42 tools.
+- MCP Servers: planned → implemented for historical v0.8 scope (5 servers, 30 tools); the historical v0.12 snapshot had 8 servers / 42 tools.
 - state.json progress tracking: matched (same schema as v0.7)
 
 ## v0.12 Update — MCP Capability Honesty (2026-07-09)

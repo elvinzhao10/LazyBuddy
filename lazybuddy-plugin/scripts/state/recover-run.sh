@@ -4,9 +4,10 @@
 set -euo pipefail
 
 RUN_ID="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/state-paths.sh"
 
-if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-    echo "Error: invalid run_id" >&2
+if ! state_require_safe_run_id "$RUN_ID"; then
     exit 1
 fi
 
@@ -16,40 +17,56 @@ if [ -z "$RUN_ID" ]; then
 fi
 
 CWD="${CWD:-.}"
-RUN_DIR="$CWD/.lazybuddy/runs/$RUN_ID"
+state_require_run_dir "$CWD" "$RUN_ID" || exit 1
+RUN_DIR="$STATE_RUN_DIR"
 STATE_FILE="$RUN_DIR/state.json"
 CKPTS_DIR="$RUN_DIR/checkpoints"
+EVENTS_FILE="$RUN_DIR/events.jsonl"
+state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
+state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
+state_require_safe_run_directory "$CKPTS_DIR" "checkpoints directory" || exit 1
 
 # Find latest checkpoint
-LATEST_CKPT=$(ls -1d "$CKPTS_DIR"/*/ 2>/dev/null | sort -r | head -1 || echo "")
+LATEST_CKPT=""
+for candidate in "$CKPTS_DIR"/*; do
+    [ -e "$candidate" ] || continue
+    state_require_safe_run_directory "$candidate" "checkpoint directory" || exit 1
+    if [ -z "$LATEST_CKPT" ] || [[ "$(basename "$candidate")" > "$(basename "$LATEST_CKPT")" ]]; then
+        LATEST_CKPT="$candidate"
+    fi
+done
 if [ -z "$LATEST_CKPT" ]; then
     echo "Error: no checkpoint available for run '$RUN_ID'" >&2
     exit 1
 fi
 
 # Restore state from checkpoint
-if [ ! -f "$LATEST_CKPT/state.json" ]; then
-    echo "Error: checkpoint state snapshot missing in '$LATEST_CKPT'" >&2
-    exit 1
-fi
-cp "$LATEST_CKPT/state.json" "$STATE_FILE"
+CKPT_STATE_FILE="$LATEST_CKPT/state.json"
+state_require_existing_run_file "$CKPT_STATE_FILE" "checkpoint state.json" || exit 1
+cp "$CKPT_STATE_FILE" "$STATE_FILE"
 
 # Determine checkpoint timestamp from state snapshot
-CKPT_TS=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('last_checkpoint',''))" 2>/dev/null || echo "")
+CKPT_TS=$(python3 - "$STATE_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as handle:
+    print(json.load(handle).get('last_checkpoint', ''))
+PY
+) || CKPT_TS=""
 
 # Replay events after checkpoint timestamp
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-EVENTS_FILE="$RUN_DIR/events.jsonl"
 if [ -f "$EVENTS_FILE" ] && [ -n "$CKPT_TS" ]; then
-    python3 -c "
-import json, sys
+    python3 - "$STATE_FILE" "$EVENTS_FILE" "$CKPT_TS" "$NOW" "$RUN_ID" "$LATEST_CKPT" <<'PY'
+import json
+import sys
 
-# Read checkpoint state
-state = json.load(open('$STATE_FILE'))
+state_file, events_file, checkpoint_timestamp, now, run_id, latest_checkpoint = sys.argv[1:]
+state = json.load(open(state_file))
 replay_count = 0
 
-# Replay events after checkpoint
-with open('$EVENTS_FILE') as f:
+with open(events_file) as f:
     for line in f:
         line = line.strip()
         if not line:
@@ -59,7 +76,7 @@ with open('$EVENTS_FILE') as f:
         except json.JSONDecodeError:
             continue
         evt_ts = event.get('ts', '')
-        if evt_ts <= '$CKPT_TS':
+        if evt_ts <= checkpoint_timestamp:
             continue
         evt_type = event.get('event', '')
         replay_count += 1
@@ -78,24 +95,27 @@ with open('$EVENTS_FILE') as f:
         elif evt_type == 'run_created':
             pass
 
-state['updated_at'] = '$NOW'
+state['updated_at'] = now
 
-with open('$STATE_FILE', 'w') as f:
+with open(state_file, 'w') as f:
     json.dump(state, f, indent=2)
 
 # Append recovery event
-event = {'ts': '$NOW', 'run_id': '$RUN_ID', 'event': 'recovered', 'source_checkpoint': '$LATEST_CKPT', 'events_replayed': replay_count}
-with open('$EVENTS_FILE', 'a') as f:
+event = {'ts': now, 'run_id': run_id, 'event': 'recovered', 'source_checkpoint': latest_checkpoint, 'events_replayed': replay_count}
+with open(events_file, 'a') as f:
     f.write(json.dumps(event) + '\n')
-" 
+PY
 else
-    python3 -c "
+    python3 - "$STATE_FILE" "$NOW" <<'PY'
 import json
-d = json.load(open('$STATE_FILE'))
-d['updated_at'] = '$NOW'
-with open('$STATE_FILE', 'w') as f:
+import sys
+
+state_file, now = sys.argv[1:]
+d = json.load(open(state_file))
+d['updated_at'] = now
+with open(state_file, 'w') as f:
     json.dump(d, f, indent=2)
-"
+PY
 fi
 
 cat "$STATE_FILE"

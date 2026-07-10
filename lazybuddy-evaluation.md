@@ -1,7 +1,7 @@
 # LazyBuddy Evaluation: LazyCodex Parity Assessment
 
-> Comprehensive evaluation of how well LazyBuddy realizes LazyCodex semantics on the WorkBuddy platform.
-> Last updated: v0.12 (2026-07-10)
+> **Historical evaluation snapshot (v0.12, 2026-07-10).** It is not the v0.15 installation or host-loading contract.
+> For current supported surfaces, package-readiness limits, and onboarding, see [README.md](README.md), [AGENTS.md](AGENTS.md), and [the plugin README](lazybuddy-plugin/README.md).
 
 ## Overall Assessment
 
@@ -41,7 +41,7 @@ The Sisyphus contract (DoneClaim → AdversarialVerify → FullyDone) is preserv
 The review-work skill spawns 5 independent subagents (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner) with `isolation: true`. ALL-MUST-PASS verdict logic is preserved.
 
 ### 6. Honest gap documentation
-17 gaps are documented in [lazybuddy-known-gaps.md](lazybuddy-known-gaps.md) with: LazyCodex source, LazyBuddy implementation, impact, resolution status, and capability labels.
+Historical gaps are documented in [docs/lazybuddy-known-gaps.md](docs/lazybuddy-known-gaps.md) with: LazyCodex source, LazyBuddy implementation, impact, resolution status, and capability labels.
 
 ## Weaknesses
 

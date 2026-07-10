@@ -1,5 +1,11 @@
 # LazyBuddy Plugin Changelog
 
+## v0.15.0-alpha.2 — Host Contract and Release Metadata Audit (2026-07-11)
+
+- Clarified CodeBuddy plugin loading, WorkBuddy marketplace/session verification, and the verified local Skill-import/manual-MCP fallback.
+- Corrected CodeBuddy command namespace examples to `/lazybuddy:lazy-<command>`.
+- Updated manifest, marketplace, MCP server, and release metadata to `0.15.0-alpha.2`.
+
 ## v0.15.0-alpha.1 — Fresh Workspace Load Check (2026-07-11)
 
 - Added an exact 14-skill, 15-command, 13-agent, 12-hook, and 8-MCP readiness check.

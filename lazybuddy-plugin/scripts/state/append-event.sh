@@ -4,25 +4,32 @@
 set -euo pipefail
 
 RUN_ID="${1:-}"
+EVENT_TYPE="${2:-}"
+PAYLOAD="${3:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/state-paths.sh"
 
-if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-    echo "Error: invalid run_id" >&2
+if ! state_require_safe_run_id "$RUN_ID"; then
+    exit 1
+fi
+if [ -z "$EVENT_TYPE" ]; then
+    echo "Error: event_type is required" >&2
     exit 1
 fi
 
 CWD="${CWD:-.}"
-EVENTS_FILE="$CWD/.lazybuddy/runs/$RUN_ID/events.jsonl"
-mkdir -p "$(dirname "$EVENTS_FILE")"
+state_require_run_dir "$CWD" "$RUN_ID" || exit 1
+EVENTS_FILE="$STATE_RUN_DIR/events.jsonl"
+state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-python3 -c "
+python3 - "$NOW" "$RUN_ID" "$EVENT_TYPE" "$PAYLOAD" "$EVENTS_FILE" <<'PYEOF'
 import json, sys, re
+now, run_id, event_type, payload_str, events_file = sys.argv[1:]
 
-base = {'ts': '$NOW', 'run_id': '$RUN_ID', 'event': '$EVENT_TYPE'}
+base = {'ts': now, 'run_id': run_id, 'event': event_type}
 
-# Merge payload if provided
-payload_str = sys.argv[1] if len(sys.argv) > 1 else ''
 if payload_str:
     try:
         payload = json.loads(payload_str)
@@ -37,6 +44,6 @@ redacted = re.sub(r'Bearer\s+[a-zA-Z0-9._\-]{10,}', 'Bearer ***REDACTED***', red
 redacted = re.sub(r'(?i)\"password\"\s*:\s*\"[^\"]+\"', '\"password\": \"***REDACTED***\"', redacted)
 redacted = re.sub(r'-----BEGIN [A-Z ]+ PRIVATE KEY-----.+?-----END [A-Z ]+ PRIVATE KEY-----', '***REDACTED_PRIVATE_KEY***', redacted, flags=re.DOTALL)
 
-with open('$EVENTS_FILE', 'a') as f:
+with open(events_file, 'a') as f:
     f.write(redacted + '\n')
-" "$PAYLOAD"
+PYEOF

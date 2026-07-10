@@ -11,6 +11,10 @@ Tools: blast_radius, file_deps, symbol_search, symbol_refs, repo_overview.
 import sys, json, os, subprocess, re, shutil
 
 CWD = os.environ.get("CWD", ".")
+MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if MCP_ROOT not in sys.path:
+    sys.path.insert(0, MCP_ROOT)
+from path_boundary import PathBoundaryError, resolve_repo_path
 
 
 USE_RG = shutil.which("rg") is not None
@@ -67,7 +71,7 @@ def main():
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "context-graph", "version": "0.11.0"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "context-graph", "version": "0.15.0-alpha.2"}})
         return
 
     if method == "tools/list":
@@ -107,7 +111,7 @@ def main():
 
             elif tool == "file_deps":
                 path = args["path"]
-                fp = os.path.join(CWD, path) if not os.path.isabs(path) else path
+                fp = resolve_repo_path(CWD, path)
                 if not os.path.isfile(fp):
                     err("file not found: " + path)
                     return
@@ -119,14 +123,22 @@ def main():
                         base = os.path.join(os.path.dirname(path), spec)
                         for ext in ["", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".json"]:
                             cand = base + ext
-                            if os.path.isfile(os.path.join(CWD, cand)):
-                                deps.add(cand)
+                            try:
+                                candidate_path = resolve_repo_path(CWD, cand)
+                            except PathBoundaryError:
+                                continue
+                            if os.path.isfile(candidate_path):
+                                deps.add(os.path.relpath(candidate_path, os.path.realpath(CWD)))
                                 break
                         idx = os.path.join(base, "index")
                         for ext in [".ts", ".js", ".py"]:
                             cand = idx + ext
-                            if os.path.isfile(os.path.join(CWD, cand)):
-                                deps.add(cand)
+                            try:
+                                candidate_path = resolve_repo_path(CWD, cand)
+                            except PathBoundaryError:
+                                continue
+                            if os.path.isfile(candidate_path):
+                                deps.add(os.path.relpath(candidate_path, os.path.realpath(CWD)))
                                 break
                     else:
                         deps.add(spec + "  (external)")

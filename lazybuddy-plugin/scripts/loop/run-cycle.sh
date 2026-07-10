@@ -4,17 +4,20 @@
 set -euo pipefail
 
 RUN_ID="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+source "$SCRIPT_DIR/../state/state-paths.sh"
 
-if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-    echo "Error: invalid run_id" >&2
+if ! state_require_safe_run_id "$RUN_ID"; then
     exit 1
 fi
 
 CWD="${CWD:-.}"
-RUN_DIR="$CWD/.lazybuddy/runs/$RUN_ID"
+state_require_run_dir "$CWD" "$RUN_ID" || exit 1
+RUN_DIR="$STATE_RUN_DIR"
 STATE_FILE="$RUN_DIR/state.json"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+state_require_safe_run_file "$STATE_FILE" "state.json" || exit 1
 if [ ! -f "$STATE_FILE" ]; then
     echo '{"status":"error","reason":"state.json not found"}' >&2
     exit 1
@@ -26,45 +29,68 @@ TASK_JSON=$("$SCRIPT_DIR/next-task.sh" "$RUN_ID" 2>/dev/null) || {
     exit 0
 }
 
-TASK_ID=$(python3 -c "import json,sys; print(json.loads('''$TASK_JSON''')['id'])")
+TASK_ID=$(python3 - "$TASK_JSON" <<'PY'
+import json
+import sys
+
+print(json.loads(sys.argv[1])['id'])
+PY
+)
 
 # Update run status to executing if not already
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-TMP_FILE="$STATE_FILE.tmp.$$"
-python3 -c "
+TMP_FILE=$(mktemp "$RUN_DIR/.state.json.XXXXXX")
+python3 - "$STATE_FILE" "$NOW" "$TMP_FILE" <<'PY'
 import json
-d = json.load(open('$STATE_FILE'))
+import sys
+
+state_file, now, tmp_file = sys.argv[1:]
+d = json.load(open(state_file))
 if d.get('status') not in ('executing',):
     d['status'] = 'executing'
-d['updated_at'] = '$NOW'
-with open('$TMP_FILE', 'w') as f:
+d['updated_at'] = now
+with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
-"
+PY
 mv "$TMP_FILE" "$STATE_FILE"
 
 # Increment iteration count
-TMP_FILE="$STATE_FILE.tmp.$$"
-python3 -c "
+TMP_FILE=$(mktemp "$RUN_DIR/.state.json.XXXXXX")
+python3 - "$STATE_FILE" "$NOW" "$TMP_FILE" <<'PY'
 import json
-d = json.load(open('$STATE_FILE'))
+import sys
+
+state_file, now, tmp_file = sys.argv[1:]
+d = json.load(open(state_file))
 it = d.setdefault('iteration', {})
 it['count'] = it.get('count', 0) + 1
-d['updated_at'] = '$NOW'
-with open('$TMP_FILE', 'w') as f:
+d['updated_at'] = now
+with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
-"
+PY
 mv "$TMP_FILE" "$STATE_FILE"
 
 # Checkpoint every 5 iterations
-ITER_COUNT=$(python3 -c "import json; d=json.load(open('$STATE_FILE')); print(d['iteration']['count'])")
+ITER_COUNT=$(python3 - "$STATE_FILE" <<'PY'
+import json
+import sys
+
+print(json.load(open(sys.argv[1]))['iteration']['count'])
+PY
+)
 if [ $((ITER_COUNT % 5)) -eq 0 ]; then
-    CHECKPOINT_SCRIPT="$CWD/lazybuddy-plugin/scripts/state/checkpoint.sh"
+    CHECKPOINT_SCRIPT="$PLUGIN_ROOT/scripts/state/checkpoint.sh"
     if [ -x "$CHECKPOINT_SCRIPT" ]; then
         "$CHECKPOINT_SCRIPT" "$RUN_ID" >/dev/null
+    else
+        echo '{"status":"error","reason":"checkpoint script not found"}' >&2
+        exit 1
     fi
 fi
 
-python3 -c "
+python3 - "$TASK_JSON" <<'PY'
 import json
-print(json.dumps({'status':'continue','task':json.loads('''$TASK_JSON''')}))
-"
+import sys
+
+print(json.dumps({'status': 'continue', 'task': json.loads(sys.argv[1])}))
+PY

@@ -4,34 +4,50 @@
 set -euo pipefail
 
 RUN_ID="${1:-}"
+TASK_ID="${2:-}"
+ERROR_MSG="${3:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../state/state-paths.sh"
 
-if ! [[ "$RUN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-    echo "Error: invalid run_id" >&2
+if ! state_require_safe_run_id "$RUN_ID"; then
+    exit 1
+fi
+if [ -z "$TASK_ID" ] || [ -z "$ERROR_MSG" ]; then
+    echo "Usage: classify-failure.sh <run_id> <task_id> <error_message>" >&2
     exit 1
 fi
 
 CWD="${CWD:-.}"
-STATE_FILE="$CWD/.lazybuddy/runs/$RUN_ID/state.json"
-EVENTS_FILE="$CWD/.lazybuddy/runs/$RUN_ID/events.jsonl"
+state_require_run_dir "$CWD" "$RUN_ID" || exit 1
+STATE_FILE="$STATE_RUN_DIR/state.json"
+EVENTS_FILE="$STATE_RUN_DIR/events.jsonl"
 
+state_require_safe_run_file "$STATE_FILE" "state.json" || exit 1
+state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
 if [ ! -f "$STATE_FILE" ]; then
     echo "Error: state.json not found for run '$RUN_ID'" >&2
     exit 1
 fi
 
 # Classify: check error message against known patterns (case-insensitive)
-ERROR_LOWER=$(python3 -c "print('''$ERROR_MSG'''.lower())")
+ERROR_LOWER=$(python3 - "$ERROR_MSG" <<'PYEOF'
+import sys
+print(sys.argv[1].lower())
+PYEOF
+)
 CLASSIFICATION="human-needed"
 
-if python3 -c "
-msg = '''$ERROR_LOWER'''
+if python3 - "$ERROR_LOWER" <<'PYEOF'
+import sys
+msg = sys.argv[1]
 if any(kw in msg for kw in ('permission denied','access denied','eacces','forbidden','unauthorized')):
     raise SystemExit(10)
 if any(kw in msg for kw in ('timeout','timed out','connection refused','econnrefused','etimedout')):
     raise SystemExit(20)
 if any(kw in msg for kw in ('not found','does not exist','enoent','no such file','missing')):
     raise SystemExit(30)
-"; then
+PYEOF
+then
     :
 else
     case $? in
@@ -43,28 +59,32 @@ fi
 
 # Set task status to failed
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-TMP_FILE="$STATE_FILE.tmp.$$"
-python3 -c "
+TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
+python3 - "$STATE_FILE" "$TMP_FILE" "$TASK_ID" "$CLASSIFICATION" "$ERROR_MSG" "$NOW" <<'PYEOF'
 import json
-d = json.load(open('$STATE_FILE'))
+import sys
+state_file, tmp_file, task_id, classification, error_msg, now = sys.argv[1:]
+d = json.load(open(state_file))
 for t in d.get('tasks', []):
-    if t['id'] == '$TASK_ID':
+    if t['id'] == task_id:
         t['status'] = 'failed'
-        t['classification'] = '$CLASSIFICATION'
-        t['error'] = '''$ERROR_MSG'''
+        t['classification'] = classification
+        t['error'] = error_msg
         break
-d['updated_at'] = '$NOW'
-with open('$TMP_FILE', 'w') as f:
+d['updated_at'] = now
+with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
-"
+PYEOF
 mv "$TMP_FILE" "$STATE_FILE"
 
 # Append task_failed event
-python3 -c "
+python3 - "$NOW" "$RUN_ID" "$TASK_ID" "$CLASSIFICATION" "$ERROR_MSG" "$EVENTS_FILE" <<'PYEOF'
 import json
-event = {'ts': '$NOW', 'run_id': '$RUN_ID', 'event': 'task_failed', 'task_id': '$TASK_ID', 'classification': '$CLASSIFICATION', 'error': '''$ERROR_MSG'''}
-with open('$EVENTS_FILE', 'a') as f:
+import sys
+now, run_id, task_id, classification, error_msg, events_file = sys.argv[1:]
+event = {'ts': now, 'run_id': run_id, 'event': 'task_failed', 'task_id': task_id, 'classification': classification, 'error': error_msg}
+with open(events_file, 'a') as f:
     f.write(json.dumps(event) + '\n')
-"
+PYEOF
 
 echo "$CLASSIFICATION"

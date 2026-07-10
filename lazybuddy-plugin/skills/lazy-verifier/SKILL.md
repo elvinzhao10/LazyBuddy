@@ -63,7 +63,7 @@ The verifier relies on five health-check scripts under `${CODEBUDDY_PLUGIN_ROOT}
 |--------|---------|-------------|
 | `lazybuddy-verify.sh` | Master runner — executes all checks in sequence | All sub-checks pass (`all_pass: true`) |
 | `lazybuddy-security-check.sh` | Secret/credential leak scanner | No secrets found in plugin files |
-| `lazybuddy-docs-check.sh` | Broken internal markdown link checker | All `[text](path.md)` links resolve |
+| `lazybuddy-docs-check.sh` | Broken internal markdown link checker | All internal Markdown links resolve |
 | `lazybuddy-parity-check.sh` | LazyCodex-to-WorkBuddy parity coverage auditor | Coverage ≥ threshold; no regressions |
 | `lazybuddy-plugin-doctor.sh` | Plugin structural health check (preexisting) | Plugin is structurally sound |
 | `lazybuddy-smoke-test.sh` | Plugin basic functionality smoke test (preexisting) | Core plugin behaviors work |
