@@ -1,5 +1,13 @@
 # Lazyworkbuddy Plugin Changelog
 
+## v0.12.0 — Release Hardening (2026-07-09)
+
+- **Added** final release docs package: root README, quickstart, and final parity report.
+- **Recorded** non-trivial v0.12 dogfood replay evidence under `.lazyworkbuddy/runs/dogfood-v0.12/` and `.omo/evidence/task-5-diagnosis-v0-12-lazyworkbuddy.txt`.
+- **Verified** release gates in Todo 6: doctor 50/50, aggregate verify `all_pass:true`, MCP smoke 22/22, hook pipeline 16/16, docs check passing, and plugin metadata version `0.12.0`.
+- **Documented** honest parity posture: context tooling is a WorkBuddy host substitution, not full LazyCodex codegraph/LSP/Context7 semantic parity.
+- **Bumped** installable plugin metadata to `0.12.0`.
+
 ## v0.11.0 — Dogfood Run (2026-07-09)
 
 - **Dogfood run completed** — full lifecycle (init-deep → ulw-plan → start-work → verify → review → finalize) on a real task
@@ -73,4 +81,4 @@
 
 ---
 
-_Versioning follows the v0.N convention: this is a pre-1.0 build. The plugin version tracks the latest completed phase. It will be bumped to 0.12.0 on release._
+_Versioning follows the v0.N convention: this is a pre-1.0 build. The plugin version tracks the latest evidence-backed release-hardening phase._

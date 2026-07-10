@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazyworkbuddy-verify.sh — Master verification runner (v0.9)
+# lazyworkbuddy-verify.sh — Master verification runner (v0.12)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -16,17 +16,20 @@ else
 fi
 
 SCRIPTS_DIR="${PLUGIN_ROOT}/scripts"
+PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
+export CWD="${CWD:-${PROJECT_ROOT}}"
 ALL_PASS=true
 DOCTOR_RESULT="skipped (script not found or not executable)"
 SMOKE_RESULT="skipped (script not found or not executable)"
 DOCS_RESULT="skipped (script not found or not executable)"
 PARITY_RESULT="skipped (script not found or not executable)"
 SECURITY_RESULT="skipped (script not found or not executable)"
+MCP_RESULT="skipped (script not found or not executable)"
+HOOK_RESULT="skipped (script not found or not executable)"
 
 run_check() {
-    local label="$1"
-    local script="$2"
-    local result_var="$3"
+    local script="$1"
+    local result_var="$2"
     if [ -x "$script" ]; then
         if output=$("$script" 2>&1); then
             eval "${result_var}=pass"
@@ -34,17 +37,48 @@ run_check() {
             eval "${result_var}=fail"
             ALL_PASS=false
         fi
+    else
+        ALL_PASS=false
     fi
 }
 
-run_check "doctor"         "${SCRIPTS_DIR}/lazyworkbuddy-plugin-doctor.sh"  DOCTOR_RESULT
-run_check "smoke_test"     "${SCRIPTS_DIR}/lazyworkbuddy-smoke-test.sh"     SMOKE_RESULT
-run_check "docs_check"     "${SCRIPTS_DIR}/lazyworkbuddy-docs-check.sh"     DOCS_RESULT
-run_check "parity_check"   "${SCRIPTS_DIR}/lazyworkbuddy-parity-check.sh"   PARITY_RESULT
-run_check "security_check" "${SCRIPTS_DIR}/lazyworkbuddy-security-check.sh" SECURITY_RESULT
+run_hook_pipeline_check() {
+    local script="$1"
+    local result_var="$2"
+    local hook_root=""
+    if [ ! -x "$script" ]; then
+        ALL_PASS=false
+        return
+    fi
+    hook_root=$(mktemp -d "${TMPDIR:-/tmp}/lazyworkbuddy-hook.XXXXXX") || {
+        eval "${result_var}=fail"
+        ALL_PASS=false
+        return
+    }
+    if ln -s "${PLUGIN_ROOT}" "${hook_root}/lazyworkbuddy-plugin" 2>/dev/null; then
+        if output=$(CWD="${hook_root}" "$script" 2>&1); then
+            eval "${result_var}=pass"
+        else
+            eval "${result_var}=fail"
+            ALL_PASS=false
+        fi
+    else
+        eval "${result_var}=fail"
+        ALL_PASS=false
+    fi
+    rm -rf "${hook_root}"
+}
+
+run_check "${SCRIPTS_DIR}/lazyworkbuddy-plugin-doctor.sh"  DOCTOR_RESULT
+run_check "${SCRIPTS_DIR}/lazyworkbuddy-smoke-test.sh"     SMOKE_RESULT
+run_check "${SCRIPTS_DIR}/lazyworkbuddy-docs-check.sh"     DOCS_RESULT
+run_check "${SCRIPTS_DIR}/lazyworkbuddy-parity-check.sh"   PARITY_RESULT
+run_check "${SCRIPTS_DIR}/lazyworkbuddy-security-check.sh" SECURITY_RESULT
+run_check "${SCRIPTS_DIR}/lazyworkbuddy-mcp-test.sh"       MCP_RESULT
+run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke_test\":\"${SMOKE_RESULT}\",\"docs_check\":\"${DOCS_RESULT}\",\"parity_check\":\"${PARITY_RESULT}\",\"security_check\":\"${SECURITY_RESULT}\",\"all_pass\":${ALL_PASS}}"
+json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"parity\":\"${PARITY_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 
@@ -54,15 +88,35 @@ if [ -x "${SCRIPTS_DIR}/state/latest-run.sh" ]; then
     LATEST_RUN="$("${SCRIPTS_DIR}/state/latest-run.sh" 2>/dev/null || echo "")"
 fi
 if [ -n "$LATEST_RUN" ]; then
-    EVENTS_FILE="${CWD:-.}/.lazyworkbuddy/runs/$LATEST_RUN/events.jsonl"
-    if [ -f "$EVENTS_FILE" ]; then
+    EVENTS_FILE=""
+    if [[ "$LATEST_RUN" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        EVENTS_FILE="${CWD:-.}/.lazyworkbuddy/runs/$LATEST_RUN/events.jsonl"
+    fi
+    if [ -n "$EVENTS_FILE" ] && [ -f "$EVENTS_FILE" ]; then
         NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        python3 -c "
+        ALL_PASS_PY=False
+        if [ "$ALL_PASS" = true ]; then
+            ALL_PASS_PY=True
+        fi
+        python3 - "$CWD" "$EVENTS_FILE" "$LATEST_RUN" "$NOW" "$ALL_PASS_PY" <<'PY' 2>/dev/null || true
 import json
-event = {'ts': '$NOW', 'run_id': '$LATEST_RUN', 'event': 'verification_passed' if ${ALL_PASS} else 'verification_failed', 'all_pass': ${ALL_PASS}}
-with open('$EVENTS_FILE', 'a') as f:
-    f.write(json.dumps(event) + '\n')
-" 2>/dev/null || true
+import os
+import sys
+
+cwd, events_file, run_id, now, all_pass_raw = sys.argv[1:6]
+root = os.path.realpath(os.path.join(cwd, ".lazyworkbuddy", "runs"))
+events_path = os.path.realpath(events_file)
+try:
+    inside_runs = os.path.commonpath([root, events_path]) == root
+except ValueError:
+    inside_runs = False
+if not inside_runs or not events_path.endswith(os.path.join(run_id, "events.jsonl")):
+    raise SystemExit(0)
+all_pass = all_pass_raw == "True"
+event = {"ts": now, "run_id": run_id, "event": "verification_passed" if all_pass else "verification_failed", "all_pass": all_pass}
+with open(events_path, "a") as f:
+    f.write(json.dumps(event) + "\n")
+PY
     fi
 fi
 

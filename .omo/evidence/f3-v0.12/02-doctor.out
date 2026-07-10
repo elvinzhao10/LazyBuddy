@@ -1,0 +1,59 @@
+=== Lazyworkbuddy Plugin Doctor ===
+Plugin root: /Users/Admin/Desktop/lazyworkbuddy/lazyworkbuddy-plugin
+
+  [PASS] Manifest exists
+  [PASS] Manifest is valid JSON
+  [PASS] Manifest field: name
+  [PASS] Manifest field: version
+  [PASS] Manifest field: skills
+  [PASS] Manifest field: commands
+  [PASS] Manifest field: agents
+  [PASS] Manifest field: hooks
+  [PASS] Manifest field: mcpServers
+  [PASS] Directory: skills/
+  [PASS] Directory: commands/
+  [PASS] Directory: agents/
+  [PASS] Directory: hooks/
+  [PASS] Directory: mcp/
+  [PASS] Directory: scripts/
+  [PASS] Directory: schemas/
+  [PASS] Directory: tests/
+  [PASS] Directory: docs/
+  [PASS] hooks/hooks.json exists
+  [PASS] hooks/hooks.json is valid JSON
+  [PASS] .mcp.json exists
+  [PASS] .mcp.json is valid JSON
+  [PASS] Hook command targets (12 executable)
+  [PASS] MCP server scripts (8 executable)
+  [PASS] Command: init-deep.md
+  [PASS] Command: ulw-plan.md
+  [PASS] Command: start-work.md
+  [PASS] Command: ulw-loop.md
+  [PASS] Command: verifier.md
+  [PASS] Command: reviewer.md
+  [PASS] Command: librarian.md
+  [PASS] Command: migration-planner.md
+  [PASS] Skill: init-deep/SKILL.md
+  [PASS] Skill: ulw-plan/SKILL.md
+  [PASS] Skill: start-work/SKILL.md
+  [PASS] Skill: ulw-loop/SKILL.md
+  [PASS] Skill: verifier/SKILL.md
+  [PASS] Skill: reviewer/SKILL.md
+  [PASS] Skill: librarian/SKILL.md
+  [PASS] Skill: migration-planner/SKILL.md
+  [PASS] Directory content: agents/
+  [PASS] Gitkeep: mcp/.gitkeep
+  [PASS] Directory content: scripts/
+  [PASS] Gitkeep: schemas/.gitkeep
+  [PASS] Gitkeep: tests/.gitkeep
+  [PASS] Gitkeep: docs/.gitkeep
+  [PASS] Script executable: lazyworkbuddy-smoke-test.sh
+  [PASS] Script executable: lazyworkbuddy-docs-check.sh
+  [PASS] Script executable: lazyworkbuddy-parity-check.sh
+  [PASS] Run state drift/evidence/boundaries
+
+=== Results ===
+Passed: 50
+Failed: 0
+
+Doctor check: ALL PASS

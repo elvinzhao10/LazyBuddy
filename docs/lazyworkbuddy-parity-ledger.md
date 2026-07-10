@@ -4,6 +4,9 @@
 > Updated by the Librarian after every accepted change.
 >
 > Status: `matched` (confirmed equivalent) | `adapted` (semantics preserved, implementation differs) | `skipped` (intentionally not ported) | `added` (Lazyworkbuddy-only)
+> Current release status and evidence labels live in [lazyworkbuddy-current-status.md](lazyworkbuddy-current-status.md).
+>
+> v0.12 taxonomy: `reference parity` means a LazyCodex source-backed behavior is preserved; `host-substitution` means WorkBuddy covers the use case through a different surface; `native-enhancement` means Lazyworkbuddy-only functionality; `platform-gap` means the original surface is not directly portable or not needed on WorkBuddy. Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`.
 
 ## Initial Method Map (v0.2 baseline)
 
@@ -71,15 +74,29 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | `SubagentStart` hook | Track subagent lifecycle | **added** | Enhances LazyCodex: explicit subagent lifecycle for debugging |
 | `TaskCreated` hook | Run ledger entry on task creation | **added** | Enhances LazyCodex: task-level tracking in state ledger |
 | `TaskCompleted` hook | Progress update on task completion | **added** | Enhances LazyCodex: explicit task lifecycle events |
-| `run-ledger` MCP | Structured run state access | **added** | WorkBuddy-native advantage over file-only access |
-| `verification` MCP | Structured verification test runner | **added** | WorkBuddy-native advantage |
-| `parity` MCP | Compare Lazyworkbuddy vs LazyCodex behavior | **added** | WorkBuddy-native advantage; parity visualization |
-| `source-map` MCP | Index/search LazyCodex source evidence | **added** | WorkBuddy-native advantage; traceability to reference repo |
-| `status-dashboard` MCP | Aggregate run/task/verification/parity status | **added** | WorkBuddy-native advantage; unified status view |
+| `run-ledger` MCP | Structured run state access | **added** | `native-enhancement`; `project-tool-backed`, `state-only`; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) |
+| `verification` MCP | Structured verification test runner | **added** | `native-enhancement`; `project-tool-backed`, `state-only`; initialize/tools-list `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) |
+| `parity` MCP | Compare Lazyworkbuddy vs LazyCodex behavior | **added** | `native-enhancement`; `state-only`; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) |
+| `source-map` MCP | Index/search LazyCodex source evidence | **added** | `native-enhancement`; `heuristic` search/index plus direct excerpt/hash tools; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) |
+| `status-dashboard` MCP | Aggregate run/task/verification/parity status | **added** | `native-enhancement`; `state-only`; initialize/tools-list `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) |
+| `context-graph` MCP | Blast-radius and symbol scans | **adapted** | `host-substitution` for LazyCodex `codegraph`; `heuristic-substitute`, not full semantic codegraph parity; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) |
+| `code-intel` MCP | Diagnostics/typecheck plus symbol navigation | **adapted** | `host-substitution` for LazyCodex `lsp`; diagnostics/typecheck are `project-tool-backed` when checkers exist, symbol navigation is `heuristic-substitute`; no semantic rename/goto-def parity |
+| `docs` MCP | Library docs lookup | **adapted** | `host-substitution` for LazyCodex `context7`; npm/PyPI README fetch is `heuristic-substitute`, not curated Context7 parity |
 | Checkpoint protocol | Periodic state snapshots | **added** | Enhances LazyCodex: explicit crash recovery (not in original) |
 | Migration planner Skill | Reusable cross-platform adapter | **added** | Generalizes our adaptation methodology |
 | `state.json` progress tracking | Explicit completion_percentage | **added** | Enhances LazyCodex: explicit progress (LazyCodex's boulder.json is implicit) |
 | `state.json` iteration tracking | Iteration count + cap | **added** | Enhances LazyCodex: explicit loop management |
+
+### MCP Parity Taxonomy (v0.12)
+
+| LazyCodex MCP | Lazyworkbuddy Surface | Parity Class | Capability Label | Evidence / Caveat |
+|---|---|---|---|---|
+| `codegraph` | `context-graph` | `host-substitution` | `heuristic` | `runtime-verified` smoke via `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`); no semantic call graph parity. |
+| `lsp` | `code-intel` | `host-substitution` | `project-tool-backed` for diagnostics/typecheck; `heuristic` for symbols/references/goto | `runtime-verified` smoke via `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`); no real LSP daemon, workspace rename, or semantic goto-def parity. |
+| `context7` | `docs` | `host-substitution` | `heuristic` | `runtime-verified` smoke via `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`); registry README fetch, not curated Context7. |
+| `git_bash` | WorkBuddy Bash/Git | `platform-gap` covered by host | `project-tool-backed` when shell commands are run directly | No MCP server by design; use concrete shell command transcripts for runtime evidence. |
+| `grep_app` | WorkBuddy Grep/WebSearch | `platform-gap` covered by host | `heuristic` local/web search | No MCP server by design; use concrete Grep/WebSearch transcripts for runtime evidence. |
+| none | `run-ledger`, `parity`, `verification`, `source-map`, `status-dashboard` | `native-enhancement` | Mixed `project-tool-backed`, `state-only`, `heuristic` | Lazyworkbuddy-only surfaces; do not count as LazyCodex reference parity. |
 
 ## Parity Summary
 
@@ -88,11 +105,11 @@ Derived from the method map in `AGENTS.md` and the v0.1 architecture plan. All s
 | Core Workflows | 10 | 1 | 9 | 0 | 0 |
 | Agent Roles | 9 | 0 | 9 | 0 | 0 |
 | Hooks | 21 | 0 | 14 | 7 | 5 |
-| MCP Servers | 5 | 0 | 0 | 5 | 5 |
+| MCP Servers | 5 | 0 | 3 | 2 | 5 |
 | State/Durability | 3 | 0 | 3 | 0 | 4 |
-| **TOTAL** | **48** | **1** | **35** | **12** | **14** |
+| **TOTAL** | **48** | **1** | **38** | **9** | **14** |
 
-**Parity Health:** ✅ v0.10 — architecture designed, behavior semantically preserved, all phases through v0.10 implemented. MCP servers are WorkBuddy-native (run-ledger/parity/verification/source-map/status-dashboard); LazyCodex's 5 context servers (context7/codegraph/lsp/git_bash/grep_app) are NOT ported — tracked as gap G-003 and P2 in the full problem list.
+**Parity Health:** v0.12 local release hardening is runtime-verified for doctor, aggregate verify, MCP smoke, hook pipeline, docs check, dogfood replay, and plugin metadata `0.12.0` (evidence: `.omo/evidence/task-6-diagnosis-v0-12-lazyworkbuddy.txt`). MCP status is intentionally mixed: `context-graph`, `code-intel`, and `docs` are `host-substitution` surfaces with `heuristic-substitute` limits; `git_bash` and `grep_app` are `platform-gap` host coverage; `run-ledger`, `parity`, `verification`, `source-map`, and `status-dashboard` are `native-enhancement`, not LazyCodex reference parity.
 
 ## v0.3 Update — Plugin Scaffold (2026-07-09)
 
@@ -234,7 +251,7 @@ _This ledger is authoritative. Every parity claim must be verified against `refe
 - Dashboard mockup (dashboard.html) — static HTML with placeholder data; interactive MCP integration deferred to v0.9
 - 5 MCP prompt commands: /lazyworkbuddy:status, :new-run, :resume, :verify, :parity-report
 - 4 docs: mcp-and-tools.md, mcp-security.md, dashboard-design.md, enhancement-log.md
-- .mcp.json populated with all 5 servers (bash command, required: false)
+- Historical v0.8 state: `.mcp.json` populated with the then-current 5 servers (bash command, required: false); current v0.12 runtime has 8 servers.
 
 **Design decisions:**
 - Shell + python3 for JSON-RPC (no Node.js dependency)
@@ -242,5 +259,27 @@ _This ledger is authoritative. Every parity claim must be verified against `refe
 - Run-ledger tools use v0.7 state scripts directly (thin wrapper, not reimplementation)
 
 **Status shifts from v0.7:**
-- MCP Servers: planned → implemented (5 servers, 30 tools)
+- MCP Servers: planned → implemented for historical v0.8 scope (5 servers, 30 tools); current v0.12 runtime has 8 servers / 42 tools.
 - state.json progress tracking: matched (same schema as v0.7)
+
+## v0.12 Update — MCP Capability Honesty (2026-07-09)
+
+The MCP runtime currently declares 8 servers in `lazyworkbuddy-plugin/.mcp.json`: `run-ledger`, `parity`, `verification`, `source-map`, `status-dashboard`, `context-graph`, `code-intel`, and `docs`.
+
+Capability labels are explicit:
+
+- `semantic`: structured or parsed source of truth, not primarily grep.
+- `project-tool-backed`: real project/plugin scripts or checkers.
+- `heuristic`: grep, regex, registry metadata, or best-effort parsing.
+- `state-only`: Lazyworkbuddy state/docs access only.
+
+Runtime evidence: `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` exercised initialize/tools-list for all 8 servers and representative safe tool calls for `run-ledger`, `parity`, `source-map`, `context-graph`, `code-intel`, and `docs`. Transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`.
+
+Current MCP interpretation:
+
+- `reference parity`: no MCP server is counted as full reference parity for LazyCodex `codegraph`, `lsp`, or `context7`.
+- `host-substitution`: `context-graph`, `code-intel`, and `docs`.
+- `native-enhancement`: `run-ledger`, `parity`, `verification`, `source-map`, and `status-dashboard`.
+- `platform-gap`: `git_bash` and `grep_app` are covered by WorkBuddy host tools rather than new MCP servers.
+
+Any broader runtime claim not covered by the transcript above is `implemented-unverified`.

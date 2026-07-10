@@ -1,6 +1,6 @@
 # Lazyworkbuddy Plugin Design
 
-> v0.1 — Directory layout, manifest fields, component list, install/uninstall story
+> v0.12 — Directory layout, manifest fields, component list, install/uninstall story
 
 ## Overview
 
@@ -17,7 +17,7 @@ lazyworkbuddy-plugin/
 ├── .workbuddy-plugin/
 │   └── plugin.json                  # Plugin manifest
 │
-├── skills/                          # 25+ WorkBuddy Skills
+├── skills/                          # 14 implemented WorkBuddy Skills
 │   ├── init-deep/SKILL.md           # Deep project initialization
 │   ├── ulw-plan/SKILL.md            # Prometheus planning
 │   ├── start-work/SKILL.md          # Orchestrated execution
@@ -45,45 +45,51 @@ lazyworkbuddy-plugin/
 │   ├── review-work.md               # /review-work
 │   └── ultrawork.md                 # /ultrawork
 │
-├── agents/                          # 9+ WorkBuddy subagents
-│   ├── orchestrator.md              # Root orchestrator (Sisyphus)
-│   ├── planner.md                   # Planning agent (Prometheus)
-│   ├── explorer.md                  # Codebase exploration agent
-│   ├── implementer.md               # Implementation worker
-│   ├── verifier.md                  # Evidence verification (Oracle)
-│   ├── reviewer.md                  # Multi-angle code review
-│   ├── qa-executor.md               # Hands-on QA execution
-│   ├── gate-reviewer.md             # Final gate approval
-│   └── librarian.md                 # Memory/index/parity maintenance
+├── agents/                          # 13 WorkBuddy subagents
+│   ├── lazyworkbuddy-orchestrator.md # Root orchestrator (Sisyphus)
+│   ├── lazyworkbuddy-planner.md      # Planning agent (Prometheus)
+│   ├── lazyworkbuddy-explorer.md     # Codebase exploration agent
+│   ├── lazyworkbuddy-implementer.md  # Implementation worker
+│   ├── lazyworkbuddy-verifier.md     # Evidence verification (Oracle)
+│   ├── lazyworkbuddy-reviewer.md     # Multi-angle code review
+│   ├── lazyworkbuddy-qa-executor.md  # Hands-on QA execution
+│   ├── lazyworkbuddy-gate-reviewer.md # Final gate approval
+│   └── ...                          # librarian, context, security, migration agents
 │
 ├── hooks/
 │   └── hooks.json                   # 12 lifecycle hooks
 │
-├── mcp/                             # MCP server implementations
-│   ├── run-ledger/server.js         # Run state query/append
-│   ├── verification/server.js       # Verification test runner
-│   └── parity-dashboard/server.js   # Optional parity tracking
+├── mcp/                             # 8 MCP server implementations
+│   ├── run-ledger/server.sh         # Run state query/append
+│   ├── verification/server.sh       # Verification test runner
+│   ├── parity/server.sh             # Parity state/docs tools
+│   ├── source-map/server.sh         # Source/reference lookup
+│   ├── status-dashboard/server.sh   # Status aggregation
+│   ├── context-graph/server.sh      # Heuristic codegraph substitute
+│   ├── code-intel/server.sh         # Project-tool/heuristic LSP substitute
+│   └── docs/server.sh               # Heuristic docs lookup substitute
 │
 ├── scripts/                         # Verification and utility scripts
-│   ├── hook-session-start.sh
-│   ├── hook-user-prompt-submit.sh
-│   ├── hook-pre-tool-use.sh
-│   ├── hook-post-tool-use.sh
-│   ├── hook-post-tool-use-failure.sh
-│   ├── hook-pre-compact.sh
-│   ├── hook-stop.sh
-│   ├── hook-stop-failure.sh
-│   ├── hook-subagent-stop.sh
-│   ├── hook-task-created.sh
-│   ├── hook-task-completed.sh
-│   ├── hook-subagent-start.sh
-│   ├── ledger-init.sh
-│   ├── ledger-append.sh
-│   ├── ledger-checkpoint.sh
-│   ├── ledger-restore.sh
-│   ├── loop-monitor.sh
-│   ├── parity-check.sh
-│   └── memory-update.sh
+│   ├── hooks/session-start.sh
+│   ├── hooks/user-prompt-submit.sh
+│   ├── hooks/pre-tool-use.sh
+│   ├── hooks/post-tool-use.sh
+│   ├── hooks/post-tool-use-failure.sh
+│   ├── hooks/pre-compact.sh
+│   ├── hooks/stop-gate.sh
+│   ├── hooks/stop-failure.sh
+│   ├── hooks/subagent-stop.sh
+│   ├── hooks/task-created.sh
+│   ├── hooks/task-completed.sh
+│   ├── hooks/subagent-start.sh
+│   ├── state/create-run.sh
+│   ├── state/append-event.sh
+│   ├── state/checkpoint.sh
+│   ├── state/recover-run.sh
+│   ├── loop/finalize-run.sh
+│   ├── lazyworkbuddy-docs-check.sh
+│   ├── lazyworkbuddy-plugin-doctor.sh
+│   └── lazyworkbuddy-verify.sh
 │
 ├── .mcp.json                        # MCP server configuration
 ├── .lsp.json                        # Optional LSP integration
@@ -97,7 +103,7 @@ lazyworkbuddy-plugin/
 ```jsonc
 {
   "name": "lazyworkbuddy",
-  "version": "0.3.0",
+  "version": "0.12.0",
   "description": "LazyCodex agent harness reborn inside WorkBuddy — project memory, planning, execution, and verified completion.",
   "author": {
     "name": "Lazyworkbuddy",
@@ -154,7 +160,7 @@ lazyworkbuddy-plugin/
 | LazyCodex Field | Lazyworkbuddy Field | Rationale |
 |----------------|---------------------|-----------|
 | `name: "omo"` | `name: "lazyworkbuddy"` | WorkBuddy-branded; clean-room name |
-| `version: "4.16.0"` | `version: "0.3.0"` | v0 build; starts at 0.3.0 after scaffold phase |
+| `version: "4.16.0"` | `version: "0.12.0"` | v0 release line; metadata bump finalized by the v0.12 release metadata todo |
 | `skills: "./skills/"` | `skills: "./skills/"` | Same structure |
 | `hooks: [21 files]` | `hooks: "./hooks/hooks.json"` | WorkBuddy uses single hooks.json |
 | `mcpServers: "./.mcp.json"` | `mcpServers: "./.mcp.json"` | Same structure |
@@ -166,7 +172,7 @@ lazyworkbuddy-plugin/
 
 ## Component List
 
-### Skills (25 from LazyCodex, adapted)
+### Skills (14 implemented, with additional LazyCodex skills tracked)
 
 | # | LazyCodex Skill | Lazyworkbuddy Skill | Status | Notes |
 |---|----------------|---------------------|--------|-------|
@@ -211,7 +217,7 @@ lazyworkbuddy-plugin/
 
 Command invocation syntax follows LazyCodex conventions (traced to [README.md](../reference/lazycodex/README.md) Commands section) but uses WorkBuddy slash command format.
 
-### Agents (9+)
+### Agents (13)
 
 | # | Agent | Role | LazyCodex Equivalent | Key Constraint |
 |---|-------|------|---------------------|----------------|
@@ -224,6 +230,10 @@ Command invocation syntax follows LazyCodex conventions (traced to [README.md](.
 | 7 | `qa-executor` | Hands-on QA | lazycodex-qa-executor | Test execution only |
 | 8 | `gate-reviewer` | Final gate approval | lazycodex-gate-reviewer | Accept/reject/revise |
 | 9 | `librarian` | Memory maintenance | librarian | Only writes to `.workbuddy/`, `docs/` |
+| 10 | `security-auditor` | Security review | review-work security lane | Read-only review |
+| 11 | `context-indexer` | Repo map generation | init-deep context indexing | Context writes only |
+| 12 | `context-miner` | Review context mining | review-work context lane | Read-only investigation |
+| 13 | `migration-planner` | Host adaptation planning | Lazyworkbuddy-only | Plan-only |
 
 ### Hooks (12 of LazyCodex's 21)
 
@@ -242,18 +252,20 @@ Command invocation syntax follows LazyCodex conventions (traced to [README.md](.
 | 11 | `TaskCreated` | (new) | Run ledger tracking |
 | 12 | `TaskCompleted` | (new) | Progress update |
 
-### MCP Servers (3-5)
+### MCP Servers (8)
 
 | # | MCP Server | LazyCodex Equivalent | Purpose |
 |---|-----------|---------------------|---------|
 | 1 | `run-ledger` | (new) | Query/append run state and events |
-| 2 | `verification` | (new) | Run verification tests |
-| 3 | `parity-dashboard` | (new) | Compare Lazyworkbuddy vs LazyCodex behavior |
-| 4 | `git` | `git_bash` | Git operations (if needed beyond built-in) |
-| 5 | (none) | `codegraph` | Not applicable to WorkBuddy |
-| 6 | (none) | `lsp` | Handled by WorkBuddy native LSP (`.lsp.json`) |
-| 7 | (none) | `grep_app` | External service — optional add-on |
-| 8 | (none) | `context7` | External service — optional add-on |
+| 2 | `parity` | (new) | Read and update parity/gap state |
+| 3 | `verification` | (new) | Discover and run verification gates |
+| 4 | `source-map` | (new) | Search/reference source excerpts and hashes |
+| 5 | `status-dashboard` | (new) | Aggregate run, task, verification, and parity status |
+| 6 | `context-graph` | `codegraph` | Heuristic WorkBuddy host substitution, not semantic call graph parity |
+| 7 | `code-intel` | `lsp` | Project-tool diagnostics plus heuristic symbol navigation |
+| 8 | `docs` | `context7` | Registry README/docs lookup, not curated Context7 |
+
+`git_bash` and `grep_app` are platform gaps covered by WorkBuddy native shell/search tools, not MCP ports.
 
 ---
 
@@ -281,7 +293,7 @@ On first session after install:
 1. `SessionStart` hook fires
 2. Bootstrap check runs: are `.workbuddy/` and `.lazyworkbuddy/` directories set up?
 3. If not: guide user through `init-deep` to create project memory
-4. Hooks announce: `(Lazyworkbuddy 0.12.0): Project Rules Loaded`
+4. Hooks announce the active Lazyworkbuddy version from plugin metadata
 
 ### Verify Install
 
@@ -290,11 +302,11 @@ On first session after install:
 /doctor
 
 # Should report:
-# - Plugin: lazyworkbuddy v0.12.0 ✓
-# - Skills: 25 loaded ✓
-# - Agents: 9 configured ✓
+# - Plugin: lazyworkbuddy current manifest version ✓
+# - Skills: 14 loaded ✓
+# - Agents: 13 configured ✓
 # - Hooks: 12 active ✓
-# - MCP: 3 servers running ✓
+# - MCP: 8 servers configured ✓
 # - Project memory: workbuddy.md present ✓
 # - Run state: .lazyworkbuddy/ writable ✓
 ```

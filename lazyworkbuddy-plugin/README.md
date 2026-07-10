@@ -6,11 +6,11 @@
 
 Lazyworkbuddy is a WorkBuddy plugin that brings the LazyCodex/OmO agent harness to your workspace.
 
-1. **Install** — `ln -s "$(pwd)/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy`
+1. **Install** — `mkdir -p ~/.workbuddy/plugins && ln -s "$(pwd)/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy`
 2. **Verify** — `./lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh`
 3. **Use** — run `/init-deep`, then `/ulw-plan`, then `/start-work`
 
-**Status:** ✅ v0.10.0 — skills, commands, agents, hooks, state ledger, MCP, hardening, and migration planner all implemented. (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
+**Status:** v0.12.0 release-hardening package with Todo 6 gates recorded. See the canonical current status in [lazyworkbuddy-current-status.md](../docs/lazyworkbuddy-current-status.md). (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
 
 ## What this plugin provides
 
@@ -31,13 +31,13 @@ Lazyworkbuddy brings the LazyCodex/OmO agent harness to WorkBuddy:
 | `commands/` | Slash command entry points | ✅ Implemented (v0.4) |
 | `agents/` | 13 WorkBuddy subagents | ✅ Implemented (v0.5) |
 | `hooks/hooks.json` | 12 lifecycle hooks (3 enforcement + 9 advisory) | ✅ Implemented (v0.6) |
-| `mcp/` | 5 MCP servers (run-ledger, parity, verification, source-map, status-dashboard) | ✅ Implemented (v0.8) |
+| `mcp/` | 8 MCP servers (5 run-management + 3 context-tooling substitutes) | Runtime-smoked in v0.12; context tooling remains heuristic |
 | `scripts/` | State ledger (10) + loop (5) + hooks (12) + validation scripts | ✅ Implemented (v0.6–v0.7) |
 | `schemas/` | State ledger schemas | ✅ Documented in docs/lazyworkbuddy-state-schema.md (v0.7) |
 
 ## Install
 
-*Plugin installation is available once the core components are implemented (v0.7 MVP). For now, use the project-local `.workbuddy/` layer.*
+Use the symlink install for local development. Marketplace publication, tags, and external install locations are intentionally outside the v0.12 local release-hardening workflow.
 
 ### Development install
 
@@ -49,10 +49,10 @@ ln -s "$(pwd)/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy
 ./lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
 ```
 
-### Production install (v0.7+)
+### Marketplace install
 
 ```bash
-# From WorkBuddy: /plugins → Add Marketplace → enter repository URL
+# From WorkBuddy: /plugins -> Add Marketplace -> enter repository URL
 # Repository: https://github.com/lazyworkbuddy
 ```
 
@@ -73,6 +73,9 @@ rm -rf ~/.workbuddy/plugins/lazyworkbuddy
 
 # Docs check: verifies no broken internal links
 ./lazyworkbuddy-plugin/scripts/lazyworkbuddy-docs-check.sh
+
+# Aggregate verification: doctor, smoke, docs, parity, security, MCP, and hooks
+./lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh
 ```
 
 ## Development Status
@@ -89,8 +92,8 @@ rm -rf ~/.workbuddy/plugins/lazyworkbuddy
 | v0.8 | MCP & dashboard | ✅ Complete |
 | v0.9 | Hardening | ✅ Complete |
 | v0.10 | Migration planner | ✅ Complete |
-| v0.11 | Dogfood | 📋 Planned |
-| v0.12 | Release | 📋 Planned |
+| v0.11 | Dogfood | ✅ Superseded by v0.12 replay evidence |
+| v0.12 | Release hardening | ✅ Todo 6 gates recorded |
 
 ## License
 

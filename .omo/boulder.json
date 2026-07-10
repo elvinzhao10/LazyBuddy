@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "active_work_id": null,
+  "works": {
+    "diagnosis-v0-12-lazyworkbuddy": {
+      "work_id": "diagnosis-v0-12-lazyworkbuddy",
+      "active_plan": ".omo/plans/diagnosis-v0-12-lazyworkbuddy.md",
+      "plan_name": "diagnosis-v0-12-lazyworkbuddy",
+      "session_ids": [
+        "codex:019f46f6-d8dc-7c33-bddf-9736ea2c2dc2"
+      ],
+      "status": "complete",
+      "worktree_path": null
+    }
+  }
+}

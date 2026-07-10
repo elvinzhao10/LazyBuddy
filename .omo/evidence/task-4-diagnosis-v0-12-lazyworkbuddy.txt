@@ -1,0 +1,111 @@
+Task 4 evidence transcript: label MCP capabilities and parity taxonomy honestly
+Date: 2026-07-09
+Workspace: /Users/Admin/Desktop/lazyworkbuddy
+
+Scope:
+- Updated only the requested docs plus this evidence transcript:
+  - docs/lazyworkbuddy-mcp-and-tools.md
+  - docs/lazyworkbuddy-known-gaps.md
+  - docs/lazyworkbuddy-parity-ledger.md
+  - docs/lazyworkbuddy-command-index.md
+- Did not edit reference/lazycodex.
+
+Baseline / RED proof
+Command:
+rg -n "semantic|project-tool-backed|heuristic|state-only|runtime-verified|implemented-unverified|platform-gap|native-enhancement" docs/lazyworkbuddy-mcp-and-tools.md docs/lazyworkbuddy-parity-ledger.md docs/lazyworkbuddy-known-gaps.md docs/lazyworkbuddy-command-index.md || true
+
+Observed baseline output:
+docs/lazyworkbuddy-parity-ledger.md:6:> Status: `matched` (confirmed equivalent) | `adapted` (semantics preserved, implementation differs) | `skipped` (intentionally not ported) | `added` (Lazyworkbuddy-only)
+docs/lazyworkbuddy-parity-ledger.md:17:| Planning (`$ulw-plan`) | [ulw-plan/SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) | WorkBuddy Plan Mode + `/ulw-plan` command + planner agent | **adapted** | Prometheus semantics preserved; WorkBuddy Plan Mode replaces Codex-specific plan mode |
+docs/lazyworkbuddy-parity-ledger.md:25:| Sisyphus completion contract | DoneClaim/AdversarialVerify/FullyDone | Same names, same transitions | **matched** | Exact semantic match — the three-state contract is preserved verbatim |
+docs/lazyworkbuddy-parity-ledger.md:33:| Explorer | Installed to `~/.codex/agents/` | `explorer` agent | **adapted** | Read-only exploration; same role semantics |
+docs/lazyworkbuddy-parity-ledger.md:95:**Parity Health:** ✅ v0.10 — architecture designed, behavior semantically preserved, all phases through v0.10 implemented. MCP servers are WorkBuddy-native (run-ledger/parity/verification/source-map/status-dashboard); LazyCodex's 5 context servers (context7/codegraph/lsp/git_bash/grep_app) are NOT ported — tracked as gap G-003 and P2 in the full problem list.
+docs/lazyworkbuddy-parity-ledger.md:110:- All 8 core command/skill entries: remain `adapted` (structure exists; semantics not yet implemented)
+docs/lazyworkbuddy-parity-ledger.md:117:**Skills with preserved LazyCodex semantics:**
+docs/lazyworkbuddy-parity-ledger.md:136:- 14 skills: `adapted` → `implemented` (full WorkBuddy-native SKILL.md with semantic preservation)
+docs/lazyworkbuddy-known-gaps.md:14:- **Lazyworkbuddy:** Uses WorkBuddy `Agent` tool with different spawning, context, and wait semantics.
+docs/lazyworkbuddy-known-gaps.md:41:  - `lsp` → **`code-intel`** MCP (diagnostics, typecheck, find_references, goto_definition, symbols). `diagnostics` runs the project's REAL linter/typechecker (tsc/eslint/ruff/pyright/mypy/go vet/cargo); symbol ops are grep heuristics (NOT a real LSP daemon — no workspace rename, no semantic goto-def).
+docs/lazyworkbuddy-known-gaps.md:46:- **Residual gap (accepted):** symbol ops are heuristic (grep), not semantic. A real LSP daemon would give precise goto-def/rename/diagnostics. If WorkBuddy adds native LSP integration, wire it and deprecate the grep heuristics. Tracked as P5 (host-inherent).
+docs/lazyworkbuddy-known-gaps.md:93:**Tool translation is complete** — all Codex-specific references in workflow instructions are replaced with WorkBuddy equivalents (residual Codex names appear only in "Adapted from..." citation footnotes). However, **semantic losses occurred during condensation** and are documented below for v0.9 hardening:
+docs/lazyworkbuddy-known-gaps.md:148:| `.omo/` | `.lazyworkbuddy/` | Run state directory renamed, no semantic change |
+docs/lazyworkbuddy-known-gaps.md:149:| `${PLUGIN_ROOT}` | `${CODEBUDDY_PLUGIN_ROOT}` | Environment variable renamed, same resolution semantics |
+docs/lazyworkbuddy-known-gaps.md:151:| Codex task spawning (`agent_type`, `fork_context`) | WorkBuddy subagent invocation | Same isolation semantics preserved |
+
+Baseline assessment:
+- The target docs did not label all 8 current MCP servers.
+- docs/lazyworkbuddy-mcp-and-tools.md still described 5 servers / 30 tools.
+- Gap and parity language did not consistently separate reference parity, host substitution, native enhancement, and platform gap.
+
+Current MCP list
+Command:
+python3 -c 'import json; d=json.load(open("lazyworkbuddy-plugin/.mcp.json")); print("\n".join(d["mcpServers"].keys()))'
+
+Observed output:
+run-ledger
+parity
+verification
+source-map
+status-dashboard
+context-graph
+code-intel
+docs
+
+Implementation notes:
+- docs/lazyworkbuddy-mcp-and-tools.md now lists all 8 MCP servers and 42 tools with capability labels: semantic, project-tool-backed, heuristic, state-only.
+- docs/lazyworkbuddy-known-gaps.md now treats context-graph/code-intel/docs as host-substitution and heuristic-substitute, not full LazyCodex codegraph/LSP/context7 parity.
+- docs/lazyworkbuddy-parity-ledger.md now separates reference parity, host-substitution, native-enhancement, and platform-gap language and cites the MCP smoke command/transcript for runtime-verified claims.
+- docs/lazyworkbuddy-command-index.md now lists the actual 8 MCP servers from .mcp.json and marks git_bash/grep_app as platform-gap host coverage, not MCP ports.
+
+Verification
+Command:
+rg -n "semantic|project-tool-backed|heuristic|state-only|runtime-verified|implemented-unverified|platform-gap|native-enhancement" docs/lazyworkbuddy-mcp-and-tools.md docs/lazyworkbuddy-parity-ledger.md docs/lazyworkbuddy-known-gaps.md docs/lazyworkbuddy-command-index.md
+
+Observed result:
+- Exit code: 0
+- Output included all required labels across the four target docs.
+- Key checked lines included:
+  - docs/lazyworkbuddy-mcp-and-tools.md:10-13 capability taxonomy
+  - docs/lazyworkbuddy-mcp-and-tools.md:25-32 all 8 server rows
+  - docs/lazyworkbuddy-known-gaps.md:40-58 capability/parity taxonomy and residual heuristic gap
+  - docs/lazyworkbuddy-parity-ledger.md:77-98 MCP rows and parity taxonomy
+  - docs/lazyworkbuddy-command-index.md:89-102 MCP index rows and platform-gap note
+
+Command:
+bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh
+
+Observed output:
+=== Lazyworkbuddy MCP integration test (8 servers) ===
+
+
+=== Results ===
+Passed: 22
+Failed: 0
+MCP test: ALL PASS
+
+Exit code: 0
+
+Command:
+bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-docs-check.sh
+
+Observed output:
+{"total_links":94,"broken":0,"broken_links":[]}
+
+Exit code: 0
+
+Manual QA
+Happy path:
+- Ran `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh`.
+- Observed exit code 0 and `MCP test: ALL PASS`.
+- Read docs/lazyworkbuddy-mcp-and-tools.md after the update and verified it labels all 8 servers from lazyworkbuddy-plugin/.mcp.json.
+
+Failure path:
+- Baseline grep showed insufficient labels and stale 5-server language before the update.
+
+Adversarial checks:
+- stale_state: compared lazyworkbuddy-plugin/.mcp.json server keys against docs/lazyworkbuddy-mcp-and-tools.md and docs/lazyworkbuddy-command-index.md; both now list run-ledger, parity, verification, source-map, status-dashboard, context-graph, code-intel, docs.
+- misleading_success_output: verified actual exit code 0 for both lazyworkbuddy-mcp-test.sh and lazyworkbuddy-docs-check.sh.
+- dirty_worktree: only requested docs plus this evidence transcript were changed for this task; no reference/lazycodex edits.
+- prompt_injection, malformed_input, cancel_resume, hung_commands, flaky_tests, repeated_interruptions: not triggered.
+
+Cleanup:
+- No runtime resources were created beyond this evidence transcript.

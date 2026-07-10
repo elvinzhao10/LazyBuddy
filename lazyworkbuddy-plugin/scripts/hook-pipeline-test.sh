@@ -12,9 +12,18 @@ set -euo pipefail
 
 CWD="${CWD:-$(pwd)}"
 HOOKS_DIR="$CWD/lazyworkbuddy-plugin/scripts/hooks"
+SESSION_ID="hook-pipeline-test-$$"
+STATE_DIR="$CWD/.lazyworkbuddy/executor-verify-state"
 PASS=0
 FAIL=0
 RESULTS=""
+
+cleanup_retry_state() {
+    rm -f "$STATE_DIR/${SESSION_ID}-a1.json" "$STATE_DIR/${SESSION_ID}-a2.json"
+}
+
+trap cleanup_retry_state EXIT
+cleanup_retry_state
 
 test_hook() {
     local name="$1"
@@ -40,82 +49,82 @@ echo ""
 
 # 1. SessionStart — should detect no active run and pass through
 test_hook "session-start.sh" \
-    '{"event":"session_start","cwd":"'"$CWD"'","session_id":"test-session"}' \
+    '{"event":"session_start","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'"}' \
     ""
 
 # 2. UserPromptSubmit — should detect no keywords and pass through
 test_hook "user-prompt-submit.sh" \
-    '{"event":"user_prompt_submit","cwd":"'"$CWD"'","session_id":"test-session","prompt":"hello world"}' \
+    '{"event":"user_prompt_submit","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","prompt":"hello world"}' \
     ""
 
 # 3. UserPromptSubmit — should detect long-horizon keyword and suggest command
 test_hook "user-prompt-submit.sh" \
-    '{"event":"user_prompt_submit","cwd":"'"$CWD"'","session_id":"test-session","prompt":"implement the auth flow for the app"}' \
+    '{"event":"user_prompt_submit","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","prompt":"implement the auth flow for the app"}' \
     "TIP\|ultrawork\|ulw\|lazyworkbuddy"
 
 # 4. PreToolUse — should deny rm -rf
 test_hook "pre-tool-use.sh" \
-    '{"event":"pre_tool_use","cwd":"'"$CWD"'","session_id":"test-session","tool_name":"Bash","tool_input":{"command":"rm -rf /tmp/test"}}' \
+    '{"event":"pre_tool_use","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","tool_name":"Bash","tool_input":{"command":"rm -rf /tmp/test"}}' \
     "deny"
 
 # 5. PreToolUse — should allow safe command (empty output)
 test_hook "pre-tool-use.sh" \
-    '{"event":"pre_tool_use","cwd":"'"$CWD"'","session_id":"test-session","tool_name":"Bash","tool_input":{"command":"ls -la"}}' \
+    '{"event":"pre_tool_use","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","tool_name":"Bash","tool_input":{"command":"ls -la"}}' \
     ""
 
 # 6. PostToolUse — should pass through (no active run)
 test_hook "post-tool-use.sh" \
-    '{"event":"post_tool_use","cwd":"'"$CWD"'","session_id":"test-session","tool_name":"Read","tool_input":{"file_path":"README.md"}}' \
+    '{"event":"post_tool_use","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","tool_name":"Read","tool_input":{"file_path":"README.md"}}' \
     ""
 
 # 7. PostToolUseFailure — should pass through
 test_hook "post-tool-use-failure.sh" \
-    '{"event":"post_tool_use_failure","cwd":"'"$CWD"'","session_id":"test-session","tool_name":"Bash","error":"command not found"}' \
+    '{"event":"post_tool_use_failure","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","tool_name":"Bash","error":"command not found"}' \
     ""
 
 # 8. PreCompact — should pass through
 test_hook "pre-compact.sh" \
-    '{"event":"pre_compact","cwd":"'"$CWD"'","session_id":"test-session"}' \
+    '{"event":"pre_compact","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'"}' \
     ""
 
 # 9. TaskCreated — should pass through
 test_hook "task-created.sh" \
-    '{"event":"task_created","cwd":"'"$CWD"'","session_id":"test-session","task_id":"T1"}' \
+    '{"event":"task_created","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","task_id":"T1"}' \
     ""
 
 # 10. TaskCompleted — should pass through
 test_hook "task-completed.sh" \
-    '{"event":"task_completed","cwd":"'"$CWD"'","session_id":"test-session","task_id":"T1"}' \
+    '{"event":"task_completed","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","task_id":"T1"}' \
     ""
 
 # 11. SubagentStart — should pass through
 test_hook "subagent-start.sh" \
-    '{"event":"subagent_start","cwd":"'"$CWD"'","session_id":"test-session","agent_id":"a1","agent_type":"explorer"}' \
+    '{"event":"subagent_start","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","agent_id":"a1","agent_type":"explorer"}' \
     ""
 
 # 12. StopFailure — should pass through
 test_hook "stop-failure.sh" \
-    '{"event":"stop_failure","cwd":"'"$CWD"'","session_id":"test-session"}' \
+    '{"event":"stop_failure","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'"}' \
     ""
 
 # 13. Stop — no active run, should allow (empty output)
 test_hook "stop-gate.sh" \
-    '{"event":"stop","cwd":"'"$CWD"'","session_id":"test-session","stop_hook_active":false,"transcript_path":"/dev/null"}' \
+    '{"event":"stop","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","stop_hook_active":false,"transcript_path":"/dev/null"}' \
     ""
 
 # 14. Stop with context pressure — should pass through
 test_hook "stop-gate.sh" \
-    '{"event":"stop","cwd":"'"$CWD"'","session_id":"test-session","stop_hook_active":false,"transcript_path":"/dev/null","prompt":"context compacted"}' \
+    '{"event":"stop","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","stop_hook_active":false,"transcript_path":"/dev/null","prompt":"context compacted"}' \
     ""
 
 # 15. SubagentStop — non-implementer, should allow
 test_hook "subagent-stop.sh" \
-    '{"event":"subagent_stop","cwd":"'"$CWD"'","session_id":"test-session","agent_id":"a1","agent_type":"reviewer","last_assistant_message":"review done","transcript_path":"/dev/null"}' \
+    '{"event":"subagent_stop","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","agent_id":"a1","agent_type":"reviewer","last_assistant_message":"review done","transcript_path":"/dev/null"}' \
     ""
 
 # 16. SubagentStop — implementer with no evidence, should block
 test_hook "subagent-stop.sh" \
-    '{"event":"subagent_stop","cwd":"'"$CWD"'","session_id":"test-session","agent_id":"a2","agent_type":"implementer","last_assistant_message":"done","transcript_path":"/dev/null"}' \
+    '{"event":"subagent_stop","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","agent_id":"a2","agent_type":"implementer","last_assistant_message":"done","transcript_path":"/dev/null"}' \
     "continue.*false\|block"
 
 echo -e "$RESULTS"

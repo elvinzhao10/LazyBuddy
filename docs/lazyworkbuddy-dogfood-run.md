@@ -1,127 +1,184 @@
-# Lazyworkbuddy Dogfood Report — v0.11
+# Lazyworkbuddy Dogfood Replay — v0.12
 
-> **Date:** 2026-07-09
-> **Run ID:** dogfood-v0.11
-> **Result:** PASS — full lifecycle completed end-to-end
+> Date: 2026-07-09
+> Run ID: `dogfood-v0.12`
+> Result: PASS — non-trivial replay completed with checkpoint, missing-evidence block, repair cycle, sync repair, stop-gate proof, final review/debugging notes, finalization, and doctor pass.
 
-## Selected Task
+## Replay Objective
 
-**Fix stale plugin description in `.workbuddy/settings.json`** — the plugin `description` field said "Flip enabled to true to activate" but the plugin has been `enabled: true` since v0.8. This was a real, visible metadata inconsistency that a user would notice.
+Use existing Lazyworkbuddy state, loop, and hook scripts to prove a v0.12 run lifecycle that is harder than the earlier one-task v0.11 dogfood. The replay intentionally creates a missing-evidence failure, repairs it, syncs plan/state drift, and finishes only after review and verification gates are present.
 
-**Why this task:** (a) Real — not fabricated. (b) Small — one-line fix, completable in one session. (c) Meaningful — metadata accuracy affects user trust. (d) Verifiable — `verify.sh` + manual inspection.
+## Named Tasks
 
-## Initial State
+The durable plan is `.lazyworkbuddy/runs/dogfood-v0.12/plan.md`.
 
-| Item | Before |
-|------|--------|
-| plugin enabled | `true` |
-| plugin version | `0.10.0` |
-| description | `"Lazyworkbuddy agent harness — v0.10 (migration planner). Flip enabled to true to activate."` |
-| workbuddy.md version | v0.10 |
-| CHANGELOG | v0.3.0 through v0.10.0 |
+| Task | Name | Evidence |
+| --- | --- | --- |
+| `T1` | Establish plan/state sync baseline | `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T1-plan-state-sync.txt` |
+| `T2` | Capture checkpoint and missing-evidence block | `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T2-checkpoint-missing-evidence.txt` |
+| `T3` | Repair evidence failure and resolve drift | `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt` |
+| `T4` | Final verifier review and debugging audit | `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T4-final-review-debugging.txt` |
+| `RF4851` | Retry: Capture checkpoint and missing-evidence block | `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt` |
 
-The description was inconsistent: it told users to flip `enabled` to `true` when it was already `true`. This created confusion about whether the plugin was actually active.
+## Exact Commands
 
-## Plan
-
-```markdown
-## TODOs
-- [x] T1: Fix stale settings.json plugin description
-  - Acceptance: description no longer says "Flip enabled to true to activate"
-  - QA: Run verify.sh — must pass
-  - Commit: fix(plugin): update stale settings.json plugin description for v0.10
+```bash
+bash lazyworkbuddy-plugin/scripts/state/create-run.sh dogfood-v0.12 "Dogfood Lazyworkbuddy v0.12 replay with checkpoint, missing-evidence gate, repair cycle, stop-gate proof, and final review/debugging evidence"
+bash lazyworkbuddy-plugin/scripts/loop/next-task.sh dogfood-v0.12
+bash lazyworkbuddy-plugin/scripts/state/sync-plan-state.sh dogfood-v0.12
+bash lazyworkbuddy-plugin/scripts/state/update-task.sh dogfood-v0.12 T1 done 'evidence=[".lazyworkbuddy/runs/dogfood-v0.12/evidence/T1-plan-state-sync.txt"]'
+bash lazyworkbuddy-plugin/scripts/state/update-plan-checkbox.sh dogfood-v0.12 T1
+bash lazyworkbuddy-plugin/scripts/loop/next-task.sh dogfood-v0.12
+bash lazyworkbuddy-plugin/scripts/state/checkpoint.sh dogfood-v0.12
+printf '%s\n' '{"cwd":"/Users/Admin/Desktop/lazyworkbuddy","stop_hook_active":false}' | bash lazyworkbuddy-plugin/scripts/hooks/stop-gate.sh
+printf '%s\n' '{"agent_type":"lazyworkbuddy-implementer","last_assistant_message":"DONE without evidence marker","cwd":"/Users/Admin/Desktop/lazyworkbuddy","session_id":"fixture-dogfood-v0.12","agent_id":"missing-evidence"}' | bash lazyworkbuddy-plugin/scripts/hooks/subagent-stop.sh
+bash lazyworkbuddy-plugin/scripts/state/update-task.sh dogfood-v0.12 T2 done 'evidence=[".lazyworkbuddy/runs/dogfood-v0.12/evidence/T2-checkpoint-missing-evidence.txt"]'
+bash lazyworkbuddy-plugin/scripts/state/update-plan-checkbox.sh dogfood-v0.12 T2
+bash lazyworkbuddy-plugin/scripts/loop/next-task.sh dogfood-v0.12
+bash lazyworkbuddy-plugin/scripts/loop/create-repair-task.sh dogfood-v0.12 T2 retry
+printf '%s\n' '{"agent_type":"lazyworkbuddy-implementer","last_assistant_message":"DONE\nEVIDENCE_RECORDED: .lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt","cwd":"/Users/Admin/Desktop/lazyworkbuddy","session_id":"fixture-dogfood-v0.12","agent_id":"missing-evidence"}' | bash lazyworkbuddy-plugin/scripts/hooks/subagent-stop.sh
+bash lazyworkbuddy-plugin/scripts/state/update-task.sh dogfood-v0.12 RF4851 done 'evidence=[".lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt"]'
+bash lazyworkbuddy-plugin/scripts/state/append-event.sh dogfood-v0.12 evidence_failure_repaired '{"failed_task_id":"T2","repair_task_id":"RF4851","resolution":"SubagentStop accepted a non-empty EVIDENCE_RECORDED artifact under .lazyworkbuddy"}'
+test ! -f .lazyworkbuddy/executor-verify-state/fixture-dogfood-v0.12-missing-evidence.json
+bash lazyworkbuddy-plugin/scripts/state/update-task.sh dogfood-v0.12 T3 done 'evidence=[".lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt"]'
+bash lazyworkbuddy-plugin/scripts/state/update-plan-checkbox.sh dogfood-v0.12 T3
+bash lazyworkbuddy-plugin/scripts/loop/next-task.sh dogfood-v0.12
+bash lazyworkbuddy-plugin/scripts/state/update-task.sh dogfood-v0.12 T4 done 'evidence=[".lazyworkbuddy/runs/dogfood-v0.12/evidence/T4-final-review-debugging.txt",".lazyworkbuddy/runs/dogfood-v0.12/review/verdict.md",".lazyworkbuddy/runs/dogfood-v0.12/artifacts/debugging-audit.md",".lazyworkbuddy/runs/dogfood-v0.12/verification/results.json"]'
+bash lazyworkbuddy-plugin/scripts/state/update-plan-checkbox.sh dogfood-v0.12 T4
+bash lazyworkbuddy-plugin/scripts/state/sync-plan-state.sh dogfood-v0.12 --fix
+bash lazyworkbuddy-plugin/scripts/state/sync-plan-state.sh dogfood-v0.12
+bash lazyworkbuddy-plugin/scripts/loop/finalize-run.sh dogfood-v0.12
+printf '%s\n' '{"cwd":"/Users/Admin/Desktop/lazyworkbuddy","stop_hook_active":false}' | bash lazyworkbuddy-plugin/scripts/hooks/stop-gate.sh
+bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
 ```
 
-## Implementation Summary
+Full replay transcript:
 
-1. Created run via `create-run.sh dogfood-v0.11` — directory structure + initial state.json + run_created event
-2. Wrote plan to `.lazyworkbuddy/runs/dogfood-v0.11/plan.md` with `## TODOs`
-3. Updated state.json with `status: "executing"`, `plan_reference`, and 1 task
-4. Called `next-task.sh` — returned T1 correctly
-5. Fixed the description in `.workbuddy/settings.json` line 74:
-   - **Before:** `"Flip enabled to true to activate."`
-   - **After:** `"Plugin is active."`
-6. Called `update-task.sh T1 done` — state.json updated, event appended
-7. Marked plan checkbox `- [x]`
-8. Ran verification — all_pass:true
-9. Appended verification passed event
-10. Wrote review verdict: ACCEPT
-11. Updated state with verification gates + review accepted
-12. Called `finalize-run.sh` — RUN COMPLETE
+- `.lazyworkbuddy/runs/dogfood-v0.12/evidence/final-gates.txt`
+- `.omo/evidence/task-5-diagnosis-v0-12-lazyworkbuddy.txt`
 
-## Files Changed
+## Checkpoint
 
-| File | Change |
-|------|--------|
-| `.workbuddy/settings.json` line 74 | Description: "Flip enabled to true to activate." → "Plugin is active." |
-| `.lazyworkbuddy/runs/dogfood-v0.11/state.json` | Created + updated through full lifecycle |
-| `.lazyworkbuddy/runs/dogfood-v0.11/plan.md` | Created with checkboxes |
-| `.lazyworkbuddy/runs/dogfood-v0.11/events.jsonl` | 4 events appended |
-| `.lazyworkbuddy/runs/dogfood-v0.11/verification/results.json` | Created |
-| `.lazyworkbuddy/runs/dogfood-v0.11/review/verdict.md` | Created with ACCEPT |
+Checkpoint command:
 
-## Commands Run
+```bash
+bash lazyworkbuddy-plugin/scripts/state/checkpoint.sh dogfood-v0.12
+```
 
-| Command | Output |
-|---------|--------|
-| `create-run.sh dogfood-v0.11 "..."` | Path created: .lazyworkbuddy/runs/dogfood-v0.11 |
-| `next-task.sh dogfood-v0.11` | T1 returned (status: running) |
-| `python3 -c "import json..."` (settings.json edit) | Description fixed |
-| `update-task.sh dogfood-v0.11 T1 done` | Task updated |
-| `verify.sh` | {"all_pass":true} |
-| `append-event.sh` | Event appended |
-| `finalize-run.sh dogfood-v0.11` | RUN COMPLETE |
-| `summarize-run.sh dogfood-v0.11` | Clean summary output |
+Checkpoint artifact:
 
-## Verification Commands/Results
+- `.lazyworkbuddy/runs/dogfood-v0.12/checkpoints/20260709T151618Z/state.json`
+- `.lazyworkbuddy/runs/dogfood-v0.12/checkpoints/20260709T151618Z/plan.md`
 
-| Check | Result |
-|-------|--------|
-| `doctor.sh` | PASS — 47/47 |
-| `smoke-test.sh` | PASS — 105/105 |
-| `docs-check.sh` | PASS — 91 links, 0 broken |
-| `parity-check.sh` | PASS — 70% coverage |
-| `security-check.sh` | PASS — 0 secrets found |
-| `verify.sh` | **all_pass: true** |
+The durable event appears in `.lazyworkbuddy/runs/dogfood-v0.12/events.jsonl` as `checkpoint_created`.
 
-## Reviewer Decision
+## Blocked Failure and Repair Cycle
 
-**ACCEPT** — all 7 review dimensions passed. Intent match confirmed, no scope overreach, verification all-pass, no regressions, metadata-only change. The fix accurately resolves the description inconsistency.
+Deliberate failure:
 
-## Librarian Update
+```bash
+printf '%s\n' '{"agent_type":"lazyworkbuddy-implementer","last_assistant_message":"DONE without evidence marker","cwd":"/Users/Admin/Desktop/lazyworkbuddy","session_id":"fixture-dogfood-v0.12","agent_id":"missing-evidence"}' | bash lazyworkbuddy-plugin/scripts/hooks/subagent-stop.sh
+```
 
-- `docs/lazyworkbuddy-dogfood-run.md` — this report (created)
-- Settings.json description now accurate
-- No parity ledger or known-gaps changes needed
+Observed output in `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T2-checkpoint-missing-evidence.txt`:
 
-## Final Pass/Fail Status
+```json
+{"continue": false, "reason": "No EVIDENCE_RECORDED found in implementer output. Please record evidence path before completing. (attempt 1/3)"}
+```
 
-**PASS** — `finalize-run.sh dogfood-v0.11` returned `RUN COMPLETE` with exit code 0. Events.jsonl shows full lifecycle: run_created → task_updated → verification_passed → run_completed.
+The hook exited `0`, which is the expected WorkBuddy hook contract.
 
-## Observed UX Problems
+Repair:
 
-1. **No CHANGELOG entry for dogfood.** The librarian typically updates CHANGELOG after accepted changes. There's no automated script for this — it must be done manually. Minor gap.
+```bash
+bash lazyworkbuddy-plugin/scripts/loop/create-repair-task.sh dogfood-v0.12 T2 retry
+printf '%s\n' '{"agent_type":"lazyworkbuddy-implementer","last_assistant_message":"DONE\nEVIDENCE_RECORDED: .lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt","cwd":"/Users/Admin/Desktop/lazyworkbuddy","session_id":"fixture-dogfood-v0.12","agent_id":"missing-evidence"}' | bash lazyworkbuddy-plugin/scripts/hooks/subagent-stop.sh
+bash lazyworkbuddy-plugin/scripts/state/append-event.sh dogfood-v0.12 evidence_failure_repaired '{"failed_task_id":"T2","repair_task_id":"RF4851","resolution":"SubagentStop accepted a non-empty EVIDENCE_RECORDED artifact under .lazyworkbuddy"}'
+```
 
-2. **Next-task.sh returns running status but doesn't modify plan.md.** The task is marked "running" in state.json but the plan checkbox stays `- [ ]` until manually updated. The plan.md and state.json checkboxes can diverge.
+Repair artifacts:
 
-3. **No atomic plan checkbox update.** Updating a plan checkbox from `- [ ]` to `- [x]` requires manual `sed` or text editing. No script wraps this operation.
+- `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T3-repair-sync-resolution.txt`
+- `.lazyworkbuddy/runs/dogfood-v0.12/events.jsonl` (`repair_task_created` and `evidence_failure_repaired`)
 
-4. **Finalize-run.sh checks `queued` tasks but not plan checkboxes.** The stop-gate.sh hook reads plan.md checkboxes, but finalize-run.sh only checks state.json task statuses. These can be inconsistent.
+## Stop Gate
 
-5. **Events.jsonl manual append for verification.** Using `append-event.sh` manually for verification events — ideally the verify.sh script would auto-append.
+Before completion, stop gate blocked because three checkboxes were still open:
 
-## Parity Gaps Discovered
+```bash
+printf '%s\n' '{"cwd":"/Users/Admin/Desktop/lazyworkbuddy","stop_hook_active":false}' | bash lazyworkbuddy-plugin/scripts/hooks/stop-gate.sh
+```
 
-**G-016: Plan checkbox / state.json task inconsistency.** The stop-gate.sh hook parses plan.md checkboxes, but `next-task.sh` / `update-task.sh` / `finalize-run.sh` all operate on state.json tasks. These two representations can diverge. LazyCodex reads boulder.json + plan.md from a unified source. In Lazyworkbuddy, the plan.md is the UI-level representation while state.json is the data model — and no synchronization mechanism exists between them.
+Observed output:
 
-## Suggested Fixes (v0.12)
+```json
+{"continue": false, "reason": "Lazyworkbuddy has 3 unfinished task(s) in plan `plan`. Next: T2: Capture checkpoint and missing-evidence block\n\nRun /start-work plan to continue. Stay in this session ..."}
+```
 
-1. **Add `update-plan-checkbox.sh`** — a script that synchronizes a state.json task status to a plan.md checkbox. Called by `update-task.sh` automatically.
+After all checkboxes were complete and after finalization, the same command produced empty stdout with exit code `0`, recorded in `.lazyworkbuddy/runs/dogfood-v0.12/evidence/final-gates.txt`.
 
-2. **Add CHANGELOG update to librarian workflow** — the librarian should auto-update CHANGELOG for v0.11 dogfood findings.
+## Plan/State Sync
 
-3. **Make verify.sh auto-append events** — when verify.sh runs, automatically call `append-event.sh` for the active run if one exists.
+Required sync command:
 
-4. **Add `sync-plan.sh`** — a script that validates state.json tasks match plan.md checkboxes, reporting any divergence.
+```bash
+bash lazyworkbuddy-plugin/scripts/state/sync-plan-state.sh dogfood-v0.12 --fix
+```
 
-5. **Finalize-run.sh should cross-check plan.md** — verify that plan checkboxes are all checked, not just that state.json tasks are done/queued status.
+Observed: one progress-counter drift was repaired.
+
+Required dry-run:
+
+```bash
+bash lazyworkbuddy-plugin/scripts/state/sync-plan-state.sh dogfood-v0.12
+```
+
+Observed:
+
+```text
+NO DRIFT — plan and state are in sync.
+```
+
+## Final Verifier, Review, and Debugging Notes
+
+Artifacts:
+
+- `.lazyworkbuddy/runs/dogfood-v0.12/review/verdict.md`
+- `.lazyworkbuddy/runs/dogfood-v0.12/artifacts/debugging-audit.md`
+- `.lazyworkbuddy/runs/dogfood-v0.12/verification/results.json`
+- `.lazyworkbuddy/runs/dogfood-v0.12/evidence/T4-final-review-debugging.txt`
+
+Review verdict: `ACCEPT`.
+
+Debugging hypotheses recorded:
+
+- SubagentStop might silently allow missing evidence because it exits 0; refuted by JSON `"continue": false`.
+- Plan/state drift might survive checkbox updates; controlled by `sync-plan-state.sh --fix` followed by `NO DRIFT`.
+- Stop gate might allow premature completion; refuted by the pre-completion block and post-completion allow checks.
+- Doctor might miss completed tasks with missing evidence; controlled by final doctor pass over completed `dogfood-v0.12` tasks.
+
+## Final State
+
+Finalization command:
+
+```bash
+bash lazyworkbuddy-plugin/scripts/loop/finalize-run.sh dogfood-v0.12
+```
+
+Observed:
+
+```text
+RUN COMPLETE: dogfood-v0.12
+```
+
+Doctor command:
+
+```bash
+bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
+```
+
+Observed:
+
+```text
+Doctor check: ALL PASS
+```

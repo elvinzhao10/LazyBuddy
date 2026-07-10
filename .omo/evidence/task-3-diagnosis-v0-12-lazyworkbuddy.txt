@@ -1,0 +1,126 @@
+# Task 3 Evidence - Lazyworkbuddy v0.12 release docs package
+Started: 2026-07-09T23:09:11+08:00
+
+## Initial git status --short
+ M docs/lazyworkbuddy-command-index.md
+ M docs/lazyworkbuddy-known-gaps.md
+ M docs/lazyworkbuddy-mcp-and-tools.md
+ M docs/lazyworkbuddy-parity-ledger.md
+ M lazyworkbuddy-plugin/README.md
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh
+ D plan/v0.13-add-ons.md
+ D plan/v0.14-evaluation-rubric.md
+ M workbuddy.md
+?? .omo/
+?? docs/lazyworkbuddy-current-status.md
+?? docs/lazyworkbuddy-diagnosis-evaluation-vs-lazycodex-lazytrae.md
+?? plan/v1.1-add-ons.md
+
+## Failing-first core release docs check
+Command: test -f README-LAZYworkbuddy.md && test -f docs/lazyworkbuddy-final-parity-report.md
+Result: FAIL as expected before edits (exit 1)
+
+## Happy package check
+Command: python3 -c <required artifact and final parity column check>
+Result: PASS (exit 0)
+
+## Docs link check
+Command: bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-docs-check.sh
+{"total_links":100,"broken":0,"broken_links":[]}
+Result: PASS (exit 0)
+
+## Diff whitespace check
+Command: git diff --check -- README-LAZYworkbuddy.md docs/lazyworkbuddy-quickstart.md docs/lazyworkbuddy-final-parity-report.md docs/lazyworkbuddy-plugin-design.md lazyworkbuddy-plugin/README.md lazyworkbuddy-plugin/CHANGELOG.md .omo/evidence/task-3-diagnosis-v0-12-lazyworkbuddy.txt
+Result: PASS (exit 0)
+
+## New-file whitespace scan
+Command: python3 trailing-whitespace scan over files changed by Todo 3
+Result: PASS (exit 0)
+
+## Final git status --short
+ M docs/lazyworkbuddy-command-index.md
+ M docs/lazyworkbuddy-known-gaps.md
+ M docs/lazyworkbuddy-mcp-and-tools.md
+ M docs/lazyworkbuddy-parity-ledger.md
+ M docs/lazyworkbuddy-plugin-design.md
+ M lazyworkbuddy-plugin/CHANGELOG.md
+ M lazyworkbuddy-plugin/README.md
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh
+ D plan/v0.13-add-ons.md
+ D plan/v0.14-evaluation-rubric.md
+ M workbuddy.md
+?? .omo/
+?? README-LAZYworkbuddy.md
+?? docs/lazyworkbuddy-current-status.md
+?? docs/lazyworkbuddy-diagnosis-evaluation-vs-lazycodex-lazytrae.md
+?? docs/lazyworkbuddy-final-parity-report.md
+?? docs/lazyworkbuddy-quickstart.md
+?? plan/v1.1-add-ons.md
+
+## Happy package check exact rerun
+Command:
+python3 -c 'from pathlib import Path; required=["README-LAZYworkbuddy.md","docs/lazyworkbuddy-quickstart.md","docs/lazyworkbuddy-final-parity-report.md","docs/lazyworkbuddy-command-index.md","docs/lazyworkbuddy-agent-orchestration.md","docs/lazyworkbuddy-loop-protocol.md","docs/lazyworkbuddy-verification-matrix.md","docs/lazyworkbuddy-quality-gates.md","docs/lazyworkbuddy-known-gaps.md","docs/lazyworkbuddy-dogfood-run.md","docs/lazyworkbuddy-security-and-permissions-plan.md","docs/lazyworkbuddy-plugin-design.md","docs/lazyworkbuddy-mcp-and-tools.md","lazyworkbuddy-plugin/README.md","lazyworkbuddy-plugin/CHANGELOG.md"]; missing=[p for p in required if not Path(p).is_file()]; assert not missing, missing; report=Path("docs/lazyworkbuddy-final-parity-report.md").read_text(); required_cols=["Original LazyCodex method","Original source path","Lazyworkbuddy equivalent","Evidence artifact","Verification method","Known caveats"]; absent=[c for c in required_cols if c not in report]; assert not absent, absent'
+Result: PASS (exit 0)
+
+## Recheck after self-review fix
+Command: python3 -c <required artifact and final parity column check>
+Happy check result: PASS (exit 0)
+Command: bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-docs-check.sh
+{"total_links":100,"broken":0,"broken_links":[]}
+Docs check result: PASS (exit 0)
+Command: git diff --check -- README-LAZYworkbuddy.md docs/lazyworkbuddy-quickstart.md docs/lazyworkbuddy-final-parity-report.md docs/lazyworkbuddy-plugin-design.md lazyworkbuddy-plugin/README.md lazyworkbuddy-plugin/CHANGELOG.md .omo/evidence/task-3-diagnosis-v0-12-lazyworkbuddy.txt
+Diff check result: PASS (exit 0)
+
+## Review and debugging gate
+Review tool availability: multi_agent_v1 spawn/wait tools are not exposed in this harness; tool_search surfaced GitHub PR review tools only, which do not apply to local uncommitted docs. No five-lane review approval is claimed.
+Self-review hypothesis 1: required release package docs or links are missing. Distinguishing checks: happy package check and docs check. Result: ruled out, both PASS.
+Self-review hypothesis 2: docs overclaim runtime parity, dogfood, or semantic MCP parity. Distinguishing check: rg over Todo 3 docs for runtime/dogfood/semantic-parity phrases. Result: docs explicitly keep v0.12 runtime and dogfood proof pending; context tooling is labeled host substitution/heuristic.
+Self-review hypothesis 3: Todo 3 touched forbidden reference or Todo 4 taxonomy rows. Distinguishing checks: git diff --name-only -- reference/lazycodex returned no paths; taxonomy docs were already dirty in initial status and were not patched by Todo 3.
+Self-review verdict: PASS for Todo 3 acceptance checks and scoped docs package; LIMITED by unavailable subagent review tooling.
+
+## Final git status --short after review append
+ M docs/lazyworkbuddy-command-index.md
+ M docs/lazyworkbuddy-known-gaps.md
+ M docs/lazyworkbuddy-mcp-and-tools.md
+ M docs/lazyworkbuddy-parity-ledger.md
+ M docs/lazyworkbuddy-plugin-design.md
+ M lazyworkbuddy-plugin/CHANGELOG.md
+ M lazyworkbuddy-plugin/README.md
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh
+ D plan/v0.13-add-ons.md
+ D plan/v0.14-evaluation-rubric.md
+ M workbuddy.md
+?? .omo/
+?? README-LAZYworkbuddy.md
+?? docs/lazyworkbuddy-current-status.md
+?? docs/lazyworkbuddy-diagnosis-evaluation-vs-lazycodex-lazytrae.md
+?? docs/lazyworkbuddy-final-parity-report.md
+?? docs/lazyworkbuddy-quickstart.md
+?? plan/v1.1-add-ons.md
+
+## Start-work ledger entry
+Appended task-3-completed entry to .omo/start-work/ledger.jsonl with artifact .omo/evidence/task-3-diagnosis-v0-12-lazyworkbuddy.txt and adversarial classes stale_state, dirty_worktree, misleading_success_output.
+
+## Final git status --short after ledger append
+ M docs/lazyworkbuddy-command-index.md
+ M docs/lazyworkbuddy-known-gaps.md
+ M docs/lazyworkbuddy-mcp-and-tools.md
+ M docs/lazyworkbuddy-parity-ledger.md
+ M docs/lazyworkbuddy-plugin-design.md
+ M lazyworkbuddy-plugin/CHANGELOG.md
+ M lazyworkbuddy-plugin/README.md
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh
+ M lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh
+ D plan/v0.13-add-ons.md
+ D plan/v0.14-evaluation-rubric.md
+ M workbuddy.md
+?? .omo/
+?? README-LAZYworkbuddy.md
+?? docs/lazyworkbuddy-current-status.md
+?? docs/lazyworkbuddy-diagnosis-evaluation-vs-lazycodex-lazytrae.md
+?? docs/lazyworkbuddy-final-parity-report.md
+?? docs/lazyworkbuddy-quickstart.md
+?? plan/v1.1-add-ons.md

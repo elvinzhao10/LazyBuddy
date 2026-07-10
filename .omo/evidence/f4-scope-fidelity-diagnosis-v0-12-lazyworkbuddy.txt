@@ -1,0 +1,11 @@
+F4 scope fidelity/security: PASS
+
+Reviewer: Gate Reviewer 019f478c-8e1d-7d93-b8aa-f8b3b7cf3cda
+Confidence: 0.91
+
+Evidence:
+- `SIZE_OK` rationale is in the first five lines of `lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh`.
+- Doctor rejects `/etc/passwd` `plan_reference` and out-of-project evidence refs.
+- Unsafe `latest-run` value `../../evil` left the target events file size 0.
+- Normal doctor passed 50/0, aggregate verify passed `all_pass:true`, `bash -n` and `git diff --check` passed.
+- No `reference/lazycodex/` edits, no publish/tag/push evidence, and pre-existing unrelated dirty files were preserved.

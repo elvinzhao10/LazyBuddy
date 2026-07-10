@@ -11,7 +11,7 @@
 
 ## Versioning
 
-Pre-1.0 build: every phase is `v0.N`. Currently at **v0.11** (dogfood — end-to-end self-test complete). Strong benchmark = v0.0–v0.12.
+Pre-1.0 build: every phase is `v0.N`. Active phase is **v0.12 diagnosis and release hardening** with plugin metadata at **0.12.0**; the canonical current-state source is [`docs/lazyworkbuddy-current-status.md`](docs/lazyworkbuddy-current-status.md). Strong benchmark = v0.0–v0.12.
 
 ## Structure
 
@@ -37,6 +37,7 @@ lazyworkbuddy/
 | Task | Location | Notes |
 |------|----------|-------|
 | Version plan | `plan/v0.<N>-*.md` | One file per version; read the matching phase |
+| Current status | `docs/lazyworkbuddy-current-status.md` | Canonical current version, component counts, MCP count, gaps, and verification commands |
 | Architecture | `docs/lazyworkbuddy-architecture-plan.md` | Three-layer model, component map, data flow |
 | Execution roadmap | `docs/lazyworkbuddy-versioned-execution-plan.md` | Per-version objectives, steps, verification |
 | LazyCodex source | `reference/lazycodex/plugins/omo/` | Canonical truth for all LazyCodex behavior |

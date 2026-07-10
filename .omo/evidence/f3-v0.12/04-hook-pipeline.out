@@ -1,0 +1,29 @@
+=== Lazyworkbuddy Hook Pipeline Activation Test ===
+Simulating full WorkBuddy hook lifecycle with realistic payloads...
+
+  [PASS] session-start.sh — matched expected pattern
+  [PASS] user-prompt-submit.sh — allowed (empty output as expected)
+  [PASS] user-prompt-submit.sh — matched expected pattern
+  [PASS] pre-tool-use.sh — matched expected pattern
+  [PASS] pre-tool-use.sh — allowed (empty output as expected)
+  [PASS] post-tool-use.sh — allowed (empty output as expected)
+  [PASS] post-tool-use-failure.sh — allowed (empty output as expected)
+  [PASS] pre-compact.sh — allowed (empty output as expected)
+  [PASS] task-created.sh — allowed (empty output as expected)
+  [PASS] task-completed.sh — allowed (empty output as expected)
+  [PASS] subagent-start.sh — allowed (empty output as expected)
+  [PASS] stop-failure.sh — matched expected pattern
+  [PASS] stop-gate.sh — allowed (empty output as expected)
+  [PASS] stop-gate.sh — allowed (empty output as expected)
+  [PASS] subagent-stop.sh — allowed (empty output as expected)
+  [PASS] subagent-stop.sh — matched expected pattern
+
+
+=== Results ===
+Passed: 16
+Failed: 0
+
+Hook pipeline test: ALL PASS
+
+All 12 hook events produce correct output for realistic payloads.
+Plugin is enabled in .workbuddy/settings.json — hooks will fire on next live session.

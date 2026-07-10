@@ -3,6 +3,7 @@
 > Master index of every command, Skill, and agent. Every canonical LazyCodex method must appear here or in the parity ledger.
 >
 > Status codes: ✅ implemented | 🔧 planned | ⛔ skipped (with reason) | ✨ added (Lazyworkbuddy-only)
+> Current release status, evidence labels, and component counts live in [lazyworkbuddy-current-status.md](lazyworkbuddy-current-status.md).
 
 ## Core Commands (6)
 
@@ -48,61 +49,69 @@
 | 26 | `librarian` | ✅ | v0.9 | Memory/index/parity maintenance |
 | 27 | `migration-planner` | ✅ | v0.10 | Cross-platform migration workflow |
 
-## Agents (9)
+## Agents (13)
 
 | # | Agent | LazyCodex Equivalent | Status | v0 Target |
 |---|-------|---------------------|--------|-----------|
-| 1 | `orchestrator` | Sisyphus | 🔧 | v0.5 |
-| 2 | `planner` | Prometheus / `plan` | 🔧 | v0.5 |
-| 3 | `explorer` | `explorer` | 🔧 | v0.5 |
-| 4 | `implementer` | Spawned worker | 🔧 | v0.5 |
+| 1 | `orchestrator` | Sisyphus | ✅ | v0.5 |
+| 2 | `planner` | Prometheus / `plan` | ✅ | v0.5 |
+| 3 | `explorer` | `explorer` | ✅ | v0.5 |
+| 4 | `implementer` | Spawned worker | ✅ | v0.5 |
 | 5 | `verifier` | Oracle | ✅ | v0.5 |
 | 6 | `reviewer` | `momus` + `metis` | ✅ | v0.5 |
-| 7 | `qa-executor` | `lazycodex-qa-executor` | 🔧 | v0.5 |
-| 8 | `gate-reviewer` | `lazycodex-gate-reviewer` | 🔧 | v0.5 |
-| 9 | `librarian` | `librarian` | 🔧 | v0.9 |
+| 7 | `qa-executor` | `lazycodex-qa-executor` | ✅ | v0.5 |
+| 8 | `gate-reviewer` | `lazycodex-gate-reviewer` | ✅ | v0.5 |
+| 9 | `librarian` | `librarian` | ✅ | v0.9 |
+| 10 | `security-auditor` | review-work security lane | ✅ | v0.5 |
+| 11 | `context-indexer` | init-deep context indexing | ✅ | v0.5 |
+| 12 | `context-miner` | review-work context lane | ✅ | v0.5 |
+| 13 | `migration-planner` | Lazyworkbuddy-only adapter | ✨ | v0.10 |
 
 ## Hooks (12)
 
 | # | Event | LazyCodex Equivalent | Status | v0 Target |
 |---|-------|---------------------|--------|-----------|
-| 1 | `SessionStart` | `session-start-loading-project-rules` | 🔧 | v0.6 |
-| 2 | `UserPromptSubmit` | `user-prompt-submit-checking-ultrawork-trigger` | 🔧 | v0.6 |
-| 3 | `PreToolUse` | `pre-tool-use-enforcing-unlimited-goal-budget` | 🔧 | v0.6 |
-| 4 | `PostToolUse` | `post-tool-use-checking-comments` (combined) | 🔧 | v0.6 |
+| 1 | `SessionStart` | `session-start-loading-project-rules` | ✅ | v0.6 |
+| 2 | `UserPromptSubmit` | `user-prompt-submit-checking-ultrawork-trigger` | ✅ | v0.6 |
+| 3 | `PreToolUse` | `pre-tool-use-enforcing-unlimited-goal-budget` | ✅ | v0.6 |
+| 4 | `PostToolUse` | `post-tool-use-checking-comments` (combined) | ✅ | v0.6 |
 | 5 | `PostToolUseFailure` | (new — Lazyworkbuddy addition) | ✨ | v0.6 |
-| 6 | `PreCompact` | `post-compact-resetting-*` (combined) | 🔧 | v0.6 |
-| 7 | `Stop` | `stop-checking-start-work-continuation` | 🔧 | v0.6 |
+| 6 | `PreCompact` | `post-compact-resetting-*` (combined) | ✅ | v0.6 |
+| 7 | `Stop` | `stop-checking-start-work-continuation` | ✅ | v0.6 |
 | 8 | `StopFailure` | (new — Lazyworkbuddy addition) | ✨ | v0.6 |
-| 9 | `SubagentStop` | `subagent-stop-verifying-lazycodex-executor-evidence` | 🔧 | v0.6 |
+| 9 | `SubagentStop` | `subagent-stop-verifying-lazycodex-executor-evidence` | ✅ | v0.6 |
 | 10 | `SubagentStart` | (new — Lazyworkbuddy addition) | ✨ | v0.6 |
 | 11 | `TaskCreated` | (new — Lazyworkbuddy addition) | ✨ | v0.6 |
 | 12 | `TaskCompleted` | (new — Lazyworkbuddy addition) | ✨ | v0.6 |
 
-## MCP Servers (3-5)
+## MCP Servers (8)
 
-| # | Server | LazyCodex Equivalent | Status | v0 Target |
-|---|--------|---------------------|--------|-----------|
-| 1 | `run-ledger` | (new — Lazyworkbuddy addition) | ✨ | v0.8 |
-| 2 | `verification` | (new — Lazyworkbuddy addition) | ✨ | v0.8 |
-| 3 | `parity-dashboard` | (new — Lazyworkbuddy addition) | ✨ | v0.8 |
-| 4 | `git` | `git_bash` | 🔧 | v0.8 |
-| 5 | `codegraph` | `codegraph` | ⛔ (not applicable to WorkBuddy) | — |
-| 6 | `lsp` | `lsp` | ⛔ (WorkBuddy native LSP) | — |
-| 7 | `grep_app` | `grep_app` | ⛔ (external service) | v0.13 |
-| 8 | `context7` | `context7` | ⛔ (external service) | v0.13 |
+Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`. Parity classes: `reference parity`, `host-substitution`, `native-enhancement`, `platform-gap`.
+
+| # | Server | LazyCodex Equivalent | Status | Capability / Parity Label | v0 Target |
+|---|--------|---------------------|--------|---------------------------|-----------|
+| 1 | `run-ledger` | (new — Lazyworkbuddy addition) | ✨ | `native-enhancement`; `project-tool-backed`, `state-only`; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) | v0.8 |
+| 2 | `parity` | (new — Lazyworkbuddy addition) | ✨ | `native-enhancement`; `state-only`; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) | v0.8 |
+| 3 | `verification` | (new — Lazyworkbuddy addition) | ✨ | `native-enhancement`; `project-tool-backed`, `state-only`; initialize/tools-list `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) | v0.8 |
+| 4 | `source-map` | (new — Lazyworkbuddy addition) | ✨ | `native-enhancement`; `heuristic` search/index plus direct file reads; `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) | v0.8 |
+| 5 | `status-dashboard` | (new — Lazyworkbuddy addition) | ✨ | `native-enhancement`; `state-only`; initialize/tools-list `runtime-verified` by `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`) | v0.8 |
+| 6 | `context-graph` | `codegraph` | ✅ | `host-substitution`; `heuristic-substitute`; not full semantic codegraph parity | v0.11 |
+| 7 | `code-intel` | `lsp` | ✅ | `host-substitution`; `project-tool-backed` diagnostics/typecheck when checkers exist; `heuristic-substitute` symbols/references/goto; not full LSP parity | v0.11 |
+| 8 | `docs` | `context7` | ✅ | `host-substitution`; `heuristic-substitute`; npm/PyPI README fetch, not curated Context7 parity | v0.11 |
+
+`git_bash` and `grep_app` are `platform-gap` host substitutions through WorkBuddy native shell/search surfaces, not MCP ports. Treat any stronger claim as `implemented-unverified` unless a concrete command transcript is cited.
 
 ## Summary
 
 | Category | Total | ✅ Implemented | 🔧 Planned | ✨ Added | ⛔ Skipped |
 |----------|-------|----------------|------------|----------|-----------|
 | Core Commands | 6 | 6 | 0 | 0 | 0 |
-| Extended Skills | 19 | 4 | 11 | 0 | 4 |
+| Extended Skills | 19 | 4 | 12 | 0 | 3 |
 | Lazyworkbuddy Skills | 2 | 2 | 0 | 0 | 0 |
-| Agents | 9 | 2 | 7 | 0 | 0 |
-| Hooks | 12 | 0 | 7 | 5 | 0 |
-| MCP Servers | 8 | 0 | 2 | 3 | 3 |
-| **TOTAL** | **56** | **14** | **27** | **8** | **7** |
+| Agents | 13 | 12 | 0 | 1 | 0 |
+| Hooks | 12 | 7 | 0 | 5 | 0 |
+| MCP Servers | 8 | 3 | 0 | 5 | 0 |
+| **TOTAL** | **60** | **34** | **12** | **11** | **3** |
 
 ---
 

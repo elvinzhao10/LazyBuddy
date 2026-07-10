@@ -3,6 +3,7 @@
 > Documented deviations from original LazyCodex behavior.
 > Each gap records: what LazyCodex does, what Lazyworkbuddy does, why the difference exists, and impact.
 > Updated by the Librarian (v0.9+) after parity checks and version implementations.
+> v0.12 release note: local release gates and dogfood replay are recorded, but heuristic MCP/code-navigation caveats remain open.
 
 ## Current Gaps (v0.2 baseline)
 
@@ -32,19 +33,31 @@
 - **Impact:** Low — the skipped hooks are either Codex-specific infrastructure or handled by WorkBuddy natively.
 - **Mitigation:** 5 new hooks added (`PostToolUseFailure`, `StopFailure`, `SubagentStart`, `TaskCreated`, `TaskCompleted`) that enhance LazyCodex's design.
 
-### G-003: MCP server parity (resolved — context-tooling substitutes built)
+### G-003: MCP server parity (host substitutions built; semantic parity gaps remain)
 
 - **LazyCodex:** 5 MCP servers: `grep_app`, `context7`, `codegraph`, `git_bash`, `lsp`.
 - **Lazyworkbuddy:** 8 WorkBuddy-native servers: `run-ledger`, `parity`, `verification`, `source-map`, `status-dashboard` (run-management, v0.8) + `context-graph`, `code-intel`, `docs` (context-tooling substitutes, v0.11).
-- **Substitution map (2026-07-09, P2 resolved):**
-  - `codegraph` → **`context-graph`** MCP (blast_radius, file_deps, symbol_search, symbol_refs, repo_overview). Heuristic grep-based, not a full call graph — but provides the blast-radius/centrality queries LazyCodex's codegraph exposed.
-  - `lsp` → **`code-intel`** MCP (diagnostics, typecheck, find_references, goto_definition, symbols). `diagnostics` runs the project's REAL linter/typechecker (tsc/eslint/ruff/pyright/mypy/go vet/cargo); symbol ops are grep heuristics (NOT a real LSP daemon — no workspace rename, no semantic goto-def).
-  - `context7` → **`docs`** MCP (get_library_docs). Fetches README/description from npm + pypi registries via curl; auto-picks the better result; optional topic-section extraction.
-  - `git_bash` → **covered by WorkBuddy native Bash** (git_bash was Windows-only; redundant on WorkBuddy which has cross-platform Bash). No server built — by design.
-  - `grep_app` → **covered by WorkBuddy native Grep + WebSearch** (Grep for local regex search; WebSearch for cross-repo). No server built — by design.
+- **Capability labels (v0.12):**
+  - `semantic`: structured/parsed source of truth rather than grep-first approximation.
+  - `project-tool-backed`: invokes real project/plugin scripts or checkers.
+  - `heuristic`: grep/regex/registry metadata approximation.
+  - `state-only`: reads or mutates Lazyworkbuddy state/docs only.
+- **Parity taxonomy (v0.12):**
+  - `reference parity`: behavior directly preserves a LazyCodex source-backed method.
+  - `host-substitution`: WorkBuddy implementation covers the use case but not the original runtime.
+  - `native-enhancement`: Lazyworkbuddy-only addition; not a LazyCodex parity claim.
+  - `platform-gap`: no direct port because WorkBuddy host capabilities or constraints differ.
+- **Substitution map (2026-07-09):**
+  - `codegraph` → **`context-graph`** MCP: `host-substitution`, `heuristic-substitute`. Tools: `blast_radius`, `file_deps`, `symbol_search`, `symbol_refs`, `repo_overview`. This is grep/regex based, not a semantic call graph or full LazyCodex codegraph parity.
+  - `lsp` → **`code-intel`** MCP: `host-substitution`, mixed `project-tool-backed` + `heuristic-substitute`. `diagnostics` and `typecheck` run real project tooling when available; `find_references`, `goto_definition`, and `symbols` are grep heuristics. This is not a real LSP daemon and has no semantic rename or guaranteed goto-definition parity.
+  - `context7` → **`docs`** MCP: `host-substitution`, `heuristic-substitute`. It fetches README/description data from npm/PyPI via curl with optional topic extraction; it is not Context7's curated docs service.
+  - `git_bash` → **covered by WorkBuddy native Bash/Git**: `platform-gap` closed by host capability. No server built by design because LazyCodex's `git_bash` was a host-specific workaround.
+  - `grep_app` → **covered by WorkBuddy native Grep/WebSearch**: `platform-gap` closed by host capability. No server built by design because host tools cover local and web search workflows.
+  - `run-ledger`, `parity`, `verification`, `source-map`, `status-dashboard` → **Lazyworkbuddy-only MCPs**: `native-enhancement`. They improve WorkBuddy run/state/parity workflows and should not be counted as LazyCodex reference parity.
 - **Why:** `codegraph`/`lsp` rely on external closed-source binaries (`@colbymchenry/codegraph`, `@oh-my-opencode/lsp-core`); a clean-room WorkBuddy-native build uses grep + real project tooling instead. `git_bash`/`grep_app` are redundant with WorkBuddy's native tools.
-- **Residual gap (accepted):** symbol ops are heuristic (grep), not semantic. A real LSP daemon would give precise goto-def/rename/diagnostics. If WorkBuddy adds native LSP integration, wire it and deprecate the grep heuristics. Tracked as P5 (host-inherent).
-- **Resolution (v0.11, 2026-07-09):** 3 context-tooling MCP servers built + 2 documented as covered-by-native. Context-server parity CLOSED. See `mcp/{context-graph,code-intel,docs}/server.py`.
+- **Runtime evidence:** `runtime-verified` for initialize/tools-list/representative safe calls via `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-mcp-test.sh`; transcript path `.omo/evidence/task-4-diagnosis-v0-12-lazyworkbuddy.txt`. Any stronger claim than those exercised calls is `implemented-unverified`.
+- **Residual gap (accepted):** `context-graph` and the navigation tools in `code-intel` are heuristic, not semantic. A real LSP daemon/codegraph would provide precise workspace symbol identity, semantic goto-definition, rename, and call graph analysis. If WorkBuddy exposes native LSP/codegraph MCP surfaces later, wire them and deprecate the grep heuristics.
+- **Current status (v0.12):** Context tooling is usable and runtime-smoked, but this is honest host substitution, not full reference parity. Todo 6 release metadata/status evidence is `.omo/evidence/task-6-diagnosis-v0-12-lazyworkbuddy.txt`.
 
 ### G-004: Model routing (partially resolved — agent-level tiering exists)
 
@@ -83,7 +96,7 @@
 |-----|-----------|------------|
 | G-001 (subagent model) | v0.5 | Thorough investigation; document exact mapping |
 | G-002 (hook count) | v0.6 | Final hook configuration; verify all 12 work |
-| G-003 (MCP servers) | v0.8 | Implemented 5 WorkBuddy-native servers; context-server parity (context7/codegraph/lsp) remains open as P2 |
+| G-003 (MCP servers) | v0.12 | 8 MCP servers implemented. Run/state MCPs are `native-enhancement`; context7/codegraph/lsp are `host-substitution` with `heuristic-substitute` limits; git_bash/grep_app are `platform-gap` host coverage. |
 | G-004 (model routing) | v0.12 | Document as permanent gap unless WorkBuddy adds support |
 | G-005 (marketplace install) | v0.3 | Document install path; test on clean workspace |
 | G-006 (persistent session) | v0.7 | State ledger provides equivalent durability |
@@ -150,7 +163,7 @@
 | `AGENTS.md` | `workbuddy.md` | Project memory file renamed, same hierarchical structure |
 | Codex task spawning (`agent_type`, `fork_context`) | WorkBuddy subagent invocation | Same isolation semantics preserved |
 | `update_plan` | `TaskCreate`/`TaskUpdate` | WorkBuddy-native task management replaces Codex plan updates |
-| `codegraph_*`/`lsp_*` | Glob/Grep/LSP | WorkBuddy-native tools replace Codex-specific APIs |
+| `codegraph_*`/`lsp_*` | `context-graph` / `code-intel` MCPs | `host-substitution`; codegraph and symbol navigation are `heuristic-substitute`, while diagnostics/typecheck are `project-tool-backed` when project checkers exist. |
 | `load_skills=[...]` | Standard skill activation | WorkBuddy-native skill loading replaces Codex OMO loader |
 
 Skills that are platform-agnostic (git-master: git commands only; debugging: phase loop and safety invariants; programming: language discipline axioms) required no adaptation beyond path and variable name translations.
