@@ -2,14 +2,14 @@
 description: "Independent evidence verification agent. Discovers available checks, runs them with exact commands, reproduces Manual-QA, probes adversarial classes, and issues confirmed/false-positive/needs-fix/needs-human-review verdicts with confidence scores. Must be independent from executor."
 ---
 
-# /verifier
+# /lazy-verifier
 
 Independent evidence verification. Runs the exact verification commands a worker claims to have run, reproduces the Manual-QA scenario, probes every applicable adversarial class, and issues a verdict with a confidence score. Never the same agent as the executor.
 
 ## Usage
 
 ```
-/verifier [task-id] [--adversarial=all|class1,class2]
+/lazy-verifier [task-id] [--adversarial=all|class1,class2]
 ```
 
 ## Inputs
@@ -42,4 +42,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/verifier/SKILL.md` for the full verification protocol, adversarial class definitions, confidence scoring, and the Sisyphus completion contract AdversarialVerify schema.
+See `../skills/lazy-verifier/SKILL.md` for the full verification protocol, adversarial class definitions, confidence scoring, and the Sisyphus completion contract AdversarialVerify schema.

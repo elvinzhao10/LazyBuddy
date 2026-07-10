@@ -102,7 +102,7 @@ This mirrors LazyCodex's architecture:
 ### Core Workflow (happy path)
 
 ```
-User types "/ulw-plan build a login page"
+User types "/lazy-ulw-plan build a login page"
   │
   ├─► WorkBuddy loads ulw-plan Skill from plugin
   │     └─► Reads .workbuddy/workbuddy.md for project context
@@ -110,7 +110,7 @@ User types "/ulw-plan build a login page"
   │     └─► Writes plan to .lazyworkbuddy/plans/<slug>.md
   │     └─► Returns approval gate
   │
-  ├─► User approves; types "/start-work <slug>"
+  ├─► User approves; types "/lazy-start-work <slug>"
   │     └─► WorkBuddy loads start-work Skill
   │     └─► Creates run state in .lazyworkbuddy/runs/<run_id>/state.json
   │     └─► Decomposes plan into atomic sub-tasks

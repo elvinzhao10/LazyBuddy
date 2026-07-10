@@ -10,13 +10,13 @@ description: "Update project memory after accepted changes: workbuddy.md, comman
 
 ## Purpose
 
-The librarian is a **read-mostly knowledge curator**. After every accepted change wave — a review gates pass, a `/start-work` orchestration completes, a `/ulw-loop` criteria set is verified — the librarian inspects what changed, updates the durable memory files, and records the delta in the parity ledger. It never rewrites the canonical method map (the authoritative architecture summary generated from repo evidence) unless the repo structure itself changed.
+The librarian is a **read-mostly knowledge curator**. After every accepted change wave — a review gates pass, a `/lazy-start-work` orchestration completes, a `/lazy-ulw-loop` criteria set is verified — the librarian inspects what changed, updates the durable memory files, and records the delta in the parity ledger. It never rewrites the canonical method map (the authoritative architecture summary generated from repo evidence) unless the repo structure itself changed.
 
 ## Trigger Conditions
 
-- `/start-work` prints `ORCHESTRATION COMPLETE` with a passing Global Review Gate
-- `/ulw-loop` marks all success criteria verified
-- `/review-work` returns all 5 lanes PASS
+- `/lazy-start-work` prints `ORCHESTRATION COMPLETE` with a passing Global Review Gate
+- `/lazy-ulw-loop` marks all success criteria verified
+- `/lazy-review-work` returns all 5 lanes PASS
 - A manual-QA evidence set is committed to `.lazyworkbuddy/runs/<run_id>/events.jsonl`
 - User says "update memory", "update docs", "refresh docs", "librarian", "after review"
 

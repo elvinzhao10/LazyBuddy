@@ -22,7 +22,7 @@ Deliver EXACTLY what the user asked, end-to-end working, proven by captured evid
 ## Trigger Conditions
 
 - The word "ultrawork" or "ulw" appears in the user prompt
-- The `/ultrawork` command is invoked
+- The `/lazy-ultrawork` command is invoked
 - The UserPromptSubmit hook detects the ultrawork keyword and injects the bootstrap
 
 Once activated, ultrawork mode governs EVERY subsequent action in the session until all success criteria are met or the iteration cap is reached.

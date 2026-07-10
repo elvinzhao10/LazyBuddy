@@ -2,14 +2,14 @@
 description: "Multi-dimensional code and design reviewer. Reviews implementation across 5 dimensions: correctness, code quality, security, design coherence, and context completeness. Issues PASS/FAIL/INCONCLUSIVE per dimension with actionable findings."
 ---
 
-# /reviewer
+# /lazy-reviewer
 
 Multi-dimensional code and design reviewer. Reviews implementation across 5 independent dimensions: correctness, code quality, security, design coherence, and context completeness. Each dimension issues a PASS/FAIL/INCONCLUSIVE verdict with specific, actionable findings.
 
 ## Usage
 
 ```
-/reviewer [--dimensions=all|correctness,security,...] [--files=<glob>]
+/lazy-reviewer [--dimensions=all|correctness,security,...] [--files=<glob>]
 ```
 
 ## Inputs
@@ -39,4 +39,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/reviewer/SKILL.md` for the full review protocol, per-dimension criteria, review evidence format, and the Momus/Metis review framework.
+See `../skills/lazy-reviewer/SKILL.md` for the full review protocol, per-dimension criteria, review evidence format, and the Momus/Metis review framework.

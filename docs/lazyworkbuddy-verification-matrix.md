@@ -16,11 +16,11 @@ Principles:
 
 ## Core Workflow Verification
 
-### 1. Deep Init (`/init-deep`)
+### 1. Deep Init (`/lazy-init-deep`)
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| Skill loads correctly | Invoke `/init-deep` in WorkBuddy | Skill activates, begins Phase 1 (Discovery) | Chat transcript |
+| Skill loads correctly | Invoke `/lazy-init-deep` in WorkBuddy | Skill activates, begins Phase 1 (Discovery) | Chat transcript |
 | Project structure explored | Observe agent spawns (explorer agents) | 6+ explore agents fire in background | Agent spawn logs |
 | scoring works | Read generated `.workbuddy/workbuddy.md` | Directory scoring table present with scores >0 | `workbuddy.md` file |
 | AGENTS.md generated | Check `.workbuddy/workbuddy.md` exists | File 50-150 lines, non-generic content | `workbuddy.md` file |
@@ -29,11 +29,11 @@ Principles:
 
 **LazyCodex source:** [init-deep SKILL.md](../reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) Phase 1-4.
 
-### 2. Planning (`/ulw-plan`)
+### 2. Planning (`/lazy-ulw-plan`)
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| Skill loads correctly | Invoke `/ulw-plan "build a login form"` | Skill activates, announces intent + review_required | Chat transcript |
+| Skill loads correctly | Invoke `/lazy-ulw-plan "build a login form"` | Skill activates, announces intent + review_required | Chat transcript |
 | Exploration runs | Observe explorer/librarian spawns | Subagents fired for repo exploration | Agent spawn logs |
 | Plan file created | Check `.lazyworkbuddy/plans/<slug>.md` | File has TL;DR, Todos, Final Verification Wave | Plan file |
 | Plan is decision-complete | Read plan file | Every todo has references + acceptance + QA + commit | Plan file content |
@@ -42,11 +42,11 @@ Principles:
 
 **LazyCodex source:** [ulw-plan SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) Intent Routing, Approval Gate.
 
-### 3. Execution (`/start-work`)
+### 3. Execution (`/lazy-start-work`)
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| Plan selection works | `/start-work <slug>` | Selects plan, creates boulder state | `.lazyworkbuddy/runs/<run_id>/state.json` |
+| Plan selection works | `/lazy-start-work <slug>` | Selects plan, creates boulder state | `.lazyworkbuddy/runs/<run_id>/state.json` |
 | Boulder state created | Read state.json | Has schema_version, active_work_id, works | `state.json` |
 | Subagent spawning works | Observe orchestrator output | Worker subagents spawned for implementation | Agent spawn logs |
 | Orchestrator never implements | Check git diff | All product changes from subagents, not root | `git log` per-author |
@@ -57,11 +57,11 @@ Principles:
 
 **LazyCodex source:** [start-work SKILL.md](../reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 1-5.
 
-### 4. Verified Loop (`/ulw-loop`)
+### 4. Verified Loop (`/lazy-ulw-loop`)
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| Goal creation works | `/ulw-loop "fix all type errors"` | Creates goal with success criteria | `.lazyworkbuddy/ulw-loop/` state |
+| Goal creation works | `/lazy-ulw-loop "fix all type errors"` | Creates goal with success criteria | `.lazyworkbuddy/ulw-loop/` state |
 | Iteration cap respected | Run 500+ iteration loop | Stops at 500 (ultrawork) or 100 (normal) | Run log |
 | Evidence required per criterion | Check each criterion completion | Each has Manual-QA artifact | Evidence files |
 | Resume after compaction | Simulate context loss → resume | Reads state → resumes from last goal | Chat transcript |
@@ -69,11 +69,11 @@ Principles:
 
 **LazyCodex source:** [ulw-loop SKILL.md](../reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) Non-Negotiables.
 
-### 5. Review (`/review-work`)
+### 5. Review (`/lazy-review-work`)
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| 5 agents spawn | `/review-work` after implementation | 5 subagents fire in parallel | Agent spawn logs |
+| 5 agents spawn | `/lazy-review-work` after implementation | 5 subagents fire in parallel | Agent spawn logs |
 | Goal Verifier runs | Agent 1 output | Goal completeness + constraint compliance checked | Agent output |
 | QA Executor runs | Agent 2 output | 15-30 test scenarios executed | Agent output |
 | Code Reviewer runs | Agent 3 output | 10 review dimensions scored | Agent output |

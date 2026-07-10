@@ -9,12 +9,12 @@
 
 | # | Command | LazyCodex Equivalent | Status | v0 Target |
 |---|---------|---------------------|--------|-----------|
-| 1 | `/init-deep` | `$init-deep` | ✅ | v0.4 |
-| 2 | `/ulw-plan` | `$ulw-plan` | ✅ | v0.4 |
-| 3 | `/start-work` | `$start-work` | ✅ | v0.4 |
-| 4 | `/ulw-loop` | `$ulw-loop` | ✅ | v0.4 |
-| 5 | `/review-work` | `review-work` skill | ✅ | v0.4 |
-| 6 | `/ultrawork` | `ultrawork` skill | ✅ | v0.4 |
+| 1 | `/lazy-init-deep` | `$init-deep` | ✅ | v0.4 |
+| 2 | `/lazy-ulw-plan` | `$ulw-plan` | ✅ | v0.4 |
+| 3 | `/lazy-start-work` | `$start-work` | ✅ | v0.4 |
+| 4 | `/lazy-ulw-loop` | `$ulw-loop` | ✅ | v0.4 |
+| 5 | `/lazy-review-work` | `review-work` skill | ✅ | v0.4 |
+| 6 | `/lazy-ultrawork` | `ultrawork` skill | ✅ | v0.4 |
 
 ## Extended Skills (19)
 

@@ -2,14 +2,14 @@
 description: "Memory, index, and parity maintenance agent. Maintains the command index, parity ledger, known gaps doc, and project memory. Runs after every version change that adds or modifies components. Ensures documentation remains the source of truth."
 ---
 
-# /librarian
+# /lazy-librarian
 
 Memory, index, and parity maintenance agent. Updates the command index, parity ledger, known gaps doc, and project memory after every accepted change. Ensures all documentation stays consistent and authoritative.
 
 ## Usage
 
 ```
-/librarian [--scope=all|index|parity|gaps|memory]
+/lazy-librarian [--scope=all|index|parity|gaps|memory]
 ```
 
 ## Inputs
@@ -41,4 +41,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/librarian/SKILL.md` for the full maintenance protocol, doc consistency checks, and parity verification procedure.
+See `../skills/lazy-librarian/SKILL.md` for the full maintenance protocol, doc consistency checks, and parity verification procedure.

@@ -2,14 +2,14 @@
 description: "Generate hierarchical project memory for the current WorkBuddy workspace. Inspects repo structure, identifies language/runtime/test/build commands, scores directories by complexity, generates workbuddy.md at root and subdirectory variants, and produces a .lazyworkbuddy/context/ knowledge base."
 ---
 
-# /init-deep
+# /lazy-init-deep
 
 Generate hierarchical project memory. Scores directories by complexity, produces `workbuddy.md` at root and subdirectory variants, and writes a `.lazyworkbuddy/context/` knowledge base for future agents.
 
 ## Usage
 
 ```
-/init-deep [--create-new] [--max-depth=N]
+/lazy-init-deep [--create-new] [--max-depth=N]
 ```
 
 ## Inputs
@@ -42,4 +42,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/init-deep/SKILL.md` for the full workflow logic, phase-by-phase procedure, scoring matrix, and verification gates.
+See `../skills/lazy-init-deep/SKILL.md` for the full workflow logic, phase-by-phase procedure, scoring matrix, and verification gates.

@@ -38,12 +38,12 @@ lazyworkbuddy-plugin/
 │   └── ... (additional skills from LazyCodex source)
 │
 ├── commands/                        # Slash command wrappers
-│   ├── init-deep.md                 # /init-deep
-│   ├── ulw-plan.md                  # /ulw-plan
-│   ├── start-work.md                # /start-work
-│   ├── ulw-loop.md                  # /ulw-loop
-│   ├── review-work.md               # /review-work
-│   └── ultrawork.md                 # /ultrawork
+│   ├── init-deep.md                 # /lazy-init-deep
+│   ├── ulw-plan.md                  # /lazy-ulw-plan
+│   ├── start-work.md                # /lazy-start-work
+│   ├── ulw-loop.md                  # /lazy-ulw-loop
+│   ├── review-work.md               # /lazy-review-work
+│   └── ultrawork.md                 # /lazy-ultrawork
 │
 ├── agents/                          # 13 WorkBuddy subagents
 │   ├── lazyworkbuddy-orchestrator.md # Root orchestrator (Sisyphus)
@@ -146,8 +146,8 @@ lazyworkbuddy-plugin/
     "termsOfServiceURL": "https://github.com/lazyworkbuddy#license",
     "defaultPrompt": [
       "Use Lazyworkbuddy to plan and execute this task.",
-      "Run /ulw-plan to create a decision-complete work plan.",
-      "Run /start-work to execute the plan with verification."
+      "Run /lazy-ulw-plan to create a decision-complete work plan.",
+      "Run /lazy-start-work to execute the plan with verification."
     ],
     "brandColor": "#7C3AED",
     "screenshots": []
@@ -208,12 +208,12 @@ lazyworkbuddy-plugin/
 
 | # | Command | Invocation | Maps to Skill |
 |---|---------|-----------|---------------|
-| 1 | `/init-deep` | `/init-deep [--create-new] [--max-depth=N]` | `init-deep` |
-| 2 | `/ulw-plan` | `/ulw-plan "what to build"` | `ulw-plan` |
-| 3 | `/start-work` | `/start-work [plan-name] [--worktree <path>]` | `start-work` |
-| 4 | `/ulw-loop` | `/ulw-loop "task" [--completion-promise=TEXT]` | `ulw-loop` |
-| 5 | `/review-work` | `/review-work` | `review-work` |
-| 6 | `/ultrawork` | `/ultrawork` | `ultrawork` |
+| 1 | `/lazy-init-deep` | `/lazy-init-deep [--create-new] [--max-depth=N]` | `init-deep` |
+| 2 | `/lazy-ulw-plan` | `/lazy-ulw-plan "what to build"` | `ulw-plan` |
+| 3 | `/lazy-start-work` | `/lazy-start-work [plan-name] [--worktree <path>]` | `start-work` |
+| 4 | `/lazy-ulw-loop` | `/lazy-ulw-loop "task" [--completion-promise=TEXT]` | `ulw-loop` |
+| 5 | `/lazy-review-work` | `/lazy-review-work` | `review-work` |
+| 6 | `/lazy-ultrawork` | `/lazy-ultrawork` | `ultrawork` |
 
 Command invocation syntax follows LazyCodex conventions (traced to [README.md](../reference/lazycodex/README.md) Commands section) but uses WorkBuddy slash command format.
 

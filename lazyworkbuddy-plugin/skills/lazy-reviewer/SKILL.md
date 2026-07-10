@@ -10,7 +10,7 @@ description: "Post-implementation review agent. Reviews changed files against or
 
 ## Purpose
 
-Review completed implementation work against the original intent and LazyCodex parity requirements. Check for scope overreach, missing test coverage, missing documentation, and architectural regressions. Issue an accept/reject/revise decision. For significant work, invoke the full 5-agent `/review-work` parallel review.
+Review completed implementation work against the original intent and LazyCodex parity requirements. Check for scope overreach, missing test coverage, missing documentation, and architectural regressions. Issue an accept/reject/revise decision. For significant work, invoke the full 5-agent `/lazy-review-work` parallel review.
 
 ## Trigger Conditions
 
@@ -148,7 +148,7 @@ The reviewer now writes review decisions through the state/ script layer for dur
 ## WorkBuddy-Native Features
 
 - **Subagent isolation:** Reviewer runs as independent subagent (`isolation: true`)
-- **5-agent review:** For significant work, invoke `/review-work` to run Goal/QA/Code/Security/Context lanes in parallel
+- **5-agent review:** For significant work, invoke `/lazy-review-work` to run Goal/QA/Code/Security/Context lanes in parallel
 - **Evidence ledger:** Review decisions recorded in events.jsonl
 
 ---

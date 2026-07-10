@@ -2,14 +2,14 @@
 description: "Verified completion loop for open-ended tasks. Creates goals with binding success criteria, decomposes into evidence-bound steps, runs until all criteria have real-surface proof. Manages goal state in .lazyworkbuddy/ulw-loop/."
 ---
 
-# /ulw-loop
+# /lazy-ulw-loop
 
-Verified completion loop for open-ended tasks. Creates binding goals with success criteria, decomposes into evidence-bound steps, and iterates until every criterion has verified proof. Delegates implementation waves to `/start-work` when needed.
+Verified completion loop for open-ended tasks. Creates binding goals with success criteria, decomposes into evidence-bound steps, and iterates until every criterion has verified proof. Delegates implementation waves to `/lazy-start-work` when needed.
 
 ## Usage
 
 ```
-/ulw-loop "task" [--completion-promise=TEXT] [--strategy=reset|continue]
+/lazy-ulw-loop "task" [--completion-promise=TEXT] [--strategy=reset|continue]
 ```
 
 ## Inputs
@@ -23,7 +23,7 @@ Verified completion loop for open-ended tasks. Creates binding goals with succes
 
 - `.lazyworkbuddy/ulw-loop/goals.json` — binding success criteria
 - `.lazyworkbuddy/ulw-loop/evidence.jsonl` — per-goal evidence log
-- Completed work artifacts (via delegated `/start-work` waves)
+- Completed work artifacts (via delegated `/lazy-start-work` waves)
 - Final evidence report showing every criterion met
 
 ## Success Criteria
@@ -41,4 +41,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/ulw-loop/SKILL.md` for the full workflow logic, goal creation protocol, evidence binding rules, and iteration management.
+See `../skills/lazy-ulw-loop/SKILL.md` for the full workflow logic, goal creation protocol, evidence binding rules, and iteration management.

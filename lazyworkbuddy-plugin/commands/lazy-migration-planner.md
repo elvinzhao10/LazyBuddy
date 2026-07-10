@@ -2,14 +2,14 @@
 description: "Cross-platform migration workflow planner. Generalizes the LazyCodex-to-WorkBuddy adaptation methodology into a reusable framework. Analyzes source platform components, maps them to target platform equivalents, and produces a migration plan with risk assessment."
 ---
 
-# /migration-planner
+# /lazy-migration-planner
 
 Cross-platform migration workflow planner. Analyzes source platform components, maps them to target platform equivalents, identifies gaps and risks, and produces a structured migration plan. Generalizes the adaptation methodology used in this project.
 
 ## Usage
 
 ```
-/migration-planner --source=<platform> --target=<platform> [--components=skills,hooks,agents,mcp]
+/lazy-migration-planner --source=<platform> --target=<platform> [--components=skills,hooks,agents,mcp]
 ```
 
 ## Inputs
@@ -41,4 +41,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/migration-planner/SKILL.md` for the full migration methodology, platform analysis framework, risk matrix, and adaptation patterns.
+See `../skills/lazy-migration-planner/SKILL.md` for the full migration methodology, platform analysis framework, risk matrix, and adaptation patterns.

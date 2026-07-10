@@ -14,7 +14,7 @@ Execute a work plan until every top-level checkbox is complete. This skill is th
 
 ## Trigger Conditions
 
-- User invokes `/start-work [plan-name]`
+- User invokes `/lazy-start-work [plan-name]`
 - User says "execute plan", "start the plan", "run the plan"
 - Stop/SubagentStop hook re-injects after continuation check (v0.6+)
 
@@ -106,7 +106,7 @@ Only after all 5 gates pass:
 
 When all checkboxes + Final Verification Wave are done:
 1. Run final verification commands
-2. Run the Global Review Gate (`/review-work` — 5-agent review)
+2. Run the Global Review Gate (`/lazy-review-work` — 5-agent review)
 3. All review lanes must PASS
 4. Print `ORCHESTRATION COMPLETE`
 

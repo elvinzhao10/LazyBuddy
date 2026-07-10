@@ -12,14 +12,14 @@ description: "Strategic planning consultant. Produces one decision-complete work
 
 Turn a vague or large request into ONE **decision-complete** work plan a downstream worker executes with zero further interview. This is the Prometheus strategic planner — it reads, searches, runs read-only analysis, and writes ONLY plan artifacts under `.lazyworkbuddy/plans/`. It is a PLANNER — it never edits product code and never implements.
 
-**Plan mode is sticky.** "do X" / "fix X" / "build X" / "just do it" all mean "plan X". Execution begins only when the user explicitly starts it with `/start-work`.
+**Plan mode is sticky.** "do X" / "fix X" / "build X" / "just do it" all mean "plan X". Execution begins only when the user explicitly starts it with `/lazy-start-work`.
 
 ## Trigger Conditions
 
 - User says "plan", "ulw-plan", "design", "figure out how to build"
 - Task involves 5+ steps, multiple files, or architecture decisions
 - Task is ambiguous ("make auth better", "just make it good")
-- User explicitly invokes `/ulw-plan "description"`
+- User explicitly invokes `/lazy-ulw-plan "description"`
 
 ## Required Context
 
@@ -120,7 +120,7 @@ When the plan is approved:
 Plan ready: .lazyworkbuddy/plans/<slug>.md
   - Todos: N checkboxes
   - Parallel lanes: M independent groups
-  - Next: run /start-work <slug> to execute
+  - Next: run /lazy-start-work <slug> to execute
 ```
 
 ## WorkBuddy-Native Features

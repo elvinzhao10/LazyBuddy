@@ -17,7 +17,7 @@
 - **Impact:** Medium — parallel agent orchestration may have different performance characteristics. Mailbox/`WORKING:`/`BLOCKED:` signaling patterns may need adaptation.
 - **Mitigation:** Investigated in v0.5 (subagents). If parallelism is degraded, fall back to sequential execution.
 - **Live test plan (P5-1, 2026-07-09):** Cannot be fully verified without a real orchestrator run. Test procedure for when one is available:
-  1. Run `/start-work` on a multi-task plan with independent tasks.
+  1. Run `/lazy-start-work` on a multi-task plan with independent tasks.
   2. Confirm the orchestrator spawns multiple implementer subagents (check `events.jsonl` for `subagent_start` events with distinct agent_ids).
   3. Verify the orchestrator polls/handles completions and re-dispatches failures (no deadlock, no lost DoneClaim).
   4. Confirm the `SubagentStop` evidence gate fires per subagent (blocks missing `EVIDENCE_RECORDED`).

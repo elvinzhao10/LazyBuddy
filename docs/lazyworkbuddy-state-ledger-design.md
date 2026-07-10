@@ -432,7 +432,7 @@ Brief summary of what this plan builds and why.
 
 ## Garbage Collection
 
-- **Active runs:** Created on `/start-work`, garbage collected on completion or abort
+- **Active runs:** Created on `/lazy-start-work`, garbage collected on completion or abort
 - **Completed runs:** State preserved for 30 days after completion; then compressed and moved to archive
 - **Abandoned runs:** State older than 7 days with no activity → marked as `aborted`
 - **Checkpoints:** Last 3 kept; older deleted

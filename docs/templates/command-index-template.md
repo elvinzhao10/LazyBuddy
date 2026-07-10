@@ -26,8 +26,8 @@ Every user-facing command and skill in the system, indexed by name, with source 
 
 | # | Name | Type | Source (LazyCodex path) | Target Implementation | Status | Notes |
 |---|-----|------|------------------------|----------------------|--------|-------|
-| 1 | `/init-deep` | command | `reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` | `lazyworkbuddy-plugin/skills/init-deep/SKILL.md` + `/init-deep` command wrapper | implemented | 3-phase init: CLAUDE.md scaffold → todo tree → plugin clone |
-| 2 | `/start-work` | command | `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` | `lazyworkbuddy-plugin/skills/start-work/SKILL.md` + `/start-work` command wrapper | implemented | 12-phase workflow; 5 subagent types; full taskloop |
+| 1 | `/lazy-init-deep` | command | `reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` | `lazyworkbuddy-plugin/skills/init-deep/SKILL.md` + `/lazy-init-deep` command wrapper | implemented | 3-phase init: CLAUDE.md scaffold → todo tree → plugin clone |
+| 2 | `/lazy-start-work` | command | `reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` | `lazyworkbuddy-plugin/skills/start-work/SKILL.md` + `/lazy-start-work` command wrapper | implemented | 12-phase workflow; 5 subagent types; full taskloop |
 | 3 | `/work-summary` | command | `reference/lazycodex/plugins/omo/skills/work-summary/SKILL.md` | `lazyworkbuddy-plugin/skills/work-summary/SKILL.md` | implemented | Summarizes current run state; writes to CLAUDE.md |
 | 4 | `/auto-work` | command | `reference/lazycodex/plugins/omo/skills/auto-work/SKILL.md` | `lazyworkbuddy-plugin/skills/auto-work/SKILL.md` + `/auto-work` command | implemented | Looped start-work; continuation via prompt re-entry |
 | 5 | `/retry` | command | `reference/lazycodex/plugins/omo/skills/retry/SKILL.md` | `lazyworkbuddy-plugin/skills/retry/SKILL.md` | implemented | Retry failed or undone tasks from task ledger |

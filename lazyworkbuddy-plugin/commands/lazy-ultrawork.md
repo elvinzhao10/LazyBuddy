@@ -2,14 +2,14 @@
 description: "Binding ultrawork mode for maximum-precision tasks. Activates tier triage (LIGHT/HEAVY), the PIN→RED→GREEN→SURFACE→CLEAN execution loop, binding reviewer gate, and Manual-QA channel discipline. Use when the task needs evidence-grade rigor."
 ---
 
-# /ultrawork
+# /lazy-ultrawork
 
 Activates binding ultrawork mode: tier triage classifies the work as LIGHT or HEAVY, then the PIN→RED→GREEN→SURFACE→CLEAN loop executes with evidence capture at every step. A binding reviewer gate (HEAVY only) requires unconditional approval before completion.
 
 ## Usage
 
 ```
-/ultrawork "task description"
+/lazy-ultrawork "task description"
 ```
 
 ## Inputs
@@ -44,4 +44,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/ultrawork/SKILL.md` for the full workflow logic, tier triage rules, execution loop, Manual-QA channel taxonomy, and binding reviewer gate.
+See `../skills/lazy-ultrawork/SKILL.md` for the full workflow logic, tier triage rules, execution loop, Manual-QA channel taxonomy, and binding reviewer gate.

@@ -26,11 +26,11 @@ Every adapted or ported method must have a runnable verification gate. This matr
 | 3 | Skill loading | `bash scripts/lazyworkbuddy-plugin-doctor.sh --check skills` | All 20 SKILL.md files have valid YAML frontmatter | stdout result | PASS |
 | 4 | Agent definitions | `bash scripts/lazyworkbuddy-plugin-doctor.sh --check agents` | All 15 agent files pass TOML/MD validation | stdout result | PASS |
 | 5 | Hook registration | `bash scripts/lazyworkbuddy-plugin-doctor.sh --check hooks` | 8 hooks registered with valid event types and scripts | stdout result | PASS |
-| 6 | Deep init — CLAUDE.md | `/init-deep` → Phase 1 | `.lazyworkbuddy/CLAUDE.md` created at project root | file: `.lazyworkbuddy/CLAUDE.md` | PASS |
-| 7 | Deep init — todo tree | `/init-deep` → Phase 2 | `todo.md` populated from file tree scan | file: `.lazyworkbuddy/todo.md` | PASS |
-| 8 | Deep init — plugin clone | `/init-deep` → Phase 3 | `lazyworkbuddy-plugin/` directory cloned | dir: `lazyworkbuddy-plugin/` | PASS |
-| 9 | Start-work — boulder load | `/start-work "migrate skill X"` → Phase 2 | `.lazyworkbuddy/runs/<run_id>/state.json` created with status "planning" | file: `.lazyworkbuddy/runs/<run_id>/state.json` | PASS |
-| 10 | Start-work — agent spawn | `/start-work` → Phase 3 | 5 subagent tasks dispatched; all return within timeout | TaskOutput for each agent task | PASS |
+| 6 | Deep init — CLAUDE.md | `/lazy-init-deep` → Phase 1 | `.lazyworkbuddy/CLAUDE.md` created at project root | file: `.lazyworkbuddy/CLAUDE.md` | PASS |
+| 7 | Deep init — todo tree | `/lazy-init-deep` → Phase 2 | `todo.md` populated from file tree scan | file: `.lazyworkbuddy/todo.md` | PASS |
+| 8 | Deep init — plugin clone | `/lazy-init-deep` → Phase 3 | `lazyworkbuddy-plugin/` directory cloned | dir: `lazyworkbuddy-plugin/` | PASS |
+| 9 | Start-work — boulder load | `/lazy-start-work "migrate skill X"` → Phase 2 | `.lazyworkbuddy/runs/<run_id>/state.json` created with status "planning" | file: `.lazyworkbuddy/runs/<run_id>/state.json` | PASS |
+| 10 | Start-work — agent spawn | `/lazy-start-work` → Phase 3 | 5 subagent tasks dispatched; all return within timeout | TaskOutput for each agent task | PASS |
 | 11 | Parity ledger append | Any `init-deep` or migration event | `.lazyworkbuddy/parity-ledger.jsonl` contains new event entry | file: `.lazyworkbuddy/parity-ledger.jsonl` | PASS |
 | 12 | Dogfood — init-deep self | `init-deep` on lazyworkbuddy repo | Same repo self-initializes; no circular errors | stdout + parity ledger | PENDING |
 

@@ -534,7 +534,7 @@ Delete created files.
 ## v0.11 — Dogfood Run (End-to-End Self-Test)
 
 ### Objective
-Run Lazyworkbuddy on itself: use `/ulw-plan` to plan a feature, `/start-work` to execute it, `/ulw-loop` to verify completion, and `/review-work` to review. This is an end-to-end test that exercises every component.
+Run Lazyworkbuddy on itself: use `/lazy-ulw-plan` to plan a feature, `/lazy-start-work` to execute it, `/lazy-ulw-loop` to verify completion, and `/lazy-review-work` to review. This is an end-to-end test that exercises every component.
 
 **LazyCodex source:** No direct equivalent — this is a Lazyworkbuddy quality gate.
 
@@ -547,10 +547,10 @@ Run Lazyworkbuddy on itself: use `/ulw-plan` to plan a feature, `/start-work` to
 
 ### Implementation Steps
 1. Choose a small but meaningful feature to implement (e.g., add a new Skill, fix a known gap)
-2. Run `/ulw-plan`: inspect codebase, generate plan → verify plan quality
-3. Run `/start-work`: execute plan with subagents → verify orchestration
-4. Run `/ulw-loop`: run verification loop → verify evidence captures
-5. Run `/review-work`: 5-agent review → verify all lanes pass
+2. Run `/lazy-ulw-plan`: inspect codebase, generate plan → verify plan quality
+3. Run `/lazy-start-work`: execute plan with subagents → verify orchestration
+4. Run `/lazy-ulw-loop`: run verification loop → verify evidence captures
+5. Run `/lazy-review-work`: 5-agent review → verify all lanes pass
 6. Run librarian update: verify memory updated
 7. Document everything in the dogfood report
 

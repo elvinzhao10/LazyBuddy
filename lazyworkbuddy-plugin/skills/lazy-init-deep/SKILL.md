@@ -14,7 +14,7 @@ Generate hierarchical project memory for the current WorkBuddy workspace. Scores
 
 ## Trigger Conditions
 
-- User types `/init-deep` or requests project initialization
+- User types `/lazy-init-deep` or requests project initialization
 - New workspace where no `workbuddy.md` exists
 - Workspace structure has changed significantly
 - User says "understand this codebase", "map this project", "create project memory"

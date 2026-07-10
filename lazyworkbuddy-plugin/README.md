@@ -8,7 +8,7 @@ Lazyworkbuddy is a WorkBuddy plugin that brings the LazyCodex/OmO agent harness 
 
 1. **Install** — `mkdir -p ~/.workbuddy/plugins && ln -s "$(pwd)/lazyworkbuddy-plugin" ~/.workbuddy/plugins/lazyworkbuddy`
 2. **Verify** — `./lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh`
-3. **Use** — run `/init-deep`, then `/ulw-plan`, then `/start-work`
+3. **Use** — run `/lazy-init-deep`, then `/lazy-ulw-plan`, then `/lazy-start-work`
 
 **Status:** v0.12.0 release-hardening package with Todo 6 gates recorded. See the canonical current status in See [README](../README.md) for current status.. (Plugin must be enabled in `.workbuddy/settings.json` to activate.)
 
@@ -16,12 +16,12 @@ Lazyworkbuddy is a WorkBuddy plugin that brings the LazyCodex/OmO agent harness 
 
 Lazyworkbuddy brings the LazyCodex/OmO agent harness to WorkBuddy:
 
-- **Hierarchical project memory** (`/init-deep`) — generates `workbuddy.md` with directory scoring
-- **Prometheus planning** (`/ulw-plan`) — decision-complete work plans; never writes product code
-- **Orchestrated execution** (`/start-work`) — delegates to subagents; never implements directly
-- **Verified completion loop** (`/ulw-loop`) — evidence-backed done claims with adversarial verification
-- **5-agent parallel review** (`/review-work`) — goal/QA/code/security/context; all 5 must pass
-- **Ultrawork mode** (`/ultrawork`) — binding directive with tier triage and Manual-QA discipline
+- **Hierarchical project memory** (`/lazy-init-deep`) — generates `workbuddy.md` with directory scoring
+- **Prometheus planning** (`/lazy-ulw-plan`) — decision-complete work plans; never writes product code
+- **Orchestrated execution** (`/lazy-start-work`) — delegates to subagents; never implements directly
+- **Verified completion loop** (`/lazy-ulw-loop`) — evidence-backed done claims with adversarial verification
+- **5-agent parallel review** (`/lazy-review-work`) — goal/QA/code/security/context; all 5 must pass
+- **Ultrawork mode** (`/lazy-ultrawork`) — binding directive with tier triage and Manual-QA discipline
 
 ## Component Map
 

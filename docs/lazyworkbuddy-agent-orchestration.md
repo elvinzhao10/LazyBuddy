@@ -6,7 +6,7 @@
 
 ```
                     ┌─────────────┐
-                    │  init-deep  │  User invokes /init-deep
+                    │  init-deep  │  User invokes /lazy-init-deep
                     │  (explorer  │  → Context Indexer maps repo
                     │  + context  │  → Generates workbuddy.md
                     │  -indexer)  │
@@ -14,7 +14,7 @@
                            │
                            ▼
                     ┌─────────────┐
-                    │  ulw-plan   │  User invokes /ulw-plan "task"
+                    │  ulw-plan   │  User invokes /lazy-ulw-plan "task"
                     │  (planner)  │  → Planner inspects codebase
                     │             │  → Writes plan to .lazyworkbuddy/plans/
                     │             │  → Awaits approval
@@ -22,7 +22,7 @@
                            │
                            ▼
                     ┌─────────────┐
-                    │ start-work  │  User invokes /start-work
+                    │ start-work  │  User invokes /lazy-start-work
                     │(orchestrator│  → Orchestrator loads plan
                     │  = Sisyphus)│  → Creates run state
                     └──────┬──────┘

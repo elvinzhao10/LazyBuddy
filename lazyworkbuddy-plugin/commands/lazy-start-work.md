@@ -2,14 +2,14 @@
 description: "Orchestrate plan execution. Reads a plan, creates bootstrap state in .lazyworkbuddy/runs/, decomposes into sub-tasks, spawns worker subagents via WorkBuddy Agent tool, verifies evidence, marks progress. Root agent is orchestrator only — never implements directly."
 ---
 
-# /start-work
+# /lazy-start-work
 
 Orchestrate plan execution. The orchestrator reads a plan, bootstraps run state, decomposes work into sub-tasks, spawns worker subagents, verifies their DoneClaims, and marks progress. The orchestrator never implements product code directly.
 
 ## Usage
 
 ```
-/start-work [plan-name] [--worktree <path>]
+/lazy-start-work [plan-name] [--worktree <path>]
 ```
 
 ## Inputs
@@ -41,4 +41,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/start-work/SKILL.md` for the full workflow logic, Sisyphus completion contract, subagent orchestration pattern, and evidence verification protocol.
+See `../skills/lazy-start-work/SKILL.md` for the full workflow logic, Sisyphus completion contract, subagent orchestration pattern, and evidence verification protocol.

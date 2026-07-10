@@ -2,14 +2,14 @@
 description: "5-agent parallel review gate. Spawns five independent reviewers (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner) that must ALL pass before work is considered done. Use after every significant implementation."
 ---
 
-# /review-work
+# /lazy-review-work
 
 Runs the 5-agent parallel review gate: five independent subagents review the work from different angles (goal compliance, QA execution, code quality, security, context mining). All five must return PASS for the work to be considered complete. Any FAIL blocks completion; any INCONCLUSIVE triggers a retry.
 
 ## Usage
 
 ```
-/review-work [plan-name]
+/lazy-review-work [plan-name]
 ```
 
 ## Inputs
@@ -17,7 +17,7 @@ Runs the 5-agent parallel review gate: five independent subagents review the wor
 - Plan name or run ID (optional; defaults to active run)
 - Changed files (diff against baseline)
 - User goal and constraints (from `workbuddy.md` or plan)
-- Verification evidence from `/start-work` or `/ulw-loop`
+- Verification evidence from `/lazy-start-work` or `/lazy-ulw-loop`
 
 ## Outputs
 
@@ -42,4 +42,4 @@ Do not claim completion without verification.
 
 ## Skill
 
-See `../skills/review-work/SKILL.md` for the full workflow logic, 5-agent taxonomy, per-agent review checklists, ALL-MUST-PASS verdict logic, and INCONCLUSIVE retry protocol.
+See `../skills/lazy-review-work/SKILL.md` for the full workflow logic, 5-agent taxonomy, per-agent review checklists, ALL-MUST-PASS verdict logic, and INCONCLUSIVE retry protocol.

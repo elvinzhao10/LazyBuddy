@@ -14,7 +14,7 @@ Run a goal-driven verified completion loop: define binding success criteria with
 
 ## Trigger Conditions
 
-- User invokes `/ulw-loop "task" [--completion-promise=TEXT]`
+- User invokes `/lazy-ulw-loop "task" [--completion-promise=TEXT]`
 - User says "ulw", "loop this", "keep working until verified"
 - Any task where quality requires evidence-backed completion
 

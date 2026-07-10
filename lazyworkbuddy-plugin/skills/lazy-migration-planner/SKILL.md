@@ -205,7 +205,7 @@ Migration planner complete.
   Adapter plan: .lazyworkbuddy/adapters/<target-platform>-<YYYYMMDD>.md
   Source skills inventoried: <count>
   Direct maps: <count> | Adapted maps: <count> | Gaps: <count>
-  Next step: review the adapter plan, then use /start-work to execute the port
+  Next step: review the adapter plan, then use /lazy-start-work to execute the port
 ```
 
 ## The 9-Step Migration Workflow (v0.10)

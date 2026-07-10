@@ -31,7 +31,7 @@ INSPECT → PLAN → IMPLEMENT → VERIFY → REVIEW → UPDATE MEMORY
 
 - **Small changes** (1-2 files, obvious): Plan in conversation; state the plan explicitly.
 - **Medium changes** (3-5 files, some ambiguity): Use WorkBuddy Plan Mode.
-- **Large changes** (5+ files, architecture decisions): Invoke `/ulw-plan`.
+- **Large changes** (5+ files, architecture decisions): Invoke `/lazy-ulw-plan`.
 
 The plan must be decision-complete — the implementer needs zero further interviews.
 
@@ -39,7 +39,7 @@ The plan must be decision-complete — the implementer needs zero further interv
 
 ## Phase 3: Implement
 
-**Execute the plan** using `/start-work` for planned work, or direct implementation for small changes.
+**Execute the plan** using `/lazy-start-work` for planned work, or direct implementation for small changes.
 
 - **Orchestrator:** Root agent orchestrates; never implements directly. Spawn subagents for implementation.
 - **Implementer subagent:** Receives a self-contained task (TASK + DELIVERABLE + SCOPE + VERIFY). Returns DoneClaim.
@@ -82,12 +82,12 @@ The plan must be decision-complete — the implementer needs zero further interv
 
 | Situation | Command | Why |
 |-----------|---------|-----|
-| First time in a workspace | `/init-deep` | Generate hierarchical project memory |
-| Before a multi-file change | `/ulw-plan "description"` | Decision-complete plan |
-| Approved plan ready to build | `/start-work <plan-name>` | Orchestrated execution with evidence |
-| Open-ended task, need verified done | `/ulw-loop "task"` | Evidence-backed completion loop |
-| Implementation complete | `/review-work` | 5-agent parallel review |
-| Need maximum precision | `/ultrawork` | Binding ultrawork directive |
+| First time in a workspace | `/lazy-init-deep` | Generate hierarchical project memory |
+| Before a multi-file change | `/lazy-ulw-plan "description"` | Decision-complete plan |
+| Approved plan ready to build | `/lazy-start-work <plan-name>` | Orchestrated execution with evidence |
+| Open-ended task, need verified done | `/lazy-ulw-loop "task"` | Evidence-backed completion loop |
+| Implementation complete | `/lazy-review-work` | 5-agent parallel review |
+| Need maximum precision | `/lazy-ultrawork` | Binding ultrawork directive |
 
 ## Escalation Rules
 
