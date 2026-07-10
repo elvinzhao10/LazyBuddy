@@ -8,12 +8,12 @@ LazyBuddy is a WorkBuddy-native adaptation of the LazyCodex/OmO agent harness. I
 
 | Platform | Skills | Commands | Hooks | MCP servers |
 |---|---|---|---|---|
-| **WorkBuddy** | WorkBuddy plugin marketplace | auto | host-managed | host-managed |
-| **CodeBuddy IDE** | import bundled skills | IDE slash commands | IDE hooks/settings | IDE MCP settings |
+| **WorkBuddy** | Plugins → add marketplace → install | host-managed | host-managed | host-managed |
+| **CodeBuddy IDE** | Plugins → add marketplace → install | plugin commands | plugin hooks | plugin MCP servers |
 | **CodeBuddy CLI** | plugin marketplace | auto | auto | auto (`.mcp.json`) |
 
-- **WorkBuddy** → install LazyBuddy through the WorkBuddy plugin marketplace.
-- **CodeBuddy IDE** → import the bundled skills and configure the bundled MCP servers through the IDE settings.
+- **WorkBuddy** → open **Plugins**, select **+**, add the repository marketplace, then install LazyBuddy.
+- **CodeBuddy IDE** → add the repository marketplace in the Plugins UI and install LazyBuddy; reload plugins if prompted.
 - **CodeBuddy CLI** → install LazyBuddy through the included CodeBuddy marketplace entry.
 
 ## Step A — Install
@@ -36,9 +36,9 @@ LazyBuddy is a WorkBuddy-native adaptation of the LazyCodex/OmO agent harness. I
    ```
    Expected: `Doctor check: ALL PASS` (50 checks).
 
-**WorkBuddy:** add this repository in the WorkBuddy plugin marketplace and install `lazybuddy-plugin/`. The compatible `.workbuddy-plugin/plugin.json` manifest provides the same component paths for the WorkBuddy host.
+**WorkBuddy:** open **Plugins** → **+** → add the repository marketplace URL → select and install **LazyBuddy**. If marketplace installation is unavailable, use **Skills** → **Add Skill** → **Upload Skill** to import packaged skills from `lazybuddy-plugin/skills/`; this fallback does not automatically install hooks or MCP servers.
 
-**CodeBuddy IDE:** import the applicable `lazybuddy-plugin/skills/*/SKILL.md` bundles, then add the desired `.mcp.json` server definitions through the IDE MCP settings. CodeBuddy's CLI marketplace installer is not used by the IDE.
+**CodeBuddy IDE:** open the Plugins UI, add the same marketplace, install **LazyBuddy**, then reload plugins if prompted. Use manual skill/MCP import only when marketplace installation is unavailable.
 
 > Once installed into your project, the source repo can be deleted — your project retains its plugin, hooks, and generated `AGENTS.md`.
 

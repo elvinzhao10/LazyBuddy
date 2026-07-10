@@ -37,7 +37,7 @@ LazyBuddy brings the LazyCodex/OmO agent harness to WorkBuddy:
 
 ## Install
 
-Use the included marketplace entry for CodeBuddy CLI and the compatible WorkBuddy manifest for WorkBuddy. In CodeBuddy IDE, import the individual `skills/*/SKILL.md` bundles and configure MCP through IDE settings.
+Use the included marketplace entry on every supported host. In WorkBuddy and CodeBuddy IDE, open **Plugins**, add the repository marketplace, install **LazyBuddy**, then reload plugins if prompted. Use manual skill/MCP import only as a fallback.
 
 ### Development install
 
@@ -54,9 +54,12 @@ codebuddy plugin validate lazybuddy-plugin
 ### Marketplace install
 
 ```bash
-# CodeBuddy IDE: /plugin marketplace add elvinzhao10/LazyBuddy
-# CodeBuddy CLI: codebuddy plugin marketplace add elvinzhao10/LazyBuddy
+# CodeBuddy CLI
+codebuddy plugin marketplace add elvinzhao10/LazyBuddy --name lazybuddy
+codebuddy plugin install lazybuddy@lazybuddy --scope project
 ```
+
+For WorkBuddy and CodeBuddy IDE, add the same repository through the **Plugins** UI, then select and install **LazyBuddy**. WorkBuddy's **Skills** → **Add Skill** → **Upload Skill** flow is a skills-only fallback and does not install hooks or MCP servers.
 
 ## Uninstall
 
