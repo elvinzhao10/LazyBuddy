@@ -32,7 +32,7 @@ Example: `multi_agent_v1.spawn_agent({"agent_type":"explorer"})` → WorkBuddy `
 | Hook:[EVENT] | [SOURCE_SCRIPT] | [TARGET_SCRIPT] | YES/PARTIAL/NO |
 | MCP:[SERVER] | [STDIO/HTTP] | [STDIO/HTTP] or ❌ (gap) | [WORKAROUND] |
 | FS:${PLUGIN_ROOT} | [SOURCE_VAR] | `${CODEBUDDY_PLUGIN_ROOT}` | same semantics |
-| FS:.omo/ | .omo/ | `.lazyworkbuddy/` | prefix migrate; `schema_version` bump |
+| FS:.omo/ | .omo/ | `.lazybuddy/` | prefix migrate; `schema_version` bump |
 | FS:[DIR] | [SOURCE_DIR] | [TARGET_DIR] | [copy/rename/adapt] |
 
 ## Verification Summary

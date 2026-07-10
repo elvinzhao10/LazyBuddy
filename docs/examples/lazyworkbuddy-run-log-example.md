@@ -1,4 +1,4 @@
-# Lazyworkbuddy Run Log Example v0.7
+# LazyBuddy Run Log Example v0.7
 
 > Walkthrough: "Build a login form" — 3 tasks, creation to completion.
 

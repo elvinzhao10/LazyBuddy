@@ -22,7 +22,7 @@ Track migration risks as live items. Each risk must have a severity, mitigation 
 - **RESOLVED** — mitigation verified; risk no longer present
 - **ACCEPTED** — risk acknowledged and deliberately accepted (document why in Notes)
 
-## Example — Lazyworkbuddy v0.10 Migration Risk Register
+## Example — LazyBuddy v0.10 Migration Risk Register
 
 | ID | Description | Severity | Likelihood | Mitigation | Contingency | Monitoring | Target Version | Status |
 |----|------------|----------|-----------|------------|-------------|-----------|---------------|--------|

@@ -30,16 +30,16 @@ Every agent (subagent, specialist, role) in the system, mapped from source to ta
 | **Web researcher** | `Read, WebFetch, WebSearch` | Information gathering; no file I/O |
 | **Code reviewer** | `Read, Glob, Grep` | Audit-only; can read but not write |
 
-## Example — Lazyworkbuddy Agent Map (partial)
+## Example — LazyBuddy Agent Map (partial)
 
 | # | Source Role | Source File | Host Agent File | Model | Tools | Authority Boundaries | Auth Notes | Status |
 |---|------------|------------|----------------|-------|-------|---------------------|-----------|--------|
-| 1 | Orchestrator (Sisyphus) | `dev/reference/lazycodex/plugins/omo/agents/orchestrator.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-orchestrator.md` | claude-opus-4-20250514 | `Read,Write,Edit,Glob,Grep,Bash,Agent,TaskCreate,TaskUpdate,TaskList` | Must not spawn >5 subagents concurrently; must track all spawned agents in task ledger | Needs full tool access for taskloop coordination | ported |
-| 2 | Explorer | `dev/reference/lazycodex/plugins/omo/agents/explorer.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-explorer.md` | claude-sonnet-4-20250514 | `Read,Glob,Grep,Bash(read-only)` | Read-only; no Write/Edit; no agent spawning | File system exploration only | ported |
-| 3 | Librarian | `dev/reference/lazycodex/plugins/omo/agents/librarian.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-librarian.md` | claude-sonnet-4-20250514 | `Read,Glob,Grep,Write` | Can write to `.lazyworkbuddy/knowledge/` only; no writes to skill/agent/hook files | Semantic memory and knowledge indexing | ported |
-| 4 | Plan | `dev/reference/lazycodex/plugins/omo/agents/plan.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-plan.md` | claude-opus-4-20250514 | `Read,Glob,Grep,TaskCreate,TaskUpdate` | Read-only for code; can write task definitions only | Task decomposition and dependency analysis | ported |
-| 5 | Worker | `dev/reference/lazycodex/plugins/omo/agents/worker.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-worker.md` | claude-sonnet-4-20250514 | `Read,Write,Edit,Glob,Grep,Bash` | Must follow plan task assignments; one task at a time; must update task status | Implementation-only agent | ported |
-| 6 | Reviewer | `dev/reference/lazycodex/plugins/omo/agents/reviewer.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-reviewer.md` | claude-opus-4-20250514 | `Read,Glob,Grep,Bash(read-only)` | Read-only audit; reports findings; never modifies code | Quality gate; runs before task is marked complete | ported |
+| 1 | Orchestrator (Sisyphus) | `dev/reference/lazycodex/plugins/omo/agents/orchestrator.toml` | `lazybuddy-plugin/agents/lazybuddy-orchestrator.md` | claude-opus-4-20250514 | `Read,Write,Edit,Glob,Grep,Bash,Agent,TaskCreate,TaskUpdate,TaskList` | Must not spawn >5 subagents concurrently; must track all spawned agents in task ledger | Needs full tool access for taskloop coordination | ported |
+| 2 | Explorer | `dev/reference/lazycodex/plugins/omo/agents/explorer.toml` | `lazybuddy-plugin/agents/lazybuddy-explorer.md` | claude-sonnet-4-20250514 | `Read,Glob,Grep,Bash(read-only)` | Read-only; no Write/Edit; no agent spawning | File system exploration only | ported |
+| 3 | Librarian | `dev/reference/lazycodex/plugins/omo/agents/librarian.toml` | `lazybuddy-plugin/agents/lazybuddy-librarian.md` | claude-sonnet-4-20250514 | `Read,Glob,Grep,Write` | Can write to `.lazybuddy/knowledge/` only; no writes to skill/agent/hook files | Semantic memory and knowledge indexing | ported |
+| 4 | Plan | `dev/reference/lazycodex/plugins/omo/agents/plan.toml` | `lazybuddy-plugin/agents/lazybuddy-plan.md` | claude-opus-4-20250514 | `Read,Glob,Grep,TaskCreate,TaskUpdate` | Read-only for code; can write task definitions only | Task decomposition and dependency analysis | ported |
+| 5 | Worker | `dev/reference/lazycodex/plugins/omo/agents/worker.toml` | `lazybuddy-plugin/agents/lazybuddy-worker.md` | claude-sonnet-4-20250514 | `Read,Write,Edit,Glob,Grep,Bash` | Must follow plan task assignments; one task at a time; must update task status | Implementation-only agent | ported |
+| 6 | Reviewer | `dev/reference/lazycodex/plugins/omo/agents/reviewer.toml` | `lazybuddy-plugin/agents/lazybuddy-reviewer.md` | claude-opus-4-20250514 | `Read,Glob,Grep,Bash(read-only)` | Read-only audit; reports findings; never modifies code | Quality gate; runs before task is marked complete | ported |
 
 ## Summary
 

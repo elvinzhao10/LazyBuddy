@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in Lazyworkbuddy
+about: Report a bug in LazyBuddy
 title: "[BUG] "
 labels: bug
 ---
@@ -17,13 +17,13 @@ labels: bug
 
 ## Environment
 
-- Lazyworkbuddy version: <!-- run `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh` -->
+- LazyBuddy version: <!-- run `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` -->
 - WorkBuddy version:
 - OS:
 
 ## Verification Output
 
-<!-- Paste the output of `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh` -->
+<!-- Paste the output of `bash lazybuddy-plugin/scripts/lazybuddy-verify.sh` -->
 
 ## Additional Context
 

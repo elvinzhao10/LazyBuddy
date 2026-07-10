@@ -17,14 +17,14 @@ Every source method — skill, command, agent, hook, MCP server, script — gets
 
 **Skipped reason taxonomy:** `license-boundary`, `platform-limitation`, `out-of-scope`, `superseded-by`, `not-applicable`
 
-## Example — LazyCodex → Lazyworkbuddy
+## Example — LazyCodex → LazyBuddy
 
 | # | Method Name | Source Path | Target Implementation | Status | Behavioral Equivalence | Notes |
 |---|------------|------------|----------------------|--------|-----------------------|-------|
-| 1 | `init-deep` | `dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` | `lazyworkbuddy-plugin/skills/init-deep/SKILL.md` + `/lazy-init-deep` command | adapted | Same initialization flow (CLAUDE.md scaffold + plugin install + todo tree); invocation changed from Codex skill load to WorkBuddy command+skill | Command wrapper added for discoverability |
-| 2 | `start-work` | `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` | `lazyworkbuddy-plugin/skills/start-work/SKILL.md` + `/lazy-start-work` command | adapted | Same workflow (boulder load → plan → phase dispatch → taskloop); `multi_agent_v1.spawn_agent` → WorkBuddy `Agent` tool; `.omo/` → `.lazyworkbuddy/` | Most complex port; 5 subagent types mapped to Agent tool calls |
-| 3 | `plugin-doctor` | `dev/reference/lazycodex/plugins/omo/scripts/plugin-doctor.sh` | `lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh` | adapted | Same check pattern (plugin integrity, manifest, skill deps); paths updated; WorkBuddy-specific checks added | No LazyCodex multi_agent_v1 dependency to verify |
-| 4 | `librarian` agent | `dev/reference/lazycodex/plugins/omo/agents/librarian.toml` | `lazyworkbuddy-plugin/agents/lazyworkbuddy-librarian.md` | adapted | Same role (semantic memory indexer); TOML → Markdown agent def; codebase_model tool → Read+Glob+Grep toolset | TOML field-to-MD section mapping documented |
+| 1 | `init-deep` | `dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` | `lazybuddy-plugin/skills/init-deep/SKILL.md` + `/lazy-init-deep` command | adapted | Same initialization flow (CLAUDE.md scaffold + plugin install + todo tree); invocation changed from Codex skill load to WorkBuddy command+skill | Command wrapper added for discoverability |
+| 2 | `start-work` | `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` | `lazybuddy-plugin/skills/start-work/SKILL.md` + `/lazy-start-work` command | adapted | Same workflow (boulder load → plan → phase dispatch → taskloop); `multi_agent_v1.spawn_agent` → WorkBuddy `Agent` tool; `.omo/` → `.lazybuddy/` | Most complex port; 5 subagent types mapped to Agent tool calls |
+| 3 | `plugin-doctor` | `dev/reference/lazycodex/plugins/omo/scripts/plugin-doctor.sh` | `lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` | adapted | Same check pattern (plugin integrity, manifest, skill deps); paths updated; WorkBuddy-specific checks added | No LazyCodex multi_agent_v1 dependency to verify |
+| 4 | `librarian` agent | `dev/reference/lazycodex/plugins/omo/agents/librarian.toml` | `lazybuddy-plugin/agents/lazybuddy-librarian.md` | adapted | Same role (semantic memory indexer); TOML → Markdown agent def; codebase_model tool → Read+Glob+Grep toolset | TOML field-to-MD section mapping documented |
 | 5 | `vuepress-dashboard` | `dev/reference/lazycodex/plugins/omo/vuepress-dashboard/` | Not ported | skipped | N/A | out-of-scope — WorkBuddy has native dashboard; VuePress rendering not needed |
 
 ## Summary

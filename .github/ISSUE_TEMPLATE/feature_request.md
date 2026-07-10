@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a feature for Lazyworkbuddy
+about: Suggest a feature for LazyBuddy
 title: "[FEATURE] "
 labels: enhancement
 ---

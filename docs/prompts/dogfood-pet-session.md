@@ -1,19 +1,19 @@
 # Dogfood Session — WorkBuddy Pet (Autonomous Run)
 
-> Paste this into a fresh WorkBuddy session with the lazyworkbuddy plugin enabled.
+> Paste this into a fresh WorkBuddy session with the lazybuddy plugin enabled.
 > Let the agent run freely. Evaluation happens at the end.
 
 ---
 
 ## Prompt
 
-You are running an **autonomous dogfood session** for the Lazyworkbuddy agent harness. Your goal: build a **WorkBuddy Pet** — a terminal companion that visualizes the real-time health and activity of the Lazyworkbuddy system — then self-evaluate at the end.
+You are running an **autonomous dogfood session** for the LazyBuddy agent harness. Your goal: build a **WorkBuddy Pet** — a terminal companion that visualizes the real-time health and activity of the LazyBuddy system — then self-evaluate at the end.
 
 ### What the pet is
 
-A **WorkBuddy Pet** is a live dashboard pet that reads `.lazyworkbuddy/` state and renders a beautiful terminal visualization. Think of it as a tamagotchi crossed with a system monitor — the pet's mood and stats reflect what's actually happening in the agent harness.
+A **WorkBuddy Pet** is a live dashboard pet that reads `.lazybuddy/` state and renders a beautiful terminal visualization. Think of it as a tamagotchi crossed with a system monitor — the pet's mood and stats reflect what's actually happening in the agent harness.
 
-The pet is NOT just decorative. It's a **real consumer of the Lazyworkbuddy state ledger** — it reads events.jsonl, state.json, and the run directory to derive its state. If the harness is healthy (tasks completing, verification passing, reviews accepted), the pet thrives. If things are broken (failures, drift, stuck tasks), the pet suffers.
+The pet is NOT just decorative. It's a **real consumer of the LazyBuddy state ledger** — it reads events.jsonl, state.json, and the run directory to derive its state. If the harness is healthy (tasks completing, verification passing, reviews accepted), the pet thrives. If things are broken (failures, drift, stuck tasks), the pet suffers.
 
 ### What to build
 
@@ -22,7 +22,7 @@ A small **Python package** — not a 350-line god-file. Separate the concerns so
 ```
 pet/
 ├── __main__.py   # CLI entry — argparse, dispatches the commands below (thin, no logic)
-├── state.py      # reads .lazyworkbuddy/: run ledger, events.jsonl, plan.md → raw signal dict
+├── state.py      # reads .lazybuddy/: run ledger, events.jsonl, plan.md → raw signal dict
 ├── metrics.py    # PURE functions: raw signals → System Vitals + pet stats + mood (no I/O)
 ├── art.py        # MOOD_FRAMES: cute cat art + animation frames (data + a small compositor)
 ├── spark.py      # tiny sparkline helper: buckets events → ▁▂▃▅▇█
@@ -86,7 +86,7 @@ Pure stdlib only (`argparse`, `json`, `pathlib`, `time`, `unittest.mock`) — ru
 
 #### Pet states (derive from state)
 
-The pet shows **two layers of numbers** — both read from `.lazyworkbuddy/`, never faked:
+The pet shows **two layers of numbers** — both read from `.lazybuddy/`, never faked:
 
 **System Vitals** (the useful part — real harness metrics, shown as bars in the top panel):
 | Vital | Derived from | What it tells you |
@@ -250,9 +250,9 @@ The pet isn't the only living thing on the panel. Render the other sections as *
 
 #### Technical tracking (the real value)
 
-The pet must read and display REAL data from the Lazyworkbuddy state:
+The pet must read and display REAL data from the LazyBuddy state:
 
-1. **Run status** — read `.lazyworkbuddy/runs/<run_id>/state.json`:
+1. **Run status** — read `.lazybuddy/runs/<run_id>/state.json`:
    - run_id, status, objective, created_at (compute duration)
    - tasks[] with id, title, status, changed_files, evidence
    - review_status, verification_gates
@@ -275,7 +275,7 @@ The pet must read and display REAL data from the Lazyworkbuddy state:
 
 5. **Plan progress** — read `plan.md`, count checked vs unchecked boxes in `## TODOs` section
 
-6. **Skill usage** — parse events for skill/command invocations (if logged), show which Lazyworkbuddy commands were used
+6. **Skill usage** — parse events for skill/command invocations (if logged), show which LazyBuddy commands were used
 
 7. **Pet log** — a charming narrative log derived from events:
    - Task completed → " Fed on T1 completion (verified)"
@@ -287,7 +287,7 @@ The pet must read and display REAL data from the Lazyworkbuddy state:
 
 #### Pet state persistence
 
-`.lazyworkbuddy/pet-state.json`:
+`.lazybuddy/pet-state.json`:
 ```json
 {
   "health": 80,
@@ -302,13 +302,13 @@ The pet must read and display REAL data from the Lazyworkbuddy state:
 
 ### How to run this session
 
-**Don't follow a rigid step-by-step.** Run freely — use your judgment on when to use each Lazyworkbuddy command. The goal is to test the workflow naturally, not mechanically.
+**Don't follow a rigid step-by-step.** Run freely — use your judgment on when to use each LazyBuddy command. The goal is to test the workflow naturally, not mechanically.
 
 However, you MUST:
 1. Create a real run with `create-run.sh`
 2. Write a real plan with checkboxes
 3. Use `update-plan-checkbox.sh` and `update-task.sh` as you work
-4. Run `lazyworkbuddy-verify.sh` at least once
+4. Run `lazybuddy-verify.sh` at least once
 5. Try `finalize-run.sh` at the end
 6. Write the self-evaluation report
 
@@ -361,15 +361,15 @@ Honest answer.
 ## Artifacts
 - pet/ (package — N lines across 6 modules)
 - tests/test_pet.py (N lines)
-- .lazyworkbuddy/runs/dogfood-pet/ (full run records)
-- .lazyworkbuddy/pet-state.json
+- .lazybuddy/runs/dogfood-pet/ (full run records)
+- .lazybuddy/pet-state.json
 ```
 
 ### Rules
 
 1. **Be honest.** Record real errors, real friction.
 2. **The whole panel must be visual.** Cute animated cat + real System Vitals bars + progress bars + sparklines — not walls of text. This is the visual payoff.
-3. **The pet must read real state.** Don't fake the data — parse actual files. The bars and sparklines must reflect real `.lazyworkbuddy/` values.
+3. **The pet must read real state.** Don't fake the data — parse actual files. The bars and sparklines must reflect real `.lazybuddy/` values.
 4. **Tests must pass.** Run pytest and prove it.
 5. **No artificial time cap.** This is a small project — it shouldn't need long to execute. Keep scope tight (modular package as specced, ~8 tests) but don't rush or cut quality to hit a clock. Just run it, watch the pet, write the report.
 6. **Don't fix harness bugs during the run.** Note and continue.

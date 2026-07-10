@@ -1,6 +1,6 @@
-# Lazyworkbuddy plan
+# LazyBuddy plan
 
-This directory holds the versioned implementation plan for Lazyworkbuddy — a WorkBuddy-native recreation of LazyCodex. The whole project is a **version 0 build** (pre-1.0), so every phase is numbered `v0.N`.
+This directory holds the versioned implementation plan for LazyBuddy — a WorkBuddy-native recreation of LazyCodex. The whole project is a **version 0 build** (pre-1.0), so every phase is numbered `v0.N`.
 
 ## Version index
 
@@ -35,28 +35,28 @@ This directory holds the versioned implementation plan for Lazyworkbuddy — a W
 
 ---
 
-Yes — here is the full Lazyworkbuddy plan, shaped like your LazyTrae/LazyWorkBuddy prompt packs, but specifically for Tencent workbuddy / workbuddy Code.
+Yes — here is the full LazyBuddy plan, shaped like your LazyTrae/LazyBuddy prompt packs, but specifically for Tencent workbuddy / workbuddy Code.
 
 The key design change is this:
 
-Lazyworkbuddy should be a workbuddy-native plugin plus a repo-local .workbuddy/ operating layer.
+LazyBuddy should be a workbuddy-native plugin plus a repo-local .workbuddy/ operating layer.
 The plugin gives installable Skills, Agents, Hooks, MCP servers, and optional LSP/tooling. The repo-local .workbuddy/ layer gives project memory, rules, permissions, local command docs, and parity evidence.
 
-That matches workbuddy’s official extension model: plugins can package Skills, Agents, Hooks, MCP servers, and LSP servers; plugin Skills live under skills/ or commands/; plugin Agents live under agents/; hooks use hooks/hooks.json; MCP servers can be bundled through .mcp.json or plugin.json; and plugin metadata lives in .workbuddy-plugin/plugin.json.  
+That matches workbuddy’s official extension model: plugins can package Skills, Agents, Hooks, MCP servers, and LSP servers; plugin Skills live under skills/ or commands/; plugin Agents live under agents/; hooks use hooks/hooks.json; MCP servers can be bundled through .mcp.json or plugin.json; and plugin metadata lives in .codebuddy-plugin/plugin.json.
 
 workbuddy also has exactly the host-native primitives this needs: workbuddy.md, .workbuddy/rules, project-level Skills, Commands, Agents, and settings; Skills are reusable workflow/domain capabilities, while slash commands are user-invoked shortcuts; subagents have separate context windows and configurable tool access; Plan Mode supports read-only planning; Hooks can intercept lifecycle/tool/session/task events; MCP connects external tools/data; Headless Mode and the HTTP API support automation; Channels can bridge sessions to WeChat, Telegram, and Discord; and the Agent SDK can run programmatic workflows with explicit permission/resource controls.
 
 ---
 
-Lazyworkbuddy benchmark contract
+LazyBuddy benchmark contract
 
-Use this as the first message in the Lazyworkbuddy workspace before the version prompts.
+Use this as the first message in the LazyBuddy workspace before the version prompts.
 
 You are participating in a platform benchmark.
 Platform:
 Tencent workbuddy / workbuddy Code.
 Project name:
-Lazyworkbuddy.
+LazyBuddy.
 Goal:
 Recreate, migrate, or reinterpret the original LazyCodex project inside this workbuddy workspace using workbuddy-native mechanisms. The original LazyCodex repo is already present in this workspace and must be treated as the canonical source of truth.
 Important constraints:
@@ -93,12 +93,12 @@ Important constraints:
 Primary deliverables:
 - A LazyCodex canonical method map generated from the original repo.
 - A workbuddy official capability map.
-- A LazyCodex-to-Lazyworkbuddy adaptation map.
+- A LazyCodex-to-LazyBuddy adaptation map.
 - A workbuddy-native architecture plan.
 - A versioned implementation plan.
 - Working plugin files, project rules, skills, commands, agents, hooks, MCP configs, scripts, and verification checks.
 - A durable autonomous-run ledger.
-- A final parity report comparing original LazyCodex behavior to Lazyworkbuddy behavior.
+- A final parity report comparing original LazyCodex behavior to LazyBuddy behavior.
 Canonical LazyCodex concepts to look for in the repo:
 - Deep initialization / workspace understanding.
 - Project memory such as AGENTS.md or equivalent.
@@ -123,7 +123,7 @@ workbuddy-native concepts to map into:
 - Agents: .workbuddy/agents/*.md and plugin agents/*.md.
 - Hooks: plugin hooks/hooks.json and project settings hooks if appropriate.
 - MCP: plugin .mcp.json and/or mcpServers in plugin.json.
-- Plugin: .workbuddy-plugin/plugin.json plus root-level skills/, commands/, agents/, hooks/, mcp/, scripts/.
+- Plugin: .codebuddy-plugin/plugin.json plus root-level skills/, commands/, agents/, hooks/, mcp/, scripts/.
 - Automation: headless mode, HTTP API, Agent SDK, or channel bridge only where they improve host-native operation.
 Output requirement for every phase:
 Use this format:
@@ -137,13 +137,13 @@ Use this format:
 
 ---
 
-Lazyworkbuddy official surface map
+LazyBuddy official surface map
 
 Use this table as the planning baseline.
 
-LazyCodex behavior	Lazyworkbuddy host-native implementation
-Deep init / repo understanding	/init-deep command + init-deep Skill + context indexer agent + .lazyworkbuddy/context/ evidence
-AGENTS.md project memory	workbuddy.md, .workbuddy/workbuddy.md, .workbuddy/rules/lazyworkbuddy.md, optional compatibility AGENTS.md
+LazyCodex behavior	LazyBuddy host-native implementation
+Deep init / repo understanding	/init-deep command + init-deep Skill + context indexer agent + .lazybuddy/context/ evidence
+AGENTS.md project memory	workbuddy.md, .workbuddy/workbuddy.md, .workbuddy/rules/lazybuddy.md, optional compatibility AGENTS.md
 Planning workflow	workbuddy Plan Mode plus /ulw-plan command and planner subagent
 Autonomous work start	/start-work command + coordinator agent + bounded task executor
 Long-running loop	/ulw-loop command + durable run ledger + hooks + verification/repair loop
@@ -155,9 +155,9 @@ Subagents / role prompts	workbuddy project/plugin agents with YAML frontmatter a
 Skills	workbuddy Skills under plugin skills/ and project .workbuddy/skills/
 Commands	workbuddy slash command Markdown files under plugin commands/ and project .workbuddy/commands/
 Hooks	SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, PreCompact, Stop, StopFailure, TaskCreated, TaskCompleted, SubagentStart, SubagentStop
-MCP tools	Plugin .mcp.json with Lazyworkbuddy run-ledger, source-map, verification, git, test, and dashboard tools
+MCP tools	Plugin .mcp.json with LazyBuddy run-ledger, source-map, verification, git, test, and dashboard tools
 Parallel agents	workbuddy subagents and optional team/task mechanisms; use read-only parallelism and coordinator-only merges
-Durable progress	.lazyworkbuddy/runs/<run_id>/state.json, events.jsonl, checkpoints/, agent_outputs/
+Durable progress	.lazybuddy/runs/<run_id>/state.json, events.jsonl, checkpoints/, agent_outputs/
 Remote/async UX	Headless mode, HTTP API, Channels, or persistent session bridge
 Visual status	Optional MCP Apps dashboard for run state, parity ledger, approvals, and verification
 Code intelligence	Optional LSP plugin config and project test discovery
@@ -170,7 +170,7 @@ Version	Purpose	Main output
 v0.0	Discover LazyCodex contract and workbuddy host surface	Method map + capability map
 v0.1	Architecture and implementation design	Versioned execution plan
 v0.2	Project memory, rules, command constitution	.workbuddy/ foundation
-v0.3	Plugin scaffold	Installable Lazyworkbuddy plugin shell
+v0.3	Plugin scaffold	Installable LazyBuddy plugin shell
 v0.4	Skills and slash commands	LazyCodex-style workbuddy workflows
 v0.5	Subagents and orchestration	Planner, implementer, verifier, reviewer, librarian, orchestrator
 v0.6	Hooks, permissions, and safety gates	Deterministic lifecycle enforcement
@@ -179,7 +179,7 @@ v0.8	MCP/tool layer and optional dashboard	Tools, prompts, dashboard, source cap
 v0.9	Verifier/reviewer/librarian hardening	Quality gates and memory updates
 v0.10	Migration planner and host adapters	Reusable cross-platform adapter system
 v0.11	Dogfood run	End-to-end self-test
-v0.12	Final release and parity report	Usable Lazyworkbuddy package
+v0.12	Final release and parity report	Usable LazyBuddy package
 
 ---
 

@@ -1,8 +1,8 @@
-# LazyWorkBuddy
+# LazyBuddy
 
 > **A practice project:** realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO harness) on the [WorkBuddy](https://www.codebuddy.cn) platform. No longer maintained; open-sourced for learning.
 
-LazyWorkBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to WorkBuddy. It runs in **WorkBuddy** or via the **CodeBuddy CLI**.
+LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **WorkBuddy**, **CodeBuddy IDE**, and **CodeBuddy CLI**.
 
 > **Setup?** See [AGENTS.md](AGENTS.md) (the setup guide). This README is about **how to use** the harness once installed.
 
@@ -52,18 +52,19 @@ Five phases: **Explore → Plan → Implement → Verify → Manually QA**. Each
 
 Practice repo; contributions welcome as learning exercises.
 
-1. **Structure:** `lazyworkbuddy-plugin/` is the plugin (skills/, commands/, agents/, hooks/, mcp/, scripts/). State lives in `.lazyworkbuddy/runs/<run_id>/`.
+1. **Structure:** `lazybuddy-plugin/` is the plugin (skills/, commands/, agents/, hooks/, mcp/, scripts/). State lives in `.lazybuddy/runs/<run_id>/`.
 2. **Naming discipline:** all skills & commands are `lazy-` prefixed. Keep new ones prefixed.
-3. **Test/verify:** `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh` (50 PASS expected) + `lazyworkbuddy-smoke-test.sh` (105 PASS). Update the doctor's `EXPECTED_COMMANDS`/`EXPECTED_SKILLS` if you add/rename.
+3. **Test/verify:** `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` (50 PASS expected) + `lazybuddy-smoke-test.sh` (105 PASS). Update the doctor's `EXPECTED_COMMANDS`/`EXPECTED_SKILLS` if you add/rename.
 4. **Hooks are binding:** test with doctor + smoke after any hook change.
 5. **Commit:** conventional, atomic, stage only files you changed, no `--no-verify`.
 
 ## Repository structure
 
 ```
-lazyworkbuddy/
-├── lazyworkbuddy-plugin/     # installable WorkBuddy plugin
-│   ├── .workbuddy-plugin/    #   manifest (plugin.json)
+lazybuddy/
+├── .codebuddy-plugin/    # CodeBuddy marketplace entry
+├── lazybuddy-plugin/     # installable CodeBuddy plugin; skills also work in WorkBuddy
+│   ├── .codebuddy-plugin/    #   manifest (plugin.json)
 │   ├── skills/               #   14 Skills (lazy-*)
 │   ├── agents/               #   13 agent role definitions
 │   ├── commands/             #   15 slash commands (lazy-*)
@@ -73,7 +74,7 @@ lazyworkbuddy/
 │   ├── templates/            #   AGENTS.md (consumer setup guide, generated on install)
 │   └── .mcp.json             #   MCP server config (auto-loaded by WorkBuddy)
 ├── docs/                     # user-facing: architecture, protocols, templates, plan/, prompts/
-├── lazyworkbuddy-evaluation.md
+├── lazybuddy-evaluation.md
 ├── AGENTS.md                 # setup guide
 ├── README.md                 # this file (how to use)
 ├── LICENSE                   # MIT
@@ -82,7 +83,7 @@ lazyworkbuddy/
 
 ## Related
 
-- **[LazyTrae](https://github.com/elvinzhao10/Trae)** — the sibling: the same harness on Trae. LazyWorkBuddy gates via host hooks; LazyTrae gates via CLI (Trae hooks can't block).
+- **[LazyTrae](https://github.com/elvinzhao10/Trae)** — the sibling: the same harness on Trae. LazyBuddy gates via host hooks; LazyTrae gates via CLI (Trae hooks can't block).
 
 ## License
 

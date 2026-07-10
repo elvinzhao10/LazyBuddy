@@ -17,10 +17,10 @@
 
 ## Verification
 
-- [ ] `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-plugin-doctor.sh` passes
-- [ ] `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-smoke-test.sh` passes
-- [ ] `bash lazyworkbuddy-plugin/scripts/lazyworkbuddy-verify.sh` passes
-- [ ] No secrets introduced (verified by `lazyworkbuddy-security-check.sh`)
+- [ ] `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` passes
+- [ ] `bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh` passes
+- [ ] `bash lazybuddy-plugin/scripts/lazybuddy-verify.sh` passes
+- [ ] No secrets introduced (verified by `lazybuddy-security-check.sh`)
 - [ ] Known gaps updated if parity changed
 - [ ] CHANGELOG updated
 

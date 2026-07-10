@@ -16,7 +16,7 @@ Architectural blueprint for plugin packaging, directory layout, manifest, and li
 | `scripts` | object | NO | Paths to doctor/install/uninstall |
 | `min_host_version` | string | NO | Minimum host version |
 
-Example: Lazyworkbuddy `manifest.json`: `"name":"lazyworkbuddy-plugin"`, `"version":"0.10.0"`, skills: init-deep, start-work, auto-work, migration-planner, etc.
+Example: LazyBuddy `manifest.json`: `"name":"lazybuddy-plugin"`, `"version":"0.10.0"`, skills: init-deep, start-work, auto-work, migration-planner, etc.
 
 ## Layout & Components
 
@@ -31,14 +31,14 @@ Layout: `[PLUGIN_ROOT]/{manifest.json, skills/, agents/, hooks/, mcp/, scripts/,
 | MCP | .mcp.json | [N] | stdio or HTTP transport |
 | Scripts | bash/Python/Node | [N] | Doctor, install, uninstall, migration |
 
-Example: Lazyworkbuddy — 20 skills, 15 agents, 8 hooks, 47-check doctor script.
+Example: LazyBuddy — 20 skills, 15 agents, 8 hooks, 47-check doctor script.
 
 ## Install / Uninstall
 
 - **Install:** [STEP_1] → [STEP_2] → verify: `[DOCTOR]` → expect `[RESULT]`
 - **Uninstall:** [STEP_1] → verify: [CHECK]
 
-Example: Clone `lazyworkbuddy-plugin/` → auto-discovery via manifest.json → `bash scripts/lazyworkbuddy-plugin-doctor.sh` → `47/47 PASS`. Uninstall: remove plugin dir + optional `.lazyworkbuddy/` state dirs.
+Example: Clone `lazybuddy-plugin/` → auto-discovery via manifest.json → `bash scripts/lazybuddy-plugin-doctor.sh` → `47/47 PASS`. Uninstall: remove plugin dir + optional `.lazybuddy/` state dirs.
 
 ## Status
 
