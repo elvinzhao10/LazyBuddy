@@ -114,6 +114,17 @@ Write to `.lazybuddy/context/`:
 - Trim to size limits
 - Verify telegraphic style
 
+### Phase 6: Create the consumer compatibility pointer
+
+After generating or updating `workbuddy.md`, explicitly invoke the consumer helper once:
+
+```bash
+CWD="$PWD" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" \
+  bash "$PLUGIN_ROOT/scripts/ensure-consumer-agents.sh"
+```
+
+The helper creates `AGENTS.md` only when it is absent and reports `AGENTS_STATUS=created`; it preserves an existing regular `AGENTS.md` byte-for-byte and reports `AGENTS_STATUS=preserved`. Do not merge, overwrite, or manually edit an existing `AGENTS.md`. Include the observed created/preserved status in the completion report.
+
 ## Expected Output Artifacts
 
 - `workbuddy.md` at root (50-150 lines, quality-gate passing)
@@ -128,6 +139,7 @@ Write to `.lazybuddy/context/`:
 2. No generic filler content (tested by checking for common phrases)
 3. Hierarchy is correct (child does not repeat parent)
 4. `.lazybuddy/context/` files exist and are parseable
+5. Consumer helper completed after `workbuddy.md` generation, with its created/preserved result recorded
 
 ## Failure Behavior
 
@@ -147,6 +159,7 @@ Files:
 Dirs Analyzed: {N}
 workbuddy.md Created: {N}
 workbuddy.md Updated: {N}
+Consumer AGENTS.md: {created | preserved}
 Hierarchy:
   ./workbuddy.md
   └── src/.../workbuddy.md

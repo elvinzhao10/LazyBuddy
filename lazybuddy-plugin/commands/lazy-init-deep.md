@@ -37,6 +37,12 @@ Generate hierarchical project memory. Scores directories by complexity, produces
   [ -n "$PLUGIN_ROOT" ] || { echo "LazyBuddy plugin root is unavailable; reopen the copied repository or install the plugin." >&2; exit 1; }
   bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
   ```
+- Consumer compatibility pointer. After generating or updating `workbuddy.md`, explicitly run:
+  ```bash
+  CWD="$PWD" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" \
+    bash "$PLUGIN_ROOT/scripts/ensure-consumer-agents.sh"
+  ```
+  Record whether the helper reports `AGENTS_STATUS=created` or `AGENTS_STATUS=preserved`. It never merges or overwrites an existing `AGENTS.md`.
 
 ## Success Criteria
 
@@ -45,6 +51,7 @@ Generate hierarchical project memory. Scores directories by complexity, produces
 3. Hierarchy is correct (child does not repeat parent)
 4. `.lazybuddy/context/` files exist and are parseable
 5. Plugin load check passes before discovery and is included in the completion report. With no `CODEBUDDY_PLUGIN_ROOT`, run this command from the copied repository root or the plugin root; otherwise it fails clearly.
+6. The post-`workbuddy.md` consumer helper reports `AGENTS_STATUS=created` or `AGENTS_STATUS=preserved`.
 
 ## Constitution
 
