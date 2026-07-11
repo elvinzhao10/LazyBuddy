@@ -107,6 +107,22 @@ assert "lazycodex" in policy_source
 assert "omo" in policy_source
 PY
 
+expect_status documentation-boundary-inventory 0 python3 - "$PROJECT_ROOT" <<'PY'
+from pathlib import Path
+import sys
+
+project_root = Path(sys.argv[1])
+readme = (project_root / "README.md").read_text(encoding="utf-8")
+docs_index = (project_root / "docs" / "README.md").read_text(encoding="utf-8")
+
+assert "current operational references; plan/ and prompts/ are historical records" in readme
+assert "[Command index](lazybuddy-command-index.md)" in docs_index
+assert "[Hook inventory](lazybuddy-hooks.md)" in docs_index
+assert "[State ledger design](lazybuddy-state-ledger-design.md)" in docs_index
+assert "`plan/` and `prompts/` contain historical versioned execution records." in docs_index
+assert "The remaining files in this directory" not in docs_index
+PY
+
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"
 expect_status invalid-workbuddy-manifest 1 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
 expect_contains invalid-workbuddy-manifest '^FAIL WorkBuddy manifest: invalid JSON'

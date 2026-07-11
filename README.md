@@ -101,7 +101,7 @@ lazybuddy/
 │   ├── scripts/              #   state/loop/verify/doctor scripts
 │   ├── templates/            #   consumer AGENTS.md setup-guide template
 │   └── .mcp.json             #   six MCP declarations; host connection is verified separately
-├── docs/                     # user-facing: architecture, protocols, templates, plan/, prompts/
+├── docs/                     # current operational references; plan/ and prompts/ are historical records
 ├── lazybuddy-evaluation.md
 ├── AGENTS.md                 # setup guide
 ├── README.md                 # this file (how to use)
