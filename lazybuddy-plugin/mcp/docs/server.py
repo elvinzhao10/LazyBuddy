@@ -2,8 +2,7 @@
 """docs MCP server — WorkBuddy-native context7 substitute.
 
 Fetches just-in-time library documentation from package registries (npm, pypi)
-via curl. Replaces LazyCodex's context7 MCP (an external HTTP doc service). This
-is a lighter substitute: resolve a library name -> fetch its README/description.
+via curl. This is a lightweight resolver: resolve a library name -> fetch its README/description.
 See docs/lazybuddy-known-gaps.md G-003.
 
 For free-form web search, the agent should use its native WebSearch/WebFetch

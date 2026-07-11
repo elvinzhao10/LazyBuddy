@@ -2,9 +2,8 @@
 """code-intel MCP server — WorkBuddy-native LSP substitute.
 
 Provides diagnostics (runs the project's real linter/typechecker) plus heuristic
-symbol tools (find_references, goto_definition, symbols) via grep. Replaces
-LazyCodex's lsp MCP (a real LSP daemon) — this is a lighter, tooling-driven
-substitute. See docs/lazybuddy-known-gaps.md G-003.
+symbol tools (find_references, goto_definition, symbols) via grep. This is a
+lighter, tooling-driven substitute. See docs/lazybuddy-known-gaps.md G-003.
 
 NOT a real LSP: no go-to-definition via language server, no workspace rename.
 diagnostics runs actual linters; symbol ops are grep heuristics.

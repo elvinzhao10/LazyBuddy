@@ -2,8 +2,7 @@
 """context-graph MCP server — WorkBuddy-native codegraph substitute.
 
 Provides blast-radius / dependency / symbol analysis via grep (heuristic, not a
-full call graph). Replaces LazyCodex's codegraph MCP (which wraps an external
-binary). See docs/lazybuddy-known-gaps.md G-003.
+full call graph). See docs/lazybuddy-known-gaps.md G-003.
 
 Single-shot JSON-RPC 2.0 over stdio (same pattern as run-ledger).
 Tools: blast_radius, file_deps, symbol_search, symbol_refs, repo_overview.

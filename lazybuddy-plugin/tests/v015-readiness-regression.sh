@@ -84,6 +84,29 @@ assert not os.path.exists(os.path.join(root, "mcp", "parity"))
 assert not os.path.exists(os.path.join(root, "mcp", "source-map"))
 PY
 
+expect_status operational-mcp-reference-inventory 0 python3 - "$INSTALLED_PLUGIN" "$PROJECT_ROOT" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+project_root = Path(sys.argv[2])
+operational_sources = (
+    "mcp/code-intel/server.py",
+    "mcp/context-graph/server.py",
+    "mcp/docs/server.py",
+)
+for relative_path in operational_sources:
+    source = (root / relative_path).read_text(encoding="utf-8").lower()
+    assert "lazycodex" not in source, relative_path
+    assert "omo" not in source, relative_path
+
+# NOTICE is legal attribution and the checker intentionally keeps policy deny-list patterns.
+assert "lazycodex" in (project_root / "NOTICE").read_text(encoding="utf-8").lower()
+policy_source = (root / "scripts/lazybuddy-docs-check.sh").read_text(encoding="utf-8").lower()
+assert "lazycodex" in policy_source
+assert "omo" in policy_source
+PY
+
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"
 expect_status invalid-workbuddy-manifest 1 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
 expect_contains invalid-workbuddy-manifest '^FAIL WorkBuddy manifest: invalid JSON'
