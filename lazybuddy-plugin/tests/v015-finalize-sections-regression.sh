@@ -48,11 +48,11 @@ PY
 
 make_run notes-only
 printf '%s\n' '## Notes' '- [ ] informational follow-up' > "$TMP/.lazybuddy/runs/notes-only/plan.md"
-if ! notes_output=$(CWD="$TMP" bash "$FINALIZER" notes-only 2>&1); then
-    fail "Notes-only plan was blocked: $notes_output"
+if CWD="$TMP" bash "$FINALIZER" notes-only >"$TMP/notes.out" 2>&1; then
+    fail 'Notes-only plan was accepted'
 fi
-test "$notes_output" = 'RUN COMPLETE: notes-only' || fail 'Notes-only plan did not complete'
-assert_status notes-only complete
+grep -q 'plan.md has no recognized sections (expected TODOs or Final Verification Wave)' "$TMP/notes.out" || fail 'Notes-only plan did not report an unsupported-plan error'
+assert_status notes-only created
 
 make_run todos-unchecked
 printf '%s\n' '## TODOs' '- [ ] required task' > "$TMP/.lazybuddy/runs/todos-unchecked/plan.md"

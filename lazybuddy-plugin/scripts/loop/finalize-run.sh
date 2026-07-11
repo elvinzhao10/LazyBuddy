@@ -63,16 +63,20 @@ if os.path.isfile(plan_file):
         reasons.append('plan.md has no level-2 headings (expected TODOs or Final Verification Wave)')
     else:
         in_section = False
+        has_recognized_section = False
         for line in lines:
             stripped = line.strip()
             if stripped.startswith('## '):
                 heading = stripped[3:]
                 in_section = heading in headings_to_count
+                has_recognized_section = has_recognized_section or in_section
                 continue
             if not in_section:
                 continue
             if stripped.startswith('- [ ] '):
                 unchecked.append(stripped[6:60])
+        if not has_recognized_section:
+            reasons.append('plan.md has no recognized sections (expected TODOs or Final Verification Wave)')
     if unchecked:
         reasons.append(f"plan.md has {len(unchecked)} unchecked checkbox(es): {'; '.join(unchecked)}")
 
