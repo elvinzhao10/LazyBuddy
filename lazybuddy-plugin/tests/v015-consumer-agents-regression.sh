@@ -5,7 +5,7 @@ PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HELPER="$PLUGIN_ROOT/scripts/ensure-consumer-agents.sh"
 TEMPLATE="$PLUGIN_ROOT/templates/AGENTS.md"
 SESSION_START="$PLUGIN_ROOT/scripts/hooks/session-start.sh"
-TMP="$(mktemp -d)"
+TMP="$(CDPATH= cd -P -- "$(mktemp -d)" && pwd -P)"
 
 cleanup() {
     rm -rf "$TMP"
@@ -59,11 +59,26 @@ ln -s "$TMP/real-root" "$TMP/root-link"
 expect_rejected 'symlinked project root' env CWD="$TMP/root-link" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$HELPER"
 test ! -e "$TMP/real-root/AGENTS.md" || fail 'symlinked project root received an AGENTS.md'
 
+mkdir -p "$TMP/outside-cwd/project"
+ln -s "$TMP/outside-cwd" "$TMP/linked-parent"
+expect_rejected 'CWD with symlinked ancestor' env CWD="$TMP/linked-parent/project" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$HELPER"
+test ! -e "$TMP/outside-cwd/project/AGENTS.md" || fail 'CWD symlinked ancestor wrote an outside AGENTS.md'
+
+mkdir -p "$TMP/outside-plugin/plugin-root/templates" "$TMP/plugin-root-project"
+cp "$TEMPLATE" "$TMP/outside-plugin/plugin-root/templates/AGENTS.md"
+ln -s "$TMP/outside-plugin" "$TMP/linked-plugin-parent"
+expect_rejected 'plugin root with symlinked ancestor' env CWD="$TMP/plugin-root-project" CODEBUDDY_PLUGIN_ROOT="$TMP/linked-plugin-parent/plugin-root" bash "$HELPER"
+test ! -e "$TMP/plugin-root-project/AGENTS.md" || fail 'plugin root symlinked ancestor created an AGENTS.md'
+
 mkdir -p "$TMP/session"
 printf 'session-owned instructions\n' > "$TMP/session/AGENTS.md"
 cp "$TMP/session/AGENTS.md" "$TMP/session-before"
 printf '{"cwd":"%s"}\n' "$TMP/session" | CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$SESSION_START" >"$TMP/session-output"
 cmp "$TMP/session-before" "$TMP/session/AGENTS.md" || fail 'SessionStart changed AGENTS.md'
+
+mkdir -p "$TMP/session-absent"
+printf '{"cwd":"%s"}\n' "$TMP/session-absent" | CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$SESSION_START" >"$TMP/session-absent-output"
+test ! -e "$TMP/session-absent/AGENTS.md" || fail 'SessionStart created an AGENTS.md'
 
 expect_rejected 'missing CWD' env -u CWD CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$HELPER"
 expect_rejected 'missing plugin root' env -u CODEBUDDY_PLUGIN_ROOT CWD="$TMP/absent" bash "$HELPER"

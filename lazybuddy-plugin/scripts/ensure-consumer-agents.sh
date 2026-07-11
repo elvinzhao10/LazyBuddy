@@ -6,12 +6,62 @@ fail() {
     exit 1
 }
 
+reject_symlinked_path_components() {
+    local label="$1"
+    local path="$2"
+    local remaining
+    local prefix
+    local component
+    local candidate
+
+    case "$path" in
+        /*)
+            prefix=/
+            remaining="${path#/}"
+            ;;
+        *)
+            prefix="$(CDPATH= cd -P -- . && pwd -P)" || fail "$label is unavailable"
+            remaining="$path"
+            ;;
+    esac
+
+    while [ -n "$remaining" ]; do
+        component="${remaining%%/*}"
+        if [ "$component" = "$remaining" ]; then
+            remaining=
+        else
+            remaining="${remaining#*/}"
+        fi
+
+        [ -n "$component" ] || continue
+        case "$component" in
+            .)
+                continue
+                ;;
+            ..)
+                prefix="$prefix/.."
+                continue
+                ;;
+        esac
+
+        if [ "$prefix" = / ]; then
+            candidate="/$component"
+        else
+            candidate="$prefix/$component"
+        fi
+
+        [ ! -L "$candidate" ] || fail "$label path must not be symlinked"
+        prefix="$candidate"
+    done
+}
+
 resolve_directory() {
     local label="$1"
     local path="$2"
     local physical_path
 
     [ -n "$path" ] || fail "$label must be set"
+    reject_symlinked_path_components "$label" "$path"
     [ -d "$path" ] || fail "$label is unavailable"
     [ ! -L "$path" ] || fail "$label must not be a symlink"
     physical_path="$(CDPATH= cd -P -- "$path" && pwd -P)" || fail "$label is unavailable"
