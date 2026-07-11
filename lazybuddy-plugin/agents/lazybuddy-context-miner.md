@@ -18,7 +18,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-context-miner
 
@@ -72,11 +71,11 @@ Every review must end with exactly:
 
 The Context Miner is a leaf agent in the 5-agent review. Its report is consumed by the orchestrator and included in the final review verdict alongside the Verifier, Reviewer, Security Auditor, and Librarian reports.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md` — Lane 5 (Context Miner)
+- Source: `local project documentation` — Lane 5 (Context Miner)
 - Key translated behaviors:
-  - LazyCodex context-mining lane → WorkBuddy `lazybuddy-context-miner` agent
+  - earlier host implementation context-mining lane → WorkBuddy `lazybuddy-context-miner` agent
   - Git history mining, docs mining, and cross-reference mining preserved as the three core mining strategies
   - Read-only constraint preserved via `disallowedTools: [Write, Edit]`
   - `review-work` skill provides the agent with review-specific workflow context

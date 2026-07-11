@@ -1,8 +1,8 @@
 # LazyBuddy
 
-> **A practice project:** realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO harness) on the [WorkBuddy](https://www.workbuddy.cn) platform. No longer maintained; open-sourced for learning.
+> **A practice project:** a self-contained workflow harness for [WorkBuddy](https://www.workbuddy.cn), CodeBuddy IDE, and CodeBuddy CLI. No longer maintained; open-sourced for learning.
 
-LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **CodeBuddy IDE**, **CodeBuddy CLI**, and **WorkBuddy**. WorkBuddy documents plugin/marketplace capabilities, but this release has not verified a direct copied-repository LazyBuddy installer; its verified no-package-manager path is local skill import plus manual MCP configuration.
+LazyBuddy provides disciplined planning, delegated execution, evidence-gated verification, review, and durable run-state workflows for **CodeBuddy IDE**, **CodeBuddy CLI**, and **WorkBuddy**. WorkBuddy documents plugin/marketplace capabilities, but this release has not verified a direct copied-repository LazyBuddy installer; its verified no-package-manager path is local skill import plus manual MCP configuration.
 
 > **Setup?** See [AGENTS.md](AGENTS.md) (the setup guide). This README is about **how to use** the harness once installed.
 
@@ -14,6 +14,10 @@ LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **CodeBu
 The agent reads `AGENTS.md`, asks which installed host you use (**WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**), then performs the matching safe setup steps. It runs `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` and reports **package readiness**—the shared folders and CodeBuddy declarations are present. That check does not prove that a host loaded the package, emitted SessionStart, or connected an MCP server. A CodeBuddy SessionStart hook repeats that check only after CodeBuddy loads the plugin. For WorkBuddy, use its documented plugin/marketplace UI and verify the loaded session before relying on plugin capabilities; the verified no-package-manager fallback is local skill import with manual MCP connector configuration.
 
 After onboarding, you can delete the copied repository if you only needed the installed setup, or keep it to explore and study how LazyBuddy works.
+
+## Uninstall safely
+
+Remove LazyBuddy through the selected host's plugin, marketplace, or Skills UI. LazyBuddy never guesses or deletes host-managed installation paths. In CodeBuddy IDE or CLI, use the host's plugin removal flow and then remove or disable only the LazyBuddy MCP servers you explicitly registered. In WorkBuddy, use its documented plugin/marketplace removal flow; for the verified local-import fallback, remove the imported `lazybuddy-plugin/skills/` entries through the Skills UI and remove the manual connectors in Settings. Do not delete `.workbuddy-plugin`, `.workbuddy`, MCP metadata, or another host's files to simulate uninstall. Keep the cloned repository until the host confirms removal; it can then be deleted independently.
 
 ## A first task, from request to evidence
 
@@ -67,9 +71,9 @@ All command files are `lazy-` prefixed. In CodeBuddy's installed plugin surface,
 |---|---|---|
 | CodeBuddy skills | 14 | lazy-init-deep, lazy-ulw-plan, lazy-start-work, lazy-ulw-loop, lazy-ultrawork, lazy-review-work, lazy-verifier, lazy-reviewer, lazy-librarian, lazy-migration-planner, lazy-programming, lazy-git-master, lazy-debugging, lazy-remove-ai-slops |
 | CodeBuddy agents | 13 | orchestrator, planner, explorer, implementer, verifier, reviewer, qa-executor, gate-reviewer, librarian, migration-planner, context-indexer, security-auditor, context-miner |
-| CodeBuddy commands | 15 | lazy-init-deep, lazy-ulw-plan, lazy-start-work, lazy-ulw-loop, lazy-ultrawork, lazy-review-work, lazy-verifier, lazy-reviewer, lazy-librarian, lazy-migration-planner, lazy-new-run, lazy-status, lazy-resume, lazy-verify, lazy-parity-report |
+| CodeBuddy commands | 14 current workflows | lazy-init-deep, lazy-ulw-plan, lazy-start-work, lazy-ulw-loop, lazy-ultrawork, lazy-review-work, lazy-verifier, lazy-reviewer, lazy-librarian, lazy-migration-planner, lazy-new-run, lazy-status, lazy-resume, lazy-verify |
 | CodeBuddy hooks | 12 | Stop, SubagentStop, PreToolUse, + 9 lifecycle |
-| CodeBuddy MCP declarations | 8 | run-ledger, parity, verification, source-map, status-dashboard, context-graph, code-intel, docs |
+| CodeBuddy MCP declarations | 6 | run-ledger, verification, status-dashboard, context-graph, code-intel, docs |
 | WorkBuddy | documented plugin/marketplace UI or 14-skill local import | plugin capabilities require session verification; verified local fallback is `lazybuddy-plugin/skills/` plus manual MCP |
 
 ## Developing on this repo (open-source)
@@ -91,18 +95,18 @@ lazybuddy/
 │   ├── .codebuddy-plugin/    #   manifest (plugin.json)
 │   ├── skills/               #   14 Skills (lazy-*)
 │   ├── agents/               #   13 agent role definitions
-│   ├── commands/             #   15 slash commands (lazy-*)
+│   ├── commands/             #   current slash-command workflows (lazy-*)
 │   ├── hooks/                #   12 lifecycle hook scripts + hooks.json
-│   ├── mcp/                  #   8 MCP servers
+│   ├── mcp/                  #   6 MCP servers
 │   ├── scripts/              #   state/loop/verify/doctor scripts
 │   ├── templates/            #   consumer AGENTS.md setup-guide template
-│   └── .mcp.json             #   eight MCP declarations; host connection is verified separately
+│   └── .mcp.json             #   six MCP declarations; host connection is verified separately
 ├── docs/                     # user-facing: architecture, protocols, templates, plan/, prompts/
 ├── lazybuddy-evaluation.md
 ├── AGENTS.md                 # setup guide
 ├── README.md                 # this file (how to use)
 ├── LICENSE                   # MIT
-└── NOTICE                    # omo/lazycodex provenance
+└── NOTICE                    # legal attribution and provenance
 ```
 
 ## Related
@@ -111,13 +115,12 @@ lazybuddy/
 
 ## License
 
-[MIT](LICENSE) — derived from lazycodex/omo, Copyright (c) 2026 Yeongyu Kim. See [NOTICE](NOTICE) (omo is SUL at root; the lazycodex layer used as a local gitignored reference is MIT).
+[MIT](LICENSE) — see [NOTICE](NOTICE) for the scoped legal attribution and provenance record.
 
 ## Disclaimer
 
-Practice project, not production-ready, no longer maintained. For production use, see the [original lazycodex/omo](https://github.com/code-yeongyu/lazycodex).
+Practice project, not production-ready, and no longer maintained.
 
 ## Acknowledgments
 
-- **[Yeongyu Kim](https://github.com/code-yeongyu)** — creator of [lazycodex/OmO](https://github.com/code-yeongyu/lazycodex)
 - **[WorkBuddy](https://www.workbuddy.cn)** — the platform this was built for

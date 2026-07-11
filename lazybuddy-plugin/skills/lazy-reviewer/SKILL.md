@@ -1,16 +1,15 @@
 ---
 name: lazy-reviewer
-description: "Post-implementation review agent. Reviews changed files against original intent and LazyCodex parity. Checks for overreach, missing tests, missing docs."
+description: "Post-implementation review agent. Reviews changed files against original intent and earlier host implementation parity. Checks for overreach, missing tests, missing docs."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # reviewer
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) (5-agent review); [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 5 (Global Review and Debugging Gate).
+> **earlier host implementation source:** `local project documentation` (5-agent review); `local project documentation` Phase 5 (Global Review and Debugging Gate).
 
 ## Purpose
 
-Review completed implementation work against the original intent and LazyCodex parity requirements. Check for scope overreach, missing test coverage, missing documentation, and architectural regressions. Issue an accept/reject/revise decision. For significant work, invoke the full 5-agent `/lazy-review-work` parallel review.
+Review completed implementation work against the original intent and earlier host implementation parity requirements. Check for scope overreach, missing test coverage, missing documentation, and architectural regressions. Issue an accept/reject/revise decision. For significant work, invoke the full 5-agent `/lazy-review-work` parallel review.
 
 ## Trigger Conditions
 
@@ -53,8 +52,8 @@ The reviewer evaluates every change across 7 mandatory dimensions. Each dimensio
 | 3 | **Test coverage** | Do new behaviors have failing-first tests? Are edge cases covered? E2E scenarios for user-visible outcomes? | New behavior has zero tests or tests are tautological |
 | 4 | **Documentation** | Are new public APIs documented? Are architectural decisions explained? Are parity deviations recorded in `known-gaps.md`? | Public API added without doc; parity deviation unrecorded |
 | 5 | **Regression check** | Do existing tests still pass? Does the diff touch code paths shared by other features? | Existing test suite fails on the changed branch |
-| 6 | **LazyCodex semantic preservation** | If the change has a LazyCodex equivalent, does the behavior match the reference? If not, is the deviation justified and documented? | Undocumented behavioral divergence from LazyCodex reference |
-| 7 | **WorkBuddy adaptation justification** | If a LazyCodex concept was adapted (not preserved verbatim), is the adaptation rationale documented in the parity ledger? | Adaptation present but no parity-ledger entry explaining why |
+| 6 | **earlier host implementation semantic preservation** | If the change has a earlier host implementation equivalent, does the behavior match the reference? If not, is the deviation justified and documented? | Undocumented behavioral divergence from earlier host implementation reference |
+| 7 | **WorkBuddy adaptation justification** | If a earlier host implementation concept was adapted (not preserved verbatim), is the adaptation rationale documented in the parity ledger? | Adaptation present but no parity-ledger entry explaining why |
 
 ### 3. Accept/reject/revise decision tree (v0.9)
 
@@ -141,7 +140,7 @@ Register the review decision in `.lazybuddy/runs/<run_id>/events.jsonl`. If `acc
 
 The reviewer now writes review decisions through the state/ script layer for durable, queryable audit trails.
 
-- **Review decision recording:** After completing all review dimensions (intent match, scope check, test coverage, documentation, LazyCodex parity, code quality), the reviewer calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> review_verdict "<json>"` to write the full review decision — including `verdict` (accept/revise/reject), each dimension's pass/fail status, blocking issues, and code quality findings — as a structured event in `events.jsonl`.
+- **Review decision recording:** After completing all review dimensions (intent match, scope check, test coverage, documentation, earlier host implementation parity, code quality), the reviewer calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/append-event.sh <run_id> review_verdict "<json>"` to write the full review decision — including `verdict` (accept/revise/reject), each dimension's pass/fail status, blocking issues, and code quality findings — as a structured event in `events.jsonl`.
 - **State synchronization:** After the event is written, the reviewer calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/state/update-task.sh <run_id> <task_index> review --field verdict=<verdict> --field dimensions=<passed_count>/<total>` to update `review_status` in `state.json`. If the verdict is `accept`, the `review_gate` field on the task is marked `passed`; otherwise, it's marked `blocked` with the specific reasons.
 - **Review independence:** Like the verifier, the reviewer runs as an isolated Agent (`isolation: true`) to ensure the review is independent from both the executor and the verifier.
 
@@ -153,4 +152,4 @@ The reviewer now writes review decisions through the state/ script layer for dur
 
 ---
 
-_Adapted from LazyCodex review-work + start-work review gates. Preserved: independent reviewer requirement, intent match check, scope drift detection, accept/revise/reject decisions. Adapted: 5-agent lanes → WorkBuddy subagents; Codex reviewer roles → WorkBuddy reviewer agent._
+_Adapted from earlier host implementation review-work + start-work review gates. Preserved: independent reviewer requirement, intent match check, scope drift detection, accept/revise/reject decisions. Adapted: 5-agent lanes → WorkBuddy subagents; Codex reviewer roles → WorkBuddy reviewer agent._

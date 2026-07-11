@@ -121,7 +121,7 @@ else:
     print("UNCHECKED marketplace metadata: not packaged with this installed plugin root")
 
 count_files("skills", skills_dir, 14, lambda base, name: name == "SKILL.md" and os.path.basename(base).startswith("lazy-"))
-count_files("commands", os.path.join(root, "commands"), 15, lambda _base, name: name.endswith(".md"))
+count_files("commands", os.path.join(root, "commands"), 14, lambda _base, name: name.endswith(".md"))
 count_files("agents", os.path.join(root, "agents"), 13, lambda _base, name: name.endswith(".md"))
 
 hooks = load_json(os.path.join(root, "hooks", "hooks.json"), "hooks configuration")
@@ -134,7 +134,7 @@ mcp = load_json(os.path.join(root, ".mcp.json"), "MCP configuration")
 if mcp is not None:
     actual = mcp.get("mcpServers")
     count = len(actual) if isinstance(actual, dict) else -1
-    result("PASS" if count == 8 else "FAIL", "MCP servers", f"{count}/8")
+    result("PASS" if count == 6 else "FAIL", "MCP servers", f"{count}/6")
 
 if failed:
     print("PACKAGE_READINESS=failed")

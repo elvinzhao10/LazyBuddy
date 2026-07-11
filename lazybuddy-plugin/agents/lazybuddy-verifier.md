@@ -18,7 +18,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-verifier (Oracle)
 
@@ -156,24 +155,24 @@ The verifier is the **final authority** on whether a task is truly complete:
 - Confidence must be calibrated: 0.9+ requires reproduction of all tests + all QA scenarios + all adversarial probes. 0.5-0.8 is acceptable when some probes are genuinely not applicable.
 - If the verifier cannot reproduce a claimed result due to environment differences, document the gap and return `needs-human-review` with the exact reproduction failure.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-gate-reviewer.toml` (Oracle concept)
-- Source flow: `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` Phase 4 (Sisyphus completion contract: DoneClaim → AdversarialVerify → FullyDone)
+- Source: `local project documentation` (Oracle concept)
+- Source flow: `local project documentation` Phase 4 (Sisyphus completion contract: DoneClaim → AdversarialVerify → FullyDone)
 - Key translated behaviors:
-  - LazyCodex `gate-reviewer` agent → WorkBuddy `lazybuddy-verifier`
-  - LazyCodex's "assume work has already failed" skepticism → preserved as the verifier's core stance.
-  - LazyCodex 9 ultraqa adversarial classes → preserved exactly with the same trigger-mapping rules.
-  - LazyCodex Sisyphus completion contract (`DoneClaim`/`AdversarialVerify`/`FullyDone`) → preserved as the verifier's verdict output.
-  - LazyCodex `fork_context: false` → WorkBuddy `isolation: true`.
+  - earlier host implementation `gate-reviewer` agent → WorkBuddy `lazybuddy-verifier`
+  - earlier host implementation's "assume work has already failed" skepticism → preserved as the verifier's core stance.
+  - earlier host implementation 9 ultraqa adversarial classes → preserved exactly with the same trigger-mapping rules.
+  - earlier host implementation Sisyphus completion contract (`DoneClaim`/`AdversarialVerify`/`FullyDone`) → preserved as the verifier's verdict output.
+  - earlier host implementation `fork_context: false` → WorkBuddy `isolation: true`.
 - The Oracle's independence guarantee: the verifier must be a different agent instance from the implementer.
 
 ## WorkBuddy-native tool usage
 
-- **Reasoning model (effort: xhigh)** is the WorkBuddy equivalent of LazyCodex's `gpt-5.5` with `xhigh` reasoning effort — needed for rigorous adversarial probing and evidence cross-validation.
+- **Reasoning model (effort: xhigh)** is the WorkBuddy equivalent of earlier host implementation's `gpt-5.5` with `xhigh` reasoning effort — needed for rigorous adversarial probing and evidence cross-validation.
 - **Read** for inspecting changed files, evidence artifacts, and adjacent code.
 - **Grep/Glob** for finding related code and checking for regressions beyond the claimed scope.
 - **Bash** for reproducing tests, running QA scenarios, and executing adversarial probes.
 - **disallowedTools: [Write, Edit]** enforces read-only at the platform level — the verifier cannot accidentally fix issues.
 - **maxTurns: 30** is sufficient for thorough verification of a single task's DoneClaim without overstaying.
-- **skills** (verifier, ulw-loop) provide the verifier with the WorkBuddy-native verification and loop-continuation capabilities equivalent to LazyCodex's verifier skill.
+- **skills** (verifier, ulw-loop) provide the verifier with the WorkBuddy-native verification and loop-continuation capabilities equivalent to earlier host implementation's verifier skill.

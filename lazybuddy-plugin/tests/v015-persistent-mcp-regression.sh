@@ -20,7 +20,7 @@ import subprocess
 import sys
 
 plugin, project = sys.argv[1:]
-servers = ["verification", "run-ledger", "source-map", "parity", "status-dashboard", "code-intel", "context-graph", "docs"]
+servers = ["verification", "run-ledger", "status-dashboard", "code-intel", "context-graph", "docs"]
 environment = {
     **os.environ,
     "CODEBUDDY_PLUGIN_ROOT": plugin,
@@ -108,7 +108,6 @@ def assert_project_doc_errors(server, tool_names):
             process.kill()
             process.wait()
 
-assert_project_doc_errors("parity", ["list_methods", "generate_gap_report"])
 assert_project_doc_errors("verification", ["discover_checks"])
 
 print("PASS: persistent shell MCP sessions return one JSON response per request")

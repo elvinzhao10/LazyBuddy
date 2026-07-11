@@ -18,7 +18,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-security-auditor (Security Auditor)
 
@@ -82,15 +81,15 @@ Orchestrator invokes as review-work lane 4: TASK, DIFF, CHANGED_FILES, CONTEXT, 
 - Secrets redacted from report; cross-check against remove-ai-slops to avoid flagging security theater.
 - If no issues found, every checklist item shows PASS with brief justification — never "N/A".
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md` (Agent 4: Security Auditor)
+- Source: `local project documentation` (Agent 4: Security Auditor)
 - Key translations:
-  - LazyCodex `task(subagent_type="oracle", ...)` → standalone agent with `model: reasoning`
+  - earlier host implementation `task(subagent_type="oracle", ...)` → standalone agent with `model: reasoning`
   - 10-item security checklist and severity levels (CRITICAL/HIGH/MEDIUM/LOW) preserved exactly
   - Supplementary designation preserved — security-only scope
   - 5-agent review-work orchestration preserved — lane 4 must PASS with all others
-- **Difference**: LazyCodex Oracles receive file contents in prompt (cannot Read). WorkBuddy auditor reads files directly — richer context, same output contract.
+- **Difference**: earlier host implementation Oracles receive file contents in prompt (cannot Read). WorkBuddy auditor reads files directly — richer context, same output contract.
 
 ## WorkBuddy-native tool usage
 

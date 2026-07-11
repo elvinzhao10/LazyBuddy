@@ -45,7 +45,6 @@ case "$METHOD" in
       {"name":"show_run_status","description":"Show current run status","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}}}},
       {"name":"show_task_graph","description":"Show task dependency graph","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
       {"name":"show_verification_matrix","description":"Show verification gate results","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
-      {"name":"show_parity_coverage","description":"Show parity method coverage counts","inputSchema":{"type":"object","properties":{}}},
       {"name":"show_pending_approvals","description":"Show pending human gates and reviews","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}}}}
     ]}'
     ;;
@@ -74,26 +73,6 @@ PYEOF
     RESULT=$(python3 - "$SF" <<'PYEOF'
 import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); g=[{'name':x.get('name',''),'status':x.get('status',''),'result':x.get('result','')} for x in s.get('verification_gates',[])]; print(json.dumps(g))
-PYEOF
-)
-    reply "$RESULT"
-    ;;
-  show_parity_coverage)
-    F="$CWD/docs/lazybuddy-parity-ledger.md"
-    [ ! -f "$F" ] && { err "parity ledger not found: $F"; continue; }
-    RESULT=$(python3 - "$F" <<'PYEOF'
-import json,sys,re
-with open(sys.argv[1]) as f: lines=f.readlines()
-c={'matched':0,'adapted':0,'skipped':0,'added':0}
-for l in lines:
-    s=l.strip()
-    if s.startswith('|') and '---' not in s:
-        cs=[x.strip().lower() for x in s.split('|')]
-        if not any(h in ''.join(cs[:2]) for h in ('method','status')):
-            for k in c:
-                if k in cs: c[k]+=1
-c['total']=sum(c.values())
-print(json.dumps(c))
 PYEOF
 )
     reply "$RESULT"

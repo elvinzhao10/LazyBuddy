@@ -57,7 +57,11 @@ When the user types `onboard`:
 
 ## MCP servers
 
-The CodeBuddy manifest declares eight servers in `lazybuddy-plugin/.mcp.json`. Package readiness validates that declaration; a new CodeBuddy session or settings view must confirm whether a server is loaded and connected. WorkBuddy supports MCP through its documented UI, but this release's verified local path is manual connector configuration; do not treat `.mcp.json` or `.workbuddy-plugin/plugin.json` as an executable copied-repository installer.
+The CodeBuddy manifest declares six servers in `lazybuddy-plugin/.mcp.json`. Package readiness validates that declaration; a new CodeBuddy session or settings view must confirm whether a server is loaded and connected. WorkBuddy supports MCP through its documented UI, but this release's verified local path is manual connector configuration; do not treat `.mcp.json` or `.workbuddy-plugin/plugin.json` as an executable copied-repository installer.
+
+## Uninstall
+
+Use the host's own plugin removal flow for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. LazyBuddy never guesses, searches for, or deletes host-managed plugin paths. After removal, delete or disable only the LazyBuddy MCP connectors you personally added in that host's MCP settings. For the verified WorkBuddy local-import fallback, remove the imported `lazybuddy-plugin/skills/` entries through the Skills UI and remove the manually added connectors through Settings; do not delete `.workbuddy-plugin`, `.workbuddy`, or another host's metadata as a substitute. Keep the copied repository until the host confirms removal, then delete that copy only if you no longer need it.
 
 ## Verify CodeBuddy installation
 
@@ -75,9 +79,9 @@ bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh    # expect: 0 FAIL
 
 ## What gets installed
 
-The CodeBuddy package contains 14 `lazy-` skills, 13 agents, 12 hook-event declarations, and 8 MCP declarations. WorkBuddy may load those through its documented plugin/marketplace UI only after a live-session check; the verified local fallback imports the 14 skills and configures MCP manually. All skills/commands are `lazy-` prefixed. Host enforcement applies only after the relevant host confirms the package load.
+The CodeBuddy package contains 14 `lazy-` skills, 14 `lazy-` commands, 13 agents, 12 hook-event declarations, and 6 MCP declarations. WorkBuddy may load those through its documented plugin/marketplace UI only after a live-session check; the verified local fallback imports the 14 skills and configures MCP manually. Host enforcement applies only after the relevant host confirms the package load.
 
 ## Reference
 
 - How to use the harness: [LazyBuddy README](https://github.com/elvinzhao10/LazyBuddy#readme)
-- Parity assessment: [LazyBuddy evaluation](https://github.com/elvinzhao10/LazyBuddy/blob/main/lazybuddy-evaluation.md)
+- Historical records: [documentation index](https://github.com/elvinzhao10/LazyBuddy/tree/main/docs)

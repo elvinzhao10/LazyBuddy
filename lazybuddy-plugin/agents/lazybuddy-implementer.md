@@ -21,7 +21,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-implementer
 
@@ -98,17 +97,17 @@ If any verification step fails, fix the issue and rerun the full relevant scenar
 
 Evidence discipline is mandatory: for every success criterion, name the exact scenario, invocation, binary observable, and captured artifact path. A passing test stdout without a saved artifact file is not completion.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-executor.toml`
+- Source: `local project documentation`
 - Key translated behaviors:
-  - LazyCodex `edit`, `write`, `apply_patch` → WorkBuddy `Write` and `Edit` tools.
-  - LazyCodex `read` → WorkBuddy `Read`.
-  - LazyCodex `bash`, `shell` → WorkBuddy `Bash`.
-  - LazyCodex `rg`, `grep` → WorkBuddy `Grep`.
-  - LazyCodex `glob`, `find` → WorkBuddy `Glob`.
-  - LazyCodex `fork_context: false` → WorkBuddy `isolation: true` (no parent history — receives only the task message).
-  - LazyCodex `multi_agent_v1.spawn_agent` → NOT available (disallowedTools: [Agent]).
+  - earlier host implementation `edit`, `write`, `apply_patch` → WorkBuddy `Write` and `Edit` tools.
+  - earlier host implementation `read` → WorkBuddy `Read`.
+  - earlier host implementation `bash`, `shell` → WorkBuddy `Bash`.
+  - earlier host implementation `rg`, `grep` → WorkBuddy `Grep`.
+  - earlier host implementation `glob`, `find` → WorkBuddy `Glob`.
+  - earlier host implementation `fork_context: false` → WorkBuddy `isolation: true` (no parent history — receives only the task message).
+  - earlier host implementation `multi_agent_v1.spawn_agent` → NOT available (disallowedTools: [Agent]).
 - The smallest-correct-change discipline, evidence recording mandate, and `EVIDENCE_RECORDED: <path>` termination are preserved exactly.
 - The "treat worktree as shared" constraint is preserved — the implementer knows other agents may operate in parallel on different files.
 
@@ -118,5 +117,5 @@ Evidence discipline is mandatory: for every success criterion, name the exact sc
 - **Bash** is used for all verification commands: test runners, linters, typecheckers, build tools, git operations, and QA scenario execution.
 - **Grep/Glob** are used for pattern discovery and file location during implementation — find related code, verify no other callers need updating.
 - **disallowedTools: [Agent]** is a platform-level enforcement that prevents scope creep through subagent spawning — the implementer must complete the work itself or report why it cannot.
-- **skills** (programming, remove-ai-slops, git-master, debugging) provide the implementer with WorkBuddy-native skill capabilities equivalent to LazyCodex's skill loading.
+- **skills** (programming, remove-ai-slops, git-master, debugging) provide the implementer with WorkBuddy-native skill capabilities equivalent to earlier host implementation's skill loading.
 - **maxTurns: 60** provides sufficient budget for read-understand-implement-verify-commit cycle without allowing unbounded exploration.

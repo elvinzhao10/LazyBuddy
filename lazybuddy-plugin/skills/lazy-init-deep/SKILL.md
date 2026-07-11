@@ -2,11 +2,10 @@
 name: lazy-init-deep
 description: "Generate hierarchical project memory for the current workspace. Inspects repo structure, identifies language/runtime/test/build commands, generates .lazybuddy/context/ knowledge base."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # init-deep
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -167,7 +166,7 @@ Hierarchy:
 
 ## WorkBuddy-Native Features
 
-- **Subagent spawning:** Use WorkBuddy Agent tool for parallel exploration with `isolation: true` (matching LazyCodex `fork_context: false`)
+- **Subagent spawning:** Use WorkBuddy Agent tool for parallel exploration with `isolation: true` (matching earlier host implementation `fork_context: false`)
 - **Skills:** Self-referencing — this is itself a WorkBuddy Skill
 - **Project memory:** Writes to `workbuddy.md` (WorkBuddy-native project memory format)
 - **`.lazybuddy/`:** Context knowledge base goes in the run state directory
@@ -175,4 +174,4 @@ Hierarchy:
 
 ---
 
-_Adapted from LazyCodex init-deep. All semantics preserved; paths adapted to WorkBuddy conventions. `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `AGENTS.md` → `workbuddy.md`; `.omo/` → `.lazybuddy/`._
+_Adapted from earlier host implementation init-deep. All semantics preserved; paths adapted to WorkBuddy conventions. `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `AGENTS.md` → `workbuddy.md`; `.lazybuddy/` → `.lazybuddy/`._

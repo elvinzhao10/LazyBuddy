@@ -6,21 +6,9 @@
       "cwd": ".",
       "required": false
     },
-    "parity": {
-      "command": "bash",
-      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/parity/server.sh"],
-      "cwd": ".",
-      "required": false
-    },
     "verification": {
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/verification/server.sh"],
-      "cwd": ".",
-      "required": false
-    },
-    "source-map": {
-      "command": "bash",
-      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/source-map/server.sh"],
       "cwd": ".",
       "required": false
     },

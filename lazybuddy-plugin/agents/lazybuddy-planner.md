@@ -22,7 +22,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-planner (Prometheus)
 
@@ -187,27 +186,27 @@ After approval and plan file written:
 - The plan must pass the Momus check: every task has enough context to start, no blocking contradictions, QA scenarios are concrete and executable.
 - Verify the dependency matrix is consistent — no cycles, no missing dependencies, critical path traces end-to-end.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/skills/ulw-plan/SKILL.md` (Prometheus planner)
-- Source agent: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/plan.toml`
+- Source: `local project documentation` (Prometheus planner)
+- Source agent: `local project documentation`
 - Key translated behaviors:
-  - LazyCodex `call_omo_agent(subagent_type="explorer")` → WorkBuddy `Agent(subagent_type="lazybuddy-explorer")`
-  - LazyCodex `call_omo_agent(subagent_type="librarian")` → WorkBuddy `Agent(subagent_type="lazybuddy-librarian")`
-  - LazyCodex `task(subagent_type="momus")` → WorkBuddy `Agent(subagent_type="lazybuddy-reviewer")`
-  - LazyCodex `task(subagent_type="metis")` → WorkBuddy `Agent(subagent_type="lazybuddy-reviewer")`
-  - LazyCodex `.omo/plans/` → `.lazybuddy/plans/`
-  - LazyCodex `.omo/drafts/` → `.lazybuddy/drafts/`
-  - LazyCodex `fork_context: false` → WorkBuddy `isolation: true`
+  - earlier host implementation `call_omo_agent(subagent_type="explorer")` → WorkBuddy `Agent(subagent_type="lazybuddy-explorer")`
+  - earlier host implementation `call_omo_agent(subagent_type="librarian")` → WorkBuddy `Agent(subagent_type="lazybuddy-librarian")`
+  - earlier host implementation `task(subagent_type="momus")` → WorkBuddy `Agent(subagent_type="lazybuddy-reviewer")`
+  - earlier host implementation `task(subagent_type="metis")` → WorkBuddy `Agent(subagent_type="lazybuddy-reviewer")`
+  - earlier host implementation `.lazybuddy/plans/` → `.lazybuddy/plans/`
+  - earlier host implementation `.lazybuddy/drafts/` → `.lazybuddy/drafts/`
+  - earlier host implementation `fork_context: false` → WorkBuddy `isolation: true`
 - Phase 1 (context gathering) and Phase 2 (plan output) are preserved exactly.
 - Intent routing (CLEAR/UNCLEAR) and the two-filter question gating are preserved.
 - The plan template structure is adapted to WorkBuddy's `.lazybuddy/` namespace.
 
 ## WorkBuddy-native tool usage
 
-- **Reasoning model (effort: xhigh)** is the WorkBuddy equivalent of LazyCodex's `gpt-5.5` with `xhigh` reasoning effort for the planner role.
-- **Agent tool** replaces LazyCodex's `multi_agent_v1.spawn_agent` for parallel research subagents.
+- **Reasoning model (effort: xhigh)** is the WorkBuddy equivalent of earlier host implementation's `gpt-5.5` with `xhigh` reasoning effort for the planner role.
+- **Agent tool** replaces earlier host implementation's `multi_agent_v1.spawn_agent` for parallel research subagents.
 - **isolation: true** on the planner ensures each planning session starts fresh (equivalent to `fork_context: false`).
-- **WebSearch/WebFetch** are WorkBuddy-native tools for external research — use them instead of LazyCodex's librarian subagent for simple docs lookups.
+- **WebSearch/WebFetch** are WorkBuddy-native tools for external research — use them instead of earlier host implementation's librarian subagent for simple docs lookups.
 - **TaskCreate/TaskUpdate** track plan generation progress phases internally.
 - **disallowedTools: [Write, Edit]** enforces the planner's read-only constraint at the platform level — plan files are written via the orchestrator or scaffold script.

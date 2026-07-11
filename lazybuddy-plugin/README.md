@@ -1,6 +1,6 @@
 # LazyBuddy Plugin
 
-> LazyCodex agent harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
+> Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
 
 ## Quick Start
 
@@ -11,11 +11,11 @@
 3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or skill and any required MCP connection. In WorkBuddy, verify a plugin/marketplace session before using its plugin capabilities, or confirm an imported skill and manually configured connector on the no-package-manager path.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.
 
-**Status:** v0.15.0-alpha.2. See the repository [README](../README.md) for the user workflow and [AGENTS.md](../AGENTS.md) for host-specific onboarding.
+**Status:** v0.15.0-alpha.2. The repository `README.md` covers the user workflow and its `AGENTS.md` covers host-specific onboarding.
 
 ## What this plugin provides
 
-LazyBuddy brings the LazyCodex/OmO agent harness to CodeBuddy and WorkBuddy. WorkBuddy plugin/marketplace behavior must be verified in a live session; its local fallback uses imported skills:
+LazyBuddy provides a workflow harness for CodeBuddy and WorkBuddy. WorkBuddy plugin/marketplace behavior must be verified in a live session; its local fallback uses imported skills:
 
 - **Hierarchical project memory** (`/lazybuddy:lazy-init-deep`) — generates `workbuddy.md` with directory scoring
 - **Prometheus planning** (`/lazybuddy:lazy-ulw-plan`) — decision-complete work plans; never writes product code
@@ -29,10 +29,10 @@ LazyBuddy brings the LazyCodex/OmO agent harness to CodeBuddy and WorkBuddy. Wor
 | Directory | Purpose | Status |
 |-----------|---------|--------|
 | `skills/` | 14 portable workflow skills | CodeBuddy plugin content; verified WorkBuddy local import source |
-| `commands/` | 15 slash-command entry points | CodeBuddy; WorkBuddy only after a verified plugin/marketplace session |
+| `commands/` | 14 current slash-command workflows | CodeBuddy; WorkBuddy only after a verified plugin/marketplace session |
 | `agents/` | 13 agent role definitions | CodeBuddy; WorkBuddy only after a verified plugin/marketplace session |
 | `hooks/hooks.json` | 12 host hook-event declarations | CodeBuddy; WorkBuddy only after a verified plugin/marketplace session |
-| `mcp/` and `.mcp.json` | 8 local MCP server declarations | CodeBuddy declarations; manual connector configuration is the verified WorkBuddy fallback |
+| `mcp/` and `.mcp.json` | 6 local MCP server declarations | CodeBuddy declarations; manual connector configuration is the verified WorkBuddy fallback |
 | `scripts/` | state, loop, hooks, and validation utilities | Used by package readiness and workflow checks |
 | `templates/AGENTS.md` | reusable onboarding guide | A template; no installer claims it was generated |
 
@@ -64,6 +64,10 @@ codebuddy plugin install lazybuddy@lazybuddy --scope project
 
 For CodeBuddy IDE, use the current host plugin UI to install the copied package, run `/reload-plugins` when the host exposes it (or its equivalent reload action), then inspect a new session for a loaded `/lazybuddy:lazy-<command>` entry and MCP status. For WorkBuddy, use its documented plugin/marketplace UI and verify the session before relying on any plugin capability. If using the verified no-package-manager path, import `skills/` locally and add MCP connectors manually. Use the host's own uninstall/remove flow; installation locations are host-managed.
 
+## Uninstall
+
+Use CodeBuddy's plugin removal flow for a CodeBuddy IDE or CLI installation, then remove or disable only the LazyBuddy MCP servers that were manually registered. Use WorkBuddy's documented plugin/marketplace removal flow for a verified WorkBuddy plugin installation. For the local-import fallback, remove the imported `skills/` entries through WorkBuddy's Skills UI and remove the manually configured connectors through Settings. Never guess, scan for, or delete host-managed installation paths, `.workbuddy-plugin` compatibility metadata, `.workbuddy` state, or MCP configuration belonging to another host. The copied repository is independent of host removal and may be deleted only after the host confirms the plugin/skills and connectors are gone.
+
 ## Verify
 
 ```bash
@@ -76,7 +80,7 @@ bash scripts/lazybuddy-smoke-test.sh
 # Docs check: verifies no broken internal links, including templates/AGENTS.md.
 bash scripts/lazybuddy-docs-check.sh
 
-# Aggregate verification: doctor, smoke, docs, parity, security, MCP, and hooks.
+# Aggregate verification: doctor, smoke, docs, security, MCP, and hooks.
 bash scripts/lazybuddy-verify.sh
 ```
 

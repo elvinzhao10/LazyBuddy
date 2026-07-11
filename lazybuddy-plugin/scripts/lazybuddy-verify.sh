@@ -23,7 +23,6 @@ ALL_PASS=true
 DOCTOR_RESULT="fail"
 SMOKE_RESULT="fail"
 DOCS_RESULT="fail"
-PARITY_RESULT="fail"
 SECURITY_RESULT="fail"
 MCP_RESULT="fail"
 HOOK_RESULT="fail"
@@ -74,20 +73,14 @@ run_hook_pipeline_check() {
 
 run_check "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
-if [ -d "${PROJECT_ROOT}/dev/reference/lazycodex/plugins/omo" ]; then
-    run_check "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
-    run_check "${SCRIPTS_DIR}/lazybuddy-parity-check.sh"   PARITY_RESULT
-else
-    DOCS_RESULT="unchecked (source-only release check)"
-    PARITY_RESULT="unchecked (source-only release check)"
-fi
+run_check "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
 run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"parity\":\"${PARITY_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"all_pass\":${ALL_PASS}}"
+json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

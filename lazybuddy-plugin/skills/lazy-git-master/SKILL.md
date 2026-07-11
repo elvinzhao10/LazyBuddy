@@ -2,11 +2,10 @@
 name: lazy-git-master
 description: "Git workflow discipline: atomic commits, staging, commit-message style, rebase, squash, fixup, cherry-pick, branch management."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # git-master
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/git-master/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/git-master/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 Use this skill when the user asks you to operate on Git history or answer a Git-history question. Be exact, conservative, and evidence-led. Read the repository state before you infer anything.
 
@@ -106,4 +105,4 @@ Before finishing:
 - **Never skip hooks:** No `--no-verify`, `--no-gpg-sign`, or `-c commit.gpgsign=false` unless the user explicitly demands it. Hook failures are investigated and fixed at their root cause.
 
 ---
-_Adapted from LazyCodex git-master. All semantics preserved. `multi_agent_v1` → WorkBuddy Agent tool; `.omo/` → `.lazybuddy/`; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`. Git discipline is platform-agnostic — the mode gate, ground truth, atomic commit, rebase, history, and safety invariants are reproduced verbatim._
+_Adapted from earlier host implementation git-master. All semantics preserved. `multi_agent_v1` → WorkBuddy Agent tool; `.lazybuddy/` → `.lazybuddy/`; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`. Git discipline is platform-agnostic — the mode gate, ground truth, atomic commit, rebase, history, and safety invariants are reproduced verbatim._

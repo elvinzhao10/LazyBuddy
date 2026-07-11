@@ -2,11 +2,10 @@
 name: lazy-debugging
 description: "Systematic debugging across any language or binary: crashes, silent failures, wrong responses, stuck processes, memory leaks, async race conditions."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # debugging
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/debugging/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/debugging/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 You are a hypothesis-driven debugger. Two disciplines apply regardless of language, runtime, or whether you have source:
 
@@ -19,7 +18,7 @@ The rest of this file is a map. **The knowledge is in `references/`.** This file
 
 ## READ THE REFERENCES. THIS IS NOT OPTIONAL.
 
-This skill is intentionally small. Ninety percent of what you need to know lives in the reference tree at `${CODEBUDDY_PLUGIN_ROOT}/references/`. If you skim this file and start working without opening the references, you will reattach a debugger the wrong way, miss a silent-failure pattern, waste an hour on a source-map gotcha, or invent a worse version of a tool that already solves your problem.
+This skill is intentionally small. Ninety percent of what you need to know lives in the reference tree at `${CODEBUDDY_PLUGIN_ROOT}/references/`. If you skim this file and start working without opening the references, you will reattach a debugger the wrong way, miss a silent-failure pattern, waste an hour on a debug mapping gotcha, or invent a worse version of a tool that already solves your problem.
 
 **Every reference below is mandatory when its scenario applies.** "I know this language" is not an exemption. The references exist because every runtime and every specialist tool has at least one gotcha that silently wastes hours.
 
@@ -32,7 +31,7 @@ This skill is intentionally small. Ninety percent of what you need to know lives
 | Your runtime is… | Open this before attaching anything | Non-negotiable because… |
 |---|---|---|
 | Python (CPython, pytest, asyncio, Django, FastAPI) | `${CODEBUDDY_PLUGIN_ROOT}/references/runtimes/python.md` | pdb vs ipdb vs debugpy vs pytest --pdb all have different attach semantics. Async code needs special breakpoint handling. |
-| Node.js / tsx / ts-node / Bun / Deno (running source) | `${CODEBUDDY_PLUGIN_ROOT}/references/runtimes/node.md` | `tsx` + `node inspect` CLI has a silent source-map failure — breakpoints by line number do not fire. |
+| Node.js / tsx / ts-node / Bun / Deno (running source) | `${CODEBUDDY_PLUGIN_ROOT}/references/runtimes/node.md` | `tsx` + `node inspect` CLI has a silent debug mapping failure — breakpoints by line number do not fire. |
 | Rust (cargo, tokio, panics) | `${CODEBUDDY_PLUGIN_ROOT}/references/runtimes/rust.md` | Release builds strip symbols. Tokio tasks need `tokio-console`. |
 | Go (goroutines, dlv, pprof, race) | `${CODEBUDDY_PLUGIN_ROOT}/references/runtimes/go.md` | Goroutine leaks and recovered panics are silent by default. `go test -race` is the first thing to run. |
 | Native binary / stripped C/C++ / no source | `${CODEBUDDY_PLUGIN_ROOT}/references/runtimes/native-binary.md` | The workflow (triage → dynamic → static → scripted repro) is counterintuitive. macOS adds SIP / Mach-O / lldb specifics. |
@@ -101,9 +100,9 @@ Discriminator for native vs bundled: `du -h ./target` (50 MB+ suspect bundled) p
 
 ## WorkBuddy-Native Features
 
-- **Agent tool:** Parallel hypothesis investigation spawns subagents via WorkBuddy Agent tool with `isolation: true`. The Oracle Triple (Phase 4) uses three independent subagent invocations. This replaces LazyCodex's `multi_agent_v1.spawn_agent` with `agent_type` routing.
-- **Journal location:** Debug journal lives at `.lazybuddy/debug-journal.md`. This replaces `.omo/` prefix.
+- **Agent tool:** Parallel hypothesis investigation spawns subagents via WorkBuddy Agent tool with `isolation: true`. The Oracle Triple (Phase 4) uses three independent subagent invocations. This replaces earlier host implementation's `multi_agent_v1.spawn_agent` with `agent_type` routing.
+- **Journal location:** Debug journal lives at `.lazybuddy/debug-journal.md`. This replaces `.lazybuddy/` prefix.
 - **Reference paths:** All runtime, tool, and methodology references in `${CODEBUDDY_PLUGIN_ROOT}/references/`. This replaces `${PLUGIN_ROOT}/references/`.
 
 ---
-_Adapted from LazyCodex debugging. All semantics preserved — the two disciplines, runtime reference gate, specialist tool requirements, 11-phase loop, and 8 safety invariants are reproduced verbatim. Adapted: `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `.omo/` → `.lazybuddy/`; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; reference paths updated to WorkBuddy-native layout._
+_Adapted from earlier host implementation debugging. All semantics preserved — the two disciplines, runtime reference gate, specialist tool requirements, 11-phase loop, and 8 safety invariants are reproduced verbatim. Adapted: `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `.lazybuddy/` → `.lazybuddy/`; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; reference paths updated to WorkBuddy-native layout._

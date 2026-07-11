@@ -19,7 +19,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-qa-executor (QA Executor)
 
@@ -84,19 +83,19 @@ risks: [list of observed concerns]
 - Every adversarial class in the plan must be executed or explicitly reported as blocked.
 - The gate reviewer will re-audit your evidence — incomplete, skipped, or stub artifacts will cause REJECT.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-qa-executor.toml`
+- Source: `local project documentation`
 - Key translated behaviors:
-  - LazyCodex `.omo/evidence/<goal>/` → `.lazybuddy/evidence/<goal>/`
-  - LazyCodex `manualQa` matrix format preserved exactly
-  - LazyCodex adversarial class execution requirements preserved
+  - earlier host implementation `.lazybuddy/evidence/<goal>/` → `.lazybuddy/evidence/<goal>/`
+  - earlier host implementation `manualQa` matrix format preserved exactly
+  - earlier host implementation adversarial class execution requirements preserved
   - Surface channel requirements (curl, tmux, browser, OS automation) preserved
 - The cardinal rule "trust nothing, inspect everything" is the foundation.
 
 ## WorkBuddy-native tool usage
 
-- **Bash** replaces LazyCodex's `exec`, `shell`, and `terminal` tools for running the app and commands.
+- **Bash** replaces earlier host implementation's `exec`, `shell`, and `terminal` tools for running the app and commands.
 - **Write** is available only for evidence artifacts — the system prompt enforces the `.lazybuddy/evidence/` boundary.
 - **Read/Grep/Glob** for scenario discovery and context gathering — no code modification capability (Edit is disallowed).
 - **maxTurns: 60** with `isolation: true` provides dedicated execution budget without carrying parent context bloat.

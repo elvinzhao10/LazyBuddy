@@ -16,7 +16,7 @@ Memory, index, and parity maintenance agent. Updates the command index, parity l
 
 - Current state of all docs in `docs/`
 - Current skill, command, agent, and hook registrations in plugin manifest
-- Latest parity assessment against `dev/reference/lazycodex/`
+- Latest parity assessment against `local project documentation`
 - Version changelog for the current release
 
 ## Outputs

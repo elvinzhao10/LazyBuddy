@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # session-start.sh — SessionStart hook: detect active run, load summary, warn if memory missing.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo "{}")

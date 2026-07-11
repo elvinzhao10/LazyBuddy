@@ -1,5 +1,5 @@
 ---
-description: "Cross-platform migration workflow planner. Generalizes the LazyCodex-to-WorkBuddy adaptation methodology into a reusable framework. Analyzes source platform components, maps them to target platform equivalents, and produces a migration plan with risk assessment."
+description: "Cross-platform migration workflow planner. Generalizes the earlier host implementation-to-WorkBuddy adaptation methodology into a reusable framework. Analyzes source platform components, maps them to target platform equivalents, and produces a migration plan with risk assessment."
 ---
 
 # /lazy-migration-planner

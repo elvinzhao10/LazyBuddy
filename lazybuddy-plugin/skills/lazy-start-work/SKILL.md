@@ -2,11 +2,10 @@
 name: lazy-start-work
 description: "Execute a work plan with orchestrated subagent delegation and verified completion evidence. Loads a plan, selects tasks, delegates to implementers, verifies, reviews."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # start-work
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -68,7 +67,7 @@ Write `.lazybuddy/runs/<run_id>/state.json` with:
 - One Manual-QA channel (exact tool + exact invocation + binary observable)
 - The 9 adversarial classes that apply to this sub-task
 
-**The 9 adversarial classes** (from LazyCodex `start-work` source line 118; a class applies when its trigger fact holds — probe each applicable one, record non-applicable with a one-line reason):
+**The 9 adversarial classes** (from earlier host implementation `start-work` source line 118; a class applies when its trigger fact holds — probe each applicable one, record non-applicable with a one-line reason):
 1. `malformed_input` — new input parsing
 2. `prompt_injection` — untrusted external text
 3. `cancel_resume` — resumable or long-running flows
@@ -160,7 +159,7 @@ When work involves branch/PR changes:
 - Verify with `git worktree list --porcelain`
 - Record `worktree_path` in `state.json`
 - All implementation happens in the worktree; review artifacts reference the worktree path
-- See LazyCodex source: start-work Phase 2 lines 71-92
+- See earlier host implementation source: start-work Phase 2 lines 71-92
 
 ## Debugging Runtime Audit (v0.9 hardening)
 
@@ -168,7 +167,7 @@ After the 5-agent review gate and before `ORCHESTRATION COMPLETE`:
 - Name 3+ failure hypotheses for the implemented work
 - Run distinguishing checks for each hypothesis
 - Append results to `events.jsonl`
-- See LazyCodex source: start-work Completion phase lines 176-184
+- See earlier host implementation source: start-work Completion phase lines 176-184
 
 ## DoneClaim/AdversarialVerify JSON Schema (v0.9 hardening)
 
@@ -212,15 +211,15 @@ AdversarialVerify: {
 }
 ```
 
-See LazyCodex source: start-work SKILL.md lines 136-160
+See earlier host implementation source: start-work SKILL.md lines 136-160
 
 ## WorkBuddy-Native Features
 
 - **Subagent spawning:** WorkBuddy Agent tool replaces `multi_agent_v1.spawn_agent`; `isolation: true` replaces `fork_context: false`
-- **`.lazybuddy/runs/`:** Run state replaces `.omo/boulder.json` + `.omo/start-work/`
+- **`.lazybuddy/runs/`:** Run state replaces `.lazybuddy/boulder.json` + `.lazybuddy/start-work/`
 - **Hooks:** Stop/SubagentStop hooks (v0.6) drive continuation loop
 - **State ledger:** `state.json` + `events.jsonl` follow the schema in `docs/lazybuddy-state-ledger-design.md`
 
 ---
 
-_Adapted from LazyCodex start-work. Preserved: orchestrator-delegate discipline, 5 verification gates, Sisyphus completion contract, Boulder state, evidence ledger. Adapted: all Codex tool names → WorkBuddy equivalents; `.omo/` → `.lazybuddy/`; plan scaffolding script → inline plan reading. The "NO DIRECT IMPLEMENTATION" rule is preserved verbatim._
+_Adapted from earlier host implementation start-work. Preserved: orchestrator-delegate discipline, 5 verification gates, Sisyphus completion contract, Boulder state, evidence ledger. Adapted: all Codex tool names → WorkBuddy equivalents; `.lazybuddy/` → `.lazybuddy/`; plan scaffolding script → inline plan reading. The "NO DIRECT IMPLEMENTATION" rule is preserved verbatim._

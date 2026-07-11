@@ -56,6 +56,33 @@ INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
 
 expect_status full-package-readiness 0 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
 expect_contains full-package-readiness '^PACKAGE_READINESS=full$'
+expect_contains full-package-readiness '^PASS commands: 14/14$'
+expect_contains full-package-readiness '^PASS MCP servers: 6/6$'
+expect_status full-package-doctor 0 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_contains full-package-doctor '^  \[PASS\] Command definitions \(14\)$'
+
+expect_status self-contained-package-contract 0 python3 - "$INSTALLED_PLUGIN" <<'PY'
+import json
+import os
+import sys
+
+root = sys.argv[1]
+with open(os.path.join(root, ".mcp.json"), encoding="utf-8") as handle:
+    servers = json.load(handle)["mcpServers"]
+
+expected_servers = {
+    "run-ledger",
+    "verification",
+    "status-dashboard",
+    "context-graph",
+    "code-intel",
+    "docs",
+}
+assert set(servers) == expected_servers, sorted(servers)
+assert not os.path.exists(os.path.join(root, "commands", "lazy-parity-report.md"))
+assert not os.path.exists(os.path.join(root, "mcp", "parity"))
+assert not os.path.exists(os.path.join(root, "mcp", "source-map"))
+PY
 
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"
 expect_status invalid-workbuddy-manifest 1 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
@@ -101,7 +128,7 @@ cp -R "$PLUGIN_ROOT" "$TMP/installed-plugin"
 INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
 expect_status installed-root-mcp 0 env CWD="$PROJECT_ROOT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-mcp-test.sh"
 expect_contains installed-root-mcp "Plugin root: $INSTALLED_PLUGIN"
-expect_contains installed-root-mcp '^Passed: 22$'
+expect_contains installed-root-mcp '^Passed: 16$'
 expect_status installed-root-master-verify 0 env CWD="$PROJECT_ROOT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-verify.sh"
 expect_contains installed-root-master-verify '"all_pass":true'
 

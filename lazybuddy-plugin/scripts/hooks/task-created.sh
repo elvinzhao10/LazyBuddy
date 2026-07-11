@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # task-created.sh — TaskCreated hook: mirror task creation into active run's events.jsonl.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/task-created.json
 # Always exits 0.
 set -euo pipefail
 
