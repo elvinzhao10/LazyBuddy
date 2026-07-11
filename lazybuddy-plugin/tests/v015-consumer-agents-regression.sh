@@ -64,6 +64,25 @@ ln -s "$TMP/outside-cwd" "$TMP/linked-parent"
 expect_rejected 'CWD with symlinked ancestor' env CWD="$TMP/linked-parent/project" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$HELPER"
 test ! -e "$TMP/outside-cwd/project/AGENTS.md" || fail 'CWD symlinked ancestor wrote an outside AGENTS.md'
 
+mkdir -p "$TMP/relative-cwd"
+(
+    cd -- "$TMP/relative-cwd"
+    CWD=. CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$HELPER"
+) >"$TMP/relative-cwd-output"
+test -f "$TMP/relative-cwd/AGENTS.md" || fail 'relative CWD did not create an AGENTS.md'
+grep -q 'AGENTS_STATUS=created' "$TMP/relative-cwd-output" || fail 'relative CWD did not report created status'
+
+mkdir -p "$TMP/outside-relative-cwd/project"
+ln -s "$TMP/outside-relative-cwd" "$TMP/relative-linked-parent"
+if (
+    cd -- "$TMP/relative-linked-parent/project"
+    CWD=. CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$HELPER"
+) >"$TMP/relative-linked-cwd-output" 2>&1; then
+    fail 'relative CWD with symlinked process ancestor was accepted'
+fi
+grep -q 'must not be.*symlink' "$TMP/relative-linked-cwd-output" || fail 'relative CWD with symlinked process ancestor did not report a boundary rejection'
+test ! -e "$TMP/outside-relative-cwd/project/AGENTS.md" || fail 'relative CWD symlinked process ancestor wrote an outside AGENTS.md'
+
 mkdir -p "$TMP/outside-plugin/plugin-root/templates" "$TMP/plugin-root-project"
 cp "$TEMPLATE" "$TMP/outside-plugin/plugin-root/templates/AGENTS.md"
 ln -s "$TMP/outside-plugin" "$TMP/linked-plugin-parent"

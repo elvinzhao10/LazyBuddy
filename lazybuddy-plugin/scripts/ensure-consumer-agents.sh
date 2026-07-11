@@ -20,7 +20,8 @@ reject_symlinked_path_components() {
             remaining="${path#/}"
             ;;
         *)
-            prefix="$(CDPATH= cd -P -- . && pwd -P)" || fail "$label is unavailable"
+            prefix="$(pwd -L)" || fail "$label is unavailable"
+            reject_symlinked_path_components "$label" "$prefix"
             remaining="$path"
             ;;
     esac
