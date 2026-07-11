@@ -1,5 +1,7 @@
 # LazyBuddy plan
 
+> **Historical/non-operational record.** This dated record is retained for context only. Current guidance: [README.md](../../README.md), [AGENTS.md](../../AGENTS.md), and [plugin README](../../lazybuddy-plugin/README.md).
+
 This directory holds the versioned implementation plan for LazyBuddy — a WorkBuddy-native recreation of LazyCodex. The whole project is a **version 0 build** (pre-1.0), so every phase is numbered `v0.N`.
 
 ## Version index

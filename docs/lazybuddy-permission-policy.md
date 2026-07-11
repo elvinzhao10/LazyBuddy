@@ -73,7 +73,7 @@ Any hook that writes to `events.jsonl` or any log **MUST** redact secrets before
 - Passwords in URLs → `[REDACTED: password]`
 - Email addresses → `[REDACTED: email]`
 
-Format: `[REDACTED: N chars, prefix PREFIX]` — matching LazyCodex evidence hygiene rules.
+Format: `[REDACTED: N chars, prefix PREFIX]` — use this evidence-hygiene format consistently.
 
 ---
 

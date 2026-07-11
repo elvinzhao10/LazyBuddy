@@ -20,7 +20,7 @@
 
 **Bypass:** User must explicitly confirm the operation. The hook blocks the first attempt; the user can approve on retry.
 
-**LazyCodex source:** `ulw-plan` skill owner-decision filter (irreversible/destructive).
+**Implementation basis:** the `ulw-plan` owner-decision filter for irreversible or destructive work.
 
 ## Gate 3: Evidence Verification Gate
 
@@ -36,7 +36,7 @@
 
 **Bypass:** After 3 failed attempts, clear state and allow (to prevent infinite loops). Context pressure also bypasses.
 
-**LazyCodex source:** [lazycodex-executor-verify/src/codex-hook.ts](../dev/reference/lazycodex/plugins/omo/components/lazycodex-executor-verify/src/codex-hook.ts).
+**Implementation basis:** the current executor-evidence verification contract.
 
 ## Gate 4: Premature Completion Gate
 
@@ -52,7 +52,7 @@
 
 **Bypass:** `stop_hook_active = true`, context pressure detected, or all checkboxes complete.
 
-**LazyCodex source:** [start-work-continuation/src/codex-hook.ts](../dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts) + [boulder-reader.ts](../dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/boulder-reader.ts).
+**Implementation basis:** the current continuation and run-state contracts.
 
 ## Gate 5: Context Pressure Gate
 
@@ -69,7 +69,7 @@ If any marker found → exit 0 (pass through). This prevents hooks from blocking
 
 **Bypass:** The entire purpose of this gate IS to bypass other gates when context is degraded.
 
-**LazyCodex source:** [start-work-continuation/src/codex-hook.ts](../dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts) lines 42-60.
+**Implementation basis:** the current context-pressure handling contract.
 
 ## Gate Summary
 

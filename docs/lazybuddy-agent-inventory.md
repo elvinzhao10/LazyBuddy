@@ -1,5 +1,7 @@
 # LazyBuddy Agent Inventory
 
+> **Historical/non-operational record.** This dated record is retained for context only. Current guidance: [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [plugin README](../lazybuddy-plugin/README.md).
+
 > v0.5 — Complete inventory of all 12 WorkBuddy agents with role, model, tools, and LazyCodex mapping.
 
 | # | File | Role | LazyCodex Source | Model | Effort | Max Turns | Key Constraint |

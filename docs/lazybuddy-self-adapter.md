@@ -1,5 +1,7 @@
 # LazyBuddy Self-Adapter
 
+> **Historical/non-operational record.** This dated record is retained for context only. Current guidance: [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [plugin README](../lazybuddy-plugin/README.md).
+
 > v0.10 — How LazyBuddy migrated LazyCodex OmO into WorkBuddy. Every claim cites a specific
 > source path under `dev/reference/lazycodex/`. This is the "show your work."
 

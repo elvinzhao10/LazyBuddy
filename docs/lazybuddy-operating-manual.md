@@ -19,7 +19,7 @@ INSPECT → PLAN → IMPLEMENT → VERIFY → REVIEW → UPDATE MEMORY
 
 1. Read `workbuddy.md` — project identity, structure, conventions
 2. Read `plan/v0.<N>-<description>.md` — the spec for the current version
-3. Read any reference files in `dev/reference/lazycodex/` that the spec cites
+3. Read the current implementation, package documentation, and any local material cited by the spec
 4. Read any files you plan to modify
 5. Read `docs/lazybuddy-known-gaps.md` — know what's already broken
 
@@ -106,7 +106,7 @@ The plan must be decision-complete — the implementer needs zero further interv
 
 Every version's work report uses this 7-section format:
 
-1. **What I inspected** — file paths read (in this repo, docs/, dev/reference/lazycodex/)
+1. **What I inspected** — file paths read in this repository and its documentation
 2. **What I found** — key decisions, architectural choices, why
 3. **What I changed** — every file created/modified, one-line summary each
 4. **How to run it** — validation commands, how to test

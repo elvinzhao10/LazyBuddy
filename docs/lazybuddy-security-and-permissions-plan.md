@@ -1,5 +1,7 @@
 # LazyBuddy Security and Permissions Plan
 
+> **Historical/non-operational record.** This dated record is retained for context only. Current guidance: [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [plugin README](../lazybuddy-plugin/README.md).
+
 > v0.1 — Permission boundaries, agent scoping, hook safety, secret redaction
 
 ## Overview

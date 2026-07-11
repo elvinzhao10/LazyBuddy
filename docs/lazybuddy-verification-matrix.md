@@ -10,7 +10,7 @@ Every LazyBuddy workflow must have a verification path: a concrete command, an e
 Principles:
 1. Verification is automated wherever possible; Manual-QA where a real surface must be exercised
 2. Evidence is captured as artifacts (files, logs, screenshots), not assertions
-3. Every verification step traces to a LazyCodex source file
+3. Every verification step has an observable result and evidence artifact
 
 ---
 
@@ -27,7 +27,7 @@ Principles:
 | Subdirectory AGENTS.md | Check for subdirectory workbuddy.md variants | Files exist where score >15 | Subdirectory files |
 | Hierarchy correct | Verify child does not repeat parent | No duplicate content between root and child | Diff between files |
 
-**LazyCodex source:** [init-deep SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) Phase 1-4.
+**Implementation:** `lazybuddy-plugin/skills/init-deep/SKILL.md`.
 
 ### 2. Planning (`/lazy-ulw-plan`)
 
@@ -40,7 +40,7 @@ Principles:
 | Approval gate works | After plan presented | Status: awaiting-approval; does not execute | Chat transcript |
 | No product code written | Check git status | No product files modified | `git status` output |
 
-**LazyCodex source:** [ulw-plan SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md) Intent Routing, Approval Gate.
+**Implementation:** `lazybuddy-plugin/skills/ulw-plan/SKILL.md`.
 
 ### 3. Execution (`/lazy-start-work`)
 
@@ -55,7 +55,7 @@ Principles:
 | Checkbox marked | Read plan file after completion | `- [x]` on completed checkbox | Plan file |
 | ORCHESTRATION COMPLETE | Final output | Prints full completion block | Chat transcript |
 
-**LazyCodex source:** [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 1-5.
+**Implementation:** `lazybuddy-plugin/skills/start-work/SKILL.md`.
 
 ### 4. Verified Loop (`/lazy-ulw-loop`)
 
@@ -67,7 +67,7 @@ Principles:
 | Resume after compaction | Simulate context loss → resume | Reads state → resumes from last goal | Chat transcript |
 | Completion verified by evidence | Oracle verification | Only marked done when evidence is real | events.jsonl |
 
-**LazyCodex source:** [ulw-loop SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md) Non-Negotiables.
+**Implementation:** `lazybuddy-plugin/skills/ulw-loop/SKILL.md`.
 
 ### 5. Review (`/lazy-review-work`)
 
@@ -82,7 +82,7 @@ Principles:
 | All 5 must PASS | Aggregate verdict | REVIEW PASSED only if all 5 PASS | Final report |
 | INCONCLUSIVE handling | Simulate agent timeout | Lane marked INCONCLUSIVE; review not passed | Final report |
 
-**LazyCodex source:** [review-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md) Phases 0-3.
+**Implementation:** `lazybuddy-plugin/skills/review-work/SKILL.md`.
 
 ---
 
@@ -95,7 +95,7 @@ Principles:
 | Rules loaded | Start new session | `.workbuddy/rules/lazybuddy.md` loaded | Status message: `(LazyBuddy): Loading Project Rules` |
 | Bootstrap checked | First session after install | Bootstrap provisioning runs if needed | Status message |
 
-**LazyCodex source:** [session-start-loading-project-rules.json](../dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json).
+**Implementation:** `lazybuddy-plugin/scripts/hooks/session-start.sh`.
 
 ### Stop / SubagentStop (Continuation)
 
@@ -105,7 +105,7 @@ Principles:
 | Evidence verification | SubagentStop with executor matcher | Verifier checks DoneClaim → AdversarialVerify | Status message: `(LazyBuddy): Verifying Executor Evidence` |
 | Completion stops loop | Stop after all checkboxes done | No re-injection; prints ORCHESTRATION COMPLETE | Chat transcript |
 
-**LazyCodex source:** [stop-checking-start-work-continuation.json](../dev/reference/lazycodex/plugins/omo/hooks/stop-checking-start-work-continuation.json), [subagent-stop-verifying-lazycodex-executor-evidence.json](../dev/reference/lazycodex/plugins/omo/hooks/subagent-stop-verifying-lazycodex-executor-evidence.json).
+**Implementation:** `lazybuddy-plugin/scripts/hooks/stop-gate.sh` and `lazybuddy-plugin/scripts/hooks/subagent-stop.sh`.
 
 ### PreToolUse (Budget Enforcement)
 
@@ -142,7 +142,7 @@ Principles:
 | AdversarialVerify format | Read a verify entry | Has verdict, evidence, repro, confidence | events.jsonl entry |
 | FullyDone transition | DoneClaim + AdversarialVerify confirmed | FullyDone recorded | events.jsonl entry |
 
-**LazyCodex source:** [start-work SKILL.md](../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phases 2, 4.
+**Implementation:** `lazybuddy-plugin/scripts/state/` and `lazybuddy-plugin/skills/start-work/SKILL.md`.
 
 ### Checkpoints
 
@@ -160,7 +160,7 @@ Principles:
 | Run ledger query | MCP: query run status | Returns current state.json contents | MCP response |
 | Run ledger append | MCP: append event | Appends JSON line to events.jsonl | MCP response + file check |
 | Verification test | MCP: run verification | Returns test results with pass/fail | MCP response |
-| Parity check | MCP/cli: compare parity | Returns diff between LazyBuddy and LazyCodex behavior | Diff report |
+| Compatibility check | MCP/cli: compare documented behavior | Returns a compatibility report | Report |
 
 ---
 
@@ -180,18 +180,18 @@ Principles:
 
 ## Cross-Cutting Verification
 
-### Parity Check
+### Compatibility Check
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| Method coverage | scripts/parity-check.sh | All LazyCodex methods have LazyBuddy equivalent or documented gap | Parity report |
-| Behavior comparison | Compare specific workflow outputs | LazyBuddy produce same result structure as LazyCodex | Diff report |
+| Method coverage | Review the current command and skill inventory | All current methods have an implementation or documented gap | Inventory review |
+| Behavior comparison | Compare specific workflow outputs | LazyBuddy produces the documented result structure | Diff report |
 
 ### Clean-Room Compliance
 
 | Verification Step | Command | Expected Result | Evidence Artifact |
 |-------------------|---------|-----------------|-------------------|
-| No copied source code | Grep for LazyCodex source patterns | No verbatim matches | Grep results |
+| No copied source code | Review release files for unintended copied material | No unintended verbatim matches | Review results |
 | Semantic equivalence | Behavioral tests | Same inputs produce same outputs | Test results |
 | License compliance | Check all files for proper attribution | All attributions correct; no copied material without license | Audit report |
 
@@ -203,9 +203,9 @@ Principles:
 |----------|-----------|---------------|
 | P0 (blocking) | start-work, ulw-loop, Stop hooks | Every code change |
 | P1 (required) | ulw-plan, review-work, state ledger | Every version phase |
-| P2 (recommended) | init-deep, MCP tools, parity check | Every major version |
+| P2 (recommended) | init-deep, MCP tools, compatibility check | Every major version |
 | P3 (nice-to-have) | Full end-to-end, cross-cutting | v0.11 dogfood, v0.12 release |
 
 ---
 
-_All verification steps trace to LazyCodex source files in `dev/reference/lazycodex/`. Expected results are derived from the method semantics documented in each source file._
+_This matrix defines the current verification surface. Expected results are derived from the documented LazyBuddy behavior and the implementation under test._

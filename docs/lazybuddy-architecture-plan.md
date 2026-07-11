@@ -1,5 +1,7 @@
 # LazyBuddy Architecture Plan
 
+> **Historical/non-operational record.** This dated record is retained for context only. Current guidance: [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [plugin README](../lazybuddy-plugin/README.md).
+
 > v0.1 — Full WorkBuddy-native architecture design
 > Traces every claim to [dev/reference/lazycodex/](../dev/reference/lazycodex/)
 

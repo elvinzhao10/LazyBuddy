@@ -21,6 +21,6 @@ labels: enhancement
 
 <!-- Any alternative approaches? -->
 
-## Parity Impact
+## Compatibility Impact
 
-<!-- Does this affect LazyCodex parity? If so, how? -->
+<!-- Does this affect an existing LazyBuddy workflow, host integration, or documented behavior? If so, how? -->

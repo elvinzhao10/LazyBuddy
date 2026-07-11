@@ -1,14 +1,14 @@
 # LazyBuddy Command Index
 
-> Master index of every command, Skill, and agent. Every canonical LazyCodex method must appear here or in the parity ledger.
+> Master index of every current command, skill, agent, hook, and MCP server.
 >
 > Status codes: ✅ implemented | 🔧 planned | ⛔ skipped (with reason) | ✨ added (LazyBuddy-only)
 > Current release status, evidence labels, and component counts live in See [README](../README.md) for current status..
 
 ## Core Commands (6)
 
-| # | Command | LazyCodex Equivalent | Status | v0 Target |
-|---|---------|---------------------|--------|-----------|
+| # | Command | Capability | Status | v0 Target |
+|---|---------|------------|--------|-----------|
 | 1 | `/lazy-init-deep` | `$init-deep` | ✅ | v0.4 |
 | 2 | `/lazy-ulw-plan` | `$ulw-plan` | ✅ | v0.4 |
 | 3 | `/lazy-start-work` | `$start-work` | ✅ | v0.4 |
@@ -18,10 +18,10 @@
 
 ## Extended Skills (19)
 
-*Adapted from LazyCodex's 25 skills (excludes the 6 core commands above, includes librarian + migration-planner additions)*
+*Current skill inventory (excludes the 6 core commands above and includes librarian and migration-planner)*
 
-| # | Skill | LazyCodex Equivalent | Status | v0 Target |
-|---|-------|---------------------|--------|-----------|
+| # | Skill | Capability | Status | v0 Target |
+|---|-------|------------|--------|-----------|
 | 7 | `programming` | `programming` skill | ✅ | v0.4 |
 | 8 | `remove-ai-slops` | `remove-ai-slops` skill | ✅ | v0.4 |
 | 9 | `git-master` | `git-master` skill | ✅ | v0.4 |
@@ -51,16 +51,16 @@
 
 ## Agents (13)
 
-| # | Agent | LazyCodex Equivalent | Status | v0 Target |
-|---|-------|---------------------|--------|-----------|
+| # | Agent | Capability | Status | v0 Target |
+|---|-------|------------|--------|-----------|
 | 1 | `orchestrator` | Sisyphus | ✅ | v0.5 |
 | 2 | `planner` | Prometheus / `plan` | ✅ | v0.5 |
 | 3 | `explorer` | `explorer` | ✅ | v0.5 |
 | 4 | `implementer` | Spawned worker | ✅ | v0.5 |
 | 5 | `verifier` | Oracle | ✅ | v0.5 |
 | 6 | `reviewer` | `momus` + `metis` | ✅ | v0.5 |
-| 7 | `qa-executor` | `lazycodex-qa-executor` | ✅ | v0.5 |
-| 8 | `gate-reviewer` | `lazycodex-gate-reviewer` | ✅ | v0.5 |
+| 7 | `qa-executor` | Quality-assurance execution | ✅ | v0.5 |
+| 8 | `gate-reviewer` | Verification-gate review | ✅ | v0.5 |
 | 9 | `librarian` | `librarian` | ✅ | v0.9 |
 | 10 | `security-auditor` | review-work security lane | ✅ | v0.5 |
 | 11 | `context-indexer` | init-deep context indexing | ✅ | v0.5 |
@@ -69,8 +69,8 @@
 
 ## Hooks (12)
 
-| # | Event | LazyCodex Equivalent | Status | v0 Target |
-|---|-------|---------------------|--------|-----------|
+| # | Event | Capability | Status | v0 Target |
+|---|-------|------------|--------|-----------|
 | 1 | `SessionStart` | `session-start-loading-project-rules` | ✅ | v0.6 |
 | 2 | `UserPromptSubmit` | `user-prompt-submit-checking-ultrawork-trigger` | ✅ | v0.6 |
 | 3 | `PreToolUse` | `pre-tool-use-enforcing-unlimited-goal-budget` | ✅ | v0.6 |
@@ -79,22 +79,22 @@
 | 6 | `PreCompact` | `post-compact-resetting-*` (combined) | ✅ | v0.6 |
 | 7 | `Stop` | `stop-checking-start-work-continuation` | ✅ | v0.6 |
 | 8 | `StopFailure` | (new — LazyBuddy addition) | ✨ | v0.6 |
-| 9 | `SubagentStop` | `subagent-stop-verifying-lazycodex-executor-evidence` | ✅ | v0.6 |
+| 9 | `SubagentStop` | Implementer-evidence verification | ✅ | v0.6 |
 | 10 | `SubagentStart` | (new — LazyBuddy addition) | ✨ | v0.6 |
 | 11 | `TaskCreated` | (new — LazyBuddy addition) | ✨ | v0.6 |
 | 12 | `TaskCompleted` | (new — LazyBuddy addition) | ✨ | v0.6 |
 
 ## MCP Servers (8)
 
-Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`. Parity classes: `reference parity`, `host-substitution`, `native-enhancement`, `platform-gap`.
+Capability labels: `semantic`, `project-tool-backed`, `heuristic`, `state-only`. Delivery classes: `host-substitution`, `native-enhancement`, `platform-gap`.
 
-| # | Server | LazyCodex Equivalent | Status | Capability / Parity Label | v0 Target |
-|---|--------|---------------------|--------|---------------------------|-----------|
-| 1 | `run-ledger` | (new — LazyBuddy addition) | ✨ | `native-enhancement`; `project-tool-backed`, `state-only`; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) | v0.8 |
-| 2 | `parity` | (new — LazyBuddy addition) | ✨ | `native-enhancement`; `state-only`; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) | v0.8 |
-| 3 | `verification` | (new — LazyBuddy addition) | ✨ | `native-enhancement`; `project-tool-backed`, `state-only`; initialize/tools-list `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) | v0.8 |
-| 4 | `source-map` | (new — LazyBuddy addition) | ✨ | `native-enhancement`; `heuristic` search/index plus direct file reads; `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) | v0.8 |
-| 5 | `status-dashboard` | (new — LazyBuddy addition) | ✨ | `native-enhancement`; `state-only`; initialize/tools-list `runtime-verified` by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` (transcript: `.omo/evidence/task-4-diagnosis-v0-12-lazybuddy.txt`) | v0.8 |
+| # | Server | Capability | Status | Capability / Delivery Label | v0 Target |
+|---|--------|------------|--------|-----------------------------|-----------|
+| 1 | `run-ledger` | Run-state tools | ✨ | `native-enhancement`; `project-tool-backed`, `state-only`; verified by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` | v0.8 |
+| 2 | `parity` | Compatibility reporting | ✨ | `native-enhancement`; `state-only`; verified by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` | v0.8 |
+| 3 | `verification` | Verification tools | ✨ | `native-enhancement`; `project-tool-backed`, `state-only`; initialize/tools-list verified by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` | v0.8 |
+| 4 | `source-map` | Project search and direct file reads | ✨ | `native-enhancement`; `heuristic`; verified by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` | v0.8 |
+| 5 | `status-dashboard` | Status display | ✨ | `native-enhancement`; `state-only`; initialize/tools-list verified by `bash lazybuddy-plugin/scripts/lazybuddy-mcp-test.sh` | v0.8 |
 | 6 | `context-graph` | `codegraph` | ✅ | `host-substitution`; `heuristic-substitute`; not full semantic codegraph parity | v0.11 |
 | 7 | `code-intel` | `lsp` | ✅ | `host-substitution`; `project-tool-backed` diagnostics/typecheck when checkers exist; `heuristic-substitute` symbols/references/goto; not full LSP parity | v0.11 |
 | 8 | `docs` | `context7` | ✅ | `host-substitution`; `heuristic-substitute`; npm/PyPI README fetch, not curated Context7 parity | v0.11 |

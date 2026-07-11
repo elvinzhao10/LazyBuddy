@@ -1,5 +1,7 @@
 # LazyBuddy MCP Security Model
 
+> **Historical/non-operational record.** This dated record is retained for context only. Current guidance: [README.md](../README.md), [AGENTS.md](../AGENTS.md), and [plugin README](../lazybuddy-plugin/README.md).
+
 > v0.8 — Security boundaries, permission model, and failure isolation for MCP servers
 
 ## Core Principle: No Secrets in Tool Output
