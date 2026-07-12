@@ -34,6 +34,11 @@ check() {
     fi
 }
 
+validator_reports_failure() {
+    local output="$1"
+    printf '%s\n' "$output" | grep -qiE '(^|[^[:alnum:]])(error|errors|failed|failure)([^[:alnum:]]|$)|status code [45][0-9]{2}|HTTP(/[0-9.]+)? [45][0-9]{2}'
+}
+
 echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
 echo ""
@@ -107,7 +112,7 @@ fi
 
 if command -v codebuddy >/dev/null 2>&1; then
     if validator_output=$(codebuddy plugin validate "$PLUGIN_ROOT" 2>&1); then
-        if printf '%s\n' "$validator_output" | grep -qiE 'validation failed|found [0-9]+ error'; then
+        if validator_reports_failure "$validator_output"; then
             check "CodeBuddy manifest validator" "$validator_output"
         else
             check "CodeBuddy manifest validator" ok

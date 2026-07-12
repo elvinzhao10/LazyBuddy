@@ -141,13 +141,19 @@ import sys
 path = sys.argv[1]
 with open(path, encoding="utf-8") as handle:
     manifest = json.load(handle)
-manifest["skills"] = "./skills/"
+del manifest["name"]
 with open(path, "w", encoding="utf-8") as handle:
     json.dump(manifest, handle)
 PY
 expect_status doctor-catches-validator-text-failure 1 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
 expect_contains doctor-catches-validator-text-failure 'CodeBuddy manifest validator'
 cp "$PLUGIN_ROOT/.codebuddy-plugin/plugin.json" "$INSTALLED_PLUGIN/.codebuddy-plugin/plugin.json"
+
+mkdir -p "$TMP/fake-codebuddy"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "Request failed with status code 500"' 'exit 0' > "$TMP/fake-codebuddy/codebuddy"
+chmod +x "$TMP/fake-codebuddy/codebuddy"
+expect_status doctor-catches-validator-exit-zero-server-error 1 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_contains doctor-catches-validator-exit-zero-server-error 'CodeBuddy manifest validator'
 
 printf '%s\n' '{"plugins":[{"name":"lazybuddy","version":"0.0.0"}]}' > "$TMP/mismatched-marketplace.json"
 expect_status mismatched-marketplace-version 1 env LAZYBUDDY_MARKETPLACE_FILE="$TMP/mismatched-marketplace.json" bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
