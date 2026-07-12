@@ -159,8 +159,10 @@ it is not represented as semantic CodeGraph analysis.
 CodeGraph is pinned to `@colbymchenry/codegraph@1.4.1` and can only be
 provisioned in an explicit empty caller-owned tooling root. The lifecycle never
 invokes upstream `codegraph install` or `codegraph uninstall`, never downloads
-a fallback platform binary, and never changes host MCP configuration. Start
-only after you deliberately choose a project root:
+a fallback platform binary, enables CodeGraph telemetry, or changes host MCP
+configuration. Its npm cache, npm configuration, Python cache, and CodeGraph
+runtime are confined to the receipt-owned tooling root. Start only after you
+deliberately choose a project root:
 
 ```bash
 # Inspect only. This never starts CodeGraph or creates .codegraph/.

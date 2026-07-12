@@ -34,5 +34,6 @@ exec env \
     XDG_CONFIG_HOME="$RUNTIME_ROOT/config" \
     XDG_CACHE_HOME="$RUNTIME_ROOT/cache" \
     CODEGRAPH_NO_DOWNLOAD=1 \
+    CODEGRAPH_TELEMETRY=0 \
     CODEGRAPH_INSTALL_DIR="$RUNTIME_ROOT/install" \
     "$BINARY" serve --mcp

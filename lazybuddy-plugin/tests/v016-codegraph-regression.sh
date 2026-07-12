@@ -49,12 +49,17 @@ ln -s "$TARGET" "$SYMLINK_TARGET"
 expect 'symlinked project root is rejected' 2 bash "$LIFECYCLE" codegraph-init --target "$SYMLINK_TARGET" --tooling-root "$TOOLING_ROOT"
 [ ! -e "$TARGET/.codegraph" ] || fail 'symlinked project root created an index'
 
-# Given an explicit empty tooling root, when the caller installs, initializes,
-# and enables CodeGraph, then the package-owned launcher starts its MCP server.
-expect 'CodeGraph install provisions pinned owned package' 0 bash "$LIFECYCLE" codegraph-install --target "$TARGET" --tooling-root "$TOOLING_ROOT"
-grep -Fxq 'STATE: not-initialized' "$TMP/CodeGraph install provisions pinned owned package.out" || fail 'install waits for explicit initialization'
-expect 'CodeGraph initialize creates a receipt-owned index' 0 bash "$LIFECYCLE" codegraph-init --target "$TARGET" --tooling-root "$TOOLING_ROOT"
-grep -Fxq 'STATE: initialized' "$TMP/CodeGraph initialize creates a receipt-owned index.out" || fail 'initialization state'
+CALLER_HOME="$TMP/caller-home"
+mkdir "$CALLER_HOME"
+printf 'preserve\n' > "$CALLER_HOME/sentinel"
+expect 'CodeGraph install provisions pinned owned package without touching caller home' 0 env HOME="$CALLER_HOME" bash "$LIFECYCLE" codegraph-install --target "$TARGET" --tooling-root "$TOOLING_ROOT"
+grep -Fxq 'STATE: not-initialized' "$TMP/CodeGraph install provisions pinned owned package without touching caller home.out" || fail 'install waits for explicit initialization'
+[ "$(cat "$CALLER_HOME/sentinel")" = preserve ] || fail 'CodeGraph install changed caller home sentinel'
+[ "$(find "$CALLER_HOME" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = 1 ] || fail 'CodeGraph install wrote caller home state'
+expect 'CodeGraph initialize creates a receipt-owned index without touching caller home' 0 env HOME="$CALLER_HOME" bash "$LIFECYCLE" codegraph-init --target "$TARGET" --tooling-root "$TOOLING_ROOT"
+grep -Fxq 'STATE: initialized' "$TMP/CodeGraph initialize creates a receipt-owned index without touching caller home.out" || fail 'initialization state'
+[ "$(cat "$CALLER_HOME/sentinel")" = preserve ] || fail 'CodeGraph initialization changed caller home sentinel'
+[ "$(find "$CALLER_HOME" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = 1 ] || fail 'CodeGraph initialization wrote caller home state'
 [ -d "$TARGET/.codegraph" ] && [ ! -L "$TARGET/.codegraph" ] || fail 'initialization did not create real project index'
 expect 'CodeGraph enable is explicit' 0 bash "$LIFECYCLE" codegraph-enable --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -Fxq 'STATE: ready' "$TMP/CodeGraph enable is explicit.out" || fail 'enable state'
@@ -70,24 +75,42 @@ import sys
 
 launcher, target, tooling_root = sys.argv[1:]
 environment = os.environ | {"CWD": target, "LAZYBUDDY_TOOLING_ROOT": tooling_root}
-process = subprocess.run(
+process = subprocess.Popen(
     ["bash", launcher],
-    input=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n",
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
     text=True,
-    capture_output=True,
     env=environment,
-    timeout=45,
-    check=False,
 )
-if process.returncode:
-    raise SystemExit(process.stderr or process.stdout)
-responses = [json.loads(line) for line in process.stdout.splitlines() if line.startswith("{")]
-if not responses or responses[0].get("id") != 1 or "result" not in responses[0]:
-    raise SystemExit(process.stdout or "missing MCP initialize response")
+assert process.stdin is not None
+assert process.stdout is not None
+process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n")
+process.stdin.flush()
+response = json.loads(process.stdout.readline())
+if response.get("id") != 1 or "result" not in response:
+    raise SystemExit("missing MCP initialize response")
+if os.path.exists(f"/proc/{process.pid}/environ"):
+    with open(f"/proc/{process.pid}/environ", "rb") as source:
+        environment_text = source.read().decode(errors="replace")
+else:
+    inspection = subprocess.run(["ps", "eww", "-p", str(process.pid), "-o", "command="], text=True, capture_output=True, timeout=10, check=False)
+    environment_text = inspection.stdout
+for expected in ("CODEGRAPH_TELEMETRY=0", "CODEGRAPH_NO_DOWNLOAD=1", f"HOME={tooling_root}/.lazybuddy-codegraph-runtime/home"):
+    if expected not in environment_text:
+        raise SystemExit(f"CodeGraph launcher missing isolated environment: {expected}")
+process.terminate()
+stdout, stderr = process.communicate(timeout=15)
+if process.returncode not in {0, -15}:
+    raise SystemExit(stderr or stdout)
 PY
 
 expect 'CodeGraph uninstall removes only receipt-owned index' 0 bash "$LIFECYCLE" codegraph-uninstall --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 [ ! -e "$TARGET/.codegraph" ] || fail 'receipt-owned index was not removed'
+printf 'preserve\n' > "$TOOLING_ROOT/unowned"
+expect 'unowned tooling-root entry blocks uninstall' 2 bash "$LIFECYCLE" uninstall --tooling-root "$TOOLING_ROOT"
+[ "$(cat "$TOOLING_ROOT/unowned")" = preserve ] || fail 'unsafe tooling uninstall changed unowned entry'
+rm "$TOOLING_ROOT/unowned"
 expect 'tooling uninstall removes owned package after index cleanup' 0 bash "$LIFECYCLE" uninstall --tooling-root "$TOOLING_ROOT"
 [ ! -e "$TOOLING_ROOT" ] || fail 'owned tooling root was not removed'
 

@@ -73,7 +73,7 @@ regular_unlinked_file() {
 }
 
 receipt_contents() {
-    python3 - "$TOOLING_ROOT" "$(node_modules_digest)" <<'PY'
+    python3 -B - "$TOOLING_ROOT" "$(node_modules_digest)" <<'PY'
 import json
 import sys
 
@@ -88,6 +88,7 @@ print(json.dumps({
             "node_modules",
             ".lazybuddy-tooling-receipt.json",
             ".lazybuddy-codegraph-receipt.json",
+            ".lazybuddy-npm-runtime",
         ],
         "node_modules_digest": sys.argv[2],
     }, indent=2, sort_keys=True))
@@ -95,7 +96,7 @@ PY
 }
 
 node_modules_digest() {
-    python3 - "$TOOLING_ROOT/node_modules" <<'PY'
+    python3 -B - "$TOOLING_ROOT/node_modules" <<'PY'
 import hashlib
 import os
 import stat
@@ -134,17 +135,23 @@ PY
 }
 
 root_contains_only_owned_entries() {
-    local count
-    count="$(find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')"
-    { [ "$count" = "5" ] || [ "$count" = "6" ] || [ "$count" = "7" ]; } \
-        && [ -e "$TOOLING_ROOT/package.json" ] \
+    [ -e "$TOOLING_ROOT/package.json" ] \
         && [ -e "$TOOLING_ROOT/package-lock.json" ] \
         && [ -e "$TOOLING_ROOT/capabilities.json" ] \
         && [ -d "$TOOLING_ROOT/node_modules" ] \
         && [ ! -L "$TOOLING_ROOT/node_modules" ] \
         && [ -e "$TOOLING_ROOT/$RECEIPT_NAME" ] \
         && { [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json" ] || regular_unlinked_file "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json"; } \
-        && { [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || { [ -d "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] && [ ! -L "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ]; }; }
+        && { [ ! -e "$TOOLING_ROOT/.lazybuddy-npm-runtime" ] || { [ -d "$TOOLING_ROOT/.lazybuddy-npm-runtime" ] && [ ! -L "$TOOLING_ROOT/.lazybuddy-npm-runtime" ]; }; } \
+        && { [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || { [ -d "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] && [ ! -L "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ]; }; } \
+        && find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort | cmp -s - <(
+            {
+                printf '%s\n' capabilities.json node_modules package-lock.json package.json "$RECEIPT_NAME"
+                [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json" ] || printf '%s\n' .lazybuddy-codegraph-receipt.json
+                [ ! -e "$TOOLING_ROOT/.lazybuddy-npm-runtime" ] || printf '%s\n' .lazybuddy-npm-runtime
+                [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || printf '%s\n' .lazybuddy-codegraph-runtime
+            } | sort
+        )
 }
 
 owned_root_is_valid() {
@@ -378,6 +385,19 @@ codegraph_runtime_root() {
     printf '%s\n' "$TOOLING_ROOT/.lazybuddy-codegraph-runtime"
 }
 
+npm_runtime_root() {
+    printf '%s\n' "$TOOLING_ROOT/.lazybuddy-npm-runtime"
+}
+
+prepare_npm_runtime() {
+    local runtime_root
+    runtime_root="$(npm_runtime_root)"
+    if [ -e "$runtime_root" ] && { [ ! -d "$runtime_root" ] || [ -L "$runtime_root" ]; }; then
+        fail "npm runtime root must be a real directory inside the owned tooling root"
+    fi
+    mkdir -p "$runtime_root/home" "$runtime_root/cache" "$runtime_root/config"
+}
+
 prepare_codegraph_runtime() {
     local runtime_root
     runtime_root="$(codegraph_runtime_root)"
@@ -392,7 +412,7 @@ codegraph_receipt_is_valid() {
     receipt="$(codegraph_receipt_path)"
     owned_root_is_valid || return 1
     regular_unlinked_file "$receipt" || return 1
-    python3 - "$receipt" "$TOOLING_ROOT" "$TARGET_ROOT" <<'PY'
+    python3 -B - "$receipt" "$TOOLING_ROOT" "$TARGET_ROOT" <<'PY'
 import json
 import sys
 
@@ -419,7 +439,7 @@ PY
 }
 
 codegraph_receipt_flag() {
-    python3 - "$(codegraph_receipt_path)" "$1" <<'PY'
+    python3 -B - "$(codegraph_receipt_path)" "$1" <<'PY'
 import json
 import sys
 
@@ -432,7 +452,7 @@ PY
 }
 
 codegraph_receipt_contents() {
-    python3 - "$TOOLING_ROOT" "$TARGET_ROOT" "$1" "$2" <<'PY'
+    python3 -B - "$TOOLING_ROOT" "$TARGET_ROOT" "$1" "$2" <<'PY'
 import json
 import sys
 
@@ -510,23 +530,35 @@ codegraph_status() {
 }
 
 codegraph_install() {
-    require_safe_existing_root
-    if ! root_is_empty; then
-        fail "CodeGraph tooling root must be empty when provisioning the pinned package"
-    fi
-    command -v npm >/dev/null 2>&1 || fail "npm is required to install the locked CodeGraph package"
-    cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
-    cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
-    cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
     (
-        cd "$TOOLING_ROOT"
-        npm ci --ignore-scripts --no-audit --fund=false
+        local runtime_root
+        require_safe_existing_root
+        if ! root_is_empty; then
+            fail "CodeGraph tooling root must be empty when provisioning the pinned package"
+        fi
+        command -v npm >/dev/null 2>&1 || fail "npm is required to install the locked CodeGraph package"
+        cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
+        cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
+        cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
+        prepare_npm_runtime
+        runtime_root="$(npm_runtime_root)"
+        export HOME="$runtime_root/home"
+        export XDG_CACHE_HOME="$runtime_root/cache"
+        export PYTHONPYCACHEPREFIX="$runtime_root/cache/python"
+        export npm_config_cache="$runtime_root/cache"
+        export npm_config_userconfig="$runtime_root/config/npmrc"
+        export npm_config_update_notifier=false
+        export NO_UPDATE_NOTIFIER=1
+        (
+            cd "$TOOLING_ROOT"
+            npm ci --ignore-scripts --no-audit --fund=false
+        )
+        receipt_contents > "$TOOLING_ROOT/$RECEIPT_NAME"
+        if ! owned_root_is_valid; then
+            fail "CodeGraph installation did not produce a verified receipt-owned root"
+        fi
+        codegraph_status
     )
-    receipt_contents > "$TOOLING_ROOT/$RECEIPT_NAME"
-    if ! owned_root_is_valid; then
-        fail "CodeGraph installation did not produce a verified receipt-owned root"
-    fi
-    codegraph_status
 }
 
 codegraph_init() {
@@ -555,7 +587,13 @@ codegraph_init() {
     [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || fail "LAZYBUDDY_CODEGRAPH_TIMEOUT_SECONDS must be a positive integer"
     binary="$(codegraph_binary)"
     prepare_codegraph_runtime
-    CODEGRAPH_RUNTIME_ROOT="$(codegraph_runtime_root)" CODEGRAPH_NO_DOWNLOAD=1 python3 - "$TARGET_ROOT" "$timeout_seconds" "$binary" <<'PY'
+    CODEGRAPH_RUNTIME_ROOT="$(codegraph_runtime_root)" \
+        HOME="$(codegraph_runtime_root)/home" \
+        XDG_CACHE_HOME="$(codegraph_runtime_root)/cache" \
+        PYTHONPYCACHEPREFIX="$(codegraph_runtime_root)/cache/python" \
+        CODEGRAPH_NO_DOWNLOAD=1 \
+        CODEGRAPH_TELEMETRY=0 \
+        python3 -B - "$TARGET_ROOT" "$timeout_seconds" "$binary" <<'PY'
 import os
 import signal
 import subprocess
@@ -569,6 +607,7 @@ environment = os.environ | {
     "XDG_CACHE_HOME": f"{runtime_root}/cache",
     "CODEGRAPH_INSTALL_DIR": f"{runtime_root}/install",
     "CODEGRAPH_NO_DOWNLOAD": "1",
+    "CODEGRAPH_TELEMETRY": "0",
 }
 process = subprocess.Popen([binary, "init"], cwd=target_root, start_new_session=True, env=environment)
 try:
@@ -626,7 +665,7 @@ codegraph_enable() {
 codegraph_doctor() {
     local source_counts files lines
     codegraph_status
-    source_counts="$(python3 - "$TARGET_ROOT" <<'PY'
+    source_counts="$(python3 -B - "$TARGET_ROOT" <<'PY'
 import os
 import sys
 
@@ -690,7 +729,7 @@ codegraph_export_mcp() {
         printf '%s\n' "$status" >&2
         fail "CodeGraph MCP export requires explicit codegraph-init and codegraph-enable"
     fi
-    python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TOOLING_ROOT" <<'PY'
+    python3 -B - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TOOLING_ROOT" <<'PY'
 import json
 import sys
 
@@ -771,7 +810,7 @@ typescript_runtime_ready() {
 }
 
 lsp_node_modules_digest() {
-    python3 - "$TOOLING_ROOT/lsp" <<'PY'
+    python3 -B - "$TOOLING_ROOT/lsp" <<'PY'
 import hashlib
 import os
 import stat
@@ -807,7 +846,7 @@ PY
 }
 
 lsp_receipt_contents() {
-    python3 - "$TOOLING_ROOT" "$(lsp_node_modules_digest)" <<'PY'
+    python3 -B - "$TOOLING_ROOT" "$(lsp_node_modules_digest)" <<'PY'
 import json
 import sys
 
@@ -953,7 +992,7 @@ detect_verification_kind() {
 declared_tasks() {
     case "$VERIFY_KIND" in
         npm|pnpm|yarn|bun)
-            python3 - "$TARGET_ROOT/package.json" <<'PY'
+            python3 -B - "$TARGET_ROOT/package.json" <<'PY'
 import json
 import sys
 
@@ -972,7 +1011,7 @@ PY
             grep -E '^(lint|typecheck|test|build):' "$TARGET_ROOT"/[Mm]akefile 2>/dev/null | sed -E 's/:.*//' | sort -u
             ;;
         python)
-            python3 - "$TARGET_ROOT/pyproject.toml" <<'PY'
+            python3 -B - "$TARGET_ROOT/pyproject.toml" <<'PY'
 import json
 import sys
 
@@ -1013,7 +1052,7 @@ print_command() {
         bun) echo "COMMAND: bun run $task_name" ;;
         make) echo "COMMAND: make $task_name" ;;
         python)
-            python3 - "$TARGET_ROOT/pyproject.toml" "$task_name" <<'PY'
+            python3 -B - "$TARGET_ROOT/pyproject.toml" "$task_name" <<'PY'
 import json
 import shlex
 import sys
@@ -1041,7 +1080,7 @@ PY
 }
 
 run_with_timeout() {
-    python3 - "$TARGET_ROOT" "$VERIFY_TIMEOUT_SECONDS" "$@" <<'PY'
+    python3 -B - "$TARGET_ROOT" "$VERIFY_TIMEOUT_SECONDS" "$@" <<'PY'
 import json
 import os
 import signal
@@ -1073,7 +1112,7 @@ run_command() {
         bun) run_with_timeout bun run "$task_name" ;;
         make) run_with_timeout make "$task_name" ;;
         python)
-            python3 - "$TARGET_ROOT/pyproject.toml" "$task_name" <<'PY'
+            python3 -B - "$TARGET_ROOT/pyproject.toml" "$task_name" <<'PY'
 import json
 import os
 import signal

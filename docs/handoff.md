@@ -74,7 +74,9 @@ CodeGraph lifecycle: `codegraph-status`, `codegraph-install`,
 `codegraph-export-mcp`, and `codegraph-uninstall`. It pins
 `@colbymchenry/codegraph@1.4.1` in the package-owned tooling manifest. It does
 not run upstream agent installers/uninstallers, use `~/.omo`, mutate global or
-host-managed configuration, or allow CodeGraph's fallback download.
+host-managed configuration, allow CodeGraph's fallback download, or enable
+CodeGraph telemetry. Its npm and CodeGraph runtime state stays inside the
+receipt-owned tooling root.
 
 The caller explicitly selects a safe absolute project root and empty tooling
 root, then installs, initializes the project-local `.codegraph/` index, and
