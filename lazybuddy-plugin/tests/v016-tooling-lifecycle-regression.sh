@@ -291,16 +291,20 @@ fi
 
 VERIFY_CALLER_HOME="$TMP/verify-caller-home"
 VERIFY_CALLER_CONFIG="$TMP/verify-caller-config"
+VERIFY_CALLER_TMP="$TMP/verify-caller-tmp"
+VERIFY_CALLER_NODE_CACHE="$TMP/verify-caller-node-cache"
 VERIFY_FAKE_BIN="$TMP/verify-fake-bin"
 VERIFY_CALLER_SENTINEL="$VERIFY_CALLER_HOME/npm-state-written"
-mkdir "$VERIFY_CALLER_HOME" "$VERIFY_CALLER_CONFIG" "$VERIFY_FAKE_BIN"
+VERIFY_CALLER_TMP_SENTINEL="$VERIFY_CALLER_TMP/node-state-written"
+mkdir "$VERIFY_CALLER_HOME" "$VERIFY_CALLER_CONFIG" "$VERIFY_CALLER_TMP" "$VERIFY_CALLER_NODE_CACHE" "$VERIFY_FAKE_BIN"
 VERIFY_REAL_NPM="$(command -v npm)"
-printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$VERIFY_CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$VERIFY_CALLER_CONFIG\" ]; then" "  touch \"$VERIFY_CALLER_SENTINEL\"" 'fi' "exec \"$VERIFY_REAL_NPM\" \"\$@\"" > "$VERIFY_FAKE_BIN/npm"
+printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$VERIFY_CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$VERIFY_CALLER_CONFIG\" ]; then" "  touch \"$VERIFY_CALLER_SENTINEL\"" 'fi' "if [ \"\${TMPDIR:-}\" = \"$VERIFY_CALLER_TMP\" ] || [ \"\${NODE_COMPILE_CACHE:-}\" = \"$VERIFY_CALLER_NODE_CACHE\" ]; then" "  touch \"$VERIFY_CALLER_TMP_SENTINEL\"" 'fi' "exec \"$VERIFY_REAL_NPM\" \"\$@\"" > "$VERIFY_FAKE_BIN/npm"
 chmod +x "$VERIFY_FAKE_BIN/npm"
 snapshot "$VERIFY_TARGET"
 cp "$TMP/snapshot.txt" "$TMP/verify-run-before.txt"
-expect_status "verify run isolates caller npm state" 0 env PATH="$VERIFY_FAKE_BIN:$PATH" HOME="$VERIFY_CALLER_HOME" XDG_CONFIG_HOME="$VERIFY_CALLER_CONFIG" bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --run test
+expect_status "verify run isolates caller npm state" 0 env PATH="$VERIFY_FAKE_BIN:$PATH" HOME="$VERIFY_CALLER_HOME" XDG_CONFIG_HOME="$VERIFY_CALLER_CONFIG" TMPDIR="$VERIFY_CALLER_TMP" NODE_COMPILE_CACHE="$VERIFY_CALLER_NODE_CACHE" bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --run test
 [ ! -e "$VERIFY_CALLER_SENTINEL" ] || fail "verify run inherited caller npm runtime state"
+[ ! -e "$VERIFY_CALLER_TMP_SENTINEL" ] || fail "verify run inherited caller tmp or Node compile cache state"
 snapshot "$VERIFY_TARGET"
 if cmp -s "$TMP/verify-run-before.txt" "$TMP/snapshot.txt"; then
     pass "verify run preserves target tree with isolated npm state"
@@ -337,6 +341,8 @@ JSON
 printf '{"lockfileVersion":3}\n' > "$FAILING_TARGET/package-lock.json"
 expect_status "verify dry-run does not execute failing command" 0 bash "$LIFECYCLE" verify --target "$FAILING_TARGET" --dry-run test
 expect_status "verify run propagates declared failure" 23 bash "$LIFECYCLE" verify --target "$FAILING_TARGET" --run test
+expect_status "verify failure isolates caller tmp state" 23 env PATH="$VERIFY_FAKE_BIN:$PATH" HOME="$VERIFY_CALLER_HOME" XDG_CONFIG_HOME="$VERIFY_CALLER_CONFIG" TMPDIR="$VERIFY_CALLER_TMP" NODE_COMPILE_CACHE="$VERIFY_CALLER_NODE_CACHE" bash "$LIFECYCLE" verify --target "$FAILING_TARGET" --run test
+[ ! -e "$VERIFY_CALLER_TMP_SENTINEL" ] || fail "verify failure inherited caller tmp or Node compile cache state"
 
 TIMEOUT_TARGET="$TMP/timeout-target"
 mkdir "$TIMEOUT_TARGET"

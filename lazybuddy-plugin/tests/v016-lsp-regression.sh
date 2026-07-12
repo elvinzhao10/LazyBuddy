@@ -55,8 +55,10 @@ PY_ROOT="$TMP/python-tools"
 ISOLATED_ROOT="$TMP/isolated-tools"
 CALLER_HOME="$TMP/caller-home"
 CALLER_CONFIG="$TMP/caller-config"
+CALLER_TMP="$TMP/caller-tmp"
+CALLER_NODE_CACHE="$TMP/caller-node-cache"
 FAKE_BIN="$TMP/fake-bin"
-mkdir "$TS_ROOT" "$PY_ROOT" "$ISOLATED_ROOT" "$CALLER_HOME" "$CALLER_CONFIG" "$FAKE_BIN"
+mkdir "$TS_ROOT" "$PY_ROOT" "$ISOLATED_ROOT" "$CALLER_HOME" "$CALLER_CONFIG" "$CALLER_TMP" "$CALLER_NODE_CACHE" "$FAKE_BIN"
 CALLER_SENTINEL="$CALLER_HOME/npm-state-written"
 REAL_NPM="$(command -v npm)"
 printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$CALLER_CONFIG\" ]; then" "  touch \"$CALLER_SENTINEL\"" 'fi' "exec \"$REAL_NPM\" \"\$@\"" > "$FAKE_BIN/npm"
@@ -65,10 +67,10 @@ printf 'import { answer } from "./source";\nconsole.log(answer);\n' > "$TS_TARGE
 printf 'from source import answer\nprint(answer)\n' > "$PY_TARGET/use.py"
 fingerprint "$TS_TARGET" > "$TMP/ts-before-install"
 fingerprint "$PY_TARGET" > "$TMP/py-before-install"
-expect "LSP install isolates caller npm state" 0 env PATH="$FAKE_BIN:$PATH" HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"
+expect "LSP install isolates caller npm state" 0 env PATH="$FAKE_BIN:$PATH" HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" TMPDIR="$CALLER_TMP" NODE_COMPILE_CACHE="$CALLER_NODE_CACHE" bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"
 [ ! -e "$CALLER_SENTINEL" ] || fail 'LSP install inherited caller npm runtime state'
-[ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/home" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/cache" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/config" ] || fail 'LSP install did not create receipt-owned npm runtime'
-expect "owned LSP runtime ignores caller environment" 0 env HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" python3 - "$ISOLATED_ROOT" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
+[ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/home" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/cache" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/config" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/tmp" ] || fail 'LSP install did not create receipt-owned npm runtime'
+expect "owned LSP runtime ignores caller environment" 0 env HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" TMPDIR="$CALLER_TMP" NODE_COMPILE_CACHE="$CALLER_NODE_CACHE" python3 - "$ISOLATED_ROOT" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
 import sys
 from pathlib import Path
 
@@ -79,7 +81,7 @@ from session import provider_environment
 provider = Path(tooling_root) / "lsp" / "typescript" / "node_modules" / ".bin" / "typescript-language-server"
 environment = provider_environment(str(provider))
 runtime = Path(tooling_root) / ".lazybuddy-lsp-npm-runtime"
-if environment["HOME"] != str(runtime / "home") or environment["XDG_CONFIG_HOME"] != str(runtime / "config"):
+if environment["HOME"] != str(runtime / "home") or environment["XDG_CONFIG_HOME"] != str(runtime / "config") or environment["TMPDIR"] != str(runtime / "tmp") or environment["NODE_COMPILE_CACHE"] != str(runtime / "cache" / "node-compile-cache"):
     raise SystemExit("owned LSP runtime inherited caller environment")
 PY
 expect "uninstall isolated LSP provider" 0 bash "$LIFECYCLE" lsp-uninstall --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"

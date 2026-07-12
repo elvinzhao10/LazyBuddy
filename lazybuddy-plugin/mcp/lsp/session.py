@@ -18,7 +18,7 @@ SEMANTIC_METHODS = frozenset({
 def provider_environment(command: str) -> dict[str, str]:
     environment = os.environ.copy()
     runtime_root = Path(command).parent.parents[3] / ".lazybuddy-lsp-npm-runtime"
-    if not all((runtime_root / name).is_dir() and not (runtime_root / name).is_symlink() for name in ("home", "cache", "config")):
+    if not all((runtime_root / name).is_dir() and not (runtime_root / name).is_symlink() for name in ("home", "cache", "config", "tmp")):
         return environment
     for name in tuple(environment):
         if name.lower().startswith("npm_config_"):
@@ -27,6 +27,8 @@ def provider_environment(command: str) -> dict[str, str]:
         "HOME": str(runtime_root / "home"),
         "XDG_CONFIG_HOME": str(runtime_root / "config"),
         "XDG_CACHE_HOME": str(runtime_root / "cache"),
+        "TMPDIR": str(runtime_root / "tmp"),
+        "NODE_COMPILE_CACHE": str(runtime_root / "cache" / "node-compile-cache"),
         "PYTHONPYCACHEPREFIX": str(runtime_root / "cache" / "python"),
         "npm_config_cache": str(runtime_root / "cache"),
         "npm_config_userconfig": str(runtime_root / "config" / "npmrc"),

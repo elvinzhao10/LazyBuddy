@@ -1137,16 +1137,17 @@ lsp_npm_runtime_is_valid() {
     [ -d "$runtime_root/home" ] && [ ! -L "$runtime_root/home" ] || return 1
     [ -d "$runtime_root/cache" ] && [ ! -L "$runtime_root/cache" ] || return 1
     [ -d "$runtime_root/config" ] && [ ! -L "$runtime_root/config" ] || return 1
-    find "$runtime_root" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort | cmp -s - <(printf '%s\n' cache config home | sort)
+    [ -d "$runtime_root/tmp" ] && [ ! -L "$runtime_root/tmp" ] || return 1
+    find "$runtime_root" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort | cmp -s - <(printf '%s\n' cache config home tmp | sort)
 }
 
 prepare_lsp_npm_runtime() {
     local runtime_root
     runtime_root="$(lsp_npm_runtime_root)"
     if [ -e "$runtime_root" ] && ! lsp_npm_runtime_is_valid; then
-        fail "LSP npm runtime root must contain only real home, cache, and config directories"
+        fail "LSP npm runtime root must contain only real home, cache, config, and tmp directories"
     fi
-    mkdir -p "$runtime_root/home" "$runtime_root/cache" "$runtime_root/config"
+    mkdir -p "$runtime_root/home" "$runtime_root/cache" "$runtime_root/config" "$runtime_root/tmp"
 }
 
 lsp_npm_ci() {
@@ -1160,6 +1161,8 @@ lsp_npm_ci() {
             HOME="$runtime_root/home" \
             XDG_CONFIG_HOME="$runtime_root/config" \
             XDG_CACHE_HOME="$runtime_root/cache" \
+            TMPDIR="$runtime_root/tmp" \
+            NODE_COMPILE_CACHE="$runtime_root/cache/node-compile-cache" \
             PYTHONPYCACHEPREFIX="$runtime_root/cache/python" \
             npm_config_cache="$runtime_root/cache" \
             npm_config_userconfig="$runtime_root/config/npmrc" \
@@ -1377,7 +1380,7 @@ environment = os.environ.copy()
 runtime = None
 if command and command[0] == "npm":
     runtime = tempfile.TemporaryDirectory(prefix="lazybuddy-verify-npm-")
-    for name in ("home", "cache", "config"):
+    for name in ("home", "cache", "config", "tmp"):
         os.makedirs(os.path.join(runtime.name, name), exist_ok=True)
     for name in tuple(environment):
         if name.lower().startswith("npm_config_"):
@@ -1386,6 +1389,8 @@ if command and command[0] == "npm":
         "HOME": os.path.join(runtime.name, "home"),
         "XDG_CONFIG_HOME": os.path.join(runtime.name, "config"),
         "XDG_CACHE_HOME": os.path.join(runtime.name, "cache"),
+        "TMPDIR": os.path.join(runtime.name, "tmp"),
+        "NODE_COMPILE_CACHE": os.path.join(runtime.name, "cache", "node-compile-cache"),
         "npm_config_cache": os.path.join(runtime.name, "cache"),
         "npm_config_userconfig": os.path.join(runtime.name, "config", "npmrc"),
         "npm_config_update_notifier": "false",
