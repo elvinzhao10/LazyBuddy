@@ -98,13 +98,15 @@ expect 'CodeGraph enable is repeat-safe' 0 bash "$LIFECYCLE" codegraph-enable --
 expect 'CodeGraph exports a package-owned MCP configuration' 0 bash "$LIFECYCLE" codegraph-export-mcp --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -q 'mcp/codegraph/server.sh' "$TMP/CodeGraph exports a package-owned MCP configuration.out" || fail 'exported launcher path'
 
-expect 'CodeGraph launcher completes MCP initialize' 0 python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TARGET" "$TOOLING_ROOT" "$TMP/launcher-pid" <<'PY'
+LIVE_READY="$TMP/live-mcp-ready"
+python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TARGET" "$TOOLING_ROOT" "$TMP/launcher-pid" "$LIVE_READY" <<'PY' &
 import json
 import os
 import subprocess
 import sys
+import time
 
-launcher, target, tooling_root, pid_path = sys.argv[1:]
+launcher, target, tooling_root, pid_path, ready_path = sys.argv[1:]
 environment = os.environ | {"CWD": target, "LAZYBUDDY_TOOLING_ROOT": tooling_root}
 process = subprocess.Popen(
     ["bash", launcher],
@@ -132,32 +134,59 @@ for expected in ("CODEGRAPH_TELEMETRY=0", "CODEGRAPH_NO_DOWNLOAD=1", f"HOME={too
         raise SystemExit(f"CodeGraph launcher missing isolated environment: {expected}")
 with open(pid_path, "w", encoding="utf-8") as destination:
     destination.write(f"{process.pid}\n")
+with open(ready_path, "w", encoding="utf-8") as destination:
+    destination.write("ready\n")
+while process.poll() is None:
+    time.sleep(0.1)
 PY
+LIVE_HELPER_PID=$!
+for _ in $(seq 1 100); do
+    [ -f "$LIVE_READY" ] && break
+    sleep 0.1
+done
+[ -f "$LIVE_READY" ] || fail 'live CodeGraph MCP did not initialize'
+pass 'CodeGraph launcher completes persistent MCP initialize'
+
+OTHER_TARGET="$TMP/other-target"
+mkdir "$OTHER_TARGET"
+python3 -c 'import time; time.sleep(30)' "$TOOLING_ROOT/node_modules/@colbymchenry/codegraph-sentinel" "$OTHER_TARGET" &
+OTHER_PROCESS_PID=$!
 
 expect 'CodeGraph uninstall removes only receipt-owned index' 0 bash "$LIFECYCLE" codegraph-uninstall --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 [ ! -e "$TARGET/.codegraph" ] || fail 'receipt-owned index was not removed'
-expect 'CodeGraph uninstall stops live matching MCP tree' 0 python3 - "$TMP/launcher-pid" "$TOOLING_ROOT" "$TARGET" <<'PY'
+expect 'CodeGraph uninstall stops live matching MCP tree' 0 python3 - "$TMP/launcher-pid" "$TOOLING_ROOT" "$TARGET" "$LIVE_HELPER_PID" <<'PY'
 import os
 import subprocess
 import sys
 import time
 
-pid_path, tooling_root, target_root = sys.argv[1:]
+pid_path, tooling_root, target_root, helper_pid = sys.argv[1:]
 pid = int(open(pid_path, encoding="utf-8").read().strip())
 deadline = time.monotonic() + 5
-while time.monotonic() < deadline:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        break
-    time.sleep(0.1)
-else:
-    raise SystemExit(f"launcher process {pid} remained alive after uninstall")
+for checked_pid in (pid, int(helper_pid)):
+    while time.monotonic() < deadline:
+        try:
+            os.kill(checked_pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.1)
+    else:
+        raise SystemExit(f"persistent launcher helper {checked_pid} remained alive after uninstall")
 marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
 for line in subprocess.check_output(["ps", "-axo", "pid=,command="], text=True).splitlines():
-    if marker in line:
+    if marker in line and target_root in line:
         raise SystemExit(f"owned CodeGraph process remained alive after uninstall: {line}")
 PY
+wait "$LIVE_HELPER_PID" || true
+
+expect 'uninstall preserves similarly named other-target process' 0 python3 - "$OTHER_PROCESS_PID" <<'PY'
+import os
+import sys
+
+os.kill(int(sys.argv[1]), 0)
+PY
+kill "$OTHER_PROCESS_PID" 2>/dev/null || true
+wait "$OTHER_PROCESS_PID" 2>/dev/null || true
 printf 'preserve\n' > "$TOOLING_ROOT/unowned"
 expect 'unowned tooling-root entry blocks uninstall' 2 bash "$LIFECYCLE" uninstall --tooling-root "$TOOLING_ROOT"
 [ "$(cat "$TOOLING_ROOT/unowned")" = preserve ] || fail 'unsafe tooling uninstall changed unowned entry'

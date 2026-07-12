@@ -781,13 +781,13 @@ stop_owned_codegraph_processes() {
     python3 -B - "$TOOLING_ROOT" "$TARGET_ROOT" <<'PY'
 import os
 import signal
+import shlex
 import subprocess
 import sys
 import time
 
 tooling_root, target_root = sys.argv[1:]
 marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
-target_marker = f"--path {target_root}"
 output = subprocess.check_output(["ps", "-axo", "pid=,ppid=,command="], text=True)
 processes = {}
 children = {}
@@ -801,10 +801,16 @@ for line in output.splitlines():
         continue
     processes[pid] = (parent_pid, parts[2])
     children.setdefault(parent_pid, set()).add(pid)
-roots = {
-    pid for pid, (_, command) in processes.items()
-    if marker in command and target_marker in command
-}
+roots = set()
+for pid, (_, command) in processes.items():
+    if marker not in command:
+        continue
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        continue
+    if target_root in tokens:
+        roots.add(pid)
 pids = set(roots)
 pending = list(roots)
 while pending:
