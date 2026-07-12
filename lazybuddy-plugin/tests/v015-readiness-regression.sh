@@ -112,15 +112,12 @@ from pathlib import Path
 import sys
 
 project_root = Path(sys.argv[1])
-readme = (project_root / "README.md").read_text(encoding="utf-8")
 docs_index = (project_root / "docs" / "README.md").read_text(encoding="utf-8")
+handoff = (project_root / "docs" / "handoff.md").read_text(encoding="utf-8")
 
-assert "current operational references; plan/ and prompts/ are historical records" in readme
-assert "[Command index](lazybuddy-command-index.md)" in docs_index
-assert "[Hook inventory](lazybuddy-hooks.md)" in docs_index
-assert "[State ledger design](lazybuddy-state-ledger-design.md)" in docs_index
-assert "`plan/` and `prompts/` contain historical versioned execution records." in docs_index
-assert "The remaining files in this directory" not in docs_index
+assert "private local material" in docs_index.lower()
+assert "LazyBuddy documentation handoff" in handoff
+assert not (project_root / "docs" / "lazybuddy-command-index.md").exists()
 PY
 
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"

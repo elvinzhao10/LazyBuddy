@@ -33,7 +33,7 @@ PYEOF
 }
 
 TOOL_LIST='{"tools":[
-  {"name":"discover_checks","description":"Read verification-matrix.md, return checks as JSON","inputSchema":{"type":"object","properties":{"section":{"type":"string"}}}},
+  {"name":"discover_checks","description":"Read the package-owned verification contract and return checks as JSON","inputSchema":{"type":"object","properties":{"section":{"type":"string"}}}},
   {"name":"run_check","description":"Classify a task failure and record the event","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"task_id":{"type":"string"},"error_message":{"type":"string"}},"required":["run_id","task_id","error_message"]}},
   {"name":"record_gate_result","description":"Record gate result to events.jsonl","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"gate_name":{"type":"string"},"status":{"type":"string","enum":["passed","failed"]},"result":{"type":"string"}},"required":["run_id","gate_name","status"]}},
   {"name":"list_gate_results","description":"Read verification gates from state.json","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
@@ -56,7 +56,7 @@ require_run_events() {
 }
 
 py_discover() {
-  local matrix="$CWD/docs/lazybuddy-verification-matrix.md"
+  local matrix="$PLUGIN_ROOT/docs/verification-matrix.md"
   [ -f "$matrix" ] || return 1
   SECTION="$1" MATRIX="$matrix" python3 << 'PYEOF'
 import json, os; cwd = os.environ.get('CWD', '.'); sect = os.environ.get('SECTION', '')
@@ -89,7 +89,7 @@ case "$METHOD" in
       discover_checks)
         SECT=$(arg section)
         if ! CHECKS=$(py_discover "$SECT" 2>/dev/null); then
-          err "verification matrix not found in project docs"
+          err "package verification contract is missing"
           continue
         fi
         reply "$CHECKS" ;;

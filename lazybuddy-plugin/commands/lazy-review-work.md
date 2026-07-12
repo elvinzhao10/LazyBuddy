@@ -36,7 +36,7 @@ Runs the 5-agent parallel review gate: five independent subagents review the wor
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

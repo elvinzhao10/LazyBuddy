@@ -38,7 +38,7 @@ Activates binding ultrawork mode: tier triage classifies the work as LIGHT or HE
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

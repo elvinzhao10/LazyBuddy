@@ -33,7 +33,7 @@ Create a decision-complete work plan. The planner explores the codebase, researc
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

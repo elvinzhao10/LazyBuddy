@@ -218,7 +218,7 @@ See earlier host implementation source: start-work SKILL.md lines 136-160
 - **Subagent spawning:** WorkBuddy Agent tool replaces `multi_agent_v1.spawn_agent`; `isolation: true` replaces `fork_context: false`
 - **`.lazybuddy/runs/`:** Run state replaces `.lazybuddy/boulder.json` + `.lazybuddy/start-work/`
 - **Hooks:** Stop/SubagentStop hooks (v0.6) drive continuation loop
-- **State ledger:** `state.json` + `events.jsonl` follow the schema in `docs/lazybuddy-state-ledger-design.md`
+- **State ledger:** `state.json` + `events.jsonl` are the package-owned run record; inspect the scripts that create and update them before changing their shape.
 
 ---
 

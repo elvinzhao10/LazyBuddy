@@ -33,7 +33,7 @@ Multi-dimensional code and design reviewer. Reviews implementation across 5 inde
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

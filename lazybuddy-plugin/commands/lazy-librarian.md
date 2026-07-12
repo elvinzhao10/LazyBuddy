@@ -35,7 +35,7 @@ Memory, index, and parity maintenance agent. Updates the command index, parity l
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

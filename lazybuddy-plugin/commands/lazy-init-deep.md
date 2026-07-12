@@ -55,7 +55,7 @@ Generate hierarchical project memory. Scores directories by complexity, produces
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

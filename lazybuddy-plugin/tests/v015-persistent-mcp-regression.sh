@@ -65,7 +65,7 @@ for server in servers:
             process.kill()
             process.wait()
 
-def assert_project_doc_errors(server, tool_names):
+def assert_package_doc_discovery(server, tool_names):
     process = subprocess.Popen(
         ["bash", f"{plugin}/mcp/{server}/server.sh"],
         stdin=subprocess.PIPE,
@@ -76,7 +76,7 @@ def assert_project_doc_errors(server, tool_names):
     )
     try:
         for tool_name in tool_names:
-            request_id = f"{server}-{tool_name}-missing-project-doc"
+            request_id = f"{server}-{tool_name}-package-contract"
             request = {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -89,11 +89,12 @@ def assert_project_doc_errors(server, tool_names):
             assert readable, f"{server}/{tool_name} did not respond before stdin closed"
             response = json.loads(process.stdout.readline())
             assert response["id"] == request_id, response
-            assert "error" in response, response
+            assert isinstance(response.get("result"), list), response
+            assert response["result"], response
         process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": f"{server}-session-survives", "method": "tools/list"}) + "\n")
         process.stdin.flush()
         readable, _, _ = select.select([process.stdout], [], [], 1.5)
-        assert readable, f"{server} did not survive a missing project document"
+        assert readable, f"{server} did not survive package contract discovery"
         response = json.loads(process.stdout.readline())
         assert "result" in response, response
         process.stdin.close()
@@ -108,7 +109,7 @@ def assert_project_doc_errors(server, tool_names):
             process.kill()
             process.wait()
 
-assert_project_doc_errors("verification", ["discover_checks"])
+assert_package_doc_discovery("verification", ["discover_checks"])
 
 print("PASS: persistent shell MCP sessions return one JSON response per request")
 PYEOF

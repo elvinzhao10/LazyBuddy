@@ -44,11 +44,7 @@ append_policy_violation() {
 }
 
 check_active_documentation_policy() {
-    local repo_root
-    repo_root="$(cd "${PLUGIN_ROOT}/.." && pwd)"
     local active_paths=(
-        "${repo_root}/AGENTS.md"
-        "${repo_root}/README.md"
         "${PLUGIN_ROOT}/README.md"
         "${PLUGIN_ROOT}/skills"
         "${PLUGIN_ROOT}/agents"
@@ -56,7 +52,6 @@ check_active_documentation_policy() {
         "${PLUGIN_ROOT}/templates"
     )
     local forbidden_patterns=(
-        'dev/reference/lazycodex'
         '\\.omo(/|[^[:alnum:]_])'
         'lazycodex'
         '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)'
