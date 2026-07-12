@@ -2,6 +2,16 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v0.16.0-alpha.1 — LazySeries tooling foundation (2026-07-12)
+
+- Added the package-owned, local-first tooling foundation: host-or-owned
+  `rg`/`sg`, repository-native verification, read-only TypeScript/JavaScript
+  and Python LSP navigation, and explicitly enabled real CodeGraph.
+- Added disabled-by-default Context7 and experimental `grep_app` registration
+  fragments. They never alter host configuration or persist credentials.
+- Kept all tooling lifecycle state receipt-owned, with safe uninstall and no
+  LazyCodex/OmO operational dependency.
+
 ## v0.15.0-alpha.3 — Self-contained package cleanup (2026-07-12)
 
 - Released package-only documentation contracts: copied plugin validation no

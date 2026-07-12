@@ -1,10 +1,10 @@
-# LazyBuddy v0.15.0-alpha.3 Implementation Evidence
+# LazyBuddy v0.16.0-alpha.1 Implementation Evidence
 
-> Current cleanup-release evidence, verified on macOS only; not a historical parity score or a certification that a CodeBuddy or WorkBuddy session loaded the package.
+> Current tooling-foundation release evidence, verified on macOS only; not a historical parity score or a certification that a CodeBuddy or WorkBuddy session loaded the package.
 
 ## What is implemented and checked
 
-The v0.15 CodeBuddy package declares 14 `lazy-` skills, 14 current slash-command workflows, 13 agents, 12 hook-event declarations, and 6 MCP servers: `run-ledger`, `verification`, `status-dashboard`, `context-graph`, `code-intel`, and `docs`. The removed `parity` and `source-map` servers are not part of this release.
+The v0.16 CodeBuddy package declares 14 `lazy-` skills, 14 current slash-command workflows, 13 agents, 12 hook-event declarations, and 6 MCP servers: `run-ledger`, `verification`, `status-dashboard`, `context-graph`, `code-intel`, and `docs`. The removed `parity` and `source-map` servers are not part of this release.
 
 Package checks cover the manifest, component inventory, JSON validity, executable MCP scripts, internal Markdown links, smoke checks, MCP regression checks, and hook/security verification. The aggregate `lazybuddy-verify.sh` reports these package checks; it does not claim a live host loaded the plugin or connected a server.
 

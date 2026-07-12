@@ -2,10 +2,11 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="0.15.0-alpha.3"
+EXPECTED_VERSION="0.16.0-alpha.1"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
-for server in "$PLUGIN_ROOT"/mcp/*/server.sh; do
+for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
+  server="$PLUGIN_ROOT/mcp/$server/server.sh"
   response="$(printf '%s\n' "$REQUEST" | CWD="$PLUGIN_ROOT/.." CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$server")"
   version="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["serverInfo"]["version"])' <<<"$response")"
   [ "$version" = "$EXPECTED_VERSION" ] || {
@@ -33,6 +34,9 @@ expected = sys.argv[2]
 for relative in (
     ".codebuddy-plugin/plugin.json",
     ".workbuddy-plugin/plugin.json",
+    "tooling/package.json",
+    "tooling/lsp/typescript/package.json",
+    "tooling/lsp/python/package.json",
 ):
     value = json.loads((root / relative).read_text(encoding="utf-8"))
     assert value["version"] == expected, f"{relative} reported {value['version']!r}"
@@ -41,4 +45,4 @@ marketplace = json.loads((root.parent / ".codebuddy-plugin/marketplace.json").re
 entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
 assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 PY
-printf 'v0.15 runtime version regression: PASS\n'
+printf 'v0.16 runtime version regression: PASS\n'

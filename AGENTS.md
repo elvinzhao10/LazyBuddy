@@ -4,7 +4,7 @@
 
 LazyBuddy supports **CodeBuddy IDE** and **CodeBuddy CLI** as documented plugin surfaces. **WorkBuddy** documents plugins, skills, MCP, hooks, agents, and rules through its UI/marketplace, but this release has not verified a copied-repository installer for LazyBuddy. The verified no-package-manager path is local skill import plus manual MCP configuration; any WorkBuddy marketplace/plugin installation must be confirmed in a live session.
 
-**Current package release:** v0.15.0-alpha.3 cleanup, verified on macOS only.
+**Current package release:** v0.16.0-alpha.1 tooling foundation, verified on macOS only.
 
 ## `onboard` protocol
 

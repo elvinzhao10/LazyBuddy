@@ -3,7 +3,7 @@
 ## Purpose
 
 Write the next documentation pass from the implemented package, not from the
-private legacy notes. The current package release is v0.15.0-alpha.3 cleanup,
+private legacy notes. The current package release is v0.16.0-alpha.1 tooling foundation,
 verified on macOS only.
 
 ## Start here
@@ -40,7 +40,7 @@ bash scripts/lazybuddy-verify.sh
 
 Treat command output and the package source as the authority if legacy notes
 conflict with current behavior. The next documentation pass should preserve the
-v0.15.0-alpha.3 release version, tested host surfaces, six-server MCP
+v0.16.0-alpha.1 release version, tested host surfaces, six-server MCP
 inventory, and safe host-managed uninstall procedure.
 
 ## v0.16 tooling foundation

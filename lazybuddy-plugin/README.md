@@ -11,7 +11,7 @@
 3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or skill and any required MCP connection. In WorkBuddy, verify a plugin/marketplace session before using its plugin capabilities, or confirm an imported skill and manually configured connector on the no-package-manager path.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.
 
-**Status:** v0.15.0-alpha.3 cleanup release, verified on macOS. The repository `README.md` covers the user workflow and its `AGENTS.md` covers host-specific onboarding.
+**Status:** v0.16.0-alpha.1 tooling-foundation release, verified on macOS only. The repository `README.md` covers the user workflow and its `AGENTS.md` covers host-specific onboarding.
 
 ## What this plugin provides
 
