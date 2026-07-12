@@ -6,6 +6,14 @@ import time
 from pathlib import Path
 from typing import Optional
 
+SEMANTIC_METHODS = frozenset({
+    "textDocument/definition",
+    "textDocument/references",
+    "textDocument/documentSymbol",
+    "textDocument/hover",
+    "textDocument/diagnostic",
+})
+
 
 def source_path(target_root: Path, raw_path: object) -> Path:
     if not isinstance(raw_path, str) or not raw_path:
@@ -49,6 +57,7 @@ class LspSession:
         self._timeout_seconds = timeout_seconds
         self._request_id = 1
         self._diagnostics: list[dict[str, object]] = []
+        self._document_open_pending = False
 
     def close(self) -> None:
         if self._process.poll() is None:
@@ -116,6 +125,8 @@ class LspSession:
                 self._diagnostics.append(params)
 
     def request(self, method: str, params: dict[str, object]) -> object:
+        if method in SEMANTIC_METHODS:
+            self.wait_for_document_ready()
         request_id = self._request_id
         self._request_id += 1
         self._write({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
@@ -152,16 +163,21 @@ class LspSession:
     def open_file(self, path: Path) -> None:
         language_id = "typescript" if self._language == "typescript" else "python"
         self.notify("textDocument/didOpen", {"textDocument": {"uri": path.as_uri(), "languageId": language_id, "version": 1, "text": path.read_text(encoding="utf-8")}})
+        self._document_open_pending = True
 
     def wait_for_document_ready(self) -> None:
+        if not self._document_open_pending:
+            return
         deadline = time.monotonic() + min(self._timeout_seconds, 0.5)
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                self._document_open_pending = False
                 return
             time.sleep(min(0.05, remaining))
 
     def diagnostics(self) -> list[dict[str, object]]:
+        self.wait_for_document_ready()
         deadline = time.monotonic() + min(self._timeout_seconds, 2)
         while time.monotonic() < deadline:
             try:

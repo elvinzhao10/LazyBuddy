@@ -117,6 +117,27 @@ PY
 
 expect "TypeScript bridge real read-only operations" 0 bridge_checks "$TS_TARGET" "$TS_ROOT" source.ts use.ts
 expect "Python bridge real read-only operations" 0 bridge_checks "$PY_TARGET" "$PY_ROOT" source.py use.py
+expect "TypeScript direct session cross-file definition" 0 python3 - "$TS_TARGET" "$TS_ROOT" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
+import sys
+from pathlib import Path
+
+target, tooling_root, module_root = sys.argv[1:]
+sys.path.insert(0, module_root)
+from session import LspSession
+
+project = Path(target)
+provider = Path(tooling_root) / "lsp" / "typescript" / "node_modules" / ".bin" / "typescript-language-server"
+session = LspSession(str(provider), "typescript", project, 8)
+try:
+    session.initialize()
+    source = project / "use.ts"
+    session.open_file(source)
+    result = session.request("textDocument/definition", {"textDocument": {"uri": source.as_uri()}, "position": {"line": 1, "character": 13}})
+    if project.joinpath("source.ts").as_uri() not in str(result):
+        raise SystemExit("direct freshly opened cross-file definition did not resolve to source.ts")
+finally:
+    session.close()
+PY
 expect "bridge rejects malformed JSON" 0 bash -c "printf '%s\\n' '{not-json' | CWD='$TS_TARGET' LAZYBUDDY_TOOLING_ROOT='$TS_ROOT' bash '$PLUGIN_ROOT/mcp/lsp/server.sh'"
 grep -q '"code":-32700' "$TMP/bridge rejects malformed JSON.out" || fail 'malformed request rejection'
 
