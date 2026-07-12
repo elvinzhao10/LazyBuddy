@@ -98,13 +98,13 @@ expect 'CodeGraph enable is repeat-safe' 0 bash "$LIFECYCLE" codegraph-enable --
 expect 'CodeGraph exports a package-owned MCP configuration' 0 bash "$LIFECYCLE" codegraph-export-mcp --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -q 'mcp/codegraph/server.sh' "$TMP/CodeGraph exports a package-owned MCP configuration.out" || fail 'exported launcher path'
 
-expect 'CodeGraph launcher completes MCP initialize' 0 python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TARGET" "$TOOLING_ROOT" <<'PY'
+expect 'CodeGraph launcher completes MCP initialize' 0 python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TARGET" "$TOOLING_ROOT" "$TMP/launcher-pid" <<'PY'
 import json
 import os
 import subprocess
 import sys
 
-launcher, target, tooling_root = sys.argv[1:]
+launcher, target, tooling_root, pid_path = sys.argv[1:]
 environment = os.environ | {"CWD": target, "LAZYBUDDY_TOOLING_ROOT": tooling_root}
 process = subprocess.Popen(
     ["bash", launcher],
@@ -130,14 +130,34 @@ else:
 for expected in ("CODEGRAPH_TELEMETRY=0", "CODEGRAPH_NO_DOWNLOAD=1", f"HOME={tooling_root}/.lazybuddy-codegraph-runtime/home"):
     if expected not in environment_text:
         raise SystemExit(f"CodeGraph launcher missing isolated environment: {expected}")
-process.terminate()
-stdout, stderr = process.communicate(timeout=15)
-if process.returncode not in {0, -15}:
-    raise SystemExit(stderr or stdout)
+with open(pid_path, "w", encoding="utf-8") as destination:
+    destination.write(f"{process.pid}\n")
 PY
 
 expect 'CodeGraph uninstall removes only receipt-owned index' 0 bash "$LIFECYCLE" codegraph-uninstall --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 [ ! -e "$TARGET/.codegraph" ] || fail 'receipt-owned index was not removed'
+expect 'CodeGraph uninstall stops live matching MCP tree' 0 python3 - "$TMP/launcher-pid" "$TOOLING_ROOT" "$TARGET" <<'PY'
+import os
+import subprocess
+import sys
+import time
+
+pid_path, tooling_root, target_root = sys.argv[1:]
+pid = int(open(pid_path, encoding="utf-8").read().strip())
+deadline = time.monotonic() + 5
+while time.monotonic() < deadline:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        break
+    time.sleep(0.1)
+else:
+    raise SystemExit(f"launcher process {pid} remained alive after uninstall")
+marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
+for line in subprocess.check_output(["ps", "-axo", "pid=,command="], text=True).splitlines():
+    if marker in line:
+        raise SystemExit(f"owned CodeGraph process remained alive after uninstall: {line}")
+PY
 printf 'preserve\n' > "$TOOLING_ROOT/unowned"
 expect 'unowned tooling-root entry blocks uninstall' 2 bash "$LIFECYCLE" uninstall --tooling-root "$TOOLING_ROOT"
 [ "$(cat "$TOOLING_ROOT/unowned")" = preserve ] || fail 'unsafe tooling uninstall changed unowned entry'

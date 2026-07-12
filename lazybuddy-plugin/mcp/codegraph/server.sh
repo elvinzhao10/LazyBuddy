@@ -29,11 +29,41 @@ RUNTIME_ROOT="$TOOLING_ROOT/.lazybuddy-codegraph-runtime"
     printf '%s\n' 'CodeGraph is unavailable: verified owned runtime state is missing or unsafe.' >&2
     exit 2
 }
-exec env \
-    HOME="$RUNTIME_ROOT/home" \
-    XDG_CONFIG_HOME="$RUNTIME_ROOT/config" \
-    XDG_CACHE_HOME="$RUNTIME_ROOT/cache" \
-    CODEGRAPH_NO_DOWNLOAD=1 \
-    CODEGRAPH_TELEMETRY=0 \
-    CODEGRAPH_INSTALL_DIR="$RUNTIME_ROOT/install" \
-    "$BINARY" serve --mcp
+export HOME="$RUNTIME_ROOT/home"
+export XDG_CONFIG_HOME="$RUNTIME_ROOT/config"
+export XDG_CACHE_HOME="$RUNTIME_ROOT/cache"
+export CODEGRAPH_NO_DOWNLOAD=1
+export CODEGRAPH_TELEMETRY=0
+export CODEGRAPH_INSTALL_DIR="$RUNTIME_ROOT/install"
+exec python3 -B -c '
+import os
+import signal
+import subprocess
+import sys
+
+binary, target_root, runtime_root = sys.argv[1:]
+environment = os.environ | {
+    "HOME": f"{runtime_root}/home",
+    "XDG_CONFIG_HOME": f"{runtime_root}/config",
+    "XDG_CACHE_HOME": f"{runtime_root}/cache",
+    "CODEGRAPH_NO_DOWNLOAD": "1",
+    "CODEGRAPH_TELEMETRY": "0",
+    "CODEGRAPH_INSTALL_DIR": f"{runtime_root}/install",
+}
+process = subprocess.Popen(
+    [binary, "serve", "--mcp"],
+    cwd=target_root,
+    env=environment,
+    start_new_session=True,
+)
+
+def forward_signal(_signal, _frame):
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+
+signal.signal(signal.SIGTERM, forward_signal)
+signal.signal(signal.SIGINT, forward_signal)
+raise SystemExit(process.wait())
+' "$BINARY" "$TARGET_ROOT" "$RUNTIME_ROOT"

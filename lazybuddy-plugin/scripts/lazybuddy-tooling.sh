@@ -788,33 +788,59 @@ import time
 tooling_root, target_root = sys.argv[1:]
 marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
 target_marker = f"--path {target_root}"
-output = subprocess.check_output(["ps", "-axo", "pid=,command="], text=True)
-pids = []
+output = subprocess.check_output(["ps", "-axo", "pid=,ppid=,command="], text=True)
+processes = {}
+children = {}
 for line in output.splitlines():
-    parts = line.strip().split(maxsplit=1)
-    if len(parts) != 2 or marker not in parts[1] or target_marker not in parts[1]:
+    parts = line.strip().split(maxsplit=2)
+    if len(parts) != 3:
         continue
     try:
-        pids.append(int(parts[0]))
+        pid, parent_pid = (int(parts[0]), int(parts[1]))
     except ValueError:
         continue
-for pid in pids:
+    processes[pid] = (parent_pid, parts[2])
+    children.setdefault(parent_pid, set()).add(pid)
+roots = {
+    pid for pid, (_, command) in processes.items()
+    if marker in command and target_marker in command
+}
+pids = set(roots)
+pending = list(roots)
+while pending:
+    parent_pid = pending.pop()
+    for child_pid in children.get(parent_pid, set()):
+        if child_pid not in pids:
+            pids.add(child_pid)
+            pending.append(child_pid)
+for pid in sorted(pids, reverse=True):
     try:
         os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
         pass
 deadline = time.monotonic() + 5
 while pids and time.monotonic() < deadline:
-    pids = [pid for pid in pids if os.path.exists(f"/proc/{pid}") or subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0]
+    pids = {
+        pid for pid in pids
+        if subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0
+    }
     if pids:
         time.sleep(0.1)
-for pid in pids:
+for pid in sorted(pids, reverse=True):
     try:
         os.kill(pid, signal.SIGKILL)
     except ProcessLookupError:
         pass
+deadline = time.monotonic() + 2
+while pids and time.monotonic() < deadline:
+    pids = {
+        pid for pid in pids
+        if subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0
+    }
+    if pids:
+        time.sleep(0.1)
 if pids:
-    time.sleep(0.1)
+    raise SystemExit(f"refusing uninstall: receipt-owned CodeGraph process did not terminate: {sorted(pids)}")
 PY
 }
 
