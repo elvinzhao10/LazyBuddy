@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""context-graph MCP server — WorkBuddy-native codegraph substitute.
+"""context-graph MCP server — heuristic fallback when real CodeGraph is disabled.
 
-Provides blast-radius / dependency / symbol analysis via grep (heuristic, not a
-full call graph). See docs/lazybuddy-known-gaps.md G-003.
+Provides blast-radius / dependency / symbol analysis via grep. It is heuristic,
+not a full semantic call graph or the optional real CodeGraph MCP capability.
 
 Single-shot JSON-RPC 2.0 over stdio (same pattern as run-ledger).
 Tools: blast_radius, file_deps, symbol_search, symbol_refs, repo_overview.

@@ -10,6 +10,7 @@
     "verify": "node --version"
   },
   "dependencies": {
+    "@colbymchenry/codegraph": "1.4.1",
     "@ast-grep/cli": "0.44.1",
     "@vscode/ripgrep": "1.18.0"
   }

@@ -149,6 +149,48 @@ provider is `basedpyright@1.39.9`. Missing, unsupported, and incompatible
 providers are non-blocking readiness states. No target manifest, lockfile,
 source file, global path, or host-managed configuration is modified.
 
+### Conditional CodeGraph architecture exploration
+
+CodeGraph is an optional, real local MCP capability for larger architecture and
+cross-file relationship questions. It is disabled by default. LazyBuddy keeps
+`context-graph` available as a clearly labeled grep-based heuristic fallback;
+it is not represented as semantic CodeGraph analysis.
+
+CodeGraph is pinned to `@colbymchenry/codegraph@1.4.1` and can only be
+provisioned in an explicit empty caller-owned tooling root. The lifecycle never
+invokes upstream `codegraph install` or `codegraph uninstall`, never downloads
+a fallback platform binary, and never changes host MCP configuration. Start
+only after you deliberately choose a project root:
+
+```bash
+# Inspect only. This never starts CodeGraph or creates .codegraph/.
+bash scripts/lazybuddy-tooling.sh codegraph-doctor \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+
+# Provision the pinned package, build the project-local index, then enable it.
+bash scripts/lazybuddy-tooling.sh codegraph-install \
+  --target /absolute/project --tooling-root /absolute/empty/lazybuddy-codegraph-tools
+bash scripts/lazybuddy-tooling.sh codegraph-init \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+bash scripts/lazybuddy-tooling.sh codegraph-enable \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+
+# Print an explicit MCP registration fragment; merge it through the host UI.
+bash scripts/lazybuddy-tooling.sh codegraph-export-mcp \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+
+# Remove only an index proven by LazyBuddy's receipt, then remove the tooling root.
+bash scripts/lazybuddy-tooling.sh codegraph-uninstall \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+bash scripts/lazybuddy-tooling.sh uninstall \
+  --tooling-root /absolute/lazybuddy-codegraph-tools
+```
+
+`codegraph-doctor` recommends the capability only at 500 supported source files
+or 100,000 supported source lines. It makes no network, process, or index call.
+The MCP launcher invokes only `codegraph serve --mcp` with fallback download
+disabled. A pre-existing `.codegraph/` directory is preserved by uninstall.
+
 ## License
 
 MIT — see the repository [LICENSE](../LICENSE).

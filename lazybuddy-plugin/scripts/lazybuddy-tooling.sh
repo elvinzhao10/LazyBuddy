@@ -14,9 +14,11 @@ Usage:
   lazybuddy-tooling.sh <detect|install|status|doctor|uninstall> --tooling-root ABSOLUTE_EMPTY_DIRECTORY
   lazybuddy-tooling.sh verify --target ABSOLUTE_TARGET_DIRECTORY <--dry-run|--run> [lint|typecheck|test|build ...]
   lazybuddy-tooling.sh <lsp-status|lsp-install|lsp-doctor|lsp-uninstall> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
+  lazybuddy-tooling.sh <codegraph-status|codegraph-install|codegraph-init|codegraph-enable|codegraph-doctor|codegraph-uninstall|codegraph-export-mcp> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
 
 install requires an existing, empty, non-symlink directory supplied by the caller.
 status and doctor inspect only. uninstall deletes only a verified, receipt-owned root.
+CodeGraph remains disabled until its caller explicitly installs, initializes, and enables it.
 EOF
 }
 
@@ -85,6 +87,7 @@ print(json.dumps({
             "capabilities.json",
             "node_modules",
             ".lazybuddy-tooling-receipt.json",
+            ".lazybuddy-codegraph-receipt.json",
         ],
         "node_modules_digest": sys.argv[2],
     }, indent=2, sort_keys=True))
@@ -131,13 +134,17 @@ PY
 }
 
 root_contains_only_owned_entries() {
-    [ "$(find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = "5" ] \
+    local count
+    count="$(find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')"
+    { [ "$count" = "5" ] || [ "$count" = "6" ] || [ "$count" = "7" ]; } \
         && [ -e "$TOOLING_ROOT/package.json" ] \
         && [ -e "$TOOLING_ROOT/package-lock.json" ] \
         && [ -e "$TOOLING_ROOT/capabilities.json" ] \
         && [ -d "$TOOLING_ROOT/node_modules" ] \
         && [ ! -L "$TOOLING_ROOT/node_modules" ] \
-        && [ -e "$TOOLING_ROOT/$RECEIPT_NAME" ]
+        && [ -e "$TOOLING_ROOT/$RECEIPT_NAME" ] \
+        && { [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json" ] || regular_unlinked_file "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json"; } \
+        && { [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || { [ -d "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] && [ ! -L "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ]; }; }
 }
 
 owned_root_is_valid() {
@@ -264,6 +271,9 @@ doctor_tooling() {
 }
 
 uninstall_tooling() {
+    if [ -e "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json" ]; then
+        fail "refusing tooling uninstall: run codegraph-uninstall for the receipt-owned project index first"
+    fi
     if ! owned_root_is_valid; then
         fail "refusing uninstall: root is not an unmodified receipt-owned installation"
     fi
@@ -335,6 +345,365 @@ parse_lsp() {
     [[ "/$TOOLING_ROOT/" != *"/../"* ]] || fail "tooling root must not contain traversal"
     [ -d "$TARGET_ROOT" ] && [ ! -L "$TARGET_ROOT" ] || fail "target must be an existing non-symlink directory"
     [ "$(cd "$TARGET_ROOT" && pwd -P)" = "$TARGET_ROOT" ] || fail "target must not resolve through a symlink"
+}
+
+parse_codegraph() {
+    parse_lsp "$@"
+}
+
+codegraph_binary() {
+    local package_suffix
+    case "$(uname -s)-$(uname -m)" in
+        Darwin-arm64) package_suffix="darwin-arm64" ;;
+        Darwin-x86_64) package_suffix="darwin-x64" ;;
+        Linux-aarch64|Linux-arm64) package_suffix="linux-arm64" ;;
+        Linux-x86_64) package_suffix="linux-x64" ;;
+        Windows_NT-x86_64|MINGW64_NT-*) package_suffix="win32-x64" ;;
+        *) return 1 ;;
+    esac
+    printf '%s\n' "$TOOLING_ROOT/node_modules/@colbymchenry/codegraph-$package_suffix/bin/codegraph"
+}
+
+codegraph_binary_is_available() {
+    local binary
+    binary="$(codegraph_binary 2>/dev/null || true)"
+    [ -n "$binary" ] && [ -f "$binary" ] && [ ! -L "$binary" ] && [ -x "$binary" ]
+}
+
+codegraph_receipt_path() {
+    printf '%s\n' "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json"
+}
+
+codegraph_runtime_root() {
+    printf '%s\n' "$TOOLING_ROOT/.lazybuddy-codegraph-runtime"
+}
+
+prepare_codegraph_runtime() {
+    local runtime_root
+    runtime_root="$(codegraph_runtime_root)"
+    if [ -e "$runtime_root" ] && { [ ! -d "$runtime_root" ] || [ -L "$runtime_root" ]; }; then
+        fail "CodeGraph runtime root must be a real directory inside the owned tooling root"
+    fi
+    mkdir -p "$runtime_root/home" "$runtime_root/config" "$runtime_root/cache" "$runtime_root/install"
+}
+
+codegraph_receipt_is_valid() {
+    local receipt created_index enabled
+    receipt="$(codegraph_receipt_path)"
+    owned_root_is_valid || return 1
+    regular_unlinked_file "$receipt" || return 1
+    python3 - "$receipt" "$TOOLING_ROOT" "$TARGET_ROOT" <<'PY'
+import json
+import sys
+
+receipt_path, tooling_root, target_root = sys.argv[1:]
+with open(receipt_path, encoding="utf-8") as source:
+    receipt = json.load(source)
+expected_index = f"{target_root}/.codegraph"
+if receipt != {
+    "schema_version": 1,
+    "owner": "lazybuddy-codegraph",
+    "tooling_root": tooling_root,
+    "target_root": target_root,
+    "index_path": expected_index,
+    "created_index": receipt.get("created_index"),
+    "enabled": receipt.get("enabled"),
+}:
+    raise SystemExit(1)
+if not isinstance(receipt["created_index"], bool) or not isinstance(receipt["enabled"], bool):
+    raise SystemExit(1)
+PY
+    created_index="$(codegraph_receipt_flag created_index)" || return 1
+    enabled="$(codegraph_receipt_flag enabled)" || return 1
+    cmp -s <(codegraph_receipt_contents "$created_index" "$enabled") "$receipt"
+}
+
+codegraph_receipt_flag() {
+    python3 - "$(codegraph_receipt_path)" "$1" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    value = json.load(source)[sys.argv[2]]
+if not isinstance(value, bool):
+    raise SystemExit(1)
+print("true" if value else "false")
+PY
+}
+
+codegraph_receipt_contents() {
+    python3 - "$TOOLING_ROOT" "$TARGET_ROOT" "$1" "$2" <<'PY'
+import json
+import sys
+
+created_index, enabled = sys.argv[3:]
+if created_index not in {"true", "false"} or enabled not in {"true", "false"}:
+    raise SystemExit(2)
+print(json.dumps({
+    "schema_version": 1,
+    "owner": "lazybuddy-codegraph",
+    "tooling_root": sys.argv[1],
+    "target_root": sys.argv[2],
+    "index_path": f"{sys.argv[2]}/.codegraph",
+    "created_index": created_index == "true",
+    "enabled": enabled == "true",
+}, indent=2, sort_keys=True))
+PY
+}
+
+write_codegraph_receipt() {
+    local created_index="$1" enabled="$2" receipt temporary
+    receipt="$(codegraph_receipt_path)"
+    temporary="${receipt}.tmp.$$"
+    codegraph_receipt_contents "$created_index" "$enabled" > "$temporary"
+    mv "$temporary" "$receipt"
+}
+
+codegraph_index_state() {
+    local index_path="$TARGET_ROOT/.codegraph"
+    if [ -L "$index_path" ]; then
+        printf '%s\n' incompatible
+    elif [ -e "$index_path" ] && [ ! -d "$index_path" ]; then
+        printf '%s\n' incompatible
+    elif [ -d "$index_path" ]; then
+        printf '%s\n' initialized
+    else
+        printf '%s\n' not-initialized
+    fi
+}
+
+codegraph_status() {
+    local index_state enabled
+    if ! owned_root_is_valid; then
+        echo "STATE: disabled"
+        echo "REASON: CodeGraph is optional; run codegraph-install in an explicit empty tooling root"
+        return 0
+    fi
+    if ! codegraph_binary_is_available; then
+        echo "STATE: missing"
+        echo "REASON: the pinned CodeGraph platform binary is unavailable in the verified owned tooling root"
+        return 0
+    fi
+    index_state="$(codegraph_index_state)"
+    if [ "$index_state" = incompatible ]; then
+        echo "STATE: incompatible"
+        echo "REASON: target .codegraph path must be a real directory, never a symlink or file"
+        return 0
+    fi
+    if [ "$index_state" = not-initialized ]; then
+        echo "STATE: not-initialized"
+        echo "REASON: run codegraph-init explicitly before enabling CodeGraph"
+        return 0
+    fi
+    enabled=false
+    if codegraph_receipt_is_valid && [ "$(codegraph_receipt_flag enabled)" = true ]; then
+        enabled=true
+    fi
+    if [ "$enabled" = true ]; then
+        echo "STATE: ready"
+        echo "PROVIDER: codegraph owned $(codegraph_binary)"
+        echo "INDEX: $TARGET_ROOT/.codegraph"
+    else
+        echo "STATE: disabled"
+        echo "REASON: CodeGraph index exists but requires explicit codegraph-enable"
+    fi
+}
+
+codegraph_install() {
+    require_safe_existing_root
+    if ! root_is_empty; then
+        fail "CodeGraph tooling root must be empty when provisioning the pinned package"
+    fi
+    command -v npm >/dev/null 2>&1 || fail "npm is required to install the locked CodeGraph package"
+    cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
+    cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
+    cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
+    (
+        cd "$TOOLING_ROOT"
+        npm ci --ignore-scripts --no-audit --fund=false
+    )
+    receipt_contents > "$TOOLING_ROOT/$RECEIPT_NAME"
+    if ! owned_root_is_valid; then
+        fail "CodeGraph installation did not produce a verified receipt-owned root"
+    fi
+    codegraph_status
+}
+
+codegraph_init() {
+    local binary index_state created_index=false timeout_seconds
+    require_safe_existing_root
+    if ! owned_root_is_valid; then
+        echo "STATE: missing"
+        echo "REASON: install the pinned CodeGraph package in this tooling root first"
+        return 0
+    fi
+    if ! codegraph_binary_is_available; then
+        echo "STATE: missing"
+        echo "REASON: the pinned CodeGraph platform binary is unavailable in the verified owned tooling root"
+        return 0
+    fi
+    index_state="$(codegraph_index_state)"
+    if [ "$index_state" = incompatible ]; then
+        echo "STATE: incompatible"
+        echo "REASON: target .codegraph path must be a real directory, never a symlink or file"
+        return 0
+    fi
+    if [ "$index_state" = not-initialized ]; then
+        created_index=true
+    fi
+    timeout_seconds="${LAZYBUDDY_CODEGRAPH_TIMEOUT_SECONDS:-300}"
+    [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || fail "LAZYBUDDY_CODEGRAPH_TIMEOUT_SECONDS must be a positive integer"
+    binary="$(codegraph_binary)"
+    prepare_codegraph_runtime
+    CODEGRAPH_RUNTIME_ROOT="$(codegraph_runtime_root)" CODEGRAPH_NO_DOWNLOAD=1 python3 - "$TARGET_ROOT" "$timeout_seconds" "$binary" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+
+target_root, timeout_seconds, binary = sys.argv[1:]
+runtime_root = os.environ["CODEGRAPH_RUNTIME_ROOT"]
+environment = os.environ | {
+    "HOME": f"{runtime_root}/home",
+    "XDG_CONFIG_HOME": f"{runtime_root}/config",
+    "XDG_CACHE_HOME": f"{runtime_root}/cache",
+    "CODEGRAPH_INSTALL_DIR": f"{runtime_root}/install",
+    "CODEGRAPH_NO_DOWNLOAD": "1",
+}
+process = subprocess.Popen([binary, "init"], cwd=target_root, start_new_session=True, env=environment)
+try:
+    raise SystemExit(process.wait(timeout=int(timeout_seconds)))
+except subprocess.TimeoutExpired:
+    os.killpg(process.pid, signal.SIGTERM)
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+    print(f"ERROR: CodeGraph initialization exceeded {timeout_seconds}s", file=sys.stderr)
+    raise SystemExit(124)
+PY
+    [ -d "$TARGET_ROOT/.codegraph" ] && [ ! -L "$TARGET_ROOT/.codegraph" ] || fail "CodeGraph initialization did not create a safe project-local index"
+    write_codegraph_receipt "$created_index" false
+    echo "STATE: initialized"
+    echo "INDEX: $TARGET_ROOT/.codegraph"
+}
+
+codegraph_enable() {
+    local created_index=false index_state
+    require_safe_existing_root
+    if ! owned_root_is_valid; then
+        echo "STATE: missing"
+        echo "REASON: install the pinned CodeGraph package in this tooling root first"
+        return 0
+    fi
+    if ! codegraph_binary_is_available; then
+        echo "STATE: missing"
+        echo "REASON: the pinned CodeGraph platform binary is unavailable in the verified owned tooling root"
+        return 0
+    fi
+    index_state="$(codegraph_index_state)"
+    if [ "$index_state" = incompatible ]; then
+        echo "STATE: incompatible"
+        echo "REASON: target .codegraph path must be a real directory, never a symlink or file"
+        return 0
+    fi
+    if [ "$index_state" = not-initialized ]; then
+        echo "STATE: not-initialized"
+        echo "REASON: run codegraph-init explicitly before enabling CodeGraph"
+        return 0
+    fi
+    if codegraph_receipt_is_valid; then
+        created_index="$(codegraph_receipt_flag created_index)"
+    fi
+    prepare_codegraph_runtime
+    write_codegraph_receipt "$created_index" true
+    echo "STATE: ready"
+    echo "PROVIDER: codegraph owned $(codegraph_binary)"
+    echo "INDEX: $TARGET_ROOT/.codegraph"
+}
+
+codegraph_doctor() {
+    local source_counts files lines
+    codegraph_status
+    source_counts="$(python3 - "$TARGET_ROOT" <<'PY'
+import os
+import sys
+
+root = sys.argv[1]
+extensions = {".c", ".cc", ".cpp", ".cs", ".go", ".java", ".js", ".jsx", ".mjs", ".py", ".rb", ".rs", ".sh", ".ts", ".tsx"}
+excluded = {".codegraph", ".git", "build", "dist", "node_modules"}
+files = 0
+lines = 0
+for directory, directory_names, file_names in os.walk(root, followlinks=False):
+    directory_names[:] = sorted(name for name in directory_names if name not in excluded)
+    for name in sorted(file_names):
+        if os.path.splitext(name)[1] not in extensions:
+            continue
+        path = os.path.join(directory, name)
+        if os.path.islink(path):
+            continue
+        try:
+            with open(path, "rb") as source:
+                count = sum(chunk.count(b"\n") for chunk in iter(lambda: source.read(65536), b""))
+        except OSError:
+            continue
+        files += 1
+        lines += count
+print(f"{files} {lines}")
+PY
+)"
+    read -r files lines <<<"$source_counts"
+    echo "SUPPORTED_SOURCE_FILES: $files"
+    echo "SUPPORTED_SOURCE_LINES: $lines"
+    if [ "$files" -ge 500 ] || [ "$lines" -ge 100000 ]; then
+        echo "RECOMMENDATION: CodeGraph may materially improve architecture exploration; install, initialize, and enable it explicitly"
+    else
+        echo "RECOMMENDATION: CodeGraph remains optional below the architecture-exploration threshold"
+    fi
+    echo "DOCTOR: DEGRADED"
+}
+
+codegraph_uninstall() {
+    local created_index runtime_root
+    require_safe_existing_root
+    codegraph_receipt_is_valid || fail "refusing CodeGraph uninstall: project index is not verified by a matching LazyBuddy receipt"
+    created_index="$(codegraph_receipt_flag created_index)"
+    if [ "$created_index" = true ]; then
+        [ -d "$TARGET_ROOT/.codegraph" ] && [ ! -L "$TARGET_ROOT/.codegraph" ] || fail "refusing CodeGraph uninstall: receipt-owned index path is not a safe directory"
+        rm -rf "$TARGET_ROOT/.codegraph"
+        echo "INDEX: removed"
+    else
+        echo "INDEX: preserved (pre-existing before explicit LazyBuddy initialization)"
+    fi
+    runtime_root="$(codegraph_runtime_root)"
+    [ ! -L "$runtime_root" ] || fail "refusing CodeGraph uninstall: runtime root must not be a symlink"
+    rm -rf "$runtime_root"
+    rm "$(codegraph_receipt_path)"
+    echo "STATE: removed"
+}
+
+codegraph_export_mcp() {
+    local status
+    status="$(codegraph_status)"
+    if ! grep -qx 'STATE: ready' <<<"$status"; then
+        printf '%s\n' "$status" >&2
+        fail "CodeGraph MCP export requires explicit codegraph-init and codegraph-enable"
+    fi
+    python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TOOLING_ROOT" <<'PY'
+import json
+import sys
+
+print(json.dumps({
+    "codegraph": {
+        "command": "bash",
+        "args": [sys.argv[1]],
+        "cwd": ".",
+        "env": {"LAZYBUDDY_TOOLING_ROOT": sys.argv[2]},
+        "required": False,
+    },
+}, indent=2, sort_keys=True))
+PY
 }
 
 lsp_language() {
@@ -809,6 +1178,18 @@ case "$COMMAND" in
             lsp-install) lsp_install ;;
             lsp-doctor) lsp_doctor ;;
             lsp-uninstall) lsp_uninstall ;;
+        esac
+        ;;
+    codegraph-status|codegraph-install|codegraph-init|codegraph-enable|codegraph-doctor|codegraph-uninstall|codegraph-export-mcp)
+        parse_codegraph "$@"
+        case "$COMMAND" in
+            codegraph-status) codegraph_status ;;
+            codegraph-install) codegraph_install ;;
+            codegraph-init) codegraph_init ;;
+            codegraph-enable) codegraph_enable ;;
+            codegraph-doctor) codegraph_doctor ;;
+            codegraph-uninstall) codegraph_uninstall ;;
+            codegraph-export-mcp) codegraph_export_mcp ;;
         esac
         ;;
     detect|install|status|doctor|uninstall)

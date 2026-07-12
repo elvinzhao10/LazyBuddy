@@ -34,7 +34,18 @@
         "provider_order": ["project", "host", "owned"]
       }
     ],
-    "architecture_exploration": [],
+    "architecture_exploration": [
+      {
+        "command": "codegraph",
+        "fallback_package": "@colbymchenry/codegraph@1.4.1",
+        "provider_order": ["owned"],
+        "activation": "explicit",
+        "recommend_when": {
+          "supported_source_files": 500,
+          "supported_source_lines": 100000
+        }
+      }
+    ],
     "repository_verification": [
       {
         "kind": "declared-script",

@@ -65,3 +65,27 @@ definition, references, symbols, hover/type, and diagnostics operations.
 Rename and all other languages remain intentionally unsupported. Preserve the
 separate-LSP-root requirement: LSP provisioning never mutates a target or a
 global/host-managed location.
+
+## Conditional real CodeGraph
+
+`lazybuddy-plugin/scripts/lazybuddy-tooling.sh` owns a separate optional
+CodeGraph lifecycle: `codegraph-status`, `codegraph-install`,
+`codegraph-init`, `codegraph-enable`, `codegraph-doctor`,
+`codegraph-export-mcp`, and `codegraph-uninstall`. It pins
+`@colbymchenry/codegraph@1.4.1` in the package-owned tooling manifest. It does
+not run upstream agent installers/uninstallers, use `~/.omo`, mutate global or
+host-managed configuration, or allow CodeGraph's fallback download.
+
+The caller explicitly selects a safe absolute project root and empty tooling
+root, then installs, initializes the project-local `.codegraph/` index, and
+enables it before requesting an exported MCP registration fragment. The
+launcher at `lazybuddy-plugin/mcp/codegraph/server.sh` performs only
+`codegraph serve --mcp`; it refuses disabled, missing, unsafe, or uninitialized
+state. `codegraph-doctor` merely recommends the feature at 500 supported files
+or 100,000 supported lines and never initializes or starts CodeGraph.
+
+Keep `mcp/context-graph` described as a grep-based heuristic fallback, not a
+real CodeGraph implementation. Its result quality and operation must never be
+presented as equivalent to semantic CodeGraph data. Receipts record whether an
+index existed before LazyBuddy initialization; `codegraph-uninstall` removes an
+index only when that receipt proves LazyBuddy created it.
