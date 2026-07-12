@@ -36,7 +36,7 @@ check() {
 
 validator_reports_failure() {
     local output="$1"
-    printf '%s\n' "$output" | grep -qiE '(^|[^[:alnum:]])(error|errors|failed|failure)([^[:alnum:]]|$)|status code [45][0-9]{2}|HTTP(/[0-9.]+)? [45][0-9]{2}'
+    printf '%s\n' "$output" | grep -qiE 'validation[[:space:]]+(failed|failure)|found[[:space:]]+[1-9][0-9]*[[:space:]]+errors?|(^|[^[:alnum:]])errors?[[:space:]]*:|status code [45][0-9]{2}|HTTP(/[0-9.]+)?[[:space:]]+[45][0-9]{2}'
 }
 
 echo "=== LazyBuddy Plugin Doctor ==="

@@ -155,6 +155,14 @@ chmod +x "$TMP/fake-codebuddy/codebuddy"
 expect_status doctor-catches-validator-exit-zero-server-error 1 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
 expect_contains doctor-catches-validator-exit-zero-server-error 'CodeBuddy manifest validator'
 
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "Validation successful: 0 errors"' 'exit 0' > "$TMP/fake-codebuddy/codebuddy"
+expect_status doctor-accepts-validator-zero-errors 0 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_contains doctor-accepts-validator-zero-errors '^  \[PASS\] CodeBuddy manifest validator$'
+
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "Validation passed with no errors"' 'exit 0' > "$TMP/fake-codebuddy/codebuddy"
+expect_status doctor-accepts-validator-no-errors 0 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_contains doctor-accepts-validator-no-errors '^  \[PASS\] CodeBuddy manifest validator$'
+
 printf '%s\n' '{"plugins":[{"name":"lazybuddy","version":"0.0.0"}]}' > "$TMP/mismatched-marketplace.json"
 expect_status mismatched-marketplace-version 1 env LAZYBUDDY_MARKETPLACE_FILE="$TMP/mismatched-marketplace.json" bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
 expect_contains mismatched-marketplace-version '^FAIL marketplace version agreement:'
