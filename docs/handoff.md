@@ -91,3 +91,15 @@ real CodeGraph implementation. Its result quality and operation must never be
 presented as equivalent to semantic CodeGraph data. Receipts record whether an
 index existed before LazyBuddy initialization; `codegraph-uninstall` removes an
 index only when that receipt proves LazyBuddy created it.
+
+## Optional remote capability exports
+
+Context7 and experimental, unpinned `grep_app` are deliberately separate from
+the six package-declared local MCP servers. The tooling registry records both
+as explicit remote capabilities. `remote-status` and `remote-doctor` remain
+offline and non-blocking; `remote-enable`, `remote-disable`, and
+`remote-export-mcp` persist only an explicit selection in a receipt-owned
+tooling root. Export returns namespaced host-registration entries for
+`https://mcp.context7.com/mcp` and `https://mcp.grep.app`; it neither edits
+host configuration nor includes credentials. Keep the `docs` MCP described as
+the existing local resolver, never as Context7.

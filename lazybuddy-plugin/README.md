@@ -157,9 +157,9 @@ cross-file relationship questions. It is disabled by default. LazyBuddy keeps
 it is not represented as semantic CodeGraph analysis.
 
 CodeGraph is pinned to `@colbymchenry/codegraph@1.4.1` and can only be
-provisioned in an explicit empty caller-owned tooling root. The lifecycle never
-invokes upstream `codegraph install` or `codegraph uninstall`, never downloads
-a fallback platform binary, enables CodeGraph telemetry, or changes host MCP
+provisioned in an explicit empty caller-owned tooling root. The lifecycle does
+not invoke upstream `codegraph install` or `codegraph uninstall`, download a
+fallback platform binary, enable CodeGraph telemetry, or change host MCP
 configuration. Its npm cache, npm configuration, Python cache, and CodeGraph
 runtime are confined to the receipt-owned tooling root. Start only after you
 deliberately choose a project root:
@@ -192,6 +192,40 @@ bash scripts/lazybuddy-tooling.sh uninstall \
 or 100,000 supported source lines. It makes no network, process, or index call.
 The MCP launcher invokes only `codegraph serve --mcp` with fallback download
 disabled. A pre-existing `.codegraph/` directory is preserved by uninstall.
+
+### Optional remote documentation and example search
+
+Context7 and `grep_app` are optional remote MCP registration fragments, not
+bundled MCP servers and not part of the six-server package declaration. They
+are disabled by default: install, status, and doctor never contact either
+endpoint. Select one only when it materially helps: Context7 for current,
+version-specific library documentation; experimental, unpinned `grep_app` for
+public GitHub examples when local evidence is insufficient.
+
+Use a verified receipt-owned tooling root, then export the fragment and merge
+it through the host UI without replacing existing MCP entries. The fragment
+uses namespaced keys, contains endpoints only, and deliberately contains no
+credentials; any credential remains in the user's host environment.
+
+```bash
+# Inspect optional state without making a remote request.
+bash scripts/lazybuddy-tooling.sh remote-status \
+  --tooling-root /absolute/lazybuddy-tools
+
+# Enable only the desired registration fragments.
+bash scripts/lazybuddy-tooling.sh remote-enable \
+  --tooling-root /absolute/lazybuddy-tools context7
+bash scripts/lazybuddy-tooling.sh remote-enable \
+  --tooling-root /absolute/lazybuddy-tools grep_app
+
+# Print a merge-only MCP fragment; it does not edit host configuration.
+bash scripts/lazybuddy-tooling.sh remote-export-mcp \
+  --tooling-root /absolute/lazybuddy-tools
+
+# Disable an optional registration without touching any host entry.
+bash scripts/lazybuddy-tooling.sh remote-disable \
+  --tooling-root /absolute/lazybuddy-tools context7
+```
 
 ## License
 

@@ -5,7 +5,38 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-codegraph.XXXXXX")"
 TMP="$(cd "$TMP" && pwd -P)"
-trap 'rm -rf "$TMP"' EXIT
+cleanup() {
+    python3 - "$TMP" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+import time
+
+marker = f"{sys.argv[1]}/tools/node_modules/@colbymchenry/codegraph-"
+pids = []
+for line in subprocess.check_output(["ps", "-axo", "pid=,command="], text=True).splitlines():
+    parts = line.strip().split(maxsplit=1)
+    if len(parts) == 2 and marker in parts[1]:
+        try:
+            pids.append(int(parts[0]))
+        except ValueError:
+            pass
+for pid in pids:
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+time.sleep(0.1)
+for pid in pids:
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+PY
+    rm -rf "$TMP"
+}
+trap cleanup EXIT
 
 fail() { printf 'FAIL %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS %s\n' "$1"; }

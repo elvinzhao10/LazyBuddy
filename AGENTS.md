@@ -61,6 +61,13 @@ When the user types `onboard`:
 
 The CodeBuddy manifest declares six servers in `lazybuddy-plugin/.mcp.json`. Package readiness validates that declaration; a new CodeBuddy session or settings view must confirm whether a server is loaded and connected. WorkBuddy supports MCP through its documented UI, but this release's verified local path is manual connector configuration; do not treat `.mcp.json` or `.workbuddy-plugin/plugin.json` as an executable copied-repository installer.
 
+Optional Context7 and experimental, unpinned `grep_app` registrations are not
+part of those six package MCP declarations. They remain disabled until the
+user explicitly selects them with `lazybuddy-tooling.sh remote-enable` and
+exports a namespaced merge fragment. Do not add credentials to that fragment:
+they stay solely in the user's host environment. Normal tooling install,
+status, and doctor do not contact either remote endpoint.
+
 ## Uninstall
 
 Use the host's own plugin removal flow for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. LazyBuddy never guesses, searches for, or deletes host-managed plugin paths. After removal, delete or disable only the LazyBuddy MCP connectors you personally added in that host's MCP settings. For the verified WorkBuddy local-import fallback, remove the imported `lazybuddy-plugin/skills/` entries through the Skills UI and remove the manually added connectors through Settings; do not delete `.workbuddy-plugin`, `.workbuddy`, or another host's metadata as a substitute. Keep the copied repository until the host confirms removal, then delete that copy only if you no longer need it.

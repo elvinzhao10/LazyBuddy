@@ -46,6 +46,25 @@
         }
       }
     ],
+    "library_documentation": [
+      {
+        "name": "context7",
+        "endpoint": "https://mcp.context7.com/mcp",
+        "activation": "explicit",
+        "transport": "remote",
+        "credentials": "environment-only"
+      }
+    ],
+    "external_code_examples": [
+      {
+        "name": "grep_app",
+        "endpoint": "https://mcp.grep.app",
+        "activation": "explicit",
+        "transport": "remote",
+        "experimental": true,
+        "versioning": "unpinned"
+      }
+    ],
     "repository_verification": [
       {
         "kind": "declared-script",

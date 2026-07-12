@@ -12,6 +12,8 @@ usage() {
     cat <<'EOF'
 Usage:
   lazybuddy-tooling.sh <detect|install|status|doctor|uninstall> --tooling-root ABSOLUTE_EMPTY_DIRECTORY
+  lazybuddy-tooling.sh <remote-status|remote-doctor|remote-export-mcp> --tooling-root ABSOLUTE_DIRECTORY
+  lazybuddy-tooling.sh <remote-enable|remote-disable> --tooling-root ABSOLUTE_DIRECTORY <context7|grep_app>
   lazybuddy-tooling.sh verify --target ABSOLUTE_TARGET_DIRECTORY <--dry-run|--run> [lint|typecheck|test|build ...]
   lazybuddy-tooling.sh <lsp-status|lsp-install|lsp-doctor|lsp-uninstall> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
   lazybuddy-tooling.sh <codegraph-status|codegraph-install|codegraph-init|codegraph-enable|codegraph-doctor|codegraph-uninstall|codegraph-export-mcp> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
@@ -19,6 +21,7 @@ Usage:
 install requires an existing, empty, non-symlink directory supplied by the caller.
 status and doctor inspect only. uninstall deletes only a verified, receipt-owned root.
 CodeGraph remains disabled until its caller explicitly installs, initializes, and enables it.
+Context7 and experimental grep_app remain disabled until explicitly enabled.
 EOF
 }
 
@@ -85,6 +88,7 @@ print(json.dumps({
             "package.json",
             "package-lock.json",
             "capabilities.json",
+            ".lazybuddy-remote-capabilities.json",
             "node_modules",
             ".lazybuddy-tooling-receipt.json",
             ".lazybuddy-codegraph-receipt.json",
@@ -93,6 +97,62 @@ print(json.dumps({
         "node_modules_digest": sys.argv[2],
     }, indent=2, sort_keys=True))
 PY
+}
+
+remote_state_path() {
+    printf '%s\n' "$TOOLING_ROOT/.lazybuddy-remote-capabilities.json"
+}
+
+remote_state_contents() {
+    local context7_enabled="$1" grep_app_enabled="$2"
+    python3 -B - "$context7_enabled" "$grep_app_enabled" <<'PY'
+import json
+import sys
+
+values = sys.argv[1:]
+if any(value not in {"true", "false"} for value in values):
+    raise SystemExit(2)
+print(json.dumps({
+    "schema_version": 1,
+    "owner": "lazybuddy-remote-capabilities",
+    "capabilities": {
+        "context7": {"enabled": values[0] == "true"},
+        "grep_app": {"enabled": values[1] == "true"},
+    },
+}, indent=2, sort_keys=True))
+PY
+}
+
+write_remote_state() {
+    local context7_enabled="$1" grep_app_enabled="$2" state temporary
+    state="$(remote_state_path)"
+    temporary="${state}.tmp.$$"
+    remote_state_contents "$context7_enabled" "$grep_app_enabled" > "$temporary"
+    mv "$temporary" "$state"
+}
+
+remote_state_flag() {
+    local capability="$1"
+    python3 -B - "$(remote_state_path)" "$capability" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    state = json.load(source)
+value = state["capabilities"][sys.argv[2]]["enabled"]
+if not isinstance(value, bool):
+    raise SystemExit(1)
+print("true" if value else "false")
+PY
+}
+
+remote_state_is_valid() {
+    local state context7_enabled grep_app_enabled
+    state="$(remote_state_path)"
+    regular_unlinked_file "$state" || return 1
+    context7_enabled="$(remote_state_flag context7)" || return 1
+    grep_app_enabled="$(remote_state_flag grep_app)" || return 1
+    cmp -s <(remote_state_contents "$context7_enabled" "$grep_app_enabled") "$state"
 }
 
 node_modules_digest() {
@@ -138,6 +198,7 @@ root_contains_only_owned_entries() {
     [ -e "$TOOLING_ROOT/package.json" ] \
         && [ -e "$TOOLING_ROOT/package-lock.json" ] \
         && [ -e "$TOOLING_ROOT/capabilities.json" ] \
+        && [ -e "$TOOLING_ROOT/.lazybuddy-remote-capabilities.json" ] \
         && [ -d "$TOOLING_ROOT/node_modules" ] \
         && [ ! -L "$TOOLING_ROOT/node_modules" ] \
         && [ -e "$TOOLING_ROOT/$RECEIPT_NAME" ] \
@@ -146,7 +207,7 @@ root_contains_only_owned_entries() {
         && { [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || { [ -d "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] && [ ! -L "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ]; }; } \
         && find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort | cmp -s - <(
             {
-                printf '%s\n' capabilities.json node_modules package-lock.json package.json "$RECEIPT_NAME"
+                printf '%s\n' .lazybuddy-remote-capabilities.json capabilities.json node_modules package-lock.json package.json "$RECEIPT_NAME"
                 [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json" ] || printf '%s\n' .lazybuddy-codegraph-receipt.json
                 [ ! -e "$TOOLING_ROOT/.lazybuddy-npm-runtime" ] || printf '%s\n' .lazybuddy-npm-runtime
                 [ ! -e "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || printf '%s\n' .lazybuddy-codegraph-runtime
@@ -160,6 +221,7 @@ owned_root_is_valid() {
     regular_unlinked_file "$TOOLING_ROOT/package.json" || return 1
     regular_unlinked_file "$TOOLING_ROOT/package-lock.json" || return 1
     regular_unlinked_file "$TOOLING_ROOT/capabilities.json" || return 1
+    remote_state_is_valid || return 1
     regular_unlinked_file "$TOOLING_ROOT/$RECEIPT_NAME" || return 1
     cmp -s "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json" || return 1
     cmp -s "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json" || return 1
@@ -237,6 +299,7 @@ detect_tooling() {
 }
 
 install_tooling() {
+    local runtime_root
     require_safe_existing_root
     if ! root_is_empty; then
         fail "tooling root must be empty"
@@ -253,6 +316,16 @@ install_tooling() {
     cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
     cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
     cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
+    write_remote_state false false
+    prepare_npm_runtime
+    runtime_root="$(npm_runtime_root)"
+    export HOME="$runtime_root/home"
+    export XDG_CACHE_HOME="$runtime_root/cache"
+    export PYTHONPYCACHEPREFIX="$runtime_root/cache/python"
+    export npm_config_cache="$runtime_root/cache"
+    export npm_config_userconfig="$runtime_root/config/npmrc"
+    export npm_config_update_notifier=false
+    export NO_UPDATE_NOTIFIER=1
     (
         cd "$TOOLING_ROOT"
         npm ci --ignore-scripts --no-audit --fund=false
@@ -540,6 +613,7 @@ codegraph_install() {
         cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
         cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
         cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
+        write_remote_state false false
         prepare_npm_runtime
         runtime_root="$(npm_runtime_root)"
         export HOME="$runtime_root/home"
@@ -703,10 +777,52 @@ PY
     echo "DOCTOR: DEGRADED"
 }
 
+stop_owned_codegraph_processes() {
+    python3 -B - "$TOOLING_ROOT" "$TARGET_ROOT" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+import time
+
+tooling_root, target_root = sys.argv[1:]
+marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
+target_marker = f"--path {target_root}"
+output = subprocess.check_output(["ps", "-axo", "pid=,command="], text=True)
+pids = []
+for line in output.splitlines():
+    parts = line.strip().split(maxsplit=1)
+    if len(parts) != 2 or marker not in parts[1] or target_marker not in parts[1]:
+        continue
+    try:
+        pids.append(int(parts[0]))
+    except ValueError:
+        continue
+for pid in pids:
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+deadline = time.monotonic() + 5
+while pids and time.monotonic() < deadline:
+    pids = [pid for pid in pids if os.path.exists(f"/proc/{pid}") or subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0]
+    if pids:
+        time.sleep(0.1)
+for pid in pids:
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+if pids:
+    time.sleep(0.1)
+PY
+}
+
 codegraph_uninstall() {
     local created_index runtime_root
     require_safe_existing_root
     codegraph_receipt_is_valid || fail "refusing CodeGraph uninstall: project index is not verified by a matching LazyBuddy receipt"
+    stop_owned_codegraph_processes
     created_index="$(codegraph_receipt_flag created_index)"
     if [ "$created_index" = true ]; then
         [ -d "$TARGET_ROOT/.codegraph" ] && [ ! -L "$TARGET_ROOT/.codegraph" ] || fail "refusing CodeGraph uninstall: receipt-owned index path is not a safe directory"
@@ -743,6 +859,101 @@ print(json.dumps({
     },
 }, indent=2, sort_keys=True))
 PY
+}
+
+parse_remote() {
+    TOOLING_ROOT=""
+    REMOTE_CAPABILITY=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --tooling-root)
+                [ "$#" -ge 2 ] || fail "--tooling-root requires an absolute path"
+                TOOLING_ROOT="$2"
+                shift 2
+                ;;
+            context7|grep_app)
+                [ -z "$REMOTE_CAPABILITY" ] || fail "choose exactly one remote capability"
+                REMOTE_CAPABILITY="$1"
+                shift
+                ;;
+            *) fail "unsupported remote capability option: $1" ;;
+        esac
+    done
+    [ -n "$TOOLING_ROOT" ] || fail "--tooling-root is required"
+    [[ "$TOOLING_ROOT" == /* ]] || fail "--tooling-root must be an absolute path"
+    [[ "/$TOOLING_ROOT/" != *"/../"* ]] || fail "tooling root must not contain traversal"
+}
+
+remote_status() {
+    local context7_enabled grep_app_enabled
+    if ! owned_root_is_valid; then
+        echo "STATE: unavailable"
+        echo "REASON: install package-owned tooling in an explicit root before selecting optional remote capabilities"
+        return 0
+    fi
+    context7_enabled="$(remote_state_flag context7)"
+    grep_app_enabled="$(remote_state_flag grep_app)"
+    echo "CAPABILITY: context7"
+    echo "STATE: $([ "$context7_enabled" = true ] && printf enabled || printf disabled)"
+    echo "TRANSPORT: remote (not contacted)"
+    echo "ENDPOINT: https://mcp.context7.com/mcp"
+    echo "CAPABILITY: grep_app"
+    echo "STATE: $([ "$grep_app_enabled" = true ] && printf enabled || printf disabled)"
+    echo "TRANSPORT: remote (not contacted)"
+    echo "ENDPOINT: https://mcp.grep.app"
+    echo "EXPERIMENTAL: true"
+    echo "VERSIONING: unpinned"
+}
+
+remote_enable_disable() {
+    local enabled="$1" context7_enabled grep_app_enabled
+    [ -n "$REMOTE_CAPABILITY" ] || fail "remote enable/disable requires context7 or grep_app"
+    require_safe_existing_root
+    owned_root_is_valid || fail "remote capability selection requires a verified receipt-owned tooling root"
+    context7_enabled="$(remote_state_flag context7)"
+    grep_app_enabled="$(remote_state_flag grep_app)"
+    case "$REMOTE_CAPABILITY" in
+        context7) context7_enabled="$enabled" ;;
+        grep_app) grep_app_enabled="$enabled" ;;
+        *) fail "unsupported remote capability: $REMOTE_CAPABILITY" ;;
+    esac
+    write_remote_state "$context7_enabled" "$grep_app_enabled"
+    echo "CAPABILITY: $REMOTE_CAPABILITY"
+    echo "STATE: $([ "$enabled" = true ] && printf enabled || printf disabled)"
+    echo "REMOTE: not contacted"
+}
+
+remote_export_mcp() {
+    local context7_enabled grep_app_enabled
+    require_safe_existing_root
+    owned_root_is_valid || fail "remote MCP export requires a verified receipt-owned tooling root"
+    context7_enabled="$(remote_state_flag context7)"
+    grep_app_enabled="$(remote_state_flag grep_app)"
+    python3 -B - "$context7_enabled" "$grep_app_enabled" <<'PY'
+import json
+import sys
+
+context7_enabled, grep_app_enabled = (value == "true" for value in sys.argv[1:])
+servers = {}
+if context7_enabled:
+    servers["lazybuddy_context7"] = {
+        "url": "https://mcp.context7.com/mcp",
+        "required": False,
+    }
+if grep_app_enabled:
+    servers["lazybuddy_grep_app"] = {
+        "url": "https://mcp.grep.app",
+        "required": False,
+        "experimental": True,
+        "versioning": "unpinned",
+    }
+print(json.dumps({"mcpServers": servers}, indent=2, sort_keys=True))
+PY
+}
+
+remote_doctor() {
+    remote_status
+    echo "DOCTOR: PASS (optional remote capabilities)"
 }
 
 lsp_language() {
@@ -1209,6 +1420,16 @@ COMMAND="$1"
 shift
 
 case "$COMMAND" in
+    remote-status|remote-doctor|remote-enable|remote-disable|remote-export-mcp)
+        parse_remote "$@"
+        case "$COMMAND" in
+            remote-status) remote_status ;;
+            remote-doctor) remote_doctor ;;
+            remote-enable) remote_enable_disable true ;;
+            remote-disable) remote_enable_disable false ;;
+            remote-export-mcp) remote_export_mcp ;;
+        esac
+        ;;
     verify) parse_verify "$@"; verify_target ;;
     lsp-status|lsp-install|lsp-doctor|lsp-uninstall)
         parse_lsp "$@"

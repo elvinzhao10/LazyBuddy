@@ -21,6 +21,19 @@ After onboarding, you can delete the copied repository if you only needed the in
 
 Remove LazyBuddy through the selected host's plugin, marketplace, or Skills UI. LazyBuddy never guesses or deletes host-managed installation paths. In CodeBuddy IDE or CLI, use the host's plugin removal flow and then remove or disable only the LazyBuddy MCP servers you explicitly registered. In WorkBuddy, use its documented plugin/marketplace removal flow; for the verified local-import fallback, remove the imported `lazybuddy-plugin/skills/` entries through the Skills UI and remove the manual connectors in Settings. Do not delete `.workbuddy-plugin`, `.workbuddy`, MCP metadata, or another host's files to simulate uninstall. Keep the cloned repository until the host confirms removal; it can then be deleted independently.
 
+## Optional v0.16 tooling
+
+LazyBuddy's package-owned tooling selects the lightest useful capability:
+local `rg` search, `sg` structural search, supported JavaScript/TypeScript or
+Python LSP navigation, and repository-native verification are local-first.
+CodeGraph is explicit for large-repository architecture work. Context7 is
+explicit for current library documentation, while experimental, unpinned
+`grep_app` is explicit for public-code examples when local evidence is not
+enough. Context7 and `grep_app` are disabled by default; normal install,
+status, and doctor stay offline. Their exported, namespaced MCP fragment has
+endpoints only, so host environment credentials are never written or logged.
+See the package [tooling guide](lazybuddy-plugin/README.md#optional-remote-documentation-and-example-search).
+
 ## A first task, from request to evidence
 
 Start by describing the outcome and how you will recognize success, not the commands you think the agent should run. For example:

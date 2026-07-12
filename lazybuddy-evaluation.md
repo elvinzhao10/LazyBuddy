@@ -8,6 +8,13 @@ The v0.15 CodeBuddy package declares 14 `lazy-` skills, 14 current slash-command
 
 Package checks cover the manifest, component inventory, JSON validity, executable MCP scripts, internal Markdown links, smoke checks, MCP regression checks, and hook/security verification. The aggregate `lazybuddy-verify.sh` reports these package checks; it does not claim a live host loaded the plugin or connected a server.
 
+The v0.16 tooling registry adds disabled-by-default Context7 and experimental,
+unpinned `grep_app` export capabilities. They are not counted as bundled MCP
+servers: normal install, status, and doctor make no remote request. Explicit
+selection produces only a namespaced registration fragment with the Context7
+or grep.app endpoint; it stores and logs no credentials and never replaces a
+caller-owned MCP entry.
+
 ## Host-compatibility boundary
 
 | Surface | Current evidence | Required manual observation |
