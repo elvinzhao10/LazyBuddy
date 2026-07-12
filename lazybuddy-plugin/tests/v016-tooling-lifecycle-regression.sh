@@ -5,6 +5,11 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-tooling-lifecycle.XXXXXX")"
 TMP="$(cd "$TMP" && pwd -P)"
+INSTALL_BIN="$TMP/install-bin"
+mkdir "$INSTALL_BIN"
+ln -s "$(command -v npm)" "$INSTALL_BIN/npm"
+ln -s "$(command -v node)" "$INSTALL_BIN/node"
+INSTALL_PATH="$INSTALL_BIN:/usr/bin:/bin"
 PASS=0
 FAIL=0
 
@@ -43,7 +48,7 @@ expect_status() {
 
 snapshot() {
     local root="$1"
-    find "$root" -mindepth 1 -print0 | sort -z | xargs -0 shasum > "$TMP/snapshot.txt"
+    find "$root" -type f -print0 | sort -z | xargs -0 shasum > "$TMP/snapshot.txt"
 }
 
 # Given the v0.15 package doctor, when it runs before any lifecycle wiring,
@@ -66,12 +71,43 @@ else
     fail "status reports useful unavailable state"
 fi
 
+HOST_BIN="$TMP/host-bin"
+mkdir "$HOST_BIN"
+for provider in rg sg; do
+    cat > "$HOST_BIN/$provider" <<'SH'
+#!/usr/bin/env bash
+printf 'fixture provider 1.0\n'
+SH
+    chmod +x "$HOST_BIN/$provider"
+done
+HOST_SENTINEL="$TMP/host-sentinel"
+printf 'host-owned\n' > "$HOST_SENTINEL"
+expect_status "detect prefers compatible host providers" 0 env PATH="$HOST_BIN:/usr/bin:/bin" bash "$LIFECYCLE" detect --tooling-root "$MISSING_ROOT"
+if grep -q "PROVIDER: rg host $HOST_BIN/rg" "$TMP/detect prefers compatible host providers.out" \
+    && grep -q "PROVIDER: sg host $HOST_BIN/sg" "$TMP/detect prefers compatible host providers.out" \
+    && [ "$(cat "$HOST_SENTINEL")" = "host-owned" ]; then
+    pass "host detection does not claim or delete host tools"
+else
+    fail "host detection does not claim or delete host tools"
+fi
+HOST_ONLY_ROOT="$TMP/host-only-root"
+mkdir "$HOST_ONLY_ROOT"
+expect_status "install skips owned fallback when host tools are ready" 0 env PATH="$HOST_BIN:$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$HOST_ONLY_ROOT"
+if [ -z "$(find "$HOST_ONLY_ROOT" -mindepth 1 -print -quit)" ]; then
+    pass "host-only install leaves caller root untouched"
+else
+    fail "host-only install leaves caller root untouched"
+fi
+
 expect_status "doctor rejects unavailable root" 1 bash "$LIFECYCLE" doctor --tooling-root "$MISSING_ROOT"
 expect_status "detect reports empty provider registry" 0 bash "$LIFECYCLE" detect --tooling-root "$MISSING_ROOT"
-if grep -q 'PROVIDERS: none configured' "$TMP/detect reports empty provider registry.out"; then
-    pass "detect reports no premature providers"
+if grep -q 'CAPABILITY: local_search' "$TMP/detect reports empty provider registry.out" \
+    && grep -q 'PROVIDER: rg' "$TMP/detect reports empty provider registry.out" \
+    && grep -q 'CAPABILITY: structural_search' "$TMP/detect reports empty provider registry.out" \
+    && grep -q 'PROVIDER: sg' "$TMP/detect reports empty provider registry.out"; then
+    pass "detect reports core local providers"
 else
-    fail "detect reports no premature providers"
+    fail "detect reports core local providers"
 fi
 expect_status "relative root rejected" 2 bash "$LIFECYCLE" install --tooling-root relative-root
 
@@ -121,18 +157,27 @@ fi
 
 ROOT="$TMP/tooling-root"
 mkdir "$ROOT"
-expect_status "install into explicit empty root" 0 bash "$LIFECYCLE" install --tooling-root "$ROOT"
+expect_status "install into explicit empty root" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$ROOT"
 if [ -f "$ROOT/.lazybuddy-tooling-receipt.json" ] && [ -f "$ROOT/package-lock.json" ]; then
     pass "install writes receipt and locked manifest"
 else
     fail "install writes receipt and locked manifest"
 fi
+OWNED_RG="$(find "$ROOT/node_modules/@vscode" -path '*/bin/rg' -type f -print -quit)"
+expect_status "owned ripgrep reports version" 0 "$OWNED_RG" --version
+expect_status "owned ast-grep reports version" 0 "$ROOT/node_modules/@ast-grep/cli/sg" --version
 
 snapshot "$ROOT"
 cp "$TMP/snapshot.txt" "$TMP/before-read-only.txt"
 expect_status "status ready root" 0 bash "$LIFECYCLE" status --tooling-root "$ROOT"
 expect_status "detect ready root" 0 bash "$LIFECYCLE" detect --tooling-root "$ROOT"
 expect_status "doctor ready root" 0 bash "$LIFECYCLE" doctor --tooling-root "$ROOT"
+if grep -q 'PROVIDER: rg' "$TMP/detect ready root.out" \
+    && grep -q 'PROVIDER: sg' "$TMP/detect ready root.out"; then
+    pass "detect resolves host or owned providers"
+else
+    fail "detect resolves host or owned providers"
+fi
 snapshot "$ROOT"
 if cmp -s "$TMP/before-read-only.txt" "$TMP/snapshot.txt"; then
     pass "status and doctor are read-only"
@@ -182,12 +227,142 @@ fi
 
 CLEAN_ROOT="$TMP/clean-root"
 mkdir "$CLEAN_ROOT"
-expect_status "fresh install for uninstall" 0 bash "$LIFECYCLE" install --tooling-root "$CLEAN_ROOT"
+expect_status "fresh install for uninstall" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$CLEAN_ROOT"
 expect_status "receipt-owned uninstall" 0 bash "$LIFECYCLE" uninstall --tooling-root "$CLEAN_ROOT"
 if [ ! -e "$CLEAN_ROOT" ]; then
     pass "receipt-owned root removed"
 else
     fail "receipt-owned root removed"
+fi
+
+STALE_ROOT="$TMP/stale-root"
+mkdir "$STALE_ROOT"
+expect_status "fresh install for stale provider receipt" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$STALE_ROOT"
+printf '\n' >> "$STALE_ROOT/node_modules/@ast-grep/cli/package.json"
+expect_status "stale provider receipt reports unavailable" 0 bash "$LIFECYCLE" status --tooling-root "$STALE_ROOT"
+expect_status "stale provider receipt blocks uninstall" 2 bash "$LIFECYCLE" uninstall --tooling-root "$STALE_ROOT"
+if [ -d "$STALE_ROOT" ]; then
+    pass "stale provider root remains untouched"
+else
+    fail "stale provider root remains untouched"
+fi
+
+VERIFY_TARGET="$TMP/verify-target"
+mkdir "$VERIFY_TARGET"
+cat > "$VERIFY_TARGET/package.json" <<'JSON'
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "lint": "printf lint-ok\\n",
+    "typecheck": "printf typecheck-ok\\n",
+    "test": "printf test-ok\\n",
+    "build": "printf build-ok\\n",
+    "prepare": "exit 99"
+  }
+}
+JSON
+printf '{"lockfileVersion":3}\n' > "$VERIFY_TARGET/package-lock.json"
+printf 'keep dirty target state\n' > "$VERIFY_TARGET/local-note.txt"
+snapshot "$VERIFY_TARGET"
+cp "$TMP/snapshot.txt" "$TMP/verify-target-before.txt"
+expect_status "verify dry-run discovers declared commands" 0 bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --dry-run
+if grep -Fxq 'COMMAND: npm run lint' "$TMP/verify dry-run discovers declared commands.out" \
+    && grep -Fxq 'COMMAND: npm run typecheck' "$TMP/verify dry-run discovers declared commands.out" \
+    && grep -Fxq 'COMMAND: npm run test' "$TMP/verify dry-run discovers declared commands.out" \
+    && grep -Fxq 'COMMAND: npm run build' "$TMP/verify dry-run discovers declared commands.out" \
+    && ! grep -q 'prepare' "$TMP/verify dry-run discovers declared commands.out"; then
+    pass "verify dry-run allowlists declared commands"
+else
+    fail "verify dry-run allowlists declared commands"
+fi
+snapshot "$VERIFY_TARGET"
+if cmp -s "$TMP/verify-target-before.txt" "$TMP/snapshot.txt"; then
+    pass "verify dry-run preserves target tree"
+else
+    fail "verify dry-run preserves target tree"
+fi
+expect_status "verify run executes explicit declared test" 0 bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --run test
+if grep -q 'test-ok' "$TMP/verify run executes explicit declared test.out"; then
+    pass "verify run executes selected test"
+else
+    fail "verify run executes selected test"
+fi
+expect_status "verify run rejects undeclared selection" 2 bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --run prepare
+
+NO_MANIFEST="$TMP/no-manifest"
+mkdir "$NO_MANIFEST"
+expect_status "verify reports unsupported without manifest" 0 bash "$LIFECYCLE" verify --target "$NO_MANIFEST" --dry-run
+if grep -Fxq 'STATE: unsupported' "$TMP/verify reports unsupported without manifest.out"; then
+    pass "verify runs nothing without supported manifest"
+else
+    fail "verify runs nothing without supported manifest"
+fi
+
+MALFORMED_TARGET="$TMP/malformed-target"
+mkdir "$MALFORMED_TARGET"
+printf '{not-json\n' > "$MALFORMED_TARGET/package.json"
+printf '{"lockfileVersion":3}\n' > "$MALFORMED_TARGET/package-lock.json"
+expect_status "verify safely rejects malformed manifest" 0 bash "$LIFECYCLE" verify --target "$MALFORMED_TARGET" --dry-run
+if grep -Fxq 'STATE: unsupported' "$TMP/verify safely rejects malformed manifest.out"; then
+    pass "malformed manifest runs nothing"
+else
+    fail "malformed manifest runs nothing"
+fi
+
+FAILING_TARGET="$TMP/failing-target"
+mkdir "$FAILING_TARGET"
+cat > "$FAILING_TARGET/package.json" <<'JSON'
+{"name":"failing-fixture","private":true,"scripts":{"test":"exit 23"}}
+JSON
+printf '{"lockfileVersion":3}\n' > "$FAILING_TARGET/package-lock.json"
+expect_status "verify dry-run does not execute failing command" 0 bash "$LIFECYCLE" verify --target "$FAILING_TARGET" --dry-run test
+expect_status "verify run propagates declared failure" 23 bash "$LIFECYCLE" verify --target "$FAILING_TARGET" --run test
+
+TIMEOUT_TARGET="$TMP/timeout-target"
+mkdir "$TIMEOUT_TARGET"
+cat > "$TIMEOUT_TARGET/package.json" <<'JSON'
+{"name":"timeout-fixture","private":true,"scripts":{"test":"node -e \"setTimeout(() => {}, 4000)\""}}
+JSON
+printf '{"lockfileVersion":3}\n' > "$TIMEOUT_TARGET/package-lock.json"
+expect_status "verify run times out long declared command" 124 env LAZYBUDDY_VERIFY_TIMEOUT_SECONDS=1 bash "$LIFECYCLE" verify --target "$TIMEOUT_TARGET" --run test
+
+PYTHON_TARGET="$TMP/python-target"
+mkdir "$PYTHON_TARGET"
+cat > "$PYTHON_TARGET/pyproject.toml" <<'TOML'
+[tool.lazyseries.verification]
+test = ["python3", "-c", "print('python-test-ok')"]
+TOML
+expect_status "verify dry-run discovers explicit Python command" 0 bash "$LIFECYCLE" verify --target "$PYTHON_TARGET" --dry-run
+if grep -Fq 'COMMAND: python3 -c' "$TMP/verify dry-run discovers explicit Python command.out"; then
+    pass "verify dry-run prints declared Python command"
+else
+    fail "verify dry-run prints declared Python command"
+fi
+expect_status "verify run executes explicit Python command" 0 bash "$LIFECYCLE" verify --target "$PYTHON_TARGET" --run test
+if grep -q 'python-test-ok' "$TMP/verify run executes explicit Python command.out"; then
+    pass "verify run executes declared Python command"
+else
+    fail "verify run executes declared Python command"
+fi
+
+MAKE_TARGET="$TMP/make-target"
+mkdir "$MAKE_TARGET"
+cat > "$MAKE_TARGET/Makefile" <<'MAKE'
+test:
+	@printf 'make-test-ok\\n'
+MAKE
+expect_status "verify dry-run discovers declared Make target" 0 bash "$LIFECYCLE" verify --target "$MAKE_TARGET" --dry-run
+if grep -Fxq 'COMMAND: make test' "$TMP/verify dry-run discovers declared Make target.out"; then
+    pass "verify dry-run prints declared Make target"
+else
+    fail "verify dry-run prints declared Make target"
+fi
+expect_status "verify run executes declared Make target" 0 bash "$LIFECYCLE" verify --target "$MAKE_TARGET" --run test
+if grep -q 'make-test-ok' "$TMP/verify run executes declared Make target.out"; then
+    pass "verify run executes declared Make target"
+else
+    fail "verify run executes declared Make target"
 fi
 
 echo "Passed: $PASS"

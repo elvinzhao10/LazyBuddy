@@ -42,3 +42,14 @@ Treat command output and the package source as the authority if legacy notes
 conflict with current behavior. The next documentation pass should preserve the
 v0.15.0-alpha.3 release version, tested host surfaces, six-server MCP
 inventory, and safe host-managed uninstall procedure.
+
+## v0.16 tooling foundation
+
+`lazybuddy-plugin/scripts/lazybuddy-tooling.sh` owns the optional local
+tooling lifecycle. It detects compatible host `rg` and `sg` providers without
+altering them, provisions locked fallbacks only in an explicit empty caller
+root when a provider is missing, and removes only an unmodified receipt-owned
+root. It also exposes `verify --target ... --dry-run|--run` for declared,
+allowlisted repository-native checks. Keep this capability package-local: it
+must never read root `docs/` or `dev/`, mutate a target manifest/lockfile, or
+guess a host-managed installation path.

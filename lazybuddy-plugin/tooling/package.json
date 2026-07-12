@@ -8,5 +8,9 @@
   },
   "scripts": {
     "verify": "node --version"
+  },
+  "dependencies": {
+    "@ast-grep/cli": "0.44.1",
+    "@vscode/ripgrep": "1.18.0"
   }
 }

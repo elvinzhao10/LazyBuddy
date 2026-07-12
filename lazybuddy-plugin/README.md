@@ -84,6 +84,37 @@ bash scripts/lazybuddy-docs-check.sh
 bash scripts/lazybuddy-verify.sh
 ```
 
+## Optional local tooling
+
+LazyBuddy can use a local, package-owned fallback for `rg` (ripgrep) and `sg`
+(ast-grep). It first detects compatible host tools without changing them. When
+one is missing, installation is allowed only into an empty, absolute tooling
+root chosen by the caller; it never installs into a target project, global
+location, or host-managed path.
+
+```bash
+# Inspect host/owned providers without changing anything.
+bash scripts/lazybuddy-tooling.sh detect --tooling-root /absolute/path/to/lazybuddy-tools
+
+# Install locked fallback tools only when host providers are missing.
+bash scripts/lazybuddy-tooling.sh install --tooling-root /absolute/empty/lazybuddy-tools
+
+# Inspect repository-native checks without running them.
+bash scripts/lazybuddy-tooling.sh verify --target /absolute/project --dry-run
+
+# Run only explicitly selected, declared checks with a 60-second default limit.
+bash scripts/lazybuddy-tooling.sh verify --target /absolute/project --run lint test
+
+# Remove only an unmodified LazyBuddy receipt-owned tooling root.
+bash scripts/lazybuddy-tooling.sh uninstall --tooling-root /absolute/path/to/lazybuddy-tools
+```
+
+Repository verification recognizes package-manager lockfiles plus declared
+`lint`, `typecheck`, `test`, and `build` scripts, explicit
+`[tool.lazyseries.verification]` commands in `pyproject.toml`, and declared
+Make targets. Dry runs do not change the target. Runs do not install target
+dependencies or guess commands; a timed-out selected check exits `124`.
+
 ## License
 
 MIT — see the repository [LICENSE](../LICENSE).
