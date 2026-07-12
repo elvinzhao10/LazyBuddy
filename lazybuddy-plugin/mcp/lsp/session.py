@@ -15,6 +15,27 @@ SEMANTIC_METHODS = frozenset({
 })
 
 
+def provider_environment(command: str) -> dict[str, str]:
+    environment = os.environ.copy()
+    runtime_root = Path(command).parent.parents[3] / ".lazybuddy-lsp-npm-runtime"
+    if not all((runtime_root / name).is_dir() and not (runtime_root / name).is_symlink() for name in ("home", "cache", "config")):
+        return environment
+    for name in tuple(environment):
+        if name.lower().startswith("npm_config_"):
+            environment.pop(name)
+    environment.update({
+        "HOME": str(runtime_root / "home"),
+        "XDG_CONFIG_HOME": str(runtime_root / "config"),
+        "XDG_CACHE_HOME": str(runtime_root / "cache"),
+        "PYTHONPYCACHEPREFIX": str(runtime_root / "cache" / "python"),
+        "npm_config_cache": str(runtime_root / "cache"),
+        "npm_config_userconfig": str(runtime_root / "config" / "npmrc"),
+        "npm_config_update_notifier": "false",
+        "NO_UPDATE_NOTIFIER": "1",
+    })
+    return environment
+
+
 def source_path(target_root: Path, raw_path: object) -> Path:
     if not isinstance(raw_path, str) or not raw_path:
         raise ValueError("path must be a non-empty repository-relative string")
@@ -39,7 +60,7 @@ def position(arguments: dict[str, object]) -> dict[str, int]:
 class LspSession:
     def __init__(self, command: str, language: str, target_root: Path, timeout_seconds: float):
         invocation = [command, "--stdio"]
-        environment = os.environ.copy()
+        environment = provider_environment(command)
         if language == "typescript":
             module_root = str(Path(command).parent.parent)
             existing_node_path = environment.get("NODE_PATH", "")

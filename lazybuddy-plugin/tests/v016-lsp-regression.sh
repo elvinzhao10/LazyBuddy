@@ -52,11 +52,37 @@ fi
 
 TS_ROOT="$TMP/typescript-tools"
 PY_ROOT="$TMP/python-tools"
-mkdir "$TS_ROOT" "$PY_ROOT"
+ISOLATED_ROOT="$TMP/isolated-tools"
+CALLER_HOME="$TMP/caller-home"
+CALLER_CONFIG="$TMP/caller-config"
+FAKE_BIN="$TMP/fake-bin"
+mkdir "$TS_ROOT" "$PY_ROOT" "$ISOLATED_ROOT" "$CALLER_HOME" "$CALLER_CONFIG" "$FAKE_BIN"
+CALLER_SENTINEL="$CALLER_HOME/npm-state-written"
+REAL_NPM="$(command -v npm)"
+printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$CALLER_CONFIG\" ]; then" "  touch \"$CALLER_SENTINEL\"" 'fi' "exec \"$REAL_NPM\" \"\$@\"" > "$FAKE_BIN/npm"
+chmod +x "$FAKE_BIN/npm"
 printf 'import { answer } from "./source";\nconsole.log(answer);\n' > "$TS_TARGET/use.ts"
 printf 'from source import answer\nprint(answer)\n' > "$PY_TARGET/use.py"
 fingerprint "$TS_TARGET" > "$TMP/ts-before-install"
 fingerprint "$PY_TARGET" > "$TMP/py-before-install"
+expect "LSP install isolates caller npm state" 0 env PATH="$FAKE_BIN:$PATH" HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"
+[ ! -e "$CALLER_SENTINEL" ] || fail 'LSP install inherited caller npm runtime state'
+[ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/home" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/cache" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/config" ] || fail 'LSP install did not create receipt-owned npm runtime'
+expect "owned LSP runtime ignores caller environment" 0 env HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" python3 - "$ISOLATED_ROOT" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
+import sys
+from pathlib import Path
+
+tooling_root, module_root = sys.argv[1:]
+sys.path.insert(0, module_root)
+from session import provider_environment
+
+provider = Path(tooling_root) / "lsp" / "typescript" / "node_modules" / ".bin" / "typescript-language-server"
+environment = provider_environment(str(provider))
+runtime = Path(tooling_root) / ".lazybuddy-lsp-npm-runtime"
+if environment["HOME"] != str(runtime / "home") or environment["XDG_CONFIG_HOME"] != str(runtime / "config"):
+    raise SystemExit("owned LSP runtime inherited caller environment")
+PY
+expect "uninstall isolated LSP provider" 0 bash "$LIFECYCLE" lsp-uninstall --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"
 expect "install locked TypeScript provider" 0 bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$TS_ROOT"
 expect "install locked Python provider" 0 bash "$LIFECYCLE" lsp-install --target "$PY_TARGET" --tooling-root "$PY_ROOT"
 expect "TypeScript provider status" 0 bash "$LIFECYCLE" lsp-status --target "$TS_TARGET" --tooling-root "$TS_ROOT"

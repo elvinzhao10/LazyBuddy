@@ -288,6 +288,25 @@ if grep -q 'test-ok' "$TMP/verify run executes explicit declared test.out"; then
 else
     fail "verify run executes selected test"
 fi
+
+VERIFY_CALLER_HOME="$TMP/verify-caller-home"
+VERIFY_CALLER_CONFIG="$TMP/verify-caller-config"
+VERIFY_FAKE_BIN="$TMP/verify-fake-bin"
+VERIFY_CALLER_SENTINEL="$VERIFY_CALLER_HOME/npm-state-written"
+mkdir "$VERIFY_CALLER_HOME" "$VERIFY_CALLER_CONFIG" "$VERIFY_FAKE_BIN"
+VERIFY_REAL_NPM="$(command -v npm)"
+printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$VERIFY_CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$VERIFY_CALLER_CONFIG\" ]; then" "  touch \"$VERIFY_CALLER_SENTINEL\"" 'fi' "exec \"$VERIFY_REAL_NPM\" \"\$@\"" > "$VERIFY_FAKE_BIN/npm"
+chmod +x "$VERIFY_FAKE_BIN/npm"
+snapshot "$VERIFY_TARGET"
+cp "$TMP/snapshot.txt" "$TMP/verify-run-before.txt"
+expect_status "verify run isolates caller npm state" 0 env PATH="$VERIFY_FAKE_BIN:$PATH" HOME="$VERIFY_CALLER_HOME" XDG_CONFIG_HOME="$VERIFY_CALLER_CONFIG" bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --run test
+[ ! -e "$VERIFY_CALLER_SENTINEL" ] || fail "verify run inherited caller npm runtime state"
+snapshot "$VERIFY_TARGET"
+if cmp -s "$TMP/verify-run-before.txt" "$TMP/snapshot.txt"; then
+    pass "verify run preserves target tree with isolated npm state"
+else
+    fail "verify run preserves target tree with isolated npm state"
+fi
 expect_status "verify run rejects undeclared selection" 2 bash "$LIFECYCLE" verify --target "$VERIFY_TARGET" --run prepare
 
 NO_MANIFEST="$TMP/no-manifest"

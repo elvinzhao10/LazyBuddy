@@ -1097,7 +1097,7 @@ print(json.dumps({
     "schema_version": 1,
     "owner": "lazybuddy-lsp-tooling",
     "root": sys.argv[1],
-    "owned_entries": ["lsp", ".lazybuddy-lsp-receipt.json"],
+    "owned_entries": ["lsp", ".lazybuddy-lsp-npm-runtime", ".lazybuddy-lsp-receipt.json"],
     "lsp_digest": sys.argv[2],
 }, indent=2, sort_keys=True))
 PY
@@ -1105,8 +1105,9 @@ PY
 
 lsp_root_is_valid() {
     root_is_safe_existing || return 1
-    [ "$(find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = "2" ] || return 1
+    [ "$(find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = "3" ] || return 1
     [ -d "$TOOLING_ROOT/lsp" ] && [ ! -L "$TOOLING_ROOT/lsp" ] || return 1
+    lsp_npm_runtime_is_valid || return 1
     regular_unlinked_file "$TOOLING_ROOT/.lazybuddy-lsp-receipt.json" || return 1
     local language source
     for language in typescript python; do
@@ -1123,6 +1124,49 @@ lsp_root_is_valid() {
     find "$TOOLING_ROOT/lsp" -mindepth 1 -maxdepth 1 -type d -print | sed 's#.*/##' | sort | cmp -s - <(find "$TOOLING_ROOT/lsp" -mindepth 1 -maxdepth 1 -type d -print | sed 's#.*/##' | grep -Ex 'typescript|python' | sort) || return 1
     lsp_node_modules_digest >/dev/null 2>&1 || return 1
     cmp -s <(lsp_receipt_contents) "$TOOLING_ROOT/.lazybuddy-lsp-receipt.json"
+}
+
+lsp_npm_runtime_root() {
+    printf '%s\n' "$TOOLING_ROOT/.lazybuddy-lsp-npm-runtime"
+}
+
+lsp_npm_runtime_is_valid() {
+    local runtime_root
+    runtime_root="$(lsp_npm_runtime_root)"
+    [ -d "$runtime_root" ] && [ ! -L "$runtime_root" ] || return 1
+    [ -d "$runtime_root/home" ] && [ ! -L "$runtime_root/home" ] || return 1
+    [ -d "$runtime_root/cache" ] && [ ! -L "$runtime_root/cache" ] || return 1
+    [ -d "$runtime_root/config" ] && [ ! -L "$runtime_root/config" ] || return 1
+    find "$runtime_root" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort | cmp -s - <(printf '%s\n' cache config home | sort)
+}
+
+prepare_lsp_npm_runtime() {
+    local runtime_root
+    runtime_root="$(lsp_npm_runtime_root)"
+    if [ -e "$runtime_root" ] && ! lsp_npm_runtime_is_valid; then
+        fail "LSP npm runtime root must contain only real home, cache, and config directories"
+    fi
+    mkdir -p "$runtime_root/home" "$runtime_root/cache" "$runtime_root/config"
+}
+
+lsp_npm_ci() {
+    local runtime_root
+    prepare_lsp_npm_runtime
+    runtime_root="$(lsp_npm_runtime_root)"
+    (
+        cd "$TOOLING_ROOT/lsp/$language"
+        env -i \
+            PATH="$PATH" \
+            HOME="$runtime_root/home" \
+            XDG_CONFIG_HOME="$runtime_root/config" \
+            XDG_CACHE_HOME="$runtime_root/cache" \
+            PYTHONPYCACHEPREFIX="$runtime_root/cache/python" \
+            npm_config_cache="$runtime_root/cache" \
+            npm_config_userconfig="$runtime_root/config/npmrc" \
+            npm_config_update_notifier=false \
+            NO_UPDATE_NOTIFIER=1 \
+            npm ci --ignore-scripts --no-audit --fund=false
+    )
 }
 
 lsp_status() {
@@ -1179,10 +1223,7 @@ lsp_install() {
     mkdir -p "$TOOLING_ROOT/lsp/$language"
     cp "$source/package.json" "$TOOLING_ROOT/lsp/$language/package.json"
     cp "$source/package-lock.json" "$TOOLING_ROOT/lsp/$language/package-lock.json"
-    (
-        cd "$TOOLING_ROOT/lsp/$language"
-        npm ci --ignore-scripts --no-audit --fund=false
-    )
+    lsp_npm_ci
     lsp_receipt_contents > "$TOOLING_ROOT/.lazybuddy-lsp-receipt.json"
     if ! lsp_root_is_valid || ! provider="$(lsp_provider "$language")"; then
         fail "LSP installation did not produce a verified receipt-owned provider"
@@ -1329,9 +1370,28 @@ import os
 import signal
 import subprocess
 import sys
+import tempfile
 
 target, timeout_text, *command = sys.argv[1:]
-process = subprocess.Popen(command, cwd=target, start_new_session=True)
+environment = os.environ.copy()
+runtime = None
+if command and command[0] == "npm":
+    runtime = tempfile.TemporaryDirectory(prefix="lazybuddy-verify-npm-")
+    for name in ("home", "cache", "config"):
+        os.makedirs(os.path.join(runtime.name, name), exist_ok=True)
+    for name in tuple(environment):
+        if name.lower().startswith("npm_config_"):
+            environment.pop(name)
+    environment.update({
+        "HOME": os.path.join(runtime.name, "home"),
+        "XDG_CONFIG_HOME": os.path.join(runtime.name, "config"),
+        "XDG_CACHE_HOME": os.path.join(runtime.name, "cache"),
+        "npm_config_cache": os.path.join(runtime.name, "cache"),
+        "npm_config_userconfig": os.path.join(runtime.name, "config", "npmrc"),
+        "npm_config_update_notifier": "false",
+        "NO_UPDATE_NOTIFIER": "1",
+    })
+process = subprocess.Popen(command, cwd=target, start_new_session=True, env=environment)
 try:
     raise SystemExit(process.wait(timeout=int(timeout_text)))
 except subprocess.TimeoutExpired:
@@ -1343,6 +1403,9 @@ except subprocess.TimeoutExpired:
         process.wait()
     print(f"ERROR: verification command exceeded {timeout_text}s", file=sys.stderr)
     raise SystemExit(124)
+finally:
+    if runtime is not None:
+        runtime.cleanup()
 PY
 }
 
