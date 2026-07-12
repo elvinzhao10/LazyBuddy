@@ -70,17 +70,19 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 target, tooling_root, server, source, usage = sys.argv[1:]
+character = 13 if usage.endswith(".ts") else 7
 requests = [
     {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
     {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
-    {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "definition", "arguments": {"path": usage, "line": 1, "character": 7}}},
-    {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "references", "arguments": {"path": usage, "line": 1, "character": 7}}},
+    {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "definition", "arguments": {"path": usage, "line": 1, "character": character}}},
+    {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "references", "arguments": {"path": usage, "line": 1, "character": character}}},
     {"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "symbols", "arguments": {"path": source}}},
-    {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "hover", "arguments": {"path": usage, "line": 1, "character": 7}}},
+    {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "hover", "arguments": {"path": usage, "line": 1, "character": character}}},
     {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "diagnostics", "arguments": {"path": usage}}},
-    {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "rename", "arguments": {"path": usage, "line": 1, "character": 7}}},
+    {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "rename", "arguments": {"path": usage, "line": 1, "character": character}}},
 ]
 environment = os.environ.copy()
 environment["CWD"] = target
@@ -102,6 +104,9 @@ if len(responses) != len(requests):
 for response in responses[:7]:
     if "error" in response:
         raise SystemExit(json.dumps(response))
+definition_text = responses[2]["result"]["content"][0]["text"]
+if Path(target, source).resolve().as_uri() not in definition_text:
+    raise SystemExit("freshly opened cross-file definition did not resolve to the declaration file")
 tools = {tool["name"] for tool in responses[1]["result"]["tools"]}
 if not {"definition", "references", "symbols", "hover", "diagnostics"}.issubset(tools):
     raise SystemExit("bridge did not expose advertised read-only operations")

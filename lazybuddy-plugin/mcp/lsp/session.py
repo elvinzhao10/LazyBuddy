@@ -86,8 +86,9 @@ class LspSession:
             remaining -= len(data)
         return b"".join(chunks)
 
-    def _read_message(self) -> dict[str, object]:
-        deadline = time.monotonic() + self._timeout_seconds
+    def _read_message(self, deadline: Optional[float] = None) -> dict[str, object]:
+        if deadline is None:
+            deadline = time.monotonic() + self._timeout_seconds
         headers = bytearray()
         while b"\r\n\r\n" not in headers:
             headers.extend(self._read_bytes(1, deadline))
@@ -152,11 +153,19 @@ class LspSession:
         language_id = "typescript" if self._language == "typescript" else "python"
         self.notify("textDocument/didOpen", {"textDocument": {"uri": path.as_uri(), "languageId": language_id, "version": 1, "text": path.read_text(encoding="utf-8")}})
 
+    def wait_for_document_ready(self) -> None:
+        deadline = time.monotonic() + min(self._timeout_seconds, 0.5)
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            time.sleep(min(0.05, remaining))
+
     def diagnostics(self) -> list[dict[str, object]]:
         deadline = time.monotonic() + min(self._timeout_seconds, 2)
         while time.monotonic() < deadline:
             try:
-                self._capture_notification(self._read_message())
+                self._capture_notification(self._read_message(deadline))
             except TimeoutError:
                 break
         return self._diagnostics

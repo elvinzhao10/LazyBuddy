@@ -124,6 +124,7 @@ def call_tool(name: str, arguments: dict[str, object], status: dict[str, str], o
         if name not in advertised_operations(capabilities):
             raise ValueError(f"operation is unavailable because the active LSP provider did not advertise it: {name}")
         session.open_file(path)
+        session.wait_for_document_ready()
         text_document = {"uri": path.as_uri()}
         if name == "definition":
             result = session.request("textDocument/definition", {"textDocument": text_document, "position": position(arguments)})
