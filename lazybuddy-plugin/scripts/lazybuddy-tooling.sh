@@ -1048,8 +1048,21 @@ lsp_provider() {
 }
 
 typescript_runtime_ready() {
+    local runtime_root
     command -v node >/dev/null 2>&1 || return 1
-    node -p 'Number(process.versions.node.split(".")[0]) >= 20' 2>/dev/null | grep -Fxq true
+    if lsp_npm_runtime_is_valid; then
+        runtime_root="$(lsp_npm_runtime_root)"
+        env -i \
+            PATH="$PATH" \
+            HOME="$runtime_root/home" \
+            XDG_CONFIG_HOME="$runtime_root/config" \
+            XDG_CACHE_HOME="$runtime_root/cache" \
+            TMPDIR="$runtime_root/tmp" \
+            NODE_COMPILE_CACHE="$runtime_root/cache/node-compile-cache" \
+            node -p 'Number(process.versions.node.split(".")[0]) >= 20' 2>/dev/null | grep -Fxq true
+    else
+        env -i PATH="$PATH" node -p 'Number(process.versions.node.split(".")[0]) >= 20' 2>/dev/null | grep -Fxq true
+    fi
 }
 
 lsp_node_modules_digest() {

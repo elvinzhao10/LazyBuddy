@@ -61,6 +61,8 @@ FAKE_BIN="$TMP/fake-bin"
 mkdir "$TS_ROOT" "$PY_ROOT" "$ISOLATED_ROOT" "$CALLER_HOME" "$CALLER_CONFIG" "$CALLER_TMP" "$CALLER_NODE_CACHE" "$FAKE_BIN"
 CALLER_SENTINEL="$CALLER_HOME/npm-state-written"
 REAL_NPM="$(command -v npm)"
+printf 'caller-owned\n' > "$CALLER_NODE_CACHE/sentinel"
+fingerprint "$CALLER_NODE_CACHE" > "$TMP/caller-node-cache-before"
 printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$CALLER_CONFIG\" ]; then" "  touch \"$CALLER_SENTINEL\"" 'fi' "exec \"$REAL_NPM\" \"\$@\"" > "$FAKE_BIN/npm"
 chmod +x "$FAKE_BIN/npm"
 printf 'import { answer } from "./source";\nconsole.log(answer);\n' > "$TS_TARGET/use.ts"
@@ -69,6 +71,8 @@ fingerprint "$TS_TARGET" > "$TMP/ts-before-install"
 fingerprint "$PY_TARGET" > "$TMP/py-before-install"
 expect "LSP install isolates caller npm state" 0 env PATH="$FAKE_BIN:$PATH" HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" TMPDIR="$CALLER_TMP" NODE_COMPILE_CACHE="$CALLER_NODE_CACHE" bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"
 [ ! -e "$CALLER_SENTINEL" ] || fail 'LSP install inherited caller npm runtime state'
+fingerprint "$CALLER_NODE_CACHE" > "$TMP/caller-node-cache-after"
+cmp -s "$TMP/caller-node-cache-before" "$TMP/caller-node-cache-after" || fail 'LSP install wrote caller Node compile cache'
 [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/home" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/cache" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/config" ] && [ -d "$ISOLATED_ROOT/.lazybuddy-lsp-npm-runtime/tmp" ] || fail 'LSP install did not create receipt-owned npm runtime'
 expect "owned LSP runtime ignores caller environment" 0 env HOME="$CALLER_HOME" XDG_CONFIG_HOME="$CALLER_CONFIG" TMPDIR="$CALLER_TMP" NODE_COMPILE_CACHE="$CALLER_NODE_CACHE" python3 - "$ISOLATED_ROOT" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
 import sys
