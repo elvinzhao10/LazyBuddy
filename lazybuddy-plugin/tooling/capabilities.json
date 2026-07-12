@@ -16,7 +16,24 @@
         "provider_order": ["host", "owned"]
       }
     ],
-    "semantic_navigation": [],
+    "semantic_navigation": [
+      {
+        "languages": ["javascript", "typescript"],
+        "source_markers": ["js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "tsconfig.json", "jsconfig.json"],
+        "command": "typescript-language-server",
+        "arguments": ["--stdio"],
+        "fallback_packages": ["typescript-language-server@5.3.0", "typescript@5.9.3"],
+        "provider_order": ["project", "host", "owned"]
+      },
+      {
+        "languages": ["python"],
+        "source_markers": ["py", "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"],
+        "command": "basedpyright-langserver",
+        "arguments": ["--stdio"],
+        "fallback_packages": ["basedpyright@1.39.9"],
+        "provider_order": ["project", "host", "owned"]
+      }
+    ],
     "architecture_exploration": [],
     "repository_verification": [
       {

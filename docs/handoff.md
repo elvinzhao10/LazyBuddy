@@ -53,3 +53,15 @@ root. It also exposes `verify --target ... --dry-run|--run` for declared,
 allowlisted repository-native checks. Keep this capability package-local: it
 must never read root `docs/` or `dev/`, mutate a target manifest/lockfile, or
 guess a host-managed installation path.
+
+The same script owns the optional LSP provider lifecycle through
+`lsp-status`, `lsp-install`, `lsp-doctor`, and `lsp-uninstall`. The provider
+registry is `lazybuddy-plugin/tooling/capabilities.json`; the locked provider
+manifests are under `lazybuddy-plugin/tooling/lsp/`. Only JavaScript/
+TypeScript and Python are supported. The package-owned MCP bridge is
+`lazybuddy-plugin/mcp/lsp/server.sh`; it requires an explicit
+`LAZYBUDDY_TOOLING_ROOT` and offers only provider-advertised read-only
+definition, references, symbols, hover/type, and diagnostics operations.
+Rename and all other languages remain intentionally unsupported. Preserve the
+separate-LSP-root requirement: LSP provisioning never mutates a target or a
+global/host-managed location.

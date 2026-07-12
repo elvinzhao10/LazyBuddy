@@ -13,6 +13,7 @@ usage() {
 Usage:
   lazybuddy-tooling.sh <detect|install|status|doctor|uninstall> --tooling-root ABSOLUTE_EMPTY_DIRECTORY
   lazybuddy-tooling.sh verify --target ABSOLUTE_TARGET_DIRECTORY <--dry-run|--run> [lint|typecheck|test|build ...]
+  lazybuddy-tooling.sh <lsp-status|lsp-install|lsp-doctor|lsp-uninstall> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
 
 install requires an existing, empty, non-symlink directory supplied by the caller.
 status and doctor inspect only. uninstall deletes only a verified, receipt-owned root.
@@ -308,6 +309,256 @@ parse_verify() {
     export LAZYBUDDY_VERIFY_TIMEOUT_SECONDS="$VERIFY_TIMEOUT_SECONDS"
 }
 
+parse_lsp() {
+    TARGET_ROOT=""
+    TOOLING_ROOT=""
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --target)
+                [ "$#" -ge 2 ] || fail "--target requires an absolute path"
+                TARGET_ROOT="$2"
+                shift 2
+                ;;
+            --tooling-root)
+                [ "$#" -ge 2 ] || fail "--tooling-root requires an absolute path"
+                TOOLING_ROOT="$2"
+                shift 2
+                ;;
+            *) fail "unsupported LSP option: $1" ;;
+        esac
+    done
+    [ -n "$TARGET_ROOT" ] || fail "--target is required"
+    [ -n "$TOOLING_ROOT" ] || fail "--tooling-root is required"
+    [[ "$TARGET_ROOT" == /* ]] || fail "--target must be an absolute path"
+    [[ "$TOOLING_ROOT" == /* ]] || fail "--tooling-root must be an absolute path"
+    [[ "/$TARGET_ROOT/" != *"/../"* ]] || fail "target must not contain traversal"
+    [[ "/$TOOLING_ROOT/" != *"/../"* ]] || fail "tooling root must not contain traversal"
+    [ -d "$TARGET_ROOT" ] && [ ! -L "$TARGET_ROOT" ] || fail "target must be an existing non-symlink directory"
+    [ "$(cd "$TARGET_ROOT" && pwd -P)" = "$TARGET_ROOT" ] || fail "target must not resolve through a symlink"
+}
+
+lsp_language() {
+    if [ -f "$TARGET_ROOT/tsconfig.json" ] || [ -f "$TARGET_ROOT/jsconfig.json" ] \
+        || find "$TARGET_ROOT" -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.mts' -o -name '*.cts' -o -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \) -print -quit | grep -q .; then
+        printf '%s\n' typescript
+    elif [ -f "$TARGET_ROOT/pyproject.toml" ] || [ -f "$TARGET_ROOT/setup.py" ] || [ -f "$TARGET_ROOT/setup.cfg" ] || [ -f "$TARGET_ROOT/requirements.txt" ] \
+        || find "$TARGET_ROOT" -type f -name '*.py' -print -quit | grep -q .; then
+        printf '%s\n' python
+    fi
+}
+
+lsp_command_name() {
+    case "$1" in
+        typescript) printf '%s\n' typescript-language-server ;;
+        python) printf '%s\n' basedpyright-langserver ;;
+        *) return 1 ;;
+    esac
+}
+
+lsp_source_dir() {
+    printf '%s\n' "$TOOLING_SOURCE/lsp/$1"
+}
+
+lsp_owned_binary() {
+    local language="$1" command_name
+    command_name="$(lsp_command_name "$language")"
+    printf '%s\n' "$TOOLING_ROOT/lsp/$language/node_modules/.bin/$command_name"
+}
+
+lsp_project_binary() {
+    local language="$1" command_name
+    command_name="$(lsp_command_name "$language")"
+    printf '%s\n' "$TARGET_ROOT/node_modules/.bin/$command_name"
+}
+
+lsp_binary_works() {
+    [ -e "$1" ] && [ -x "$1" ]
+}
+
+lsp_provider() {
+    local language="$1" command_name candidate
+    command_name="$(lsp_command_name "$language")"
+    candidate="$(lsp_project_binary "$language")"
+    if lsp_binary_works "$candidate"; then
+        printf 'project %s\n' "$candidate"
+        return 0
+    fi
+    candidate="$(command -v "$command_name" 2>/dev/null || true)"
+    if [ -n "$candidate" ] && lsp_binary_works "$candidate"; then
+        printf 'host %s\n' "$candidate"
+        return 0
+    fi
+    candidate="$(lsp_owned_binary "$language")"
+    if lsp_binary_works "$candidate" && lsp_root_is_valid; then
+        printf 'owned %s\n' "$candidate"
+        return 0
+    fi
+    return 1
+}
+
+typescript_runtime_ready() {
+    command -v node >/dev/null 2>&1 || return 1
+    node -p 'Number(process.versions.node.split(".")[0]) >= 20' 2>/dev/null | grep -Fxq true
+}
+
+lsp_node_modules_digest() {
+    python3 - "$TOOLING_ROOT/lsp" <<'PY'
+import hashlib
+import os
+import stat
+import sys
+
+root = os.path.realpath(sys.argv[1])
+if not os.path.isdir(root) or os.path.islink(sys.argv[1]):
+    raise SystemExit(2)
+entries = []
+for directory, directory_names, file_names in os.walk(root, followlinks=False):
+    directory_names.sort()
+    file_names.sort()
+    entries.append(f"d {os.path.relpath(directory, root)}")
+    for name in directory_names + file_names:
+        path = os.path.join(directory, name)
+        relative = os.path.relpath(path, root)
+        status = os.lstat(path)
+        if stat.S_ISLNK(status.st_mode):
+            resolved = os.path.realpath(path)
+            if os.path.commonpath((root, resolved)) != root:
+                raise SystemExit(2)
+            entries.append(f"l {relative} {os.readlink(path)}")
+        elif stat.S_ISREG(status.st_mode) and status.st_nlink == 1:
+            digest = hashlib.sha256()
+            with open(path, "rb") as source:
+                for chunk in iter(lambda: source.read(65536), b""):
+                    digest.update(chunk)
+            entries.append(f"f {relative} {digest.hexdigest()}")
+        elif not stat.S_ISDIR(status.st_mode):
+            raise SystemExit(2)
+print(hashlib.sha256("\n".join(entries).encode()).hexdigest())
+PY
+}
+
+lsp_receipt_contents() {
+    python3 - "$TOOLING_ROOT" "$(lsp_node_modules_digest)" <<'PY'
+import json
+import sys
+
+print(json.dumps({
+    "schema_version": 1,
+    "owner": "lazybuddy-lsp-tooling",
+    "root": sys.argv[1],
+    "owned_entries": ["lsp", ".lazybuddy-lsp-receipt.json"],
+    "lsp_digest": sys.argv[2],
+}, indent=2, sort_keys=True))
+PY
+}
+
+lsp_root_is_valid() {
+    root_is_safe_existing || return 1
+    [ "$(find "$TOOLING_ROOT" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = "2" ] || return 1
+    [ -d "$TOOLING_ROOT/lsp" ] && [ ! -L "$TOOLING_ROOT/lsp" ] || return 1
+    regular_unlinked_file "$TOOLING_ROOT/.lazybuddy-lsp-receipt.json" || return 1
+    local language source
+    for language in typescript python; do
+        source="$(lsp_source_dir "$language")"
+        if [ -d "$TOOLING_ROOT/lsp/$language" ]; then
+            [ ! -L "$TOOLING_ROOT/lsp/$language" ] || return 1
+            regular_unlinked_file "$TOOLING_ROOT/lsp/$language/package.json" || return 1
+            regular_unlinked_file "$TOOLING_ROOT/lsp/$language/package-lock.json" || return 1
+            [ -d "$TOOLING_ROOT/lsp/$language/node_modules" ] || return 1
+            cmp -s "$source/package.json" "$TOOLING_ROOT/lsp/$language/package.json" || return 1
+            cmp -s "$source/package-lock.json" "$TOOLING_ROOT/lsp/$language/package-lock.json" || return 1
+        fi
+    done
+    find "$TOOLING_ROOT/lsp" -mindepth 1 -maxdepth 1 -type d -print | sed 's#.*/##' | sort | cmp -s - <(find "$TOOLING_ROOT/lsp" -mindepth 1 -maxdepth 1 -type d -print | sed 's#.*/##' | grep -Ex 'typescript|python' | sort) || return 1
+    lsp_node_modules_digest >/dev/null 2>&1 || return 1
+    cmp -s <(lsp_receipt_contents) "$TOOLING_ROOT/.lazybuddy-lsp-receipt.json"
+}
+
+lsp_status() {
+    local language provider
+    language="$(lsp_language)"
+    if [ -z "$language" ]; then
+        echo "STATE: unsupported"
+        echo "REASON: no supported JavaScript/TypeScript or Python source/configuration detected"
+        return 0
+    fi
+    if [ "$language" = "typescript" ] && ! typescript_runtime_ready; then
+        echo "STATE: incompatible"
+        echo "LANGUAGE: typescript"
+        echo "REASON: typescript-language-server@5.3.0 requires Node.js 20 or newer"
+        return 0
+    fi
+    if provider="$(lsp_provider "$language")"; then
+        echo "STATE: ready"
+        echo "LANGUAGE: $language"
+        echo "PROVIDER: $provider"
+    else
+        echo "STATE: missing"
+        echo "LANGUAGE: $language"
+        echo "REASON: no compatible project, host, or receipt-owned LSP provider is available"
+    fi
+}
+
+lsp_install() {
+    local language provider source
+    language="$(lsp_language)"
+    if [ -z "$language" ]; then
+        echo "STATE: unsupported"
+        echo "REASON: no supported JavaScript/TypeScript or Python source/configuration detected"
+        return 0
+    fi
+    if [ "$language" = "typescript" ] && ! typescript_runtime_ready; then
+        echo "STATE: incompatible"
+        echo "LANGUAGE: typescript"
+        echo "REASON: typescript-language-server@5.3.0 requires Node.js 20 or newer"
+        return 0
+    fi
+    if provider="$(lsp_provider "$language")"; then
+        echo "STATE: ready"
+        echo "LANGUAGE: $language"
+        echo "PROVIDER: $provider"
+        return 0
+    fi
+    require_safe_existing_root
+    if ! root_is_empty; then
+        fail "LSP tooling root must be empty when provisioning a provider"
+    fi
+    command -v npm >/dev/null 2>&1 || fail "npm is required to install the locked LSP provider"
+    source="$(lsp_source_dir "$language")"
+    mkdir -p "$TOOLING_ROOT/lsp/$language"
+    cp "$source/package.json" "$TOOLING_ROOT/lsp/$language/package.json"
+    cp "$source/package-lock.json" "$TOOLING_ROOT/lsp/$language/package-lock.json"
+    (
+        cd "$TOOLING_ROOT/lsp/$language"
+        npm ci --ignore-scripts --no-audit --fund=false
+    )
+    lsp_receipt_contents > "$TOOLING_ROOT/.lazybuddy-lsp-receipt.json"
+    if ! lsp_root_is_valid || ! provider="$(lsp_provider "$language")"; then
+        fail "LSP installation did not produce a verified receipt-owned provider"
+    fi
+    echo "STATE: ready"
+    echo "LANGUAGE: $language"
+    echo "PROVIDER: $provider"
+}
+
+lsp_doctor() {
+    local output
+    output="$(lsp_status)"
+    printf '%s\n' "$output"
+    grep -qx 'STATE: ready' <<<"$output" && { echo "DOCTOR: PASS"; return 0; }
+    echo "DOCTOR: DEGRADED"
+    return 0
+}
+
+lsp_uninstall() {
+    if ! lsp_root_is_valid; then
+        fail "refusing LSP uninstall: root is not an unmodified receipt-owned installation"
+    fi
+    rm -rf "$TOOLING_ROOT"
+    echo "STATE: removed"
+    echo "ROOT: $TOOLING_ROOT"
+}
+
 detect_verification_kind() {
     if [ -f "$TARGET_ROOT/package.json" ]; then
         if [ -f "$TARGET_ROOT/package-lock.json" ]; then
@@ -551,6 +802,15 @@ shift
 
 case "$COMMAND" in
     verify) parse_verify "$@"; verify_target ;;
+    lsp-status|lsp-install|lsp-doctor|lsp-uninstall)
+        parse_lsp "$@"
+        case "$COMMAND" in
+            lsp-status) lsp_status ;;
+            lsp-install) lsp_install ;;
+            lsp-doctor) lsp_doctor ;;
+            lsp-uninstall) lsp_uninstall ;;
+        esac
+        ;;
     detect|install|status|doctor|uninstall)
         parse_root "$@"
         case "$COMMAND" in

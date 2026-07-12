@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-lsp.XXXXXX")"
+TMP="$(cd "$TMP" && pwd -P)"
+trap 'rm -rf "$TMP"' EXIT
+
+pass() { printf 'PASS %s\n' "$1"; }
+fail() { printf 'FAIL %s\n' "$1" >&2; exit 1; }
+expect() {
+    local label="$1" expected="$2"
+    shift 2
+    local output status
+    if output=$("$@" 2>&1); then status=0; else status=$?; fi
+    printf '%s\n' "$output" > "$TMP/$label.out"
+    [ "$status" = "$expected" ] || fail "$label (exit $status, expected $expected): $output"
+    pass "$label"
+}
+fingerprint() {
+    find "$1" -type f -print0 | sort -z | xargs -0 shasum
+}
+
+TS_TARGET="$TMP/typescript"
+PY_TARGET="$TMP/python"
+OTHER_TARGET="$TMP/other"
+mkdir -p "$TS_TARGET" "$PY_TARGET" "$OTHER_TARGET"
+printf '{"compilerOptions":{"strict":true}}\n' > "$TS_TARGET/tsconfig.json"
+printf 'export const answer: number = 42;\n' > "$TS_TARGET/source.ts"
+printf '[project]\nname = "fixture"\nversion = "0.0.0"\n' > "$PY_TARGET/pyproject.toml"
+printf 'answer: int = 42\n' > "$PY_TARGET/source.py"
+
+fingerprint "$TS_TARGET" > "$TMP/ts-before"
+expect "missing provider is non-blocking" 0 bash "$LIFECYCLE" lsp-status --target "$TS_TARGET" --tooling-root "$TMP/missing-root"
+grep -Fxq 'STATE: missing' "$TMP/missing provider is non-blocking.out" || fail 'missing provider state'
+fingerprint "$TS_TARGET" > "$TMP/ts-after"
+cmp -s "$TMP/ts-before" "$TMP/ts-after" || fail 'missing status mutated TypeScript target'
+pass 'missing status preserves TypeScript target'
+
+expect "unsupported language is non-blocking" 0 bash "$LIFECYCLE" lsp-status --target "$OTHER_TARGET" --tooling-root "$TMP/missing-root"
+grep -Fxq 'STATE: unsupported' "$TMP/unsupported language is non-blocking.out" || fail 'unsupported language state'
+
+expect "bridge reports unavailable before provision" 0 bash -c "printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"lsp_status\",\"arguments\":{}}}' | CWD='$TS_TARGET' LAZYBUDDY_TOOLING_ROOT='$TMP/missing-root' bash '$PLUGIN_ROOT/mcp/lsp/server.sh'"
+grep -q 'STATE\\": \\"missing' "$TMP/bridge reports unavailable before provision.out" || fail 'bridge missing provider response'
+
+TS_ROOT="$TMP/typescript-tools"
+PY_ROOT="$TMP/python-tools"
+mkdir "$TS_ROOT" "$PY_ROOT"
+printf 'import { answer } from "./source";\nconsole.log(answer);\n' > "$TS_TARGET/use.ts"
+printf 'from source import answer\nprint(answer)\n' > "$PY_TARGET/use.py"
+fingerprint "$TS_TARGET" > "$TMP/ts-before-install"
+fingerprint "$PY_TARGET" > "$TMP/py-before-install"
+expect "install locked TypeScript provider" 0 bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$TS_ROOT"
+expect "install locked Python provider" 0 bash "$LIFECYCLE" lsp-install --target "$PY_TARGET" --tooling-root "$PY_ROOT"
+expect "TypeScript provider status" 0 bash "$LIFECYCLE" lsp-status --target "$TS_TARGET" --tooling-root "$TS_ROOT"
+expect "Python provider status" 0 bash "$LIFECYCLE" lsp-status --target "$PY_TARGET" --tooling-root "$PY_ROOT"
+grep -Fxq 'STATE: ready' "$TMP/TypeScript provider status.out" || fail 'TypeScript provider ready state'
+grep -Fxq 'STATE: ready' "$TMP/Python provider status.out" || fail 'Python provider ready state'
+fingerprint "$TS_TARGET" > "$TMP/ts-after-install"
+fingerprint "$PY_TARGET" > "$TMP/py-after-install"
+cmp -s "$TMP/ts-before-install" "$TMP/ts-after-install" || fail 'TypeScript lifecycle mutated target'
+cmp -s "$TMP/py-before-install" "$TMP/py-after-install" || fail 'Python lifecycle mutated target'
+pass 'LSP lifecycle preserves target fingerprints'
+
+bridge_checks() {
+    local target="$1" tooling_root="$2" source="$3" usage="$4"
+    python3 - "$target" "$tooling_root" "$PLUGIN_ROOT/mcp/lsp/server.sh" "$source" "$usage" <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+target, tooling_root, server, source, usage = sys.argv[1:]
+requests = [
+    {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+    {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "definition", "arguments": {"path": usage, "line": 1, "character": 7}}},
+    {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "references", "arguments": {"path": usage, "line": 1, "character": 7}}},
+    {"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "symbols", "arguments": {"path": source}}},
+    {"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "hover", "arguments": {"path": usage, "line": 1, "character": 7}}},
+    {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "diagnostics", "arguments": {"path": usage}}},
+    {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "rename", "arguments": {"path": usage, "line": 1, "character": 7}}},
+]
+environment = os.environ.copy()
+environment["CWD"] = target
+environment["LAZYBUDDY_TOOLING_ROOT"] = tooling_root
+process = subprocess.run(
+    ["bash", server],
+    input="".join(json.dumps(request) + "\n" for request in requests),
+    text=True,
+    capture_output=True,
+    env=environment,
+    timeout=45,
+    check=False,
+)
+if process.returncode:
+    raise SystemExit(process.stderr or process.stdout)
+responses = [json.loads(line) for line in process.stdout.splitlines() if line]
+if len(responses) != len(requests):
+    raise SystemExit("bridge did not return one response per request")
+for response in responses[:7]:
+    if "error" in response:
+        raise SystemExit(json.dumps(response))
+tools = {tool["name"] for tool in responses[1]["result"]["tools"]}
+if not {"definition", "references", "symbols", "hover", "diagnostics"}.issubset(tools):
+    raise SystemExit("bridge did not expose advertised read-only operations")
+if "error" not in responses[7] or "rename is intentionally unsupported" not in responses[7]["error"]["message"]:
+    raise SystemExit("rename was not refused")
+PY
+}
+
+expect "TypeScript bridge real read-only operations" 0 bridge_checks "$TS_TARGET" "$TS_ROOT" source.ts use.ts
+expect "Python bridge real read-only operations" 0 bridge_checks "$PY_TARGET" "$PY_ROOT" source.py use.py
+expect "bridge rejects malformed JSON" 0 bash -c "printf '%s\\n' '{not-json' | CWD='$TS_TARGET' LAZYBUDDY_TOOLING_ROOT='$TS_ROOT' bash '$PLUGIN_ROOT/mcp/lsp/server.sh'"
+grep -q '"code":-32700' "$TMP/bridge rejects malformed JSON.out" || fail 'malformed request rejection'
+
+cp "$TS_ROOT/.lazybuddy-lsp-receipt.json" "$TMP/ts-receipt-original.json"
+printf '\n' >> "$TS_ROOT/.lazybuddy-lsp-receipt.json"
+expect "edited LSP receipt blocks uninstall" 2 bash "$LIFECYCLE" lsp-uninstall --target "$TS_TARGET" --tooling-root "$TS_ROOT"
+[ -d "$TS_ROOT" ] || fail 'edited LSP receipt root preserved'
+rm "$TS_ROOT/.lazybuddy-lsp-receipt.json"
+cp "$TMP/ts-receipt-original.json" "$TS_ROOT/.lazybuddy-lsp-receipt.json"
+expect "uninstall TypeScript owned provider" 0 bash "$LIFECYCLE" lsp-uninstall --target "$TS_TARGET" --tooling-root "$TS_ROOT"
+expect "uninstall Python owned provider" 0 bash "$LIFECYCLE" lsp-uninstall --target "$PY_TARGET" --tooling-root "$PY_ROOT"
+[ ! -e "$TS_ROOT" ] && [ ! -e "$PY_ROOT" ] || fail 'receipt-owned LSP roots removed'
+pass 'receipt-owned LSP roots removed'
+
+printf 'PASS baseline LSP missing and unsupported behavior\n'

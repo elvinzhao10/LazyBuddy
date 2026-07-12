@@ -115,6 +115,40 @@ Repository verification recognizes package-manager lockfiles plus declared
 Make targets. Dry runs do not change the target. Runs do not install target
 dependencies or guess commands; a timed-out selected check exits `124`.
 
+### Optional language-aware navigation
+
+LazyBuddy can bridge a real language server over stdio for JavaScript/
+TypeScript and Python only. It first detects source/configuration, then uses a
+compatible project-local or host provider without changing it. If neither is
+available, provision exactly one selected language into a separate empty,
+absolute LSP tooling root. The bridge exposes only read-only operations the
+provider advertises: definition, references, symbols, hover/type information,
+and diagnostics. Rename is intentionally unavailable.
+
+```bash
+# Inspect without changing the project or tooling root.
+bash scripts/lazybuddy-tooling.sh lsp-status \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-lsp-tools
+
+# Provision the detected TS/JS or Python provider only in the empty root.
+bash scripts/lazybuddy-tooling.sh lsp-install \
+  --target /absolute/project --tooling-root /absolute/empty/lazybuddy-lsp-tools
+
+# A host MCP configuration can launch this package-owned stdio bridge.
+CWD=/absolute/project LAZYBUDDY_TOOLING_ROOT=/absolute/lazybuddy-lsp-tools \
+  bash mcp/lsp/server.sh
+
+# Remove only an unmodified LSP receipt-owned root.
+bash scripts/lazybuddy-tooling.sh lsp-uninstall \
+  --target /absolute/project --tooling-root /absolute/lazybuddy-lsp-tools
+```
+
+The locked TS/JS provider is `typescript-language-server@5.3.0` with
+`typescript@5.9.3`; it requires Node.js 20 or newer. The locked Python
+provider is `basedpyright@1.39.9`. Missing, unsupported, and incompatible
+providers are non-blocking readiness states. No target manifest, lockfile,
+source file, global path, or host-managed configuration is modified.
+
 ## License
 
 MIT — see the repository [LICENSE](../LICENSE).
