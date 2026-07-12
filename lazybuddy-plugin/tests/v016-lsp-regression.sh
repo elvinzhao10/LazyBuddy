@@ -44,6 +44,12 @@ grep -Fxq 'STATE: unsupported' "$TMP/unsupported language is non-blocking.out" |
 expect "bridge reports unavailable before provision" 0 bash -c "printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"lsp_status\",\"arguments\":{}}}' | CWD='$TS_TARGET' LAZYBUDDY_TOOLING_ROOT='$TMP/missing-root' bash '$PLUGIN_ROOT/mcp/lsp/server.sh'"
 grep -q 'STATE\\": \\"missing' "$TMP/bridge reports unavailable before provision.out" || fail 'bridge missing provider response'
 
+expect "bridge translates status timeout" 0 bash -c "printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"lsp_status\",\"arguments\":{}}}' | CWD='$TS_TARGET' LAZYBUDDY_TOOLING_ROOT='$TMP/missing-root' LAZYBUDDY_LSP_TIMEOUT_SECONDS=0 bash '$PLUGIN_ROOT/mcp/lsp/server.sh'"
+grep -q 'status inspection exceeded bounded timeout' "$TMP/bridge translates status timeout.out" || fail 'bridge timeout response'
+if grep -q 'Traceback' "$TMP/bridge translates status timeout.out"; then
+    fail 'bridge timeout leaked traceback'
+fi
+
 TS_ROOT="$TMP/typescript-tools"
 PY_ROOT="$TMP/python-tools"
 mkdir "$TS_ROOT" "$PY_ROOT"

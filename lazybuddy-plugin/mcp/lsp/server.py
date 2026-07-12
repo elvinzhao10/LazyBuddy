@@ -31,14 +31,17 @@ def mcp_error(request_id: object, code: int, message: str) -> None:
 def tooling_status() -> dict[str, str]:
     if not TOOLING_ROOT:
         return {"STATE": "missing", "REASON": "LAZYBUDDY_TOOLING_ROOT is required for an owned provider"}
-    completed = subprocess.run(
-        ["bash", str(TOOLING), "lsp-status", "--target", str(TARGET_ROOT), "--tooling-root", TOOLING_ROOT],
-        capture_output=True,
-        cwd=TARGET_ROOT,
-        text=True,
-        timeout=TIMEOUT_SECONDS,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            ["bash", str(TOOLING), "lsp-status", "--target", str(TARGET_ROOT), "--tooling-root", TOOLING_ROOT],
+            capture_output=True,
+            cwd=TARGET_ROOT,
+            text=True,
+            timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"STATE": "unavailable", "REASON": "LSP status inspection exceeded bounded timeout"}
     result: dict[str, str] = {}
     for line in completed.stdout.splitlines():
         key, separator, value = line.partition(": ")
