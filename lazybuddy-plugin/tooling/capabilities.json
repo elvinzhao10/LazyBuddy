@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "owner": "lazybuddy-tooling",
+  "capabilities": {
+    "local_search": [],
+    "structural_search": [],
+    "semantic_navigation": [],
+    "architecture_exploration": [],
+    "repository_verification": []
+  }
+}

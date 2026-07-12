@@ -1,0 +1,12 @@
+{
+  "name": "@lazyseries/lazybuddy-tooling",
+  "version": "0.16.0-alpha.1",
+  "private": true,
+  "description": "Locked package-owned tooling foundation for LazyBuddy.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "verify": "node --version"
+  }
+}
