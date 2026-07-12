@@ -4,6 +4,7 @@ set -euo pipefail
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-tooling-lifecycle.XXXXXX")"
+TMP="$(cd "$TMP" && pwd -P)"
 PASS=0
 FAIL=0
 
@@ -103,6 +104,19 @@ if [ -d "$TARGET" ] && [ -z "$(find "$TARGET" -mindepth 1 -print -quit)" ]; then
     pass "symlink target remains unchanged"
 else
     fail "symlink target remains unchanged"
+fi
+
+ANCESTOR_OUTSIDE="$TMP/ancestor-outside"
+ANCESTOR_LINK="$TMP/ancestor-link"
+ANCESTOR_ROOT="$ANCESTOR_LINK/owned"
+mkdir -p "$ANCESTOR_OUTSIDE/owned"
+ln -s "$ANCESTOR_OUTSIDE" "$ANCESTOR_LINK"
+expect_status "ancestor symlink root rejected" 2 bash "$LIFECYCLE" install --tooling-root "$ANCESTOR_ROOT"
+expect_status "ancestor symlink uninstall rejected" 2 bash "$LIFECYCLE" uninstall --tooling-root "$ANCESTOR_ROOT"
+if [ -d "$ANCESTOR_OUTSIDE/owned" ] && [ -z "$(find "$ANCESTOR_OUTSIDE/owned" -mindepth 1 -print -quit)" ]; then
+    pass "ancestor symlink target remains unchanged"
+else
+    fail "ancestor symlink target remains unchanged"
 fi
 
 ROOT="$TMP/tooling-root"

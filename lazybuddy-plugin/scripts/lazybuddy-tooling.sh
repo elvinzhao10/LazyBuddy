@@ -34,7 +34,10 @@ parse_root() {
 }
 
 root_is_safe_existing() {
-    [[ "/$TOOLING_ROOT/" != *"/../"* ]] && [ -d "$TOOLING_ROOT" ] && [ ! -L "$TOOLING_ROOT" ]
+    [[ "/$TOOLING_ROOT/" != *"/../"* ]] \
+        && [ -d "$TOOLING_ROOT" ] \
+        && [ ! -L "$TOOLING_ROOT" ] \
+        && [ "$(cd "$TOOLING_ROOT" && pwd -P)" = "$TOOLING_ROOT" ]
 }
 
 require_safe_existing_root() {
@@ -46,6 +49,9 @@ require_safe_existing_root() {
     fi
     if [ -L "$TOOLING_ROOT" ]; then
         fail "tooling root must not be a symlink"
+    fi
+    if [ "$(cd "$TOOLING_ROOT" && pwd -P)" != "$TOOLING_ROOT" ]; then
+        fail "tooling root must not resolve through a symlink"
     fi
 }
 
