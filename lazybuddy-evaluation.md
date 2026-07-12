@@ -32,4 +32,4 @@ LazyBuddy does not locate or delete host-managed installation paths. Remove a Co
 
 ## Attribution and limits
 
-The repository [NOTICE](NOTICE) and [LICENSE](LICENSE) are the authoritative attribution and license records. This document deliberately replaces earlier structural and semantic percentage claims with v0.15 inventory and test evidence. It does not claim verification of a live CodeBuddy or WorkBuddy host session.
+The repository [NOTICE](NOTICE) and [LICENSE](LICENSE) are the authoritative attribution and license records. This document deliberately replaces earlier structural and semantic percentage claims with v0.16 inventory and test evidence. It does not claim verification of a live CodeBuddy or WorkBuddy host session.
