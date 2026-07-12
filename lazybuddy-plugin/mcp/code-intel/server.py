@@ -130,7 +130,7 @@ def main():
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "0.15.0-alpha.2"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "0.15.0-alpha.3"}})
         return
 
     if method == "tools/list":

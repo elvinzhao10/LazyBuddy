@@ -2,6 +2,13 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v0.15.0-alpha.3 — Self-contained package cleanup (2026-07-12)
+
+- Released package-only documentation contracts: copied plugin validation no
+  longer depends on repository-root `docs/` or `dev/`.
+- Updated manifest, marketplace, MCP server, hook, and verification metadata
+  to `0.15.0-alpha.3`.
+
 ## v0.15.0-alpha.2 — Host Contract and Release Metadata Audit (2026-07-11)
 
 - Clarified CodeBuddy plugin loading, WorkBuddy marketplace/session verification, and the verified local Skill-import/manual-MCP fallback.

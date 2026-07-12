@@ -38,7 +38,7 @@ fi
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"0.15.0-alpha.2"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"0.15.0-alpha.3"}}'
     ;;
   tools/list)
     reply '{"tools":[

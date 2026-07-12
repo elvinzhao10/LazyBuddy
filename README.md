@@ -4,6 +4,8 @@
 
 LazyBuddy provides disciplined planning, delegated execution, evidence-gated verification, review, and durable run-state workflows for **CodeBuddy IDE**, **CodeBuddy CLI**, and **WorkBuddy**. WorkBuddy documents plugin/marketplace capabilities, but this release has not verified a direct copied-repository LazyBuddy installer; its verified no-package-manager path is local skill import plus manual MCP configuration.
 
+**Current package release:** v0.15.0-alpha.3 cleanup, verified on macOS only.
+
 > **Setup?** See [AGENTS.md](AGENTS.md) (the setup guide). This README is about **how to use** the harness once installed.
 
 ## Onboard with AI

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="0.15.0-alpha.2"
+EXPECTED_VERSION="0.15.0-alpha.3"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in "$PLUGIN_ROOT"/mcp/*/server.sh; do
@@ -16,4 +16,29 @@ done
 
 grep -q "lazybuddy-docs/$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/docs/server.py"
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/status-dashboard/dashboard.html"
+grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/hooks/session-start.sh"
+grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
+grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/README.md"
+grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../README.md"
+grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../AGENTS.md"
+grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../docs/handoff.md"
+grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../lazybuddy-evaluation.md"
+python3 - "$PLUGIN_ROOT" "$EXPECTED_VERSION" <<'PY'
+import json
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+expected = sys.argv[2]
+for relative in (
+    ".codebuddy-plugin/plugin.json",
+    ".workbuddy-plugin/plugin.json",
+):
+    value = json.loads((root / relative).read_text(encoding="utf-8"))
+    assert value["version"] == expected, f"{relative} reported {value['version']!r}"
+
+marketplace = json.loads((root.parent / ".codebuddy-plugin/marketplace.json").read_text(encoding="utf-8"))
+entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
+assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
+PY
 printf 'v0.15 runtime version regression: PASS\n'

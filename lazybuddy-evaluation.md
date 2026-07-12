@@ -1,6 +1,6 @@
-# LazyBuddy v0.15 Implementation Evidence
+# LazyBuddy v0.15.0-alpha.3 Implementation Evidence
 
-> Current release evidence, not a historical parity score or a certification that a CodeBuddy or WorkBuddy session loaded the package.
+> Current cleanup-release evidence, verified on macOS only; not a historical parity score or a certification that a CodeBuddy or WorkBuddy session loaded the package.
 
 ## What is implemented and checked
 
