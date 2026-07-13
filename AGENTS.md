@@ -68,6 +68,26 @@ exports a namespaced merge fragment. Do not add credentials to that fragment:
 they stay solely in the user's host environment. Normal tooling install,
 status, and doctor do not contact either remote endpoint.
 
+## v0.16 automatic tooling
+
+The installed package includes a versioned provider contract and policy
+adapter. `bash lazybuddy-plugin/scripts/lazybuddy-tooling.sh setup
+--non-interactive --json` writes only reference-safe user configuration, and
+`providers --policy ask-once --json` reports eligibility, cost, egress,
+credential-reference, and approval state without contacting remote providers.
+Automatic capability selection is task-scoped and never registers or exports a
+host MCP entry. Stop before granting a remote, metered, browser, or
+architecture capability unless the user has explicitly chosen it.
+
+`remote-enable` and `remote-export-mcp` are deliberate persistent
+compatibility commands: enable records only a selected optional provider in a
+verified receipt-owned tooling root, and export prints a namespaced fragment
+for the user to merge through the host UI. They never replace caller entries
+or write raw credentials. Context7/`grep_app` can egress query data; Playwright
+requires browser-specific approval; CodeGraph requires its separate explicit
+install, initialization, and enable sequence. Do not automatically start,
+index, register, or enable any of them.
+
 ## Uninstall
 
 Use the host's own plugin removal flow for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. LazyBuddy never guesses, searches for, or deletes host-managed plugin paths. After removal, delete or disable only the LazyBuddy MCP connectors you personally added in that host's MCP settings. For the verified WorkBuddy local-import fallback, remove the imported `lazybuddy-plugin/skills/` entries through the Skills UI and remove the manually added connectors through Settings; do not delete `.workbuddy-plugin`, `.workbuddy`, or another host's metadata as a substitute. Keep the copied repository until the host confirms removal, then delete that copy only if you no longer need it.

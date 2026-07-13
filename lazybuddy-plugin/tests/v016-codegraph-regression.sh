@@ -129,7 +129,7 @@ if os.path.exists(f"/proc/{process.pid}/environ"):
 else:
     inspection = subprocess.run(["ps", "eww", "-p", str(process.pid), "-o", "command="], text=True, capture_output=True, timeout=10, check=False)
     environment_text = inspection.stdout
-for expected in ("CODEGRAPH_TELEMETRY=0", "CODEGRAPH_NO_DOWNLOAD=1", f"HOME={tooling_root}/.lazybuddy-codegraph-runtime/home"):
+for expected in ("CODEGRAPH_TELEMETRY=0", "CODEGRAPH_NO_DOWNLOAD=1", "CODEGRAPH_NO_WATCHDOG=1", f"HOME={tooling_root}/.lazybuddy-codegraph-runtime/home"):
     if expected not in environment_text:
         raise SystemExit(f"CodeGraph launcher missing isolated environment: {expected}")
 with open(pid_path, "w", encoding="utf-8") as destination:

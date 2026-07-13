@@ -78,7 +78,7 @@ Return three file paths with sizes and entry counts.
   - earlier host implementation scoring matrix and directory decision rules preserved exactly
   - earlier host implementation AGENTS.md format → `.lazybuddy/context/index.md` (same structure)
   - earlier host implementation `--create-new` → full regeneration
-- **Not ported**: LSP/codegraph symbol queries — WorkBuddy uses file-based Grep/Glob discovery.
+- **Not ported**: direct navigation and architecture queries — WorkBuddy uses file-based Grep/Glob discovery.
 
 ## WorkBuddy-native tool usage
 

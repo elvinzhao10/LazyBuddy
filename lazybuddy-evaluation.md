@@ -8,12 +8,28 @@ The v0.16 CodeBuddy package declares 14 `lazy-` skills, 14 current slash-command
 
 Package checks cover the manifest, component inventory, JSON validity, executable MCP scripts, internal Markdown links, smoke checks, MCP regression checks, and hook/security verification. The aggregate `lazybuddy-verify.sh` reports these package checks; it does not claim a live host loaded the plugin or connected a server.
 
+The package readiness and doctor checks also verify that a copied plugin
+contains the versioned automatic-tooling contract, its SHA-256 sidecar, and
+the provider-policy adapter. The package onboarding regression copies the
+plugin, validates readiness and doctor, confirms offline provider status, and
+proves a host-MCP sentinel remains unchanged. It also rejects tooling-root
+uninstall after a caller-owned entry appears.
+
 The v0.16 tooling registry adds disabled-by-default Context7 and experimental,
 unpinned `grep_app` export capabilities. They are not counted as bundled MCP
 servers: normal install, status, and doctor make no remote request. Explicit
 selection produces only a namespaced registration fragment with the Context7
 or grep.app endpoint; it stores and logs no credentials and never replaces a
 caller-owned MCP entry.
+
+Automatic capability selection is task-scoped and does not persist a host
+registration or export. `setup` and `providers` expose reference-only
+credential state, cost/reachability, and approval decisions without remote
+contact. Explicit `remote-enable`/`remote-export-mcp` compatibility commands
+remain persistent only inside a receipt-owned tooling root and require manual
+host merging. Context7 and `grep_app` can egress query data; Playwright is
+approval-gated; CodeGraph is an explicit install/init/enable lifecycle and is
+never automatically indexed, launched, or registered.
 
 ## Host-compatibility boundary
 

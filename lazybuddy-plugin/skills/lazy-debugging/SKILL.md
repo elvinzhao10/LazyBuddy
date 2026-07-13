@@ -47,7 +47,7 @@ Discriminator for native vs bundled: `du -h ./target` (50 MB+ suspect bundled) p
 
 | Tool | Use when | Reference |
 |---|---|---|
-| **Playwright CLI** | Any browser-served web UI bug. Any flow that requires clicking/typing/navigating. **For Phase 8 QA of any browser product, you MUST drive a real browser via Playwright.** | `${CODEBUDDY_PLUGIN_ROOT}/references/tools/playwright-cli.md` |
+| **Browser automation capability** | Any browser-served web UI bug. Any flow that requires clicking/typing/navigating. **For Phase 8 QA of any browser product, request browser automation through the canonical capability route.** | `${CODEBUDDY_PLUGIN_ROOT}/references/tools/browser-automation.md` |
 | **Ghidra** | Any binary without trustworthy source — closed libs, malware, vendored binaries. Use Ghidra's decompiler before `strings`/`objdump` guessing. | `${CODEBUDDY_PLUGIN_ROOT}/references/tools/ghidra.md` |
 | **pwndbg** | Any native binary debugging session. It is GDB with useful views always visible. | `${CODEBUDDY_PLUGIN_ROOT}/references/tools/pwndbg.md` |
 | **pwntools** | Crafted payloads, exploit automation, fuzz harness, CTF scripting. | `${CODEBUDDY_PLUGIN_ROOT}/references/tools/pwntools.md` |
@@ -66,7 +66,7 @@ Discriminator for native vs bundled: `du -h ./target` (50 MB+ suspect bundled) p
 | 5 | **User decision escalation** — only when evidence exhausted and the call has policy implications | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/05-escalate.md` |
 | 6 | **Root cause confirmation** — confirmed only when toggling the suspected cause toggles the bug | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/06-fix.md` |
 | 7 | **TDD fix** — red test first, minimal green, no scope expansion | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/06-fix.md` |
-| 8 | **Manual QA** — actually use the system (tmux for CLI, Playwright for browser, real curl for API) | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/08-qa.md` |
+| 8 | **Manual QA** — actually use the system (tmux for CLI, browser automation for browser, real curl for API) | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/08-qa.md` |
 | 9 | **Cleanup** — walk the journal, revert every artifact, verify `git diff` shows only fix + test | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/09-cleanup.md` |
 | 10 | **Final verification** — four evidence gates before declaring done | `${CODEBUDDY_PLUGIN_ROOT}/references/methodology/09-cleanup.md` |
 

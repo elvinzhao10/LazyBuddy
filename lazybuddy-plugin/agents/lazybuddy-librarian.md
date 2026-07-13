@@ -115,7 +115,7 @@ Return confirmation with modified file paths and change summary.
   - earlier host implementation `.lazybuddy/known-gaps.md` → `.workbuddy/known-gaps.md`
   - earlier host implementation `.lazybuddy/risk-register.md` → `.workbuddy/risk-register.md`
   - The append-only, diff-before-write, never-delete discipline is preserved.
-- **Not ported**: earlier host implementation librarian's external research role (gh CLI, web search, context7) — this is handled by the lazybuddy-explorer and lazybuddy-librarian (WorkBuddy's librarian is a narrower memory maintainer).
+- **Not ported**: earlier host implementation librarian's external research role is now requested through canonical documentation or external-code capabilities; this remains a narrower memory maintainer.
 
 ## WorkBuddy-native tool usage
 

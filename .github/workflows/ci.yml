@@ -28,3 +28,6 @@ jobs:
 
       - name: Run docs check
         run: bash lazybuddy-plugin/scripts/lazybuddy-docs-check.sh
+
+      - name: Run package verification
+        run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh

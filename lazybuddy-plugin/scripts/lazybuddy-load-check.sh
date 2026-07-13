@@ -136,6 +136,32 @@ if mcp is not None:
     count = len(actual) if isinstance(actual, dict) else -1
     result("PASS" if count == 6 else "FAIL", "MCP servers", f"{count}/6")
 
+contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
+contract_digest_path = contract_path + ".sha256"
+policy_adapter_path = os.path.join(root, "tooling", "lazybuddy_policy.py")
+try:
+    import hashlib
+    with open(contract_path, "rb") as handle:
+        contract_bytes = handle.read()
+    with open(contract_digest_path, encoding="utf-8") as handle:
+        expected_digest = handle.read().split()[0]
+    contract = json.loads(contract_bytes)
+    if (
+        hashlib.sha256(contract_bytes).hexdigest() != expected_digest
+        or contract.get("schema") != "lazy-series.automatic-tooling.contract"
+        or contract.get("schema_version") != 1
+    ):
+        raise ValueError("invalid contract digest or schema")
+except (FileNotFoundError, IndexError, OSError, ValueError, json.JSONDecodeError) as exc:
+    result("FAIL", "automatic tooling contract", str(exc))
+else:
+    result("PASS", "automatic tooling contract", "verified")
+
+if os.path.isfile(policy_adapter_path):
+    result("PASS", "provider policy adapter", "present")
+else:
+    result("FAIL", "provider policy adapter", "missing")
+
 if failed:
     print("PACKAGE_READINESS=failed")
     print("Package readiness failed. Reinstall the full plugin or correct the named package file.")

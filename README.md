@@ -34,6 +34,18 @@ status, and doctor stay offline. Their exported, namespaced MCP fragment has
 endpoints only, so host environment credentials are never written or logged.
 See the package [tooling guide](lazybuddy-plugin/README.md#optional-remote-documentation-and-example-search).
 
+Automatic selection is temporary and task-scoped: it uses the packaged
+provider contract without changing host MCP configuration. `setup` and
+`providers` report provider cost, reachability, approval, and
+credential-reference state; they do not contact remote providers. Persistent
+compatibility remains explicit: `remote-enable` records an optional Context7
+or `grep_app` selection in a verified tooling root, while `remote-export-mcp`
+only prints a namespaced fragment for manual host-UI merging. Remote calls may
+egress data or incur cost even if read-only. Browser automation (Playwright)
+and CodeGraph require their own approval or explicit lifecycle steps; neither
+is started or registered automatically. The package guide documents the exact
+commands and receipt-safe tooling uninstall.
+
 ## A first task, from request to evidence
 
 Start by describing the outcome and how you will recognize success, not the commands you think the agent should run. For example:

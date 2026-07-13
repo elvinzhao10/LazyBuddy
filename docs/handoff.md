@@ -103,3 +103,15 @@ tooling root. Export returns namespaced host-registration entries for
 `https://mcp.context7.com/mcp` and `https://mcp.grep.app`; it neither edits
 host configuration nor includes credentials. Keep the `docs` MCP described as
 the existing local resolver, never as Context7.
+
+The installed package additionally vendors the automatic-tooling contract,
+its SHA-256 sidecar, and the provider-policy adapter. Keep readiness and
+doctor checks responsible for those files so a copied package cannot appear
+ready without its provider policy. Document automatic capability selection as
+task-scoped and non-persistent: it must not mutate a host MCP configuration or
+export a registration. `setup` and `providers` remain offline status/setup
+surfaces; provider output is where cost, egress, credential-reference, and
+approval state are reported. Persistent `remote-enable`/`remote-export-mcp`
+compatibility must remain explicit, receipt-owned, namespaced, and manually
+merged. Preserve separate explicit approval/lifecycle language for Playwright
+and CodeGraph, including their no-auto-start/no-auto-index rule.

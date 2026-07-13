@@ -115,6 +115,37 @@ Repository verification recognizes package-manager lockfiles plus declared
 Make targets. Dry runs do not change the target. Runs do not install target
 dependencies or guess commands; a timed-out selected check exits `124`.
 
+### Automatic capability selection and approvals
+
+The installed package carries the versioned automatic-tooling contract and its
+provider-policy adapter. Start with an offline status check or create the
+reference-only user configuration:
+
+```bash
+bash scripts/lazybuddy-tooling.sh setup --non-interactive --json
+bash scripts/lazybuddy-tooling.sh providers --policy ask-once --json
+```
+
+Automatic work is task-scoped: the broker selects the lightest eligible
+provider for that task and does not write host MCP configuration or export a
+registration. Local providers are free/read-only where available. Remote,
+metered, browser, and architecture capabilities remain approval-aware; use
+`approval grant|deny|revoke` with an explicit workspace, capability, provider,
+and scope before persistent consent is recorded. Provider output identifies
+cost, reachability, credential-reference state, and the current decision.
+
+`remote-enable` is a separate persistent compatibility command. It records an
+explicit optional Context7 or `grep_app` selection only in the verified
+tooling root; `remote-export-mcp` prints a namespaced merge fragment for the
+host UI. Neither command edits host configuration, replaces host entries, or
+writes raw credentials. Treat every remote call as potential data egress and
+cost even when its provider is marked read-only.
+
+Playwright is also disabled until an approval decision permits browser
+automation. CodeGraph remains a separate explicit install/init/enable flow;
+the automatic broker does not create an index, launch a process, or enable
+telemetry. The local `context-graph` MCP remains only a grep-based fallback.
+
 ### Optional language-aware navigation
 
 LazyBuddy can bridge a real language server over stdio for JavaScript/

@@ -56,7 +56,7 @@ Apply updates to each file in priority order. Use `Edit` when the file exists; u
 Follow the init-deep update-mode semantics:
 - **STRUCTURE** section: update only if directory layout changed
 - **WHERE TO LOOK** table: add entries for new modules; remove entries for deleted modules
-- **CODE MAP** table: add symbols that were introduced; remove symbols that were deleted. Update ref counts if LSP/codegraph revealed changes
+- **CODE MAP** table: add symbols that were introduced; remove symbols that were deleted. Update ref counts when canonical navigation or architecture evidence reveals changes
 - **CONVENTIONS** section: add new conventions; strike deprecated ones
 - **ANTI-PATTERNS** section: add newly discovered anti-patterns; remove those no longer observed
 - **UNIQUE STYLES** section: add if the change introduced a project-specific style
@@ -119,7 +119,7 @@ This is mandatory — do not skip. The CHANGELOG is the user-facing record of wh
 
 ### 3. Guard: never rewrite the canonical method map
 
-The canonical method map (`.lazybuddy/canonical-method-map.md`) is the authoritative architecture summary. It is generated from repo evidence — LSP symbol inventory, codegraph call graphs, module boundaries. **Only update it when the repo structure changed**, not when conventions, notes, or usage patterns changed.
+The canonical method map (`.lazybuddy/canonical-method-map.md`) is the authoritative architecture summary. It is generated from repository evidence, navigation inventories, dependency relationships, and module boundaries. **Only update it when the repo structure changed**, not when conventions, notes, or usage patterns changed.
 
 Before touching the method map, verify the trigger:
 - Was a new top-level module created or removed? → Update module entry

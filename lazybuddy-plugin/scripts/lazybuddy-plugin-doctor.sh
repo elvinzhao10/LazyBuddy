@@ -157,6 +157,38 @@ else
     check ".mcp.json exists" "missing"
 fi
 
+if contract_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+import hashlib
+import json
+import os
+import sys
+
+root = sys.argv[1]
+contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
+digest_path = contract_path + ".sha256"
+policy_path = os.path.join(root, "tooling", "lazybuddy_policy.py")
+try:
+    with open(contract_path, "rb") as handle:
+        contract_bytes = handle.read()
+    with open(digest_path, encoding="utf-8") as handle:
+        expected_digest = handle.read().split()[0]
+    contract = json.loads(contract_bytes)
+    if hashlib.sha256(contract_bytes).hexdigest() != expected_digest:
+        raise ValueError("contract digest mismatch")
+    if contract.get("schema") != "lazy-series.automatic-tooling.contract" or contract.get("schema_version") != 1:
+        raise ValueError("contract schema mismatch")
+    if not os.path.isfile(policy_path):
+        raise ValueError("provider policy adapter missing")
+except (OSError, IndexError, ValueError, json.JSONDecodeError) as exc:
+    raise SystemExit(str(exc))
+print("ok")
+PY
+); then
+    check "Automatic tooling contract and provider adapter" ok
+else
+    check "Automatic tooling contract and provider adapter" "$contract_result"
+fi
+
 if hook_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import json
 import os

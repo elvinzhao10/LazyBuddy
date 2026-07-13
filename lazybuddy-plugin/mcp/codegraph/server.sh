@@ -34,6 +34,7 @@ export XDG_CONFIG_HOME="$RUNTIME_ROOT/config"
 export XDG_CACHE_HOME="$RUNTIME_ROOT/cache"
 export CODEGRAPH_NO_DOWNLOAD=1
 export CODEGRAPH_TELEMETRY=0
+export CODEGRAPH_NO_WATCHDOG=1
 export CODEGRAPH_INSTALL_DIR="$RUNTIME_ROOT/install"
 exec python3 -B -c '
 import os
@@ -48,6 +49,7 @@ environment = os.environ | {
     "XDG_CACHE_HOME": f"{runtime_root}/cache",
     "CODEGRAPH_NO_DOWNLOAD": "1",
     "CODEGRAPH_TELEMETRY": "0",
+    "CODEGRAPH_NO_WATCHDOG": "1",
     "CODEGRAPH_INSTALL_DIR": f"{runtime_root}/install",
 }
 process = subprocess.Popen(

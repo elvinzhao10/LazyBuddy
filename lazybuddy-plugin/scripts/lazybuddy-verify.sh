@@ -27,6 +27,9 @@ SECURITY_RESULT="fail"
 MCP_RESULT="fail"
 HOOK_RESULT="fail"
 LOAD_RESULT="fail"
+CONTRACT_RESULT="fail"
+AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
+AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT="not_applicable"
 
 run_check() {
     local script="$1"
@@ -71,6 +74,52 @@ run_hook_pipeline_check() {
     rm -rf "${hook_root}"
 }
 
+run_isolated_test() {
+    python3 - "$1" <<'PY'
+import subprocess
+import sys
+
+completed = subprocess.run(
+    ["bash", sys.argv[1]],
+    start_new_session=True,
+)
+raise SystemExit(completed.returncode)
+PY
+}
+
+run_automatic_tooling_regressions() {
+    local test_name test_path
+    local tests_dir="${PLUGIN_ROOT}/tests"
+    local required_tests=(
+        "v016-tooling-policy-regression.sh"
+        "v016-capability-broker-regression.sh"
+        "v016-capability-detector-regression.sh"
+        "v016-provider-lifecycle-regression.sh"
+        "v016-package-onboarding-regression.sh"
+        "v016-tooling-lifecycle-regression.sh"
+        "v016-remote-capabilities-regression.sh"
+        "v016-codegraph-regression.sh"
+        "v016-lsp-regression.sh"
+        "v016-runtime-version-regression.sh"
+    )
+
+    for test_name in "${required_tests[@]}"; do
+        test_path="${tests_dir}/${test_name}"
+        if [ ! -f "$test_path" ] || [ ! -s "$test_path" ] || ! bash -n "$test_path"; then
+            AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
+            ALL_PASS=false
+            return
+        fi
+        if ! run_isolated_test "$test_path"; then
+            AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
+            ALL_PASS=false
+            return
+        fi
+    done
+
+    AUTOMATIC_TOOLING_REGRESSIONS_RESULT="pass"
+}
+
 run_check "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
@@ -78,9 +127,11 @@ run_check "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
 run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
+run_check "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
+run_automatic_tooling_regressions
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"all_pass\":${ALL_PASS}}"
+json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

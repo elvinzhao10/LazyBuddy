@@ -17,6 +17,15 @@ Usage:
   lazybuddy-tooling.sh verify --target ABSOLUTE_TARGET_DIRECTORY <--dry-run|--run> [lint|typecheck|test|build ...]
   lazybuddy-tooling.sh <lsp-status|lsp-install|lsp-doctor|lsp-uninstall> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
   lazybuddy-tooling.sh <codegraph-status|codegraph-install|codegraph-init|codegraph-enable|codegraph-doctor|codegraph-uninstall|codegraph-export-mcp> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
+  lazybuddy-tooling.sh setup --non-interactive --json
+  lazybuddy-tooling.sh providers [--workspace ABSOLUTE_DIRECTORY] [--policy automatic|ask-once|always-ask] --json
+  lazybuddy-tooling.sh providers configure --provider ID --credential-ref REFERENCE --consent yes --non-interactive --json
+  lazybuddy-tooling.sh providers test [--workspace ABSOLUTE_DIRECTORY] [--policy automatic|ask-once|always-ask] --json
+  lazybuddy-tooling.sh approval <grant|deny|revoke|check> --workspace ABSOLUTE_DIRECTORY --capability ID --provider ID [--scope once|workspace] --json
+  lazybuddy-tooling.sh toolpack resolve [--toolpack-root ABSOLUTE_DIRECTORY] --json
+  lazybuddy-tooling.sh capability run CAPABILITY --query QUERY [--workspace ABSOLUTE_DIRECTORY] [--toolpack-root ABSOLUTE_DIRECTORY]
+  lazybuddy-tooling.sh detector detect --workspace ABSOLUTE_DIRECTORY --context-json JSON
+  lazybuddy-tooling.sh detector fallback CAPABILITY --outcomes-json JSON [--result UNTRUSTED_RESULT]
 
 install requires an existing, empty, non-symlink directory supplied by the caller.
 status and doctor inspect only. uninstall deletes only a verified, receipt-owned root.
@@ -667,6 +676,7 @@ codegraph_init() {
         PYTHONPYCACHEPREFIX="$(codegraph_runtime_root)/cache/python" \
         CODEGRAPH_NO_DOWNLOAD=1 \
         CODEGRAPH_TELEMETRY=0 \
+        CODEGRAPH_NO_WATCHDOG=1 \
         python3 -B - "$TARGET_ROOT" "$timeout_seconds" "$binary" <<'PY'
 import os
 import signal
@@ -682,6 +692,7 @@ environment = os.environ | {
     "CODEGRAPH_INSTALL_DIR": f"{runtime_root}/install",
     "CODEGRAPH_NO_DOWNLOAD": "1",
     "CODEGRAPH_TELEMETRY": "0",
+    "CODEGRAPH_NO_WATCHDOG": "1",
 }
 process = subprocess.Popen([binary, "init"], cwd=target_root, start_new_session=True, env=environment)
 try:
@@ -1533,6 +1544,15 @@ COMMAND="$1"
 shift
 
 case "$COMMAND" in
+    setup|providers|approval|toolpack)
+        exec python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_policy.py" "$COMMAND" "$@"
+        ;;
+    capability)
+        exec python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_capability.py" "$COMMAND" "$@"
+        ;;
+    detector)
+        exec python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_detector.py" "$@"
+        ;;
     remote-status|remote-doctor|remote-enable|remote-disable|remote-export-mcp)
         parse_remote "$@"
         case "$COMMAND" in

@@ -1,0 +1,31 @@
+name: Paired automatic-tooling contract parity
+
+on:
+  workflow_dispatch:
+    inputs:
+      lazytrae_ref:
+        description: LazyTrae release ref to compare
+        required: true
+        type: string
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate LazyTrae ref
+        run: test -n "${{ inputs.lazytrae_ref }}"
+
+      - name: Check out paired LazyTrae release
+        uses: actions/checkout@v4
+        with:
+          repository: elvinzhao10/LazyTrae
+          ref: ${{ inputs.lazytrae_ref }}
+          path: .lazytrae-contract
+
+      - name: Validate paired contract
+        run: test -f "$GITHUB_WORKSPACE/.lazytrae-contract/lazytrae-plugin/packages/cli/contracts/automatic-tooling-contract.v1.json"
+
+      - name: Run automatic-tooling contract parity
+        run: bash lazybuddy-plugin/tests/v016-automatic-tooling-contract-parity.sh --lazytrae-root "$GITHUB_WORKSPACE/.lazytrae-contract" --lazybuddy-root "$GITHUB_WORKSPACE"
