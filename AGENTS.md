@@ -1,124 +1,95 @@
-# AGENTS.md — LazyBuddy Setup Guide
+# AGENTS.md — LazyBuddy setup and removal guide
 
-> **Agent:** this file is the **setup** guide. It tells you how to install and configure LazyBuddy. For *how to use* the harness once installed, see the [LazyBuddy README](https://github.com/elvinzhao10/LazyBuddy#readme).
+> **Agent:** use this guide to install, verify, and remove LazyBuddy safely.
+> For workflow use after installation, read [README.md](README.md). For the
+> package's exact tooling commands, read [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
 
-LazyBuddy supports **CodeBuddy IDE** and **CodeBuddy CLI** as documented plugin surfaces. **WorkBuddy** documents plugins, skills, MCP, hooks, agents, and rules through its UI/marketplace, but this release has not verified a copied-repository installer for LazyBuddy. The verified no-package-manager path is local skill import plus manual MCP configuration; any WorkBuddy marketplace/plugin installation must be confirmed in a live session.
-
-**Repository state:** v0.17 alignment candidate. Published package manifests
-remain v0.16.0-alpha.1 until a separate release-version bump; candidate checks
-are verified on macOS only.
+LazyBuddy supports CodeBuddy IDE and CodeBuddy CLI through their plugin flows.
+WorkBuddy uses its documented plugin/marketplace UI; its copied-repository
+installer is not verified. The verified no-package-manager WorkBuddy fallback
+is local `lazybuddy-plugin/skills/` import plus manual MCP configuration.
+LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
+Verification is on macOS only.
 
 ## `onboard` protocol
 
 When the user types `onboard`:
 
-1. Read this guide and ask which installed host/version they are using: **WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**.
-2. Follow only that host's setup path. Perform safe repository and CLI steps automatically. Run `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh`, then invoke `/lazybuddy:lazy-init-deep` (or make the equivalent natural-language request) only after the package is ready or explicitly degraded to a skills-only import.
-3. Report each completed action and its observed result. Label the load-check as **package readiness**: it cannot confirm that the host loaded the plugin, ran SessionStart, or connected an MCP server.
-4. Stop before account, marketplace, or app-setting changes. Give exact manual directions for those steps and say which host check the user must observe.
-5. End by explaining that the copied repository can be deleted after installation, or retained to explore and study the project.
+1. Ask which installed host/version they use: **CodeBuddy IDE**, **CodeBuddy CLI**, or **WorkBuddy**.
+2. Follow only that host's setup path. Run `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh`; after package readiness is full, invoke `/lazybuddy:lazy-init-deep` or accept the equivalent natural-language request. For a skills-only WorkBuddy import, say that the package is intentionally degraded to the fallback surface.
+3. Report every completed safe repository/package action and its observed result. Call load-check **package readiness**: it proves copied files and declarations, not plugin loading, SessionStart, hooks, or an MCP connection.
+4. Stop before account, marketplace, host-settings, credential, remote-provider, browser, or architecture-tool actions. Give exact manual host directions and name the live host observation the user must make.
+5. Explain that optional tooling is unchanged: onboarding, doctor, and load-check do not enable providers, register MCP servers, install global tools, or write host configuration.
 
-Onboarding, load-check, and doctor do not activate optional providers, perform
-a global installation, or prove live host/MCP connection. Any optional
-capability and every host plugin, marketplace, or connector action remains an
-explicit user or host-UI step.
+## `offboard` protocol
 
-## Step 0 — Which platform are you on?
+When the user types `offboard`:
 
-| Platform | Documented entry point | Commands / skills | Hooks / MCP |
-|---|---|---|---|
-| **WorkBuddy** | documented plugin/marketplace UI (verify session load), or import `lazybuddy-plugin/skills/` locally | plugin capabilities only after session verification; local import uses skills or natural language | local import requires manual MCP; do not promise LazyBuddy hooks/agents/commands auto-load |
-| **CodeBuddy IDE** | `.codebuddy-plugin/plugin.json` | use a loaded `/lazybuddy:lazy-<command>` or skill | host-side activation and MCP connection must be observed manually |
-| **CodeBuddy CLI** | CodeBuddy marketplace entry | `codebuddy plugin …`, then a CLI session | manifest declares hooks/MCP; connection is checked in the host session |
+1. Ask which host was used and whether the installation was a host plugin/marketplace install or WorkBuddy's local skills-import fallback.
+2. Inspect and report the selected package-owned removal path before changing anything. Remove only an exact, unmodified receipt-owned tooling root through its documented package command; preserve unknown, modified, linked, caller-owned, project, and host-managed assets.
+3. Use the selected host's own removal flow. For CodeBuddy IDE/CLI, remove LazyBuddy through the host plugin UI/CLI and then remove or disable only LazyBuddy MCP registrations the user personally added. For WorkBuddy plugin/marketplace use its UI; for the local fallback remove imported `lazybuddy-plugin/skills/` entries through Skills and manual connectors through Settings.
+4. Never guess paths, scan host directories, delete `.workbuddy-plugin`, `.workbuddy`, shared MCP metadata, or remove another host's configuration. Never enable optional tooling while removing it.
+5. Report **package result** separately from the **user-observed host result**. The package can prove receipt-safe local removal; only the user can confirm plugin and MCP removal in a new host session. Keep or delete the copied repository only after that observation.
 
-- **WorkBuddy** → use the documented plugin/marketplace UI and verify the loaded session before relying on any plugin capability. The verified no-package-manager fallback is importing `lazybuddy-plugin/skills/` locally, then using skills or natural language with manual MCP configuration.
-- **CodeBuddy IDE** → install the copied package through its plugin flow, run `/reload-plugins` if the host exposes it (or use its equivalent reload action), then confirm that one `/lazybuddy:lazy-<command>` or skill is available.
-- **CodeBuddy CLI** → install the included marketplace entry with the commands below, then begin a session to observe plugin/MCP activation.
+## Host paths
 
-## Step A — Install
+| Host | Safe setup path | Required host proof |
+|---|---|---|
+| **CodeBuddy IDE** | Install the copied package with the plugin UI; reload if offered. | A `lazybuddy` command/skill and MCP status in a new session. |
+| **CodeBuddy CLI** | Use the host marketplace discovery flow, confirm the publisher and an immutable revision or release reference, then begin a new session after installation. | Plugin/MCP activation in that session. |
+| **WorkBuddy** | Use its documented plugin/marketplace UI. | Loaded session before relying on plugin hooks, agents, commands, or MCP. |
+| **WorkBuddy fallback** | Import `lazybuddy-plugin/skills/` with the Skills UI and add compatible MCP connectors manually. | Imported skill and each manual connector shown in Settings. |
 
-**Option A — AI onboarding (recommended).** Open the copied repository in your chosen host and type `onboard`.
-
-**Option B — manual CodeBuddy CLI install:**
-
-1. Clone this repo:
-   ```bash
-   git clone https://github.com/elvinzhao10/LazyBuddy.git
-   ```
-2. Add the repository marketplace and install the plugin:
-   ```bash
-   codebuddy plugin marketplace add https://github.com/elvinzhao10/LazyBuddy.git --name lazybuddy
-   codebuddy plugin install lazybuddy@lazybuddy --scope project
-   codebuddy plugin validate lazybuddy-plugin
-   ```
-3. Verify:
-   ```bash
-   bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
-   bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
-   ```
-   `load-check` and `doctor` validate the package. Start a CodeBuddy session and inspect its plugin/MCP status separately; the scripts do not claim that a live host connected it.
-
-**WorkBuddy:** use its documented plugin/marketplace UI if available, then verify the loaded session before assuming hooks, agents, commands, or MCP are active. This release does not verify direct copied-repository installation through `.workbuddy-plugin/plugin.json`; it is compatibility metadata, not a documented folder installer. The verified no-package-manager fallback is importing `lazybuddy-plugin/skills/` with the local Skills UI and manually adding compatible MCP connectors in WorkBuddy settings.
-
-**CodeBuddy IDE:** install **LazyBuddy** through the host's plugin UI, run `/reload-plugins` if available (or the host equivalent), and confirm one `/lazybuddy:lazy-<command>` or skill in a new workspace. Use natural language when the host does not expose plugin slash commands. Use manual skill/MCP import only when marketplace installation is unavailable and report any missing hook/MCP support.
-
-> After the host confirms installation, the copied repository can be deleted if it is no longer needed, or retained to explore and study. Do not assume a generated `AGENTS.md`, hooks, or MCP connection unless the installed host shows them.
-
-## MCP servers
-
-The CodeBuddy manifest declares six servers in `lazybuddy-plugin/.mcp.json`. Package readiness validates that declaration; a new CodeBuddy session or settings view must confirm whether a server is loaded and connected. WorkBuddy supports MCP through its documented UI, but this release's verified local path is manual connector configuration; do not treat `.mcp.json` or `.workbuddy-plugin/plugin.json` as an executable copied-repository installer.
-
-Optional Context7 and experimental, unpinned `grep_app` registrations are not
-part of those six package MCP declarations. They remain disabled until the
-user explicitly selects them with `lazybuddy-tooling.sh remote-enable` and
-exports a namespaced merge fragment. Do not add credentials to that fragment:
-they stay solely in the user's host environment. Normal tooling install,
-status, and doctor do not contact either remote endpoint.
-
-## v0.16 automatic tooling
-
-The installed package includes a versioned provider contract and policy
-adapter. `bash lazybuddy-plugin/scripts/lazybuddy-tooling.sh setup
---non-interactive --json` writes only reference-safe user configuration, and
-`providers --policy ask-once --json` reports eligibility, cost, egress,
-credential-reference, and approval state without contacting remote providers.
-Automatic capability selection is task-scoped and never registers or exports a
-host MCP entry. Stop before granting a remote, metered, browser, or
-architecture capability unless the user has explicitly chosen it.
-
-`remote-enable` and `remote-export-mcp` are deliberate persistent
-compatibility commands: enable records only a selected optional provider in a
-verified receipt-owned tooling root, and export prints a namespaced fragment
-for the user to merge through the host UI. They never replace caller entries
-or write raw credentials. Context7/`grep_app` can egress query data; Playwright
-requires browser-specific approval; CodeGraph requires its separate explicit
-install, initialization, and enable sequence. Do not automatically start,
-index, register, or enable any of them.
-
-## Uninstall
-
-Use the host's own plugin removal flow for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. LazyBuddy never guesses, searches for, or deletes host-managed plugin paths. After removal, delete or disable only the LazyBuddy MCP connectors you personally added in that host's MCP settings. For the verified WorkBuddy local-import fallback, remove the imported `lazybuddy-plugin/skills/` entries through the Skills UI and remove the manually added connectors through Settings; do not delete `.workbuddy-plugin`, `.workbuddy`, or another host's metadata as a substitute. Keep the copied repository until the host confirms removal, then delete that copy only if you no longer need it.
-
-## Verify CodeBuddy installation
+## CodeBuddy CLI installation
 
 ```bash
-bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh    # health check
-bash lazybuddy-plugin/scripts/lazybuddy-verify.sh          # verification gate
-bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh      # smoke test
+git clone https://github.com/elvinzhao10/LazyBuddy.git
+cd LazyBuddy
+codebuddy plugin validate lazybuddy-plugin
+bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
+bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
 ```
+
+Use CodeBuddy's current marketplace discovery flow to locate LazyBuddy. Confirm
+the publisher and review the exact immutable revision or release reference
+before running the host-generated install command. No reviewed immutable
+marketplace reference is bundled here, so this guide intentionally provides no
+marketplace-add URL or executable install command. Start a CodeBuddy session
+afterwards. The scripts validate the package only; they do not prove a
+connected MCP server or live hook execution.
+
+## MCP and capability boundaries
+
+The package declares six local MCP servers: `run-ledger`, `verification`,
+`status-dashboard`, `context-graph`, `code-intel`, and `docs`. A host
+session or settings page must confirm connection. `context-graph` is
+heuristic search, not CodeGraph; filesystem and Playwright are outside this
+bundled inventory.
+
+LazyBuddy can select local `rg`, `sg`, supported JS/TS or Python LSP, and
+repository-native checks for a task without persisting a host change. Any
+fallback is installed only in an explicit receipt-owned tooling root. CodeGraph
+is an explicit `install`/`init`/`enable` lifecycle. Context7 and experimental
+`grep_app` need explicit selection and manual export/merge; remote requests can
+egress data or cost money. Playwright needs explicit browser approval. Normal
+onboarding, doctor, and status never activate, start, index, register, or
+contact optional providers.
 
 ## Verify
 
 ```bash
-bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh    # expect: 0 FAIL
+bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
+bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
+bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
 ```
 
-## What gets installed
+Package readiness is not a host-readiness claim. Perform the applicable host
+proof from the table before relying on integration behavior.
 
-The CodeBuddy package contains 14 `lazy-` skills, 14 `lazy-` commands, 13 agents, 12 hook-event declarations, and 6 MCP declarations. WorkBuddy may load those through its documented plugin/marketplace UI only after a live-session check; the verified local fallback imports the 14 skills and configures MCP manually. Host enforcement applies only after the relevant host confirms the package load.
+## References
 
-## Reference
-
-- How to use the harness: [LazyBuddy README](https://github.com/elvinzhao10/LazyBuddy#readme)
-- Repository handoff: [docs/handoff.md](docs/handoff.md). Private legacy root
-  documentation belongs in ignored `dev/docs/root/`.
+- [Public usage guide](README.md)
+- [Package commands and safe tooling lifecycle](lazybuddy-plugin/README.md)
+- [Documentation handoff](docs/handoff.md)
+- [Public verification evidence](lazybuddy-evaluation.md)

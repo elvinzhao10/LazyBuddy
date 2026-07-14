@@ -1,108 +1,119 @@
-# LazyBuddy v0.17 Alignment Candidate Evidence
+# LazyBuddy verification evidence
 
-> Published package baseline: v0.16.0-alpha.1. The v0.17 candidate is not a
-> separate published package version until a release-version bump is made.
+This document records public, present-tense evidence for the LazyBuddy package.
+It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
+plugin. Verification is on macOS only.
 
-> Current tooling-foundation release evidence, verified on macOS only; not a historical parity score or a certification that a CodeBuddy or WorkBuddy session loaded the package.
+LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
 
-## What is implemented and checked
+## Features and verification
 
-The v0.16 CodeBuddy package declares 14 `lazy-` skills, 14 current slash-command workflows, 13 agents, 12 hook-event declarations, and 6 MCP servers: `run-ledger`, `verification`, `status-dashboard`, `context-graph`, `code-intel`, and `docs`. The removed `parity` and `source-map` servers are not part of this release.
+LazyBuddy packages 14 `lazy-` skills, 14 command workflows, 13 agents, 12
+hook-event declarations, and six local MCP declarations: `run-ledger`,
+`verification`, `status-dashboard`, `context-graph`, `code-intel`, and
+`docs`. The package checks validate manifests, component inventory, JSON,
+executable MCP scripts, internal Markdown links, hook/security behavior, MCP
+protocol regressions, and the automatic-tooling contract.
 
-Package checks cover the manifest, component inventory, JSON validity, executable MCP scripts, internal Markdown links, smoke checks, MCP regression checks, and hook/security verification. The aggregate `lazybuddy-verify.sh` reports these package checks; it does not claim a live host loaded the plugin or connected a server.
+`bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` reports
+`PACKAGE_READINESS=full` when the copied package assets and local contracts
+are complete. `lazybuddy-plugin-doctor.sh` and
+`lazybuddy-plugin/scripts/lazybuddy-verify.sh` provide package health and an
+aggregate verification gate. These commands are evidence about the package,
+not a host session.
 
-The package readiness and doctor checks also verify that a copied plugin
-contains the versioned automatic-tooling contract, its SHA-256 sidecar, and
-the provider-policy adapter. The package onboarding regression copies the
-plugin, validates readiness and doctor, confirms offline provider status, and
-proves a host-MCP sentinel remains unchanged. It also rejects tooling-root
-uninstall after a caller-owned entry appears.
+The package's local-first tooling policy detects compatible `rg` and `sg`,
+supports JavaScript/TypeScript and Python LSP navigation, and recognizes
+declared repository-native verification. A missing provider can be installed
+only in a caller-selected empty receipt-owned root; verification never mutates
+a target manifest, lockfile, global tool, or host configuration.
 
-The v0.16 tooling registry adds disabled-by-default Context7 and experimental,
-unpinned `grep_app` export capabilities. They are not counted as bundled MCP
-servers: normal install, status, and doctor make no remote request. Explicit
-selection produces only a namespaced registration fragment with the Context7
-or grep.app endpoint; it stores and logs no credentials and never replaces a
-caller-owned MCP entry.
+## Host support and required observation
 
-Automatic capability selection is task-scoped and does not persist a host
-registration or export. `setup` and `providers` expose reference-only
-credential state, cost/reachability, and approval decisions without remote
-contact. Explicit `remote-enable`/`remote-export-mcp` compatibility commands
-remain persistent only inside a receipt-owned tooling root and require manual
-host merging. Context7 and `grep_app` can egress query data; Playwright is
-approval-gated; CodeGraph is an explicit install/init/enable lifecycle and is
-never automatically indexed, launched, or registered.
-
-## Host-compatibility boundary
-
-| Surface | Current evidence | Required manual observation |
-| --- | --- | --- |
-| CodeBuddy IDE | The copied package, manifest, and package checks are present. | Install through the host flow, reload if offered, and confirm a `lazybuddy` command/skill and MCP status in a new session. |
+| Surface | Package evidence | Required user observation |
+|---|---|---|
+| CodeBuddy IDE | Copyable package, manifest, local checks, and six MCP declarations. | Install with the host plugin flow, reload if offered, then confirm a LazyBuddy skill/command and MCP status in a new session. |
 | CodeBuddy CLI | Marketplace commands and package validation are documented. | Install through the host, start a new session, and inspect plugin/MCP activation. |
-| WorkBuddy plugin/marketplace | Compatibility metadata is retained, but a copied-repository installer is not verified. | Use the documented UI/marketplace and confirm the live session before relying on hooks, commands, agents, or MCP. |
-| WorkBuddy local fallback | The local `skills/` directory is the supported no-package-manager import source. | Import skills through the Skills UI and manually add compatible MCP connectors in Settings. |
+| WorkBuddy plugin/marketplace | Compatibility metadata and package assets are present. | Use the documented UI/marketplace and confirm a loaded session before relying on plugin capabilities. |
+| WorkBuddy local fallback | `lazybuddy-plugin/skills/` is the verified no-package-manager import source. | Import skills through Skills UI and add each compatible MCP connector manually in Settings. |
 
-No package-readiness result is evidence of SessionStart, hook execution, marketplace installation, or MCP connection.
-
-## Safe removal contract
-
-LazyBuddy does not locate or delete host-managed installation paths. Remove a CodeBuddy installation through its plugin removal flow, then remove only the LazyBuddy MCP registrations you added. For WorkBuddy, use its documented plugin/marketplace removal flow; for the local import fallback, remove the imported skills through the Skills UI and remove manual connectors in Settings. Do not delete `.workbuddy-plugin`, `.workbuddy`, shared MCP metadata, or another host's files as a substitute for removal.
+The copied repository is not a verified WorkBuddy plugin installer. Package
+readiness cannot prove SessionStart, hook execution, marketplace activation, a
+live session, or MCP connection.
 
 ## Public capability status contract
 
-`lazybuddy-tooling.sh` status, load-check, and doctor expose canonical package
-capability status without provider execution, host registration, or optional
-activation. Their output is evidence about copied package assets and local
-state, not proof that a CodeBuddy or WorkBuddy session loaded the plugin.
+`lazybuddy-tooling.sh` status, load-check, doctor, and provider reports are
+read-only canonical package evidence. They report assets, capability eligibility,
+policy, and receipt state without provider execution, optional activation, host
+registration, or a claim that a live host loaded the package.
 
 ## Optional capability policy
 
-Context7, `grep_app`, Playwright, LSP, and CodeGraph remain optional. Status
-and readiness commands stay offline and read-only; explicit approval, lifecycle
-commands, and manual host merging remain required before an optional path can
-be used.
+Automatic task routing is temporary and nonpersistent. It selects the lightest
+eligible local capability for the task without writing host/project
+configuration or lockfiles. Context7 and experimental, unpinned `grep_app`
+are remote exports that require explicit selection; any export is namespaced,
+manual to merge, and contains no credential. Remote calls can egress data or
+incur cost.
+
+CodeGraph is optional architecture exploration with its own explicit
+install/init/enable lifecycle. It is not automatically indexed, launched,
+registered, or telemetered. Playwright requires explicit browser approval and
+is outside the bundled local MCP inventory. `context-graph` is a heuristic
+grep fallback, not CodeGraph.
 
 ## Receipt and safe removal
 
-Only an exact, unmodified receipt-owned tooling root is removable. Modified,
-foreign, linked, caller-owned, project, and host-managed paths are preserved;
-host plugin and MCP entries are removed through their host-managed UI.
+Receipt ownership is enforced for package tooling. Only an exact, unmodified
+receipt-owned root can be removed. Modified, foreign, linked, caller-owned,
+project, and host-managed paths are preserved. This boundary protects local
+tooling and does not authorize removal of host plugin, marketplace, MCP, or
+credential state.
 
 ## Package readiness versus host verification
 
-Package readiness validates copied package contents, declarations, and local
-contracts. It does not prove SessionStart, hook execution, marketplace
-installation, a live session, or MCP connection.
+Package readiness validates copied contents, declarations, inventories, and
+local contracts. It does not prove host discovery, SessionStart, hooks,
+marketplace installation, a running session, or MCP connection. The host
+observation in the support table is required before making an integration
+claim.
 
 ## JSON-RPC resilience
 
-Packaged MCP endpoints have package-level JSON-RPC stream coverage. That
-coverage is not evidence that a host has launched, connected, or exercised an
-endpoint in a live session.
+The six packaged local MCP endpoints have JSON-RPC stream regression coverage,
+including malformed input and subsequent-request behavior. This is protocol
+evidence for the package, not proof that a host process launched or connected
+an endpoint.
 
 ## Host-specific exclusions
 
-- **Host integration:** CodeBuddy IDE/CLI use host plugin flows; WorkBuddy
-  relies on its UI/marketplace or the documented local-skills fallback.
-- **State/path:** LazyBuddy uses package-local tooling roots and does not guess
-  `.workbuddy` or other host-managed installation paths.
-- **Inventory:** six local MCP servers are bundled; Context7 and `grep_app`
-  are optional export fragments, while filesystem and Playwright are not local
-  MCP servers in the package inventory.
+- **Host integration:** CodeBuddy IDE/CLI use host plugin flows; WorkBuddy uses
+  its UI/marketplace or local skills with manual connectors.
+- **State/path:** tooling roots are package receipt-owned; `.workbuddy`,
+  host plugin locations, host MCP entries, and credentials remain host/user
+  state and are never guessed or deleted.
+- **Inventory:** six local MCP servers are bundled. Context7 and `grep_app`
+  are optional export fragments; filesystem and Playwright are not bundled
+  local MCP servers.
 
 ## Known unverified host behavior
 
-Live CodeBuddy and WorkBuddy plugin discovery, hook execution, marketplace
-behavior, and MCP connection require manual session observation. A copied
-repository is not claimed as a verified WorkBuddy plugin installer.
+Live plugin discovery, marketplace behavior, hook execution, SessionStart, and
+MCP connection remain user-observed host behavior. WorkBuddy's copied-repo
+plugin installation is not verified; the local import fallback intentionally
+requires manual MCP configuration.
 
 ## macOS verification scope
 
-This release is verified on macOS only. Normal CI does not require a sibling
-repository; release-only paired parity receives explicitly supplied sibling
-roots for release evidence and never creates a runtime or install dependency.
+LazyBuddy is verified on macOS only. Normal CI does not require a sibling
+repository. Release-only paired parity receives explicitly supplied sibling
+roots as release evidence and never creates a runtime or installation
+dependency.
 
 ## Attribution and limits
 
-The repository [NOTICE](NOTICE) and [LICENSE](LICENSE) are the authoritative attribution and license records. This document deliberately replaces earlier structural and semantic percentage claims with v0.16 inventory and test evidence. It does not claim verification of a live CodeBuddy or WorkBuddy host session.
+[NOTICE](NOTICE) and [LICENSE](LICENSE) are the attribution and license
+records. This evidence describes the package's tested boundaries and does not
+claim host behavior beyond the required manual observations.

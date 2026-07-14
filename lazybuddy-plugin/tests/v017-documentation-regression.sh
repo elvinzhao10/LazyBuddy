@@ -53,7 +53,31 @@ grep -Fq 'docs/handoff.md' "$REPOSITORY_ROOT/AGENTS.md" || fail 'AGENTS must lin
 grep -Fq 'six local MCP servers' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain the six-server inventory'
 grep -Fq 'manual host' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain manual host verification'
 grep -Fq 'package readiness' "$PLUGIN_ROOT/README.md" || fail 'package README must distinguish package readiness'
+grep -Fq 'this repository does not endorse a mutable marketplace URL' "$PLUGIN_ROOT/README.md" || fail 'package README must require immutable marketplace discovery'
+grep -Fq 'before running the host-generated install command' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must require immutable marketplace discovery'
+if grep -Eq 'codebuddy plugin marketplace add[[:space:]]+https://github\.com/' \
+    "$PLUGIN_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md"; then
+    fail 'marketplace guidance must not provide a mutable GitHub marketplace command'
+fi
 grep -Fq 'package readiness' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must distinguish package readiness'
+version_namespace_statement='Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.'
+for document in \
+    "$REPOSITORY_ROOT/README.md" \
+    "$REPOSITORY_ROOT/AGENTS.md" \
+    "$REPOSITORY_ROOT/docs/handoff.md" \
+    "$REPOSITORY_ROOT/lazybuddy-evaluation.md" \
+    "$PLUGIN_ROOT/README.md"; do
+    grep -Fq 'LazyBuddy v0.16.0-alpha.1 is the current package baseline.' "$document" || fail "$(basename "$document") must retain the v0.16.0-alpha.1 package baseline"
+    grep -Fq "$version_namespace_statement" "$document" || fail "$(basename "$document") must distinguish the v0.17.0 readiness contract from a package release"
+done
+grep -Fqx '![LazyBuddy](lazybuddy-banner.jpg)' "$REPOSITORY_ROOT/README.md" || fail 'README must embed the public LazyBuddy banner'
+grep -Fqx '## `offboard` protocol' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must provide an explicit offboard protocol'
+grep -Fqx '## Reading order' "$REPOSITORY_ROOT/docs/handoff.md" || fail 'handoff must provide a public learning reading order'
+if grep -Eqi 'alignment candidate|no longer maintained|practice project' \
+    "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md" \
+    "$REPOSITORY_ROOT/docs/handoff.md" "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; then
+    fail 'public documentation must not use legacy candidate or practice-project framing'
+fi
 pass 'current documentation satisfies the v0.17 contract'
 
 # Given a copied handoff, when a required heading is removed, then the same
