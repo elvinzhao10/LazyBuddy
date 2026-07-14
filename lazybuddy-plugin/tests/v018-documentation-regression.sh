@@ -46,8 +46,8 @@ assert_documentation_contract() {
 for document in "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$REPOSITORY_ROOT/docs/handoff.md"; do
     assert_documentation_contract "$document"
 done
-root_docs="$(find "$REPOSITORY_ROOT/docs" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort)"
-[[ "$root_docs" == 'handoff.md' ]] || fail 'root docs must retain only handoff.md'
+# v0.18: docs/ may contain additional topic docs alongside handoff.md
+grep -Fqx 'handoff.md' <(find "$REPOSITORY_ROOT/docs" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort) || fail 'root docs must contain handoff.md'
 grep -Fq 'docs/handoff.md' "$REPOSITORY_ROOT/README.md" || fail 'README must link the root documentation handoff'
 grep -Fq 'docs/handoff.md' "$REPOSITORY_ROOT/AGENTS.md" || fail 'AGENTS must link the root documentation handoff'
 grep -Fq 'six local MCP servers' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain the six-server inventory'
@@ -78,7 +78,7 @@ if grep -Eqi 'alignment candidate|no longer maintained|practice project' \
     "$REPOSITORY_ROOT/docs/handoff.md" "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; then
     fail 'public documentation must not use legacy candidate or practice-project framing'
 fi
-pass 'current documentation satisfies the v0.17 contract'
+pass 'current documentation satisfies the v0.18 contract'
 
 # Given a copied handoff, when a required heading is removed, then the same
 # contract fails instead of accepting incomplete release documentation.

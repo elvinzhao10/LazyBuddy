@@ -144,7 +144,7 @@ bash scripts/lazybuddy-load-check.sh
 bash scripts/lazybuddy-plugin-doctor.sh
 bash scripts/lazybuddy-mcp-test.sh
 bash scripts/lazybuddy-verify.sh
-bash tests/v017-documentation-regression.sh
+bash tests/v018-documentation-regression.sh
 ```
 
 Use command output and the package source as the authority. Verify internal
