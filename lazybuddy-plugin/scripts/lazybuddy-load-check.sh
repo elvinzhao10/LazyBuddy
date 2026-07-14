@@ -6,6 +6,7 @@ PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 python3 - "$PLUGIN_ROOT" <<'PY'
 import json
 import os
+import subprocess
 import sys
 
 root = os.path.realpath(sys.argv[1])
@@ -139,6 +140,7 @@ if mcp is not None:
 contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
 contract_digest_path = contract_path + ".sha256"
 policy_adapter_path = os.path.join(root, "tooling", "lazybuddy_policy.py")
+readiness_adapter_path = os.path.join(root, "tooling", "lazybuddy_capability_readiness.py")
 try:
     import hashlib
     with open(contract_path, "rb") as handle:
@@ -161,6 +163,21 @@ if os.path.isfile(policy_adapter_path):
     result("PASS", "provider policy adapter", "present")
 else:
     result("FAIL", "provider policy adapter", "missing")
+
+try:
+    report = subprocess.run(
+        [sys.executable, "-B", readiness_adapter_path, "readiness-report", "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    records = json.loads(report.stdout).get("records")
+    if not isinstance(records, list) or len(records) != 9:
+        raise ValueError("canonical report did not return nine records")
+except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
+    result("FAIL", "canonical capability readiness", str(exc))
+else:
+    result("PASS", "canonical capability readiness", "read-only report available; host and MCP connection remain unchecked")
 
 if failed:
     print("PACKAGE_READINESS=failed")

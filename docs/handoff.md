@@ -2,9 +2,12 @@
 
 ## Purpose
 
-Write the next documentation pass from the implemented package, not from the
-private legacy notes. The current package release is v0.16.0-alpha.1 tooling foundation,
-verified on macOS only.
+The root `docs/` directory intentionally contains only this handoff. Write
+from the implemented package, not private legacy notes, and keep private
+working material under ignored `dev/docs/root/`. This repository carries a
+v0.17 alignment candidate; published package manifests remain
+v0.16.0-alpha.1 until a separate release-version bump. Verification is on
+macOS only.
 
 ## Start here
 
@@ -18,14 +21,12 @@ verified on macOS only.
 
 ## Documentation ownership
 
-The tracked `docs/` directory is intentionally small while its replacement
-documentation is written. Private legacy material is organized under ignored
-`dev/docs/{root,package,mcp,evaluations}/`; it is background only, not an
-authoritative source and never a runtime dependency. Do not force-add it.
-
-Place new maintained explanation in `docs/`, keep package-specific operational
-instructions beside the package where installation requires them, and verify
-links against the tracked tree.
+The tracked `docs/` directory contains only this handoff. Private legacy
+material is organized under ignored `dev/docs/{root,package,mcp,evaluations}/`;
+it is background only, not an authoritative source and never a runtime
+dependency. Do not force-add it. Keep maintained public explanation in the
+root README, root AGENTS guide, or package-local documentation where
+installation requires it.
 
 ## Validate before documenting behavior
 
@@ -39,9 +40,10 @@ bash scripts/lazybuddy-verify.sh
 ```
 
 Treat command output and the package source as the authority if legacy notes
-conflict with current behavior. The next documentation pass should preserve the
-v0.16.0-alpha.1 release version, tested host surfaces, six-server MCP
-inventory, and safe host-managed uninstall procedure.
+conflict with current behavior. Documentation must distinguish the v0.17
+alignment candidate from the published v0.16.0-alpha.1 package baseline, and
+preserve tested host surfaces, the six-server MCP inventory, and the safe
+host-managed uninstall procedure.
 
 ## v0.16 tooling foundation
 
@@ -91,6 +93,55 @@ real CodeGraph implementation. Its result quality and operation must never be
 presented as equivalent to semantic CodeGraph data. Receipts record whether an
 index existed before LazyBuddy initialization; `codegraph-uninstall` removes an
 index only when that receipt proves LazyBuddy created it.
+
+## Public capability status contract
+
+Describe tooling status, load-check, and doctor as read-only canonical package
+reports. They must not imply provider execution, registration, optional
+activation, or a live CodeBuddy/WorkBuddy session.
+
+## Optional capability policy
+
+Keep Context7, `grep_app`, Playwright, LSP, and CodeGraph optional and
+explicit. Offline status does not contact a provider; approvals, lifecycle
+steps, and manual host merging remain separate decisions.
+
+## Receipt and safe removal
+
+Removal is receipt-bound: only exact unmodified owned tooling roots may be
+removed. Preserve foreign, modified, linked, caller-owned, project, and
+host-managed paths, and use the host UI for plugin/MCP removal.
+
+## Package readiness versus host verification
+
+Package readiness covers copied files, declarations, and local contracts. It
+does not prove SessionStart, hooks, marketplace installation, a live session,
+or MCP connection; document those as manual host observations.
+
+## JSON-RPC resilience
+
+JSON-RPC stream handling is package-level protocol evidence. Never present it
+as proof that CodeBuddy or WorkBuddy launched or connected an MCP endpoint.
+
+## Host-specific exclusions
+
+- **Host integration:** CodeBuddy uses plugin flows; WorkBuddy requires its
+  documented UI/marketplace or local skills with manual connectors.
+- **State/path:** package-local receipt roots are distinct from `.workbuddy`
+  and all host-managed plugin/configuration paths.
+- **Inventory:** six local MCP servers are declared; Context7 and `grep_app`
+  are optional export fragments, while filesystem and Playwright are outside
+  the bundled local-server inventory.
+
+## Known unverified host behavior
+
+Do not claim live host discovery, hook execution, marketplace activation, or
+MCP connection. The copied repository remains an unverified WorkBuddy plugin
+installer; the local-skills fallback still needs manual host observation.
+
+## macOS verification scope
+
+This handoff documents macOS only as verified. Normal CI does not require a sibling repository; release-only paired parity takes explicit sibling roots as release evidence and never becomes a runtime or installation dependency.
 
 ## Optional remote capability exports
 

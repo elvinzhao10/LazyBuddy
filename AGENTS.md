@@ -4,7 +4,9 @@
 
 LazyBuddy supports **CodeBuddy IDE** and **CodeBuddy CLI** as documented plugin surfaces. **WorkBuddy** documents plugins, skills, MCP, hooks, agents, and rules through its UI/marketplace, but this release has not verified a copied-repository installer for LazyBuddy. The verified no-package-manager path is local skill import plus manual MCP configuration; any WorkBuddy marketplace/plugin installation must be confirmed in a live session.
 
-**Current package release:** v0.16.0-alpha.1 tooling foundation, verified on macOS only.
+**Repository state:** v0.17 alignment candidate. Published package manifests
+remain v0.16.0-alpha.1 until a separate release-version bump; candidate checks
+are verified on macOS only.
 
 ## `onboard` protocol
 
@@ -15,6 +17,11 @@ When the user types `onboard`:
 3. Report each completed action and its observed result. Label the load-check as **package readiness**: it cannot confirm that the host loaded the plugin, ran SessionStart, or connected an MCP server.
 4. Stop before account, marketplace, or app-setting changes. Give exact manual directions for those steps and say which host check the user must observe.
 5. End by explaining that the copied repository can be deleted after installation, or retained to explore and study the project.
+
+Onboarding, load-check, and doctor do not activate optional providers, perform
+a global installation, or prove live host/MCP connection. Any optional
+capability and every host plugin, marketplace, or connector action remains an
+explicit user or host-UI step.
 
 ## Step 0 — Which platform are you on?
 
@@ -113,4 +120,5 @@ The CodeBuddy package contains 14 `lazy-` skills, 14 `lazy-` commands, 13 agents
 ## Reference
 
 - How to use the harness: [LazyBuddy README](https://github.com/elvinzhao10/LazyBuddy#readme)
-- Historical records: [documentation index](https://github.com/elvinzhao10/LazyBuddy/tree/main/docs)
+- Repository handoff: [docs/handoff.md](docs/handoff.md). Private legacy root
+  documentation belongs in ignored `dev/docs/root/`.

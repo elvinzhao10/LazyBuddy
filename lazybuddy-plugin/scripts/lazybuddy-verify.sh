@@ -101,6 +101,8 @@ run_automatic_tooling_regressions() {
         "v016-codegraph-regression.sh"
         "v016-lsp-regression.sh"
         "v016-runtime-version-regression.sh"
+        "v017-capability-readiness-regression.sh"
+        "v017-receipt-init-deep-regression.sh"
     )
 
     for test_name in "${required_tests[@]}"; do

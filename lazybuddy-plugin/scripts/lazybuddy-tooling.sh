@@ -24,11 +24,13 @@ Usage:
   lazybuddy-tooling.sh approval <grant|deny|revoke|check> --workspace ABSOLUTE_DIRECTORY --capability ID --provider ID [--scope once|workspace] --json
   lazybuddy-tooling.sh toolpack resolve [--toolpack-root ABSOLUTE_DIRECTORY] --json
   lazybuddy-tooling.sh capability run CAPABILITY --query QUERY [--workspace ABSOLUTE_DIRECTORY] [--toolpack-root ABSOLUTE_DIRECTORY]
+  lazybuddy-tooling.sh readiness-report --tooling-root ABSOLUTE_DIRECTORY [--target ABSOLUTE_DIRECTORY] --json
   lazybuddy-tooling.sh detector detect --workspace ABSOLUTE_DIRECTORY --context-json JSON
   lazybuddy-tooling.sh detector fallback CAPABILITY --outcomes-json JSON [--result UNTRUSTED_RESULT]
 
 install requires an existing, empty, non-symlink directory supplied by the caller.
 status and doctor inspect only. uninstall deletes only a verified, receipt-owned root.
+readiness-report is a read-only canonical JSON report; it never invokes providers or exports MCP configuration.
 CodeGraph remains disabled until its caller explicitly installs, initializes, and enables it.
 Context7 and experimental grep_app remain disabled until explicitly enabled.
 EOF
@@ -239,6 +241,11 @@ owned_root_is_valid() {
     cmp -s <(receipt_contents) "$TOOLING_ROOT/$RECEIPT_NAME"
 }
 
+readiness_summary() {
+    python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_capability_readiness.py" readiness-report --tooling-root "$TOOLING_ROOT" --json \
+        | python3 -c 'import json, sys; records = json.load(sys.stdin)["records"]; print(",".join(sorted({record["status"] for record in records})))'
+}
+
 print_status() {
     if [ ! -e "$TOOLING_ROOT" ]; then
         echo "STATE: unavailable"
@@ -252,6 +259,11 @@ print_status() {
     else
         echo "STATE: unavailable"
         echo "REASON: tooling root is not a verified LazyBuddy receipt-owned installation"
+    fi
+    if readiness="$(readiness_summary 2>/dev/null)"; then
+        echo "CANONICAL_READINESS: $readiness"
+    else
+        echo "CANONICAL_READINESS: unavailable"
     fi
 }
 
@@ -1549,6 +1561,9 @@ case "$COMMAND" in
         ;;
     capability)
         exec python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_capability.py" "$COMMAND" "$@"
+        ;;
+    readiness-report)
+        exec python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_capability_readiness.py" "$COMMAND" "$@"
         ;;
     detector)
         exec python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_detector.py" "$@"

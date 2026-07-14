@@ -150,17 +150,25 @@ class LspSession:
     def request(self, method: str, params: dict[str, object]) -> object:
         if method in SEMANTIC_METHODS:
             self.wait_for_document_ready()
-        request_id = self._request_id
-        self._request_id += 1
-        self._write({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
+        definition_retry_deadline = time.monotonic() + min(self._timeout_seconds, 2) if method == "textDocument/definition" else None
         while True:
-            message = self._read_message()
-            if message.get("id") == request_id:
-                error = message.get("error")
-                if isinstance(error, dict):
-                    raise RuntimeError(str(error.get("message", "LSP request failed")))
-                return message.get("result")
-            self._capture_notification(message)
+            request_id = self._request_id
+            self._request_id += 1
+            self._write({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
+            while True:
+                message = self._read_message()
+                if message.get("id") == request_id:
+                    error = message.get("error")
+                    if isinstance(error, dict):
+                        raise RuntimeError(str(error.get("message", "LSP request failed")))
+                    result = message.get("result")
+                    if method != "textDocument/definition" or (result is not None and result != []):
+                        return result
+                    if definition_retry_deadline is None or time.monotonic() >= definition_retry_deadline:
+                        return result
+                    time.sleep(0.05)
+                    break
+                self._capture_notification(message)
 
     def notify(self, method: str, params: dict[str, object]) -> None:
         self._write({"jsonrpc": "2.0", "method": method, "params": params})

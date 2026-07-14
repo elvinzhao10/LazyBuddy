@@ -47,6 +47,73 @@ rpc() {
     printf '%s' "$json" | bash "$PLUGIN/mcp/$server/server.sh" 2>/dev/null || echo '{}'
 }
 
+check_stream_protocol() {
+    local server="$1"
+    if python3 - "$PLUGIN" "$server" "$CWD" <<'PYEOF'
+import json
+import os
+import subprocess
+import sys
+
+plugin, server, cwd = sys.argv[1:]
+requests = "\n".join((
+    "{bad json",
+    "null",
+    json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}),
+    json.dumps({"jsonrpc": "2.0", "id": 41, "method": "initialize"}),
+    json.dumps({"jsonrpc": "2.0", "id": 42, "method": "tools/list"}),
+)) + "\n"
+environment = os.environ.copy()
+environment["CWD"] = cwd
+environment["CODEBUDDY_PLUGIN_ROOT"] = plugin
+try:
+    completed = subprocess.run(
+        ["bash", os.path.join(plugin, "mcp", server, "server.sh")],
+        input=requests,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+        env=environment,
+        timeout=10,
+        check=False,
+    )
+except subprocess.TimeoutExpired as error:
+    raise SystemExit(f"{server}: stream process timed out and was cleaned up") from error
+if completed.returncode != 0:
+    raise SystemExit(f"{server}: stream process exited {completed.returncode}; stderr={completed.stderr}")
+try:
+    responses = [json.loads(line) for line in completed.stdout.splitlines() if line]
+except json.JSONDecodeError as error:
+    raise SystemExit(f"{server}: stdout was not newline-delimited JSON: {error}") from error
+if len(responses) != 4:
+    raise SystemExit(f"{server}: expected four responses (notification is silent), got {len(responses)}: {responses}")
+assert responses[0]["jsonrpc"] == "2.0"
+assert responses[0]["id"] is None
+assert responses[0]["error"]["code"] == -32700
+assert responses[1]["jsonrpc"] == "2.0"
+assert responses[1]["id"] is None
+assert responses[1]["error"]["code"] == -32600
+assert responses[2]["id"] == 41 and isinstance(responses[2]["result"]["serverInfo"]["name"], str)
+assert responses[3]["id"] == 42 and isinstance(responses[3]["result"]["tools"], list)
+PYEOF
+    then
+        PASS=$((PASS+1)); PASS_LIST+=("$server/stream-protocol")
+    else
+        FAIL=$((FAIL+1)); FAIL_LIST+=("$server/stream-protocol")
+        echo "  FAIL: $server/stream-protocol" >&2
+    fi
+}
+
+check_invalid_tool_params() {
+    if CWD="$CWD" CODEBUDDY_PLUGIN_ROOT="$PLUGIN" bash "$PLUGIN/tests/v017-mcp-params-regression.sh"; then
+        PASS=$((PASS+1)); PASS_LIST+=("tools/call-invalid-params")
+    else
+        FAIL=$((FAIL+1)); FAIL_LIST+=("tools/call-invalid-params")
+        echo "  FAIL: tools/call-invalid-params" >&2
+    fi
+}
+
 tools_call() {
     python3 - "$1" <<'PYEOF'
 import json
@@ -61,7 +128,7 @@ print(json.dumps({
 PYEOF
 }
 
-echo "=== LazyBuddy MCP integration test (6 servers) ==="
+echo "=== LazyBuddy MCP integration test (7 servers) ==="
 echo "Plugin root: $PLUGIN"
 echo ""
 
@@ -107,6 +174,11 @@ OUT=$(rpc docs '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
 check "docs/tools-list" "get_library_docs" "$OUT"
 OUT=$(rpc docs '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_supported_registries","arguments":{}}}')
 check "docs/list_registries" "npm\|pypi" "$OUT"
+
+for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
+    check_stream_protocol "$server"
+done
+check_invalid_tool_params
 
 echo ""
 echo "=== Results ==="

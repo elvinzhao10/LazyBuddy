@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+REPOSITORY_ROOT="$(cd "$PLUGIN_ROOT/.." && pwd -P)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-documentation-regression.XXXXXX")"
+
+cleanup() {
+    rm -rf "$TMP"
+}
+trap cleanup EXIT
+
+fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
+pass() { printf 'PASS: %s\n' "$1"; }
+
+required_headings=(
+    'Public capability status contract'
+    'Optional capability policy'
+    'Receipt and safe removal'
+    'Package readiness versus host verification'
+    'JSON-RPC resilience'
+    'Host-specific exclusions'
+    'Known unverified host behavior'
+    'macOS verification scope'
+)
+
+check_documentation_contract() {
+    local document="$1" heading
+    for heading in "${required_headings[@]}"; do
+        grep -Fqx "## $heading" "$document" || { printf 'FAIL: %s is missing %s\n' "$(basename "$document")" "$heading" >&2; return 1; }
+    done
+    grep -Fq 'macOS only' "$document" || { printf 'FAIL: %s must retain macOS-only scope\n' "$(basename "$document")" >&2; return 1; }
+    grep -Fq 'Host integration' "$document" || { printf 'FAIL: %s must name host-integration differences\n' "$(basename "$document")" >&2; return 1; }
+    grep -Fq 'State/path' "$document" || { printf 'FAIL: %s must name state/path differences\n' "$(basename "$document")" >&2; return 1; }
+    grep -Fq 'Inventory' "$document" || { printf 'FAIL: %s must name inventory differences\n' "$(basename "$document")" >&2; return 1; }
+    grep -Eqi 'normal CI.*does not require.*sibling' "$document" || { printf 'FAIL: %s must keep normal CI self-contained\n' "$(basename "$document")" >&2; return 1; }
+    grep -Eqi 'release-only paired parity' "$document" || { printf 'FAIL: %s must limit paired parity to release evidence\n' "$(basename "$document")" >&2; return 1; }
+}
+
+assert_documentation_contract() {
+    check_documentation_contract "$1" || fail "documentation contract failed for $(basename "$1")"
+}
+
+# Given the current Buddy documentation, when the v0.17 documentation contract
+# is checked, then every shared heading and policy remains package-local.
+for document in "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$REPOSITORY_ROOT/docs/handoff.md"; do
+    assert_documentation_contract "$document"
+done
+root_docs="$(find "$REPOSITORY_ROOT/docs" -mindepth 1 -maxdepth 1 -print | sed 's#.*/##' | sort)"
+[[ "$root_docs" == 'handoff.md' ]] || fail 'root docs must retain only handoff.md'
+grep -Fq 'docs/handoff.md' "$REPOSITORY_ROOT/README.md" || fail 'README must link the root documentation handoff'
+grep -Fq 'docs/handoff.md' "$REPOSITORY_ROOT/AGENTS.md" || fail 'AGENTS must link the root documentation handoff'
+grep -Fq 'six local MCP servers' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain the six-server inventory'
+grep -Fq 'manual host' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain manual host verification'
+grep -Fq 'package readiness' "$PLUGIN_ROOT/README.md" || fail 'package README must distinguish package readiness'
+grep -Fq 'package readiness' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must distinguish package readiness'
+pass 'current documentation satisfies the v0.17 contract'
+
+# Given a copied handoff, when a required heading is removed, then the same
+# contract fails instead of accepting incomplete release documentation.
+COPIED_HANDOFF="$TMP/handoff.md"
+cp "$REPOSITORY_ROOT/docs/handoff.md" "$COPIED_HANDOFF"
+python3 - "$COPIED_HANDOFF" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+path.write_text(path.read_text(encoding='utf-8').replace('## JSON-RPC resilience\n', '', 1), encoding='utf-8')
+PY
+if check_documentation_contract "$COPIED_HANDOFF" > "$TMP/missing-heading.out" 2>&1; then
+    fail 'copied documentation with a missing heading was accepted'
+fi
+grep -Fq 'JSON-RPC resilience' "$TMP/missing-heading.out" || fail 'missing-heading failure did not identify the removed heading'
+pass 'copied documentation with a missing heading is rejected'

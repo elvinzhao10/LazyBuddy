@@ -18,6 +18,7 @@ MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if MCP_ROOT not in sys.path:
     sys.path.insert(0, MCP_ROOT)
 from path_boundary import resolve_repo_path
+from jsonrpc import serve
 
 USE_RG = shutil.which("rg") is not None
 EXCLUDES = [".git", "node_modules", "dist", "build", ".next", ".lazybuddy", "reference", ".workbuddy"]
@@ -108,23 +109,18 @@ def detect_and_run_diagnostics(path):
     return out
 
 
-def main():
-    raw = sys.stdin.read()
-    try:
-        req = json.loads(raw)
-    except Exception:
-        print(json.dumps({"jsonrpc": "2.0", "id": 0, "error": {"code": -32700, "message": "parse error"}}))
-        return
-
+def handle(req, notification):
     method = req.get("method", "")
     rid = req.get("id", 0)
     params = req.get("params", {})
 
     def reply(j):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}), flush=True)
 
     def err(m):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}), flush=True)
 
     def tool_result(text):
         reply({"content": [{"type": "text", "text": text}]})
@@ -199,6 +195,10 @@ def main():
         return
 
     err("unsupported method: " + method)
+
+
+def main():
+    serve(handle)
 
 
 if __name__ == "__main__":

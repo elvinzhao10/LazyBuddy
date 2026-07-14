@@ -73,6 +73,37 @@ check_active_documentation_policy() {
     done
 }
 
+check_init_deep_evidence_contract() {
+    local document key
+    local documents=(
+        "${PLUGIN_ROOT}/skills/lazy-init-deep/SKILL.md"
+        "${PLUGIN_ROOT}/commands/lazy-init-deep.md"
+    )
+    local required_keys=(
+        readiness_result
+        readiness_host
+        capability_statuses
+        optional_policy
+        receipt_state
+        evidence_paths
+    )
+
+    for document in "${documents[@]}"; do
+        [ -f "$document" ] || { append_policy_violation "$document" "missing InitDeep document"; continue; }
+        for key in "${required_keys[@]}"; do
+            grep -Fq "$key" "$document" || append_policy_violation "$document" "missing InitDeep evidence key: $key"
+        done
+    done
+
+    grep -Fq 'load check first' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must load-check first"
+    grep -Fq 'skills, commands, agents, hooks, and MCP declarations' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must verify package inventory and declarations"
+    grep -Fq 'does not prove a live host session or MCP connection' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must not claim live host or MCP connection"
+    grep -Fq 'Do not enable optional capabilities' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must preserve optional capability state"
+    if grep -Eqi 'automatically enable optional|auto-enable optional|enables optional capabilities' "${documents[@]}"; then
+        append_policy_violation "${documents[0]}" "InitDeep must not claim automatic optional capability activation"
+    fi
+}
+
 for scan_dir in "${PLUGIN_ROOT}"; do
     [ -d "$scan_dir" ] || continue
     while IFS= read -r -d '' md_file; do
@@ -108,6 +139,7 @@ for scan_dir in "${PLUGIN_ROOT}"; do
 done
 
 check_active_documentation_policy
+check_init_deep_evidence_contract
 
 if [ "$BROKEN_COUNT" -eq 0 ] && [ "$POLICY_COUNT" -eq 0 ]; then
     echo "{\"total_links\":${TOTAL},\"broken\":0,\"broken_links\":[],\"policy_violations\":0}"

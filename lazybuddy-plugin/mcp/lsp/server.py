@@ -10,6 +10,9 @@ from session import LspSession, position, source_path
 
 MCP_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = MCP_ROOT.parent
+if str(MCP_ROOT) not in sys.path:
+    sys.path.insert(0, str(MCP_ROOT))
+from jsonrpc import serve
 TOOLING = PLUGIN_ROOT / "scripts" / "lazybuddy-tooling.sh"
 TARGET_ROOT = Path(os.environ.get("CWD", os.getcwd())).resolve()
 TOOLING_ROOT = os.environ.get("LAZYBUDDY_TOOLING_ROOT", "")
@@ -20,12 +23,14 @@ def json_line(value: dict[str, object]) -> None:
     print(json.dumps(value, separators=(",", ":")), flush=True)
 
 
-def mcp_result(request_id: object, result: dict[str, object]) -> None:
-    json_line({"jsonrpc": "2.0", "id": request_id, "result": result})
+def mcp_result(request_id: object, result: dict[str, object], notification: bool) -> None:
+    if not notification:
+        json_line({"jsonrpc": "2.0", "id": request_id, "result": result})
 
 
-def mcp_error(request_id: object, code: int, message: str) -> None:
-    json_line({"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}})
+def mcp_error(request_id: object, code: int, message: str, notification: bool) -> None:
+    if not notification:
+        json_line({"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}})
 
 
 def tooling_status() -> dict[str, str]:
@@ -144,11 +149,11 @@ def call_tool(name: str, arguments: dict[str, object], status: dict[str, str], o
         session.close()
 
 
-def handle(request: dict[str, object]) -> None:
+def handle(request: dict[str, object], notification: bool) -> None:
     request_id = request.get("id", 0)
     method = request.get("method")
     if method == "initialize":
-        mcp_result(request_id, {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "lazybuddy-lsp", "version": "0.16.0-alpha.1"}})
+        mcp_result(request_id, {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "lazybuddy-lsp", "version": "0.16.0-alpha.1"}}, notification)
         return
     status = tooling_status()
     operations, bridge_error = bridge_capabilities(status) if status.get("STATE") == "ready" else (["lsp_status"], None)
@@ -156,37 +161,28 @@ def handle(request: dict[str, object]) -> None:
         result: dict[str, object] = {"tools": [tool_schema(name) for name in operations]}
         if bridge_error:
             result["warning"] = f"LSP provider handshake failed without changing the target: {bridge_error}"
-        mcp_result(request_id, result)
+        mcp_result(request_id, result, notification)
         return
     if method != "tools/call":
-        mcp_error(request_id, -32601, "unsupported method")
+        mcp_error(request_id, -32601, "unsupported method", notification)
         return
     params = request.get("params")
     if not isinstance(params, dict):
-        mcp_error(request_id, -32602, "tools/call requires object params")
+        mcp_error(request_id, -32602, "tools/call requires object params", notification)
         return
     name = params.get("name")
     arguments = params.get("arguments", {})
     if not isinstance(name, str) or not isinstance(arguments, dict):
-        mcp_error(request_id, -32602, "tools/call requires a tool name and object arguments")
+        mcp_error(request_id, -32602, "tools/call requires a tool name and object arguments", notification)
         return
     try:
-        mcp_result(request_id, call_tool(name, arguments, status, operations))
+        mcp_result(request_id, call_tool(name, arguments, status, operations), notification)
     except (OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
-        mcp_error(request_id, -32602, str(exc))
+        mcp_error(request_id, -32602, str(exc), notification)
 
 
 def main() -> int:
-    for line in sys.stdin:
-        try:
-            request = json.loads(line)
-        except json.JSONDecodeError:
-            mcp_error(0, -32700, "parse error")
-            continue
-        if not isinstance(request, dict):
-            mcp_error(0, -32600, "request must be an object")
-            continue
-        handle(request)
+    serve(handle)
     return 0
 
 

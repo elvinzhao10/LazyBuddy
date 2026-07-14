@@ -189,6 +189,34 @@ else
     check "Automatic tooling contract and provider adapter" "$contract_result"
 fi
 
+if readiness_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+import json
+import os
+import subprocess
+import sys
+
+root = sys.argv[1]
+adapter = os.path.join(root, "tooling", "lazybuddy_capability_readiness.py")
+try:
+    completed = subprocess.run(
+        [sys.executable, "-B", adapter, "readiness-report", "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+except subprocess.CalledProcessError as error:
+    raise SystemExit(error.stderr.strip() or "canonical readiness report failed")
+records = json.loads(completed.stdout).get("records")
+if not isinstance(records, list) or len(records) != 9:
+    raise SystemExit("canonical readiness report did not return nine records")
+print("ok")
+PY
+); then
+    check "Canonical capability readiness report" ok
+else
+    check "Canonical capability readiness report" "$readiness_result"
+fi
+
 if hook_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import json
 import os

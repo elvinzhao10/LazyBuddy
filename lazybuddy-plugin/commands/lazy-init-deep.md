@@ -37,6 +37,15 @@ Generate hierarchical project memory. Scores directories by complexity, produces
   [ -n "$PLUGIN_ROOT" ] || { echo "LazyBuddy plugin root is unavailable; reopen the copied repository or install the plugin." >&2; exit 1; }
   bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
   ```
+- InitDeep readiness evidence. Run the load check first, then verify its reported skills, commands, agents, hooks, and MCP declarations. This is package readiness only and does not prove a live host session or MCP connection. Do not enable optional capabilities, select providers, initialize optional architecture tooling, or export MCP configuration without a separate explicit user request. Record these exact fields in the completion report:
+  ```text
+  readiness_result: {load-check result}
+  readiness_host: {package readiness boundary}
+  capability_statuses: {observed read-only status summary}
+  optional_policy: {unchanged unless separately explicitly requested}
+  receipt_state: {observed receipt/ownership state or not inspected}
+  evidence_paths: {load-check output and inspected package paths}
+  ```
 - Consumer compatibility pointer. After generating or updating `workbuddy.md`, explicitly run:
   ```bash
   CWD="$PWD" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" \

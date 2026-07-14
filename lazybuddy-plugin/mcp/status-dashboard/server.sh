@@ -3,7 +3,36 @@ set -euo pipefail
 CWD="${CWD:-.}"
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 source "$PLUGIN_ROOT/scripts/state/state-paths.sh"
+NOTIFICATION=0
+
+request_kind() {
+  python3 -c '
+import json, math, sys
+try:
+    request = json.load(sys.stdin)
+except json.JSONDecodeError:
+    print("parse")
+    raise SystemExit
+valid_id = lambda value: value is None or isinstance(value, str) or (isinstance(value, int) and not isinstance(value, bool)) or (isinstance(value, float) and math.isfinite(value))
+if not isinstance(request, dict) or request.get("jsonrpc") != "2.0" or not isinstance(request.get("method"), str) or request["method"].startswith("rpc.") or ("id" in request and not valid_id(request["id"])):
+    print("invalid")
+elif "id" not in request:
+    print("notification")
+else:
+    print("request")
+' <<< "$INPUT"
+}
+
+protocol_error() {
+  python3 - "$1" "$2" <<'PYEOF'
+import json
+import sys
+
+print(json.dumps({"jsonrpc": "2.0", "id": None, "error": {"code": int(sys.argv[1]), "message": sys.argv[2]}}))
+PYEOF
+}
 reply() {
+  [ "$NOTIFICATION" = 1 ] && return 0
   python3 - "$ID_JSON" "$1" <<'PYEOF'
 import json
 import sys
@@ -12,11 +41,17 @@ print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "result": jso
 PYEOF
 }
 err() {
-  python3 - "$ID_JSON" "$1" <<'PYEOF'
+  [ "$NOTIFICATION" = 1 ] && return 0
+  local code="-32603"
+  if [ "$1" = "-32602" ]; then
+    code="$1"
+    shift
+  fi
+  python3 - "$ID_JSON" "$code" "$1" <<'PYEOF'
 import json
 import sys
 
-print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "error": {"code": -32603, "message": sys.argv[2]}}))
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "error": {"code": int(sys.argv[2]), "message": sys.argv[3]}}))
 PYEOF
 }
 param_raw() { python3 -c "import sys,json; d=json.load(sys.stdin); p=d.get('params',{}); a=p.get('arguments',p); print(a.get('$1',''))" 2>/dev/null <<<"$INPUT"; }
@@ -29,11 +64,20 @@ resolve_run() {
 }
 
 while IFS= read -r INPUT || [ -n "$INPUT" ]; do
+case "$(request_kind)" in
+  parse) protocol_error -32700 "Parse error"; continue ;;
+  invalid) protocol_error -32600 "Invalid Request"; continue ;;
+  notification) NOTIFICATION=1 ;;
+  request) NOTIFICATION=0 ;;
+esac
 METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('method',''))" 2>/dev/null <<<"$INPUT" || echo "")
-ID_JSON=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('id',0)))" 2>/dev/null <<<"$INPUT" || echo "0")
+ID_JSON=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('id',None)))" 2>/dev/null <<<"$INPUT" || echo "null")
 
 if [ "$METHOD" = "tools/call" ]; then
-    METHOD=$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('params',{}).get('name',''))" 2>/dev/null <<<"$INPUT" || echo "")
+    if ! METHOD=$(python3 -c "import json,sys; params=json.load(sys.stdin).get('params'); assert isinstance(params, dict); assert isinstance(params.get('name'), str); assert isinstance(params.get('arguments', {}), dict); print(params['name'])" 2>/dev/null <<<"$INPUT"); then
+        err -32602 "tools/call requires object params with string name and object arguments"
+        continue
+    fi
 fi
 
 case "$METHOD" in

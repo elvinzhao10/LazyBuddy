@@ -84,6 +84,12 @@ bash scripts/lazybuddy-docs-check.sh
 bash scripts/lazybuddy-verify.sh
 ```
 
+Package readiness, doctor, and capability-status output are read-only package
+evidence. They do not activate optional providers, install a global host
+integration, or prove that a live host session connected an MCP server. See the
+package-owned [verification matrix](docs/verification-matrix.md) for the local
+checks and manual host observations.
+
 ## Optional local tooling
 
 LazyBuddy can use a local, package-owned fallback for `rg` (ripgrep) and `sg`

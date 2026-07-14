@@ -101,6 +101,72 @@ cmp -s "$TMP/ts-before-install" "$TMP/ts-after-install" || fail 'TypeScript life
 cmp -s "$TMP/py-before-install" "$TMP/py-after-install" || fail 'Python lifecycle mutated target'
 pass 'LSP lifecycle preserves target fingerprints'
 
+expect "TypeScript transient definition retries" 0 python3 - "$TMP" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+tmp, module_root = map(Path, sys.argv[1:])
+sys.path.insert(0, str(module_root))
+from session import LspSession
+
+project = tmp / "transient-definition"
+project.mkdir()
+source = project / "source.ts"
+usage = project / "use.ts"
+source.write_text("export const answer: number = 42;\n", encoding="utf-8")
+usage.write_text('import { answer } from "./source";\n', encoding="utf-8")
+provider = project / "transient-lsp.py"
+provider.write_text(
+    '''#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+source_uri = (Path.cwd() / "source.ts").as_uri()
+definition_requests = 0
+
+def read_message():
+    headers = b""
+    while b"\\r\\n\\r\\n" not in headers:
+        chunk = sys.stdin.buffer.read(1)
+        if not chunk:
+            return None
+        headers += chunk
+    length = next(int(line.split(b":", 1)[1].strip()) for line in headers.split(b"\\r\\n") if line.lower().startswith(b"content-length:"))
+    return json.loads(sys.stdin.buffer.read(length))
+
+def send(message):
+    encoded = json.dumps(message, separators=(",", ":")).encode()
+    sys.stdout.buffer.write(f"Content-Length: {len(encoded)}\\r\\n\\r\\n".encode() + encoded)
+    sys.stdout.buffer.flush()
+
+while True:
+    message = read_message()
+    if message is None:
+        break
+    method = message.get("method")
+    if method == "initialize":
+        send({"jsonrpc": "2.0", "id": message["id"], "result": {"capabilities": {"definitionProvider": True}}})
+    elif method == "textDocument/definition":
+        definition_requests += 1
+        result = [] if definition_requests == 1 else [{"uri": source_uri, "range": {"start": {"line": 0, "character": 13}, "end": {"line": 0, "character": 19}}}]
+        send({"jsonrpc": "2.0", "id": message["id"], "result": result})
+''',
+    encoding="utf-8",
+)
+provider.chmod(0o755)
+session = LspSession(str(provider), "typescript", project, 2)
+try:
+    session.initialize()
+    session.open_file(usage)
+    result = session.request("textDocument/definition", {"textDocument": {"uri": usage.as_uri()}, "position": {"line": 0, "character": 13}})
+    if source.as_uri() not in str(result):
+        raise SystemExit("transient empty TypeScript definition was returned without a bounded retry")
+finally:
+    session.close()
+PY
+
 bridge_checks() {
     local target="$1" tooling_root="$2" source="$3" usage="$4"
     python3 - "$target" "$tooling_root" "$PLUGIN_ROOT/mcp/lsp/server.sh" "$source" "$usage" <<'PY'

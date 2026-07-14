@@ -46,7 +46,22 @@ fi
 bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
 ```
 
-This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. Record its exact skills, commands, agents, hooks, and MCP counts in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. Run the load check first, then verify its reported skills, commands, agents, hooks, and MCP declarations before repository discovery. Record the observed package inventory in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+
+### InitDeep readiness evidence
+
+The load check is package readiness only: it does not prove a live host session or MCP connection. Do not enable optional capabilities, select a provider, initialize optional architecture tooling, export MCP configuration, or change optional capability state as part of InitDeep. Those actions require a separate explicit user request.
+
+Record observed, not inferred, readiness evidence in the completion report with these exact fields:
+
+```text
+readiness_result: {load-check result}
+readiness_host: {host/package readiness boundary}
+capability_statuses: {observed read-only status summary}
+optional_policy: {unchanged unless separately explicitly requested}
+receipt_state: {observed receipt/ownership state or not inspected}
+evidence_paths: {load-check output and inspected package paths}
+```
 
 ## Tool Access
 
@@ -159,6 +174,12 @@ Dirs Analyzed: {N}
 workbuddy.md Created: {N}
 workbuddy.md Updated: {N}
 Consumer AGENTS.md: {created | preserved}
+readiness_result: {load-check result}
+readiness_host: {package readiness only; live host/MCP connection not proven}
+capability_statuses: {observed read-only status summary}
+optional_policy: {unchanged unless separately explicitly requested}
+receipt_state: {observed receipt/ownership state or not inspected}
+evidence_paths: {load-check output and inspected package paths}
 Hierarchy:
   ./workbuddy.md
   └── src/.../workbuddy.md
