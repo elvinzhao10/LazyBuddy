@@ -209,3 +209,15 @@ Principles:
 ---
 
 _All verification steps trace to LazyCodex source files in `dev/reference/lazycodex/`. Expected results are derived from the method semantics documented in each source file._
+
+## v0.17 Cross-Product Documentation and Readiness
+
+| Verification Step | Command | Expected Result | Evidence Artifact |
+|-------------------|---------|-----------------|-------------------|
+| Shared public vocabulary | `bash lazybuddy-plugin/tests/v017-documentation-regression.sh` | Public capability status, optional-policy, receipt, readiness, JSON-RPC, host exclusions, unverified behavior, and macOS scope headings remain present | Command output |
+| Package-only readiness | `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` | Reports package state without claiming CodeBuddy/WorkBuddy load or MCP connection | Load-check output |
+| Read-only optional policy | `bash lazybuddy-plugin/scripts/lazybuddy-tooling.sh capability-status --json` | Status reports do not activate a provider, install globally, register MCP, or alter host configuration | Status output and sentinel comparison |
+| Docs/link regression | `bash lazybuddy-plugin/scripts/lazybuddy-docs-check.sh` | Internal links and package-local verification matrix resolve | JSON summary |
+| Release-only paired parity | Explicit paired runner with a sibling checkout path | Cross-package artifact parity is checked without making normal CI dependent on LazyTrae | Release evidence |
+
+The intentional differences remain testable: CodeBuddy/WorkBuddy host integration is not Trae integration; LazyBuddy state is `.lazybuddy/` under `lazybuddy-plugin/` packaging; and its eight MCP declarations do not include filesystem or Playwright. Host confirmation, host-managed uninstall, and non-macOS behavior are outside package-readiness proof. The cross-product host verification statement is **macOS only**.

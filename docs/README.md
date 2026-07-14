@@ -19,6 +19,7 @@
 | [reviewer-protocol.md](lazybuddy-reviewer-protocol.md) | 7 review dimensions, accept/reject/revise decision tree |
 | [librarian-protocol.md](lazybuddy-librarian-protocol.md) | Memory update triggers, diff-before-write rule |
 | [handoff-protocol.md](lazybuddy-handoff-protocol.md) | Inter-agent message, evidence, and verdict formats |
+| [v0.17 handoff](handoff.md) | Capability/readiness evidence, host limits, and safe-removal handoff |
 | [parallelism-policy.md](lazybuddy-parallelism-policy.md) | Parallelization rules, merge gates, max concurrency |
 | [quality-gates.md](lazybuddy-quality-gates.md) | 12 quality gates spanning the full workflow |
 

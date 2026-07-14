@@ -166,3 +166,35 @@ The P5-1 test proved steps 1-3 work. Steps 4-7 need a full multi-agent session t
 LazyBuddy achieves **strong semantic parity** with LazyCodex's core agent-harness design. The planning → execution → verification → review → memory loop is fully functional with binding enforcement. The main weaknesses are in context-tooling (heuristic vs semantic code intelligence) and host-inherent limitations (path-scoped permissions, dynamic model routing, channels) that require WorkBuddy platform features to resolve.
 
 The project demonstrates that a clean-room cross-platform adaptation of an agent harness is feasible: preserve the semantics, reimplement the surfaces, and document every deviation honestly.
+
+## Public capability status contract
+
+The v0.17 read-only capability report uses the vendor-owned LazySeries record: `schema_version`, `contract_version`, `contract_digest`, `host`, `capability`, `provider` (nullable), `status`, `reason_code` (nullable), `message`, `receipt` (nullable `{owner, schema_version, state}`), and object `details`. Its only public statuses are `host-ready`, `owned-ready`, `missing`, `incompatible`, `disabled`, `failed-optional`, and `not-initialized`. A status record reports observed readiness; it does not select, install, enable, or start a provider.
+
+## Optional capability policy
+
+Optional integrations remain opt-in. A status, doctor, or load-check does not run package managers, activate a provider, alter host configuration, export an MCP fragment, or make a network request. The existing automatic-tooling policy remains the authority for any separately requested lifecycle action. Normal CI is self-contained within this repository; paired LazyTrae/LazyBuddy parity is a release-only check that receives a sibling path explicitly and creates no runtime dependency.
+
+## Receipt and safe removal
+
+Removal accepts only exact receipt-owned entries. Expected mutable runtime entries are tolerated only where the receipt already owns them; unknown siblings, tampered entries, symlinks, and hardlinks are rejected. Project lockfiles, user configuration, caller-owned CodeGraph indexes, and host registrations survive. Remove CodeBuddy or WorkBuddy installation state through the host's own remove/uninstall flow rather than treating package cleanup as host removal.
+
+## Package readiness versus host verification
+
+`lazybuddy-load-check.sh`, `lazybuddy-plugin-doctor.sh`, and the canonical status report verify package files, declared configuration, and local optional-state evidence. They do not prove that CodeBuddy or WorkBuddy loaded the package, ran SessionStart, or connected an MCP server. A new host session and the host's MCP status are the required separate observation.
+
+## JSON-RPC resilience
+
+The stdio MCP transport is line-oriented JSON-RPC. Malformed JSON yields one `-32700` response with `id: null`; an invalid request yields `-32600`; notifications receive no response; and a later valid request on the same stream remains processable. Protocol JSON is the only stdout content. This documents package behavior, not proof that a host connected a server.
+
+## Host-specific exclusions
+
+LazyBuddy keeps CodeBuddy/WorkBuddy-specific layouts and commands: project state is `.lazybuddy/`, the installable package is `lazybuddy-plugin/`, CodeBuddy uses its plugin marketplace/UI, and WorkBuddy's verified fallback is local `skills/` import with manual MCP configuration. The package declares eight MCP servers. Unlike LazyTrae's optional declaration inventory, LazyBuddy does not declare filesystem or Playwright MCP servers; host use of those tools must be independently configured and verified.
+
+## Known unverified host behavior
+
+WorkBuddy copied-repository installation, marketplace/plugin session loading, CodeBuddy/WorkBuddy host-managed MCP connection, and host enforcement all require manual session confirmation. The package does not claim that its manifest, local import, or package check proves those host outcomes.
+
+## macOS verification scope
+
+The v0.17 cross-product host verification statement is **macOS only**. Do not infer Linux or Windows host discovery, installer paths, marketplace behavior, or MCP connection from these package checks.

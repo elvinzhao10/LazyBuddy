@@ -2,7 +2,7 @@
 
 > **A practice project:** realizing [LazyCodex](https://github.com/code-yeongyu/lazycodex) (the OmO harness) on the [WorkBuddy](https://www.workbuddy.cn) platform. No longer maintained; open-sourced for learning.
 
-LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **CodeBuddy IDE**, **CodeBuddy CLI**, and **WorkBuddy**. WorkBuddy documents plugin/marketplace capabilities, but this release has not verified a direct copied-repository LazyBuddy installer; its verified no-package-manager path is local skill import plus manual MCP configuration.
+LazyBuddy brings LazyCodex's disciplined agent-harness workflows (planning → delegated execution → evidence-gated verification → review → durable run state) to **CodeBuddy IDE**, **CodeBuddy CLI**, and **WorkBuddy**. 
 
 > **Setup?** See [AGENTS.md](AGENTS.md) (the setup guide). This README is about **how to use** the harness once installed.
 
@@ -12,6 +12,8 @@ LazyBuddy brings LazyCodex/OmO's disciplined agent-harness workflows to **CodeBu
 2. Open that folder in your chosen host and type `onboard`.
 
 The agent reads `AGENTS.md`, asks which installed host you use (**WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**), then performs the matching safe setup steps. It runs `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` and reports **package readiness**—the shared folders and CodeBuddy declarations are present. That check does not prove that a host loaded the package, emitted SessionStart, or connected an MCP server. A CodeBuddy SessionStart hook repeats that check only after CodeBuddy loads the plugin. For WorkBuddy, use its documented plugin/marketplace UI and verify the loaded session before relying on plugin capabilities; the verified no-package-manager fallback is local skill import with manual MCP connector configuration.
+
+The read-only capability report uses the shared seven-state readiness vocabulary and can report optional state without changing it. It never activates a provider, installs globally, registers MCP, or proves a live host connection. Normal checks are self-contained; the paired sibling comparison is release-only and takes an explicit sibling path.
 
 After onboarding, you can delete the copied repository if you only needed the installed setup, or keep it to explore and study how LazyBuddy works.
 
@@ -80,7 +82,6 @@ Practice repo; contributions welcome as learning exercises.
 2. **Naming discipline:** all skills & commands are `lazy-` prefixed. Keep new ones prefixed.
 3. **Test/verify:** `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` + `bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh`. Update the doctor's expected component lists if you add or rename one.
 4. **Hooks are binding:** test with doctor + smoke after any hook change.
-5. **Commit:** conventional, atomic, stage only files you changed, no `--no-verify`.
 
 ## Repository structure
 
@@ -102,7 +103,7 @@ lazybuddy/
 ├── AGENTS.md                 # setup guide
 ├── README.md                 # this file (how to use)
 ├── LICENSE                   # MIT
-└── NOTICE                    # omo/lazycodex provenance
+└── NOTICE                    # omo/lazycodex 
 ```
 
 ## Related
@@ -111,7 +112,7 @@ lazybuddy/
 
 ## License
 
-[MIT](LICENSE) — derived from lazycodex/omo, Copyright (c) 2026 Yeongyu Kim. See [NOTICE](NOTICE) (omo is SUL at root; the lazycodex layer used as a local gitignored reference is MIT).
+[MIT](LICENSE) — derived from lazycodex/omo, Copyright (c) 2026 Yeongyu Kim. See [NOTICE](NOTICE) (omo is SUL at root; the lazycodex layer is MIT).
 
 ## Disclaimer
 

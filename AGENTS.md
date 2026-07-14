@@ -10,7 +10,7 @@ When the user types `onboard`:
 
 1. Read this guide and ask which installed host/version they are using: **WorkBuddy**, **CodeBuddy IDE**, or **CodeBuddy CLI**.
 2. Follow only that host's setup path. Perform safe repository and CLI steps automatically. Run `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh`, then invoke `/lazybuddy:lazy-init-deep` (or make the equivalent natural-language request) only after the package is ready or explicitly degraded to a skills-only import.
-3. Report each completed action and its observed result. Label the load-check as **package readiness**: it cannot confirm that the host loaded the plugin, ran SessionStart, or connected an MCP server.
+3. Report each completed action and its observed result. Label the load-check as **package readiness**: it cannot confirm that the host loaded the plugin, ran SessionStart, or connected an MCP server. A read-only capability status may report optional state but must not activate a provider, install globally, or register MCP.
 4. Stop before account, marketplace, or app-setting changes. Give exact manual directions for those steps and say which host check the user must observe.
 5. End by explaining that the copied repository can be deleted after installation, or retained to explore and study the project.
 

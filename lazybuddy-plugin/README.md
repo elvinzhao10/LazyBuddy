@@ -11,6 +11,8 @@
 3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or skill and any required MCP connection. In WorkBuddy, verify a plugin/marketplace session before using its plugin capabilities, or confirm an imported skill and manually configured connector on the no-package-manager path.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.
 
+The read-only capability report can classify optional readiness without installing, enabling, or registering anything. Receipt-safe removal preserves host-managed registrations and only accepts exact receipt-owned package assets for removal.
+
 **Status:** v0.15.0-alpha.2. See the repository [README](../README.md) for the user workflow and [AGENTS.md](../AGENTS.md) for host-specific onboarding.
 
 ## What this plugin provides
