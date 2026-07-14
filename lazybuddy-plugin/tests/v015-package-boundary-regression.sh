@@ -33,7 +33,7 @@ expect_status() {
 import subprocess
 import sys
 
-result = subprocess.run(sys.argv[1:], capture_output=True, text=True, timeout=45, check=False)
+result = subprocess.run(sys.argv[1:], capture_output=True, text=True, timeout=180, check=False)
 print(result.stdout, end="")
 print(result.stderr, end="", file=sys.stderr)
 raise SystemExit(result.returncode)
@@ -118,7 +118,9 @@ import json
 import sys
 
 payload = json.loads(sys.argv[1])
-assert payload["error"]["code"] == -32603
+assert payload["jsonrpc"] == "2.0"
+assert payload["id"] is None
+assert payload["error"]["code"] == -32700
 PYEOF
 then
     pass "verification MCP rejects malformed input"

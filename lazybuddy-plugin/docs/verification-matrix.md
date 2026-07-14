@@ -1,7 +1,8 @@
 # LazyBuddy package verification contract
 
-This contract is package-owned so a copied `lazybuddy-plugin/` can discover
-its verification checks without repository-root documentation.
+This public, package-owned matrix lets a copied `lazybuddy-plugin/` discover
+its checks without repository-root documentation. It reports package evidence
+and names the host observation required before a user-facing integration claim.
 
 ## Package checks
 
@@ -29,9 +30,10 @@ is still required.
 | State/path | Receipt-owned tooling roots stay package-local; host-managed paths and `.workbuddy` state are not scanned or removed. |
 | Inventory | Six local MCP servers are bundled. Context7 and `grep_app` are optional export fragments; filesystem and Playwright are not bundled local MCP servers. |
 
-## Scope and paired release evidence
+## Scope and paired evidence
 
 Verification in this matrix is macOS only. Normal CI does not require a
 sibling repository. Release-only paired parity may receive explicitly supplied
 sibling roots to compare documentation or contracts; it is not a runtime,
-installation, or normal-CI dependency.
+installation, or normal-CI dependency. The repository-level evaluation is
+additional public evidence; this package matrix remains self-contained.

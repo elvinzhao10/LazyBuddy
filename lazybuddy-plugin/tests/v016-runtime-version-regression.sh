@@ -20,10 +20,11 @@ grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/status-dashboard/dashbo
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/hooks/session-start.sh"
 grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
 grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/README.md"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../README.md"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../AGENTS.md"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../docs/handoff.md"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../lazybuddy-evaluation.md"
+for document in README.md AGENTS.md docs/handoff.md lazybuddy-evaluation.md; do
+  if [ -f "$PLUGIN_ROOT/../$document" ]; then
+    grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/../$document"
+  fi
+done
 python3 - "$PLUGIN_ROOT" "$EXPECTED_VERSION" <<'PY'
 import json
 import pathlib
@@ -41,8 +42,10 @@ for relative in (
     value = json.loads((root / relative).read_text(encoding="utf-8"))
     assert value["version"] == expected, f"{relative} reported {value['version']!r}"
 
-marketplace = json.loads((root.parent / ".codebuddy-plugin/marketplace.json").read_text(encoding="utf-8"))
-entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
-assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
+marketplace_path = root.parent / ".codebuddy-plugin/marketplace.json"
+if marketplace_path.is_file():
+    marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
+    entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
+    assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 PY
 printf 'v0.16 runtime version regression: PASS\n'

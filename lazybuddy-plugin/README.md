@@ -2,6 +2,9 @@
 
 > Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
 
+LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
+
 ## Quick Start
 
 `.codebuddy-plugin/plugin.json` is the documented CodeBuddy host entry point. `.workbuddy-plugin/plugin.json` is retained internal, unverified compatibility metadata—not an executable copied-repository WorkBuddy installer. WorkBuddy documents plugins/marketplaces, but a LazyBuddy install through that UI must be verified in a live session. The verified no-package-manager fallback imports the local `skills/` package and configures compatible MCP connectors manually.
@@ -11,7 +14,9 @@
 3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or skill and any required MCP connection. In WorkBuddy, verify a plugin/marketplace session before using its plugin capabilities, or confirm an imported skill and manually configured connector on the no-package-manager path.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.
 
-**Status:** v0.16.0-alpha.1 tooling-foundation release, verified on macOS only. The repository `README.md` covers the user workflow and its `AGENTS.md` covers host-specific onboarding.
+**Verification scope:** macOS only. Repository-level public guides cover the
+workflow and host-specific onboarding/offboarding; package readiness remains
+package evidence, not proof of live host loading or MCP connection.
 
 ## What this plugin provides
 
@@ -38,15 +43,19 @@ LazyBuddy provides a workflow harness for CodeBuddy and WorkBuddy. WorkBuddy plu
 
 ## Install
 
-For **CodeBuddy CLI**, use the marketplace commands below. For **CodeBuddy IDE**, install the copied package through its plugin flow, then verify a real command/skill and MCP status in a new session. For **WorkBuddy**, use its documented plugin/marketplace UI and verify the loaded session; the verified no-package-manager fallback is local `skills/` import with manual MCP configuration.
+For **CodeBuddy CLI**, discover the current LazyBuddy marketplace entry through
+the host's marketplace documentation or UI. Confirm the publisher and review
+the exact immutable revision or release reference supplied there before
+installing; this repository does not endorse a mutable marketplace URL. For
+**CodeBuddy IDE**, install the copied package through its plugin flow, then
+verify a real command/skill and MCP status in a new session. For **WorkBuddy**,
+use its documented plugin/marketplace UI and verify the loaded session; the
+verified no-package-manager fallback is local `skills/` import with manual MCP
+configuration.
 
-### Development install
+### Development validation
 
 ```bash
-# From the cloned repository root: add the marketplace and install project-scoped.
-codebuddy plugin marketplace add https://github.com/elvinzhao10/LazyBuddy.git --name lazybuddy
-codebuddy plugin install lazybuddy@lazybuddy --scope project
-
 # From lazybuddy-plugin/: validate the package and readiness.
 cd lazybuddy-plugin
 codebuddy plugin validate .
@@ -56,17 +65,28 @@ bash scripts/lazybuddy-plugin-doctor.sh
 
 ### Marketplace install
 
-```bash
-# CodeBuddy CLI
-codebuddy plugin marketplace add https://github.com/elvinzhao10/LazyBuddy.git --name lazybuddy
-codebuddy plugin install lazybuddy@lazybuddy --scope project
-```
+For CodeBuddy CLI, use the host's current marketplace discovery flow to locate
+LazyBuddy. Inspect the publisher and the exact immutable revision or release
+reference before running the host-generated install command. No reviewed
+immutable marketplace reference is bundled here, so this guide intentionally
+does not provide a marketplace-add URL or an executable install command.
 
 For CodeBuddy IDE, use the current host plugin UI to install the copied package, run `/reload-plugins` when the host exposes it (or its equivalent reload action), then inspect a new session for a loaded `/lazybuddy:lazy-<command>` entry and MCP status. For WorkBuddy, use its documented plugin/marketplace UI and verify the session before relying on any plugin capability. If using the verified no-package-manager path, import `skills/` locally and add MCP connectors manually. Use the host's own uninstall/remove flow; installation locations are host-managed.
 
 ## Uninstall
 
-Use CodeBuddy's plugin removal flow for a CodeBuddy IDE or CLI installation, then remove or disable only the LazyBuddy MCP servers that were manually registered. Use WorkBuddy's documented plugin/marketplace removal flow for a verified WorkBuddy plugin installation. For the local-import fallback, remove the imported `skills/` entries through WorkBuddy's Skills UI and remove the manually configured connectors through Settings. Never guess, scan for, or delete host-managed installation paths, `.workbuddy-plugin` compatibility metadata, `.workbuddy` state, or MCP configuration belonging to another host. The copied repository is independent of host removal and may be deleted only after the host confirms the plugin/skills and connectors are gone.
+Use CodeBuddy's plugin removal flow for a CodeBuddy IDE or CLI installation,
+then remove or disable only the LazyBuddy MCP servers that were manually
+registered. Use WorkBuddy's documented plugin/marketplace removal flow for a
+verified WorkBuddy plugin installation. For the local-import fallback, remove
+the imported `skills/` entries through WorkBuddy's Skills UI and remove the
+manually configured connectors through Settings. Never guess, scan for, or
+delete host-managed installation paths, `.workbuddy-plugin` compatibility
+metadata, `.workbuddy` state, or MCP configuration belonging to another host.
+The copied repository is independent of host removal and may be deleted only
+after the host confirms the plugin/skills and connectors are gone. The root
+`offboard` protocol records this package result separately from the
+user-observed host result.
 
 ## Verify
 
