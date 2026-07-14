@@ -22,6 +22,15 @@ snapshot() {
     find "$1" -type f -print0 | sort -z | xargs -0 shasum > "$2"
 }
 
+if grep -Fq '.tmp.$$' "$LIFECYCLE"; then
+    fail 'tooling state writers use predictable temporary paths'
+fi
+grep -Fq 'mktemp "${state}.tmp.XXXXXX"' "$LIFECYCLE" \
+    || fail 'remote state writer does not use mktemp'
+grep -Fq 'mktemp "${receipt}.tmp.XXXXXX"' "$LIFECYCLE" \
+    || fail 'CodeGraph receipt writer does not use mktemp'
+pass 'receipt-owned state writers use exclusive temporary paths'
+
 TOOLS="$TMP/tools"
 mkdir "$TOOLS"
 CALLER_HOME="$TMP/caller-home"

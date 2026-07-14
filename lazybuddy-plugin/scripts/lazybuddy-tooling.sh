@@ -137,9 +137,15 @@ PY
 write_remote_state() {
     local context7_enabled="$1" grep_app_enabled="$2" state temporary
     state="$(remote_state_path)"
-    temporary="${state}.tmp.$$"
-    remote_state_contents "$context7_enabled" "$grep_app_enabled" > "$temporary"
-    mv "$temporary" "$state"
+    temporary="$(mktemp "${state}.tmp.XXXXXX")" || fail "unable to create remote state temporary file"
+    if ! remote_state_contents "$context7_enabled" "$grep_app_enabled" > "$temporary"; then
+        rm -f "$temporary"
+        fail "unable to render remote capability state"
+    fi
+    if ! mv "$temporary" "$state"; then
+        rm -f "$temporary"
+        fail "unable to replace remote capability state"
+    fi
 }
 
 remote_state_flag() {
@@ -568,9 +574,15 @@ PY
 write_codegraph_receipt() {
     local created_index="$1" enabled="$2" receipt temporary
     receipt="$(codegraph_receipt_path)"
-    temporary="${receipt}.tmp.$$"
-    codegraph_receipt_contents "$created_index" "$enabled" > "$temporary"
-    mv "$temporary" "$receipt"
+    temporary="$(mktemp "${receipt}.tmp.XXXXXX")" || fail "unable to create CodeGraph receipt temporary file"
+    if ! codegraph_receipt_contents "$created_index" "$enabled" > "$temporary"; then
+        rm -f "$temporary"
+        fail "unable to render CodeGraph receipt"
+    fi
+    if ! mv "$temporary" "$receipt"; then
+        rm -f "$temporary"
+        fail "unable to replace CodeGraph receipt"
+    fi
 }
 
 codegraph_index_state() {
