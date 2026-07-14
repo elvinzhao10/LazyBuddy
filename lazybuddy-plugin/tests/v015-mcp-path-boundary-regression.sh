@@ -72,14 +72,6 @@ check_contains() {
     fi
 }
 
-SOURCE_ABS="$OUTSIDE/secret.txt"
-check_rejected 'source-map rejects traversal read' "$(rpc_sh source-map '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"read_evidence_excerpt","arguments":{"file_path":"../outside/secret.txt"}}}')"
-check_rejected 'source-map rejects absolute read' "$(rpc_sh source-map "$(path_request 2 read_evidence_excerpt file_path "$SOURCE_ABS")")"
-check_rejected 'source-map rejects symlink hash' "$(rpc_sh source-map '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"compute_file_hash","arguments":{"file_path":"link-secret.txt"}}}')"
-check_rejected 'source-map rejects traversal index' "$(rpc_sh source-map '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"index_repo","arguments":{"path":"../outside"}}}')"
-check_contains 'source-map allows in-root read' 'IN-ROOT-CONTENT' "$(rpc_sh source-map '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"read_evidence_excerpt","arguments":{"file_path":"inside.txt"}}}')"
-check_contains 'source-map allows in-root index' 'skills/SKILL.md' "$(rpc_sh source-map '{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"index_repo","arguments":{"path":"skills"}}}')"
-
 CODE_ABS="$OUTSIDE/secret.py"
 check_rejected 'code-intel rejects traversal symbols' "$(rpc_py code-intel '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"symbols","arguments":{"path":"../outside/secret.py"}}}')"
 check_rejected 'code-intel rejects absolute symbols' "$(rpc_py code-intel "$(path_request 7 symbols path "$CODE_ABS")")"

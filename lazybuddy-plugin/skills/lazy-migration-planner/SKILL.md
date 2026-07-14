@@ -1,12 +1,11 @@
 ---
 name: lazy-migration-planner
-description: "Create host-adapter plans for porting LazyCodex semantics to a new platform. Requires canonical repo inspection and semantic mapping."
+description: "Create host-adapter plans for porting earlier host implementation semantics to a new platform. Requires canonical repo inspection and semantic mapping."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # migration-planner
 
-> **LazyCodex source:** None direct — this is a LazyBuddy innovation generalized from our own adaptation experience (porting LazyCodex skills from Codex to WorkBuddy). It formalizes the adapter pattern we used to translate `multi_agent_v1` → WorkBuddy Agent tool, `.omo/` → `.lazybuddy/`, `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`, and every Codex-specific tool call into WorkBuddy-native equivalents.
+> **earlier host implementation source:** None direct — this is a LazyBuddy innovation generalized from our own adaptation experience (porting earlier host implementation skills from Codex to WorkBuddy). It formalizes the adapter pattern we used to translate `multi_agent_v1` → WorkBuddy Agent tool, `.lazybuddy/` → `.lazybuddy/`, `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`, and every Codex-specific tool call into WorkBuddy-native equivalents.
 
 ## Purpose
 
@@ -26,7 +25,7 @@ A host-adapter plan answers one question: "What must change for these skills to 
 ## Required Context
 
 - **Canonical source skills:** The full skill set under `${CODEBUDDY_PLUGIN_ROOT}/skills/` or the specified source directory
-- **Reference skills:** The LazyCodex originals under `dev/reference/lazycodex/plugins/omo/skills/` (if adapting from LazyCodex)
+- **Reference skills:** The earlier host implementation originals under `local project documentation` (if adapting from earlier host implementation)
 - **Target platform spec:** The target harness's tool catalog, agent model, directory conventions, and capability boundaries
 - **Existing adapter docs:** Any prior adapter plans under `.lazybuddy/adapters/`
 - **Parity ledger:** `.lazybuddy/parity-ledger.jsonl` for prior migration decisions
@@ -49,7 +48,7 @@ Read every source skill in the set. For each skill, extract:
 - YAML frontmatter (name, description, trigger keywords)
 - Tool usage patterns: every tool the skill invokes directly
 - Agent spawning patterns: every subagent role and how it is spawned
-- Directory paths: `.omo/`, `${PLUGIN_ROOT}`, skill-root references
+- Directory paths: `.lazybuddy/`, `${PLUGIN_ROOT}`, skill-root references
 - Harness-specific directives: hooks, continuation protocols, mailbox signals
 - State file formats: JSON, JSONL, TOML files the skill reads or writes
 
@@ -58,7 +57,7 @@ Produce an **Inventory** — one row per skill, listing every platform dependenc
 ```markdown
 | Skill | Tools Used | Agent Roles | State Paths | Harness Directives |
 |-------|-----------|-------------|-------------|-------------------|
-| start-work | Read, Write, Edit, Bash | explorer, librarian, plan, reviewer, worker | .omo/boulder.json, .omo/start-work/ledger.jsonl | Stop/SubagentStop hook, multi_agent_v1.spawn_agent |
+| start-work | Read, Write, Edit, Bash | explorer, librarian, plan, reviewer, worker | .lazybuddy/boulder.json, .lazybuddy/start-work/ledger.jsonl | Stop/SubagentStop hook, multi_agent_v1.spawn_agent |
 ```
 
 ### 2. Survey the target platform capability catalog
@@ -68,7 +67,7 @@ Produce an **Inventory** — one row per skill, listing every platform dependenc
 Survey the target harness's available tools, agent model, and constraints:
 - What is the file read/write tool set?
 - Does the platform have an agent/subagent spawning mechanism? What are its parameters?
-- What directory conventions does it use? (e.g., `.lazybuddy/` vs `.omo/`)
+- What directory conventions does it use? (e.g., `.lazybuddy/` vs `.lazybuddy/`)
 - Does it support hooks, continuation, or mailbox signals?
 - What is its task/plan tracking model? (e.g., `TaskCreate/TaskUpdate` vs `update_plan`)
 - Does it have a skill loading mechanism? How are skills discovered and activated?
@@ -103,7 +102,7 @@ Example mapping table:
 | Source Primitive | Source Context | Target Primitive | Adaptation |
 |-----------------|---------------|-----------------|------------|
 | `multi_agent_v1.spawn_agent({"agent_type":"explorer","fork_context":false})` | start-work Phase 3 task dispatch | WorkBuddy Agent tool with `"message":"TASK: act as an explorer..."` and `isolation: true` | Direct map: agent_type → described in message; fork_context:false → isolation:true |
-| `.omo/boulder.json` | start-work Phase 2 state | `.lazybuddy/runs/<run_id>/state.json` | Adapted map: directory prefix change; state schema preserved with `schema_version` bump |
+| `.lazybuddy/boulder.json` | start-work Phase 2 state | `.lazybuddy/runs/<run_id>/state.json` | Adapted map: directory prefix change; state schema preserved with `schema_version` bump |
 | `Stop/SubagentStop` continuation hook | start-work continuation | WorkBuddy background task polling via TaskOutput | Adapted map: hook → poll-based; semantics preserved (re-check undone work on next turn) |
 | `browser:control-in-app-browser` | ultrawork Manual-QA browser channel | WebFetch (HTTP-level) + screenshot fallback via Read on PNG | Gap: no full browser automation; downgrade to HTTP verification for browser-shaped criteria; mark as limited in adapter notes |
 ```
@@ -213,7 +212,7 @@ Migration planner complete.
 The migration lifecycle is a sequence of nine ordered steps, each producing concrete artifacts. A migration is "done" when Step 9's parity report says so. Skip no step.
 
 ### Step 1: Canonical Repo Inspection
-Clone or read the source repository. For LazyCodex, use `dev/reference/lazycodex/`. Identify every method: skills (SKILL.md files), agents (TOML/MD definitions), hooks (JSON/TOML configs), MCP servers (`.mcp.json`), and components. Produce a flat file index. **Never guess from memory** — every claim must trace to a file path and line.
+Clone or read the source repository. For earlier host implementation, use `local project documentation`. Identify every method: skills (SKILL.md files), agents (TOML/MD definitions), hooks (JSON/TOML configs), MCP servers (`.mcp.json`), and components. Produce a flat file index. **Never guess from memory** — every claim must trace to a file path and line.
 
 ### Step 2: Method Extraction
 Extract exact method names and source paths. For each skill: name + trigger conditions from YAML frontmatter. For each agent: name + model + tool restriction list from TOML/YAML. For each hook: event type + script path from JSON/TOML config. For each MCP server: name + transport + exposed tools. The output is a **structured inventory** — one row per method, no ambiguity.
@@ -250,7 +249,7 @@ Produce the final comparison: total source methods, matched/adapted/skipped/adde
 - **TaskCreate/TaskUpdate:** Track each phase (inspect-source, survey-target, build-mapping, write-adapter, record) as a task step.
 - **Read-only enforcement:** The migration-planner is architecturally read-only for product files. WorkBuddy's tool permission model enforces this: Write and Edit are only called against `.lazybuddy/adapters/` paths.
 - **Parity ledger integration:** The adapter plan creation is a first-class parity event in `.lazybuddy/parity-ledger.jsonl`, linking the migration to the broader LazyBuddy knowledge lifecycle.
-- **Directory convention:** All adapter artifacts live under `.lazybuddy/adapters/`, following the WorkBuddy-native state directory convention (not LazyCodex `.omo/`).
+- **Directory convention:** All adapter artifacts live under `.lazybuddy/adapters/`, following the WorkBuddy-native state directory convention (not earlier host implementation `.lazybuddy/`).
 
 ## Required Disciplines
 
@@ -273,4 +272,4 @@ Every migration-planner execution must uphold these 11 disciplines. No exception
 These disciplines are not aspirational. A migration-planner run that violates any one of them has produced a draft, not a plan. Reject it and re-run.
 
 ---
-_This is a LazyBuddy innovation — there is no direct LazyCodex equivalent. It formalizes the adapter pattern discovered during the v0.4 port of LazyCodex skills to WorkBuddy. The semantic mapping approach (direct map / adapted map / gap) is the same triage we applied to translate `multi_agent_v1` → WorkBuddy Agent tool, `.omo/` → `.lazybuddy/`, `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`, and every Codex-specific tool invocation._
+_This is a LazyBuddy innovation — there is no direct earlier host implementation equivalent. It formalizes the adapter pattern discovered during the v0.4 port of earlier host implementation skills to WorkBuddy. The semantic mapping approach (direct map / adapted map / gap) is the same triage we applied to translate `multi_agent_v1` → WorkBuddy Agent tool, `.lazybuddy/` → `.lazybuddy/`, `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`, and every Codex-specific tool invocation._

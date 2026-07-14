@@ -2,11 +2,10 @@
 name: lazy-verifier
 description: "Evidence verification agent. Discovers available checks, runs them with exact commands, summarizes results as pass/fail/warning/skipped/N-A."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # verifier
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) Phase 4 (Sisyphus completion contract: AdversarialVerify).
+> **earlier host implementation source:** `local project documentation` Phase 4 (Sisyphus completion contract: AdversarialVerify).
 
 ## Purpose
 
@@ -26,7 +25,7 @@ Independently verify a worker's DoneClaim. Run the exact verification commands t
 
 ## Check Discovery (v0.9)
 
-The verifier discovers available checks dynamically from the project's toolchain, not from a hardcoded list. For each of the 9 check categories, the verifier probes the project for executability before including the check in the verification plan. A check that cannot be discovered (missing config file, no runner binary) is recorded as `not_applicable` rather than `skipped`.
+The verifier discovers available checks dynamically from the project's toolchain, not from a hardcoded list. For each of the 8 check categories, the verifier probes the project for executability before including the check in the verification plan. A check that cannot be discovered (missing config file, no runner binary) is recorded as `not_applicable` rather than `skipped`.
 
 | # | Category | Discovery method | Required signal |
 |---|----------|-----------------|-----------------|
@@ -37,7 +36,6 @@ The verifier discovers available checks dynamically from the project's toolchain
 | 5 | **integration** | Same as unit but probe `test:integration` or `test:e2e` script; skip if no separate integration suite is defined | Separate integration test script exists |
 | 6 | **plugin-validation** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-verify.sh`; if present, run it as the aggregate plugin health check | Script file exists and is executable |
 | 7 | **docs-consistency** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-docs-check.sh`; if present, run it | Script exists and is executable |
-| 8 | **parity-coverage** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-parity-check.sh`; if present, run it | Script exists and is executable |
 | 9 | **security** | Look for `${CODEBUDDY_PLUGIN_ROOT}/scripts/lazybuddy-security-check.sh`; if present, run it | Script exists and is executable |
 
 The verifier records its discovery log in the verification output, with one line per category: `"<category>": "discovered" | "not_applicable (<reason>)"`.
@@ -64,7 +62,6 @@ The verifier relies on five health-check scripts under `${CODEBUDDY_PLUGIN_ROOT}
 | `lazybuddy-verify.sh` | Master runner — executes all checks in sequence | All sub-checks pass (`all_pass: true`) |
 | `lazybuddy-security-check.sh` | Secret/credential leak scanner | No secrets found in plugin files |
 | `lazybuddy-docs-check.sh` | Broken internal markdown link checker | All internal Markdown links resolve |
-| `lazybuddy-parity-check.sh` | LazyCodex-to-WorkBuddy parity coverage auditor | Coverage ≥ threshold; no regressions |
 | `lazybuddy-plugin-doctor.sh` | Plugin structural health check (preexisting) | Plugin is structurally sound |
 | `lazybuddy-smoke-test.sh` | Plugin basic functionality smoke test (preexisting) | Core plugin behaviors work |
 
@@ -165,4 +162,4 @@ The verifier now writes verification results through the state/ script layer for
 
 ---
 
-_Adapted from LazyCodex start-work Phase 4 (Sisyphus completion contract). The AdversarialVerify schema is preserved verbatim. Adapted: Codex Oracle role name → WorkBuddy verifier agent; `multi_agent_v1` → WorkBuddy Agent tool._
+_Adapted from earlier host implementation start-work Phase 4 (Sisyphus completion contract). The AdversarialVerify schema is preserved verbatim. Adapted: Codex Oracle role name → WorkBuddy verifier agent; `multi_agent_v1` → WorkBuddy Agent tool._

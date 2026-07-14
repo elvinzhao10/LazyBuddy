@@ -2,11 +2,10 @@
 name: lazy-ulw-plan
 description: "Strategic planning consultant. Produces one decision-complete work plan from vague or large requests. Explore-first, asks only genuine owner-decisions."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # ulw-plan
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/ulw-plan/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -27,7 +26,7 @@ Before planning, inspect:
 - `workbuddy.md` — project structure and conventions
 - `plan/v0.<N>-*.md` — the current version spec if relevant
 - Relevant source files in the codebase (Read, Grep, Glob)
-- `dev/reference/lazycodex/` if the task relates to LazyCodex parity
+- `local project documentation` if the task relates to earlier host implementation parity
 
 ## Tool Access
 
@@ -132,4 +131,4 @@ Plan ready: .lazybuddy/plans/<slug>.md
 
 ---
 
-_Adapted from LazyCodex ulw-plan (Prometheus planner). Preserved: intent routing, explore-before-asking, owner-decision filter, approval gate, "never implements" rule. Adapted: `.omo/plans/` → `.lazybuddy/plans/`; `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `<skill-root>/scripts/scaffold-plan.mjs` → inline plan generation (script in v0.8)._
+_Adapted from earlier host implementation ulw-plan (Prometheus planner). Preserved: intent routing, explore-before-asking, owner-decision filter, approval gate, "never implements" rule. Adapted: `.lazybuddy/plans/` → `.lazybuddy/plans/`; `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `<skill-root>/scripts/scaffold-plan.mjs` → inline plan generation (script in v0.8)._

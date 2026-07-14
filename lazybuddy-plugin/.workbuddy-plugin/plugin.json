@@ -1,7 +1,7 @@
 {
   "name": "lazybuddy",
-  "version": "0.15.0-alpha.2",
-  "description": "LazyCodex workflows for CodeBuddy and WorkBuddy.",
+  "version": "0.16.0-alpha.1",
+  "description": "LazyBuddy workflows for CodeBuddy and WorkBuddy.",
   "skills": ["./skills/"],
   "commands": ["./commands/"],
   "agents": ["./agents/"],

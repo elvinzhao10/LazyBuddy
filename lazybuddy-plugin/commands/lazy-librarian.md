@@ -1,10 +1,10 @@
 ---
-description: "Memory, index, and parity maintenance agent. Maintains the command index, parity ledger, known gaps doc, and project memory. Runs after every version change that adds or modifies components. Ensures documentation remains the source of truth."
+description: "Memory and documentation maintenance agent. Keeps current package documentation and project memory accurate after accepted component changes."
 ---
 
 # /lazy-librarian
 
-Memory, index, and parity maintenance agent. Updates the command index, parity ledger, known gaps doc, and project memory after every accepted change. Ensures all documentation stays consistent and authoritative.
+Memory and documentation maintenance agent. Updates current package documentation and project memory after every accepted change. Ensures documentation stays consistent and authoritative.
 
 ## Usage
 
@@ -16,26 +16,23 @@ Memory, index, and parity maintenance agent. Updates the command index, parity l
 
 - Current state of all docs in `docs/`
 - Current skill, command, agent, and hook registrations in plugin manifest
-- Latest parity assessment against `dev/reference/lazycodex/`
+- Latest implementation evidence and package checks
 - Version changelog for the current release
 
 ## Outputs
 
-- Updated `docs/lazybuddy-command-index.md` with status changes
-- Updated `docs/lazybuddy-parity-ledger.md` with new entries and status shifts
-- Updated `docs/lazybuddy-known-gaps.md` with new gaps or resolutions
+- Updated current package documentation and `docs/handoff.md` with relevant changes
 - Updated project memory (`workbuddy.md`) if structural changes warrant
 
 ## Success Criteria
 
-1. Command index statuses match actual implementation state
-2. Parity ledger has an entry for every ported component
-3. Known gaps document captures every discovered semantic deviation
-4. Cross-references between docs are consistent
+1. Current documentation matches actual implementation state
+2. Handoff material identifies the authoritative package sources
+3. Cross-references between tracked docs are consistent
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

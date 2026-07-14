@@ -2,10 +2,7 @@
 """docs MCP server — WorkBuddy-native context7 substitute.
 
 Fetches just-in-time library documentation from package registries (npm, pypi)
-via curl. Replaces LazyCodex's context7 MCP (an external HTTP doc service). This
-is a lighter substitute: resolve a library name -> fetch its README/description.
-See docs/lazybuddy-known-gaps.md G-003.
-
+via curl. This is a lightweight resolver: resolve a library name -> fetch its README/description.
 For free-form web search, the agent should use its native WebSearch/WebFetch
 tools — this server focuses on structured library-doc resolution (context7's
 core value-add).
@@ -14,6 +11,11 @@ Single-shot JSON-RPC 2.0 over stdio.
 Tools: get_library_docs, list_supported_registries.
 """
 import sys, json, os, subprocess, re
+
+MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if MCP_ROOT not in sys.path:
+    sys.path.insert(0, MCP_ROOT)
+from jsonrpc import serve
 
 CWD = os.environ.get("CWD", ".")
 CURL = None
@@ -30,7 +32,7 @@ def fetch(url, timeout=20):
     if not CURL:
         return None, "curl not available"
     try:
-        r = subprocess.run([CURL, "-sSL", "--max-time", str(timeout), "-A", "lazybuddy-docs/0.15.0-alpha.2", url],
+        r = subprocess.run([CURL, "-sSL", "--max-time", str(timeout), "-A", "lazybuddy-docs/0.16.0-alpha.1", url],
                            capture_output=True, text=True, timeout=timeout + 5)
         if r.returncode == 0 and r.stdout:
             return r.stdout, None
@@ -144,29 +146,24 @@ def _better(a, b):
     return len(da) > len(db)
 
 
-def main():
-    raw = sys.stdin.read()
-    try:
-        req = json.loads(raw)
-    except Exception:
-        print(json.dumps({"jsonrpc": "2.0", "id": 0, "error": {"code": -32700, "message": "parse error"}}))
-        return
-
+def handle(req, notification):
     method = req.get("method", "")
     rid = req.get("id", 0)
     params = req.get("params", {})
 
     def reply(j):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}), flush=True)
 
     def err(m):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}), flush=True)
 
     def tool_result(text):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "docs", "version": "0.15.0-alpha.2"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "docs", "version": "0.16.0-alpha.1"}})
         return
 
     if method == "tools/list":
@@ -231,6 +228,10 @@ def main():
         return
 
     err("unsupported method: " + method)
+
+
+def main():
+    serve(handle)
 
 
 if __name__ == "__main__":

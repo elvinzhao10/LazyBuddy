@@ -2,11 +2,10 @@
 name: lazy-ultrawork
 description: "Binding high-precision mode. Tier triage (LIGHT/HEAVY), PIN-RED-GREEN-SURFACE-CLEAN loop, binding reviewer gate, evidence-grade rigor."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # ultrawork
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/ultrawork/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 <ultrawork-mode>
 
@@ -127,7 +126,7 @@ Until every success criterion PASSES with its evidence captured:
 2. **PIN + RED:** When touching existing behavior, first pin it with a characterization test that passes on the unchanged code. Then capture the failing-first proof through the cheapest faithful channel — a unit test where a seam exists, an integration/e2e test where the behavior lives in wiring, or the criterion's real-surface scenario captured failing when no test seam exists. It must fail for the RIGHT reason (not a syntax error, not a missing import). Paste RED output into the notepad. No production code yet.
 3. **GREEN:** Write the SMALLEST production change that flips RED→GREEN. Re-run the proof. Capture GREEN output. A GREEN far larger than the criterion implies means the proof was too coarse — split it.
 4. **SURFACE:** Run the real-surface proof the criterion named, end-to-end, yourself. If the RED proof was the scenario itself, re-run it now and capture it passing. Paste the artifact path into the notepad.
-5. **CLEANUP (PAIRED — NEVER SKIP):** The moment a QA scenario spawns any resource, register its teardown as its own task. Every runtime artifact the QA spawned in step 4 MUST be torn down before this step completes: server PIDs, tmux sessions, browser/Playwright contexts, containers, bound ports, temp sockets/files/dirs, QA-only env vars. Append a one-line cleanup receipt to the notepad. No receipt → criterion stays `in_progress`.
+5. **CLEANUP (PAIRED — NEVER SKIP):** The moment a QA scenario spawns any resource, register its teardown as its own task. Every runtime artifact the QA spawned in step 4 MUST be torn down before this step completes: server PIDs, tmux sessions, browser-automation contexts, containers, bound ports, temp sockets/files/dirs, QA-only env vars. Append a one-line cleanup receipt to the notepad. No receipt → criterion stays `in_progress`.
 6. **Verify:** LSP diagnostics clean on changed files + full test suite green (no skipped, no `.only`, no `.skip`, no `xfail` added this turn).
 7. **Mark completed.** Append non-obvious findings / learnings.
 8. **After each increment**, re-run every criterion's scenario. Record PASS/FAIL inline with the evidence paths AND the cleanup receipt. Loop until all PASS.
@@ -267,7 +266,7 @@ The following transition barriers prevent premature state changes while subagent
 - **Don't write final answer while subagents are open.** The root agent must not declare completion or write a final summary while any spawned subagent is still running or has not yet returned its deliverable.
 - **2-silent-wait / escalation at 4 silent responses.** If a subagent produces 2 consecutive turns with no new output, wait silently. If it reaches 4 silent turns, escalate to the user with the subagent's last known state and the blocked deliverable.
 
-See LazyCodex source: ultrawork SKILL.md lines 291-302
+See earlier host implementation source: ultrawork SKILL.md lines 291-302
 
 ## GREEN-step PR/Branch Refresh (v0.9)
 
@@ -278,7 +277,7 @@ Before starting GREEN-dependent work, refresh the PR/branch/issue state:
 - Check PR comments and issue status for new feedback or blockers
 - Re-read the plan to confirm no upstream changes invalidate the current step
 
-See LazyCodex source: ultrawork lines 226-230
+See earlier host implementation source: ultrawork lines 226-230
 
 ## Atomic Commits (v0.9)
 
@@ -290,16 +289,16 @@ Each accepted checkbox = one atomic conventional commit:
 - Description: imperative mood, ≤ 72 chars
 - One commit per completed checkbox — no batching, no squashing unrelated changes
 
-See LazyCodex source: ultrawork lines 330-337
+See earlier host implementation source: ultrawork lines 330-337
 
 ## WorkBuddy-Native Features
 
-- **Agent tool:** Explorer, librarian, plan, and reviewer subagents are spawned via the WorkBuddy Agent tool. Each spawn message is self-contained with TASK/DELIVERABLE/SCOPE/VERIFY and `isolation: true`. This replaces LazyCodex's `multi_agent_v1.spawn_agent` with `fork_context: false`.
-- **TaskCreate/TaskUpdate:** WorkBuddy's native task management replaces LazyCodex `update_plan`. Every atomic step is a task; state transitions are marked with `TaskUpdate` (pending → in_progress → completed).
-- **TaskOutput:** Polling for subagent results uses WorkBuddy's `TaskOutput` tool instead of LazyCodex's `multi_agent_v1.wait_agent`.
-- **Notepad:** The durable notepad is a plain `mktemp` file; append-only discipline is enforced by the operator, not by the tool. The notepad path replaces LazyCodex's `.omo/ulw-loop` state directory for ultrawork sessions.
-- **Manual-QA channels:** Browser channel uses WorkBuddy's `WebFetch` for HTTP-visible surfaces and the WorkBuddy Agent tool for visual surfaces. This adapts LazyCodex's `browser:control-in-app-browser`.
-- **Iteration cap:** The 500-iteration cap (ultrawork mode) / 100 (normal) is documented in the LazyCodex README `$ulw-loop` command description, not in the ultrawork SKILL.md itself; the counter is tracked manually in the notepad.
+- **Agent tool:** Explorer, librarian, plan, and reviewer subagents are spawned via the WorkBuddy Agent tool. Each spawn message is self-contained with TASK/DELIVERABLE/SCOPE/VERIFY and `isolation: true`. This replaces earlier host implementation's `multi_agent_v1.spawn_agent` with `fork_context: false`.
+- **TaskCreate/TaskUpdate:** WorkBuddy's native task management replaces earlier host implementation `update_plan`. Every atomic step is a task; state transitions are marked with `TaskUpdate` (pending → in_progress → completed).
+- **TaskOutput:** Polling for subagent results uses WorkBuddy's `TaskOutput` tool instead of earlier host implementation's `multi_agent_v1.wait_agent`.
+- **Notepad:** The durable notepad is a plain `mktemp` file; append-only discipline is enforced by the operator, not by the tool. The notepad path replaces earlier host implementation's `.lazybuddy/ulw-loop` state directory for ultrawork sessions.
+- **Manual-QA channels:** Browser channel uses WorkBuddy's `WebFetch` for HTTP-visible surfaces and the WorkBuddy Agent tool for visual surfaces. This adapts earlier host implementation's `browser:control-in-app-browser`.
+- **Iteration cap:** The 500-iteration cap (ultrawork mode) / 100 (normal) is documented in the earlier host implementation README `$ulw-loop` command description, not in the ultrawork SKILL.md itself; the counter is tracked manually in the notepad.
 
 ---
-_Adapted from LazyCodex ultrawork/SKILL.md. Preserved verbatim: the PIN→RED→GREEN→SURFACE→CLEAN loop, tier triage rules (LIGHT/HEAVY), the Manual-QA channel taxonomy, the verification gate trigger, the output discipline, and the stop rules. The 9 adversarial classes and the 500/100 iteration caps originate from the LazyCodex `start-work` skill and README respectively (not from the ultrawork source itself) but are cross-referenced here for completeness. Adapted: `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `update_plan` → TaskCreate/TaskUpdate; `multi_agent_v1.wait_agent` → TaskOutput; `create_goal` → inline Goal block; `.omo/` → `.lazybuddy/`; `browser:control-in-app-browser` → WebFetch + Agent tool browser; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; `codegraph_*` / `lsp_*` → WorkBuddy LSP + Grep/Glob tools; `task(…)` / `call_omo_agent(…)` → WorkBuddy Agent tool with self-contained messages. Known losses (v0.9 hardening): subagent dependency transition barriers, GREEN-step PR/branch refresh guidance, and the Commits section were dropped during condensation — see `docs/lazybuddy-known-gaps.md`._
+_This package preserves the PIN→RED→GREEN→SURFACE→CLEAN loop, tier triage rules, Manual-QA channel taxonomy, verification gate trigger, output discipline, and stop rules. WorkBuddy-native tool mappings are documented above. For workflow limitations, record the Manual-QA evidence required by the package-owned verification contract._

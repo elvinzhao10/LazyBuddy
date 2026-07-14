@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # subagent-stop.sh — SubagentStop hook: verify executor evidence before allowing stop.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/components/lazycodex-executor-verify/src/codex-hook.ts
 set -euo pipefail
 
 # --- Helper: manage retry attempts (MUST be defined before use) ---

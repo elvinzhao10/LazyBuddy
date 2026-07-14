@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # subagent-start.sh — SubagentStart hook: record subagent lifecycle start in events.jsonl.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/subagent-start.json
 # Always exits 0.
 set -euo pipefail
 

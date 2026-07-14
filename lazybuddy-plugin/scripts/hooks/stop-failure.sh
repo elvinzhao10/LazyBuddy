@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # stop-failure.sh — StopFailure hook: record failure + output recovery suggestion.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/stop-failure.json
 # Informational only — always exits 0.
 set -euo pipefail
 

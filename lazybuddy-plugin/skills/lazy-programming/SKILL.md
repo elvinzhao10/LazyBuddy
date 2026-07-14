@@ -2,11 +2,10 @@
 name: lazy-programming
 description: "Strict coding discipline for .py/.rs/.ts/.go files. Type system as proof system, parse-don't-validate, branded primitives, exhaustive match, TDD."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # programming
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/programming/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/programming/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -166,12 +165,12 @@ Programming complete — <one-line change summary>
 
 ## WorkBuddy-Native Features
 
-- **Agent tool:** Reference exploration uses WorkBuddy Agent tool with explorer subagents (`isolation: true`) for codebase-wide searches. Librarian subagents handle external API/doc research. This replaces LazyCodex's `multi_agent_v1.spawn_agent` with `agent_type`.
-- **TaskCreate/TaskUpdate:** The TDD loop is tracked via WorkBuddy's native task management: RED test task, GREEN implementation task, REFACTOR task. This replaces LazyCodex's `update_plan`.
-- **Glob/Grep:** File discovery and pattern search use WorkBuddy's Glob and Grep tools instead of LazyCodex's `codegraph_search`/`lsp_*`.
-- **LSP diagnostics:** WorkBuddy's native diagnostic surface; this replaces LazyCodex's `lsp_diagnostics`.
-- **References:** Per-language references live under `${CODEBUDDY_PLUGIN_ROOT}/references/{python,rust,typescript,go}/`. This replaces LazyCodex's `${PLUGIN_ROOT}/references/`.
-- **Companion skills:** The `refactor` and `remove-ai-slops` skills in `skills/` replace LazyCodex's OMO skill loading (`load_skills=[...]`). Invoke them via standard skill activation when code smells fire.
+- **Agent tool:** Reference exploration uses WorkBuddy Agent tool with explorer subagents (`isolation: true`) for codebase-wide searches. Librarian subagents handle external API/doc research. This replaces earlier host implementation's `multi_agent_v1.spawn_agent` with `agent_type`.
+- **TaskCreate/TaskUpdate:** The TDD loop is tracked via WorkBuddy's native task management: RED test task, GREEN implementation task, REFACTOR task. This replaces earlier host implementation's `update_plan`.
+- **Glob/Grep:** File discovery and pattern search use WorkBuddy's Glob and Grep tools instead of direct architecture or navigation provider calls.
+- **LSP diagnostics:** WorkBuddy's native diagnostic surface; this replaces earlier host implementation's `lsp_diagnostics`.
+- **References:** Per-language references live under `${CODEBUDDY_PLUGIN_ROOT}/references/{python,rust,typescript,go}/`. This replaces earlier host implementation's `${PLUGIN_ROOT}/references/`.
+- **Companion skills:** The `refactor` and `remove-ai-slops` skills in `skills/` replace earlier host implementation's local skill loading (`load_skills=[...]`). Invoke them via standard skill activation when code smells fire.
 
 ---
-_Adapted from LazyCodex programming/SKILL.md. Preserved verbatim: the 7 core axioms (deletion ladder, type proofs, parse-don't-validate, branded primitives, exhaustive match, framework trust, TDD), the Red→Green→Refactor loop, Given/When/Then mandate, the test pyramid, the 4 code smells (250 LOC, >3 params, redundant verification, negative naming), the modern toolchain matrix, and the post-write review loop. Adapted: `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `update_plan` → TaskCreate/TaskUpdate; `codegraph_*`/`lsp_*` → Glob/Grep/LSP; `load_skills=[...]` → standard skill activation; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; `.omo/` → `.lazybuddy/`; language references restructured to `${CODEBUDDY_PLUGIN_ROOT}/references/{language}/`._
+_Adapted from earlier host implementation programming/SKILL.md. Preserved verbatim: the 7 core axioms (deletion ladder, type proofs, parse-don't-validate, branded primitives, exhaustive match, framework trust, TDD), the Red→Green→Refactor loop, Given/When/Then mandate, the test pyramid, the 4 code smells (250 LOC, >3 params, redundant verification, negative naming), the modern toolchain matrix, and the post-write review loop. Adapted: `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `update_plan` → TaskCreate/TaskUpdate; direct architecture/navigation calls → Glob/Grep/LSP; `load_skills=[...]` → standard skill activation; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; `.lazybuddy/` → `.lazybuddy/`; language references restructured to `${CODEBUDDY_PLUGIN_ROOT}/references/{language}/`._

@@ -1,25 +1,37 @@
-# LazyBuddy v0.17 Verification Matrix
+# LazyBuddy package verification contract
 
-This package-local matrix supplements the repository [verification matrix](../../docs/lazybuddy-verification-matrix.md). It is self-contained and does not require a LazyTrae checkout during normal CI.
+This contract is package-owned so a copied `lazybuddy-plugin/` can discover
+its verification checks without repository-root documentation.
 
-## Documentation and readiness checks
+## Package checks
 
-| Category | Command | Expected result | Evidence |
-|---|---|---|---|
-| Public status vocabulary | `bash tests/v017-documentation-regression.sh` | Required headings and all seven public readiness statuses are documented | Command output |
-| Package versus host | `bash scripts/lazybuddy-load-check.sh` | Package readiness is reported without claiming host loading or MCP connection | Command output |
-| Existing links | `bash scripts/lazybuddy-docs-check.sh` | Internal Markdown links resolve | JSON summary |
-| Normal CI isolation | `bash scripts/lazybuddy-verify.sh` | Checks are local to this repository; parity is not an operational dependency | JSON summary |
-| Paired release parity | Release-only paired runner with an explicit sibling path | Contract artifacts are compared without global install or host mutation | Release evidence |
+| Verification Step | Command | Expected | Artifact |
+| --- | --- | --- | --- |
+| Package readiness | `bash scripts/lazybuddy-load-check.sh` | `PACKAGE_READINESS=full` or an explained degraded state | command output |
+| Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS` | command output |
+| MCP integration | `bash scripts/lazybuddy-mcp-test.sh` | `MCP test: ALL PASS` | command output |
+| Package verification | `bash scripts/lazybuddy-verify.sh` | JSON with `"all_pass":true` | command output |
+| Documentation contract | `bash tests/v017-documentation-regression.sh` | shared headings and host-boundary policy pass | command output |
 
-## Intentional product differences
+## Capability and host boundary
 
-| Difference class | LazyBuddy contract |
-|---|---|
-| Host integration | CodeBuddy uses its plugin marketplace/UI; WorkBuddy uses a documented UI or local `skills/` import plus manual MCP configuration. |
-| State and path | Runtime state is `.lazybuddy/`; package assets are under `lazybuddy-plugin/`. |
-| Inventory | Eight MCP declarations are packaged. Filesystem and Playwright are not declared by LazyBuddy. |
+Package readiness and doctor validate copied package assets, six local MCP servers,
+the optional-capability policy, and receipt-safe removal rules. They do not prove a
+live CodeBuddy or WorkBuddy host loaded the package, executed a hook, or connected
+an MCP server. A manual host observation in a new session or the applicable host UI
+is still required.
 
-## Safety and host limits
+## Intentional host differences
 
-Package checks and canonical status reports are read-only: they do not activate optional providers, install globally, register MCP, or prove a live host session. Receipt-safe removal preserves host-owned registrations and unknown/tampered/link entries. MCP protocol checks cover malformed JSON, invalid requests, notifications, later valid requests, and stdout purity. The stated cross-product host verification scope is **macOS only**; non-macOS host behavior remains unverified.
+| Difference class | LazyBuddy documentation rule |
+| --- | --- |
+| Host integration | CodeBuddy uses its plugin flow; WorkBuddy uses its UI/marketplace or local skills with manual host connector configuration. |
+| State/path | Receipt-owned tooling roots stay package-local; host-managed paths and `.workbuddy` state are not scanned or removed. |
+| Inventory | Six local MCP servers are bundled. Context7 and `grep_app` are optional export fragments; filesystem and Playwright are not bundled local MCP servers. |
+
+## Scope and paired release evidence
+
+Verification in this matrix is macOS only. Normal CI does not require a
+sibling repository. Release-only paired parity may receive explicitly supplied
+sibling roots to compare documentation or contracts; it is not a runtime,
+installation, or normal-CI dependency.

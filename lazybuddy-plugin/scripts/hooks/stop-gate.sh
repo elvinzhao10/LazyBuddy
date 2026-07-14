@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # stop-gate.sh — Stop hook: prevent premature completion when active run has unchecked work.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/codex-hook.ts
-# Traces to: dev/reference/lazycodex/plugins/omo/components/start-work-continuation/src/boulder-reader.ts
 set -euo pipefail
 
 # Read JSON payload from stdin
@@ -9,7 +7,6 @@ INPUT=$(cat)
 
 # --- Context pressure detection ---
 # If the transcript contains context pressure markers, pass through gracefully.
-# LazyCodex source: start-work-continuation/src/codex-hook.ts lines 52-60
 CONTEXT_PRESSURE_MARKERS=("context compacted" "context_length_exceeded" "skill descriptions were shortened" "context_too_large" "codex ran out of room in the model's context window")
 for marker in "${CONTEXT_PRESSURE_MARKERS[@]}"; do
     if echo "$INPUT" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))" 2>/dev/null | grep -qi "$marker"; then
@@ -19,7 +16,6 @@ done
 
 # --- Stop hook active guard ---
 # If stop_hook_active is true, don't re-block (prevents infinite loops).
-# LazyCodex source: start-work-continuation/src/codex-hook.ts line 8
 STOP_ACTIVE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('stop_hook_active',''))" 2>/dev/null || echo "")
 if [ "$STOP_ACTIVE" = "True" ] || [ "$STOP_ACTIVE" = "true" ]; then
     exit 0
@@ -74,7 +70,6 @@ if [ ! -f "$PLAN_PATH" ]; then
 fi
 
 # Count unchecked checkboxes in ## TODOs and ## Final Verification Wave sections
-# LazyCodex source: boulder-reader.ts lines 76-104 (parsePlanChecklist)
 UNCHECKED=$(python3 -c "
 import sys
 with open('$PLAN_PATH') as f:

@@ -19,7 +19,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-gate-reviewer (Gate Reviewer)
 
@@ -68,11 +67,11 @@ Orchestrator delivers: TASK, EVIDENCE_DIR, PLAN, LEDGER, DIFF, CHANGED_FILES. Re
 - Code review report must explicitly show `remove-ai-slops` and `programming` criterion coverage.
 - Review from user's perspective: infer original want, check shipped artifact satisfies that outcome.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/lazycodex-gate-reviewer.toml`
+- Source: `local project documentation`
 - Key translations:
-  - `.omo/evidence/<goal>-gate-review.md` → `.lazybuddy/evidence/<goal>-gate-review.md`
+  - `.lazybuddy/evidence/<goal>-gate-review.md` → `.lazybuddy/evidence/<goal>-gate-review.md`
   - APPROVE/REJECT binary verdict preserved exactly
   - "assume already failed" adversarial stance preserved
   - Skill loading (`remove-ai-slops`, `programming`) → WorkBuddy skills array

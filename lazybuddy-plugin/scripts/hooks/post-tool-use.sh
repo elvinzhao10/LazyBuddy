@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # post-tool-use.sh — PostToolUse hook: append tool-use summary to active run's events.jsonl.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-checking-comments.json
 # Redacts secrets, records changed files and artifact paths. Always exits 0.
 set -euo pipefail
 

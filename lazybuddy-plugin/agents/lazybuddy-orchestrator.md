@@ -24,7 +24,6 @@ skills:
 memory: true
 isolation: false
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-orchestrator (Sisyphus)
 
@@ -56,9 +55,9 @@ You are Sisyphus, the root workflow coordinator. You own the full lifecycle: rea
 ## Required context files
 
 Before dispatching work, read in order:
-1. `.lazybuddy/runs/<run_id>/state.json` — current workflow state and active session tracking (replaces LazyCodex boulder.json).
+1. `.lazybuddy/runs/<run_id>/state.json` — current workflow state and active session tracking (replaces earlier host implementation boulder.json).
 2. `.lazybuddy/plans/<plan>.md` — the active Prometheus work plan with todos, dependency matrix, QA scenarios, and verification strategy.
-3. `.lazybuddy/runs/<run_id>/events.jsonl` — evidence ledger for resuming and deduplicating completed work (replaces LazyCodex ledger.jsonl).
+3. `.lazybuddy/runs/<run_id>/events.jsonl` — evidence ledger for resuming and deduplicating completed work (replaces earlier host implementation ledger.jsonl).
 4. `.lazybuddy/drafts/<slug>.md` — planner's durable draft with intent routing and decisions (for bootstrap scenarios).
 
 ## Output format
@@ -116,24 +115,24 @@ The orchestrator then routes every DoneClaim to an independent verifier before m
 - After all checkboxes complete, run the Global Review Gate: invoke the `review-work` skill via a lazybuddy-reviewer subagent.
 - Run a debugging audit: name 3+ failure hypotheses, run distinguishing checks, record results.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md` (Sisyphus orchestrator role)
+- Source: `local project documentation` (Sisyphus orchestrator role)
 - Key translated behaviors:
-  - LazyCodex `multi_agent_v1.spawn_agent` → WorkBuddy `Agent` tool
-  - LazyCodex `fork_context: false` → WorkBuddy `isolation: true` on subagent definitions
-  - LazyCodex `call_omo_agent(subagent_type="explorer", ...)` → `Agent(subagent_type="lazybuddy-explorer", ...)`
-  - LazyCodex `.omo/boulder.json` → `.lazybuddy/runs/<run_id>/state.json`
-  - LazyCodex `.omo/plans/` → `.lazybuddy/plans/`
-  - LazyCodex `.omo/start-work/ledger.jsonl` → `.lazybuddy/runs/<run_id>/events.jsonl`
-  - LazyCodex `.omo/evidence/` → `.lazybuddy/runs/<run_id>/evidence/`
-  - LazyCodex Stop/SubagentStop hook → WorkBuddy maxTurns-based continuation with run-state (state.json) resume
+  - earlier host implementation `multi_agent_v1.spawn_agent` → WorkBuddy `Agent` tool
+  - earlier host implementation `fork_context: false` → WorkBuddy `isolation: true` on subagent definitions
+  - earlier host implementation `call_omo_agent(subagent_type="explorer", ...)` → `Agent(subagent_type="lazybuddy-explorer", ...)`
+  - earlier host implementation `.lazybuddy/boulder.json` → `.lazybuddy/runs/<run_id>/state.json`
+  - earlier host implementation `.lazybuddy/plans/` → `.lazybuddy/plans/`
+  - earlier host implementation `.lazybuddy/start-work/ledger.jsonl` → `.lazybuddy/runs/<run_id>/events.jsonl`
+  - earlier host implementation `.lazybuddy/evidence/` → `.lazybuddy/runs/<run_id>/evidence/`
+  - earlier host implementation Stop/SubagentStop hook → WorkBuddy maxTurns-based continuation with run-state (state.json) resume
 - The Sisyphus completion contract (DoneClaim → AdversarialVerify → FullyDone) is preserved exactly.
 
 ## WorkBuddy-native tool usage
 
-- **Agent tool** replaces LazyCodex's `multi_agent_v1` family. Each spawn is a self-contained assignment.
-- **TaskCreate/TaskUpdate/TaskList** replace `.omo/boulder.json` inline task tracking — use them to track subagent lifetimes and completion states alongside the run ledger (state.json).
+- **Agent tool** replaces earlier host implementation's `multi_agent_v1` family. Each spawn is a self-contained assignment.
+- **TaskCreate/TaskUpdate/TaskList** replace `.lazybuddy/boulder.json` inline task tracking — use them to track subagent lifetimes and completion states alongside the run ledger (state.json).
 - **WebFetch/WebSearch** are available for external context gathering when the plan requires researching live docs or contracts — delegate to explorer/librarian subagents when possible.
 - **Write/Edit** tools are available to the orchestrator **only** for `.lazybuddy/` state files (state.json, plan checkboxes, drafts). Product code mutation is exclusively through implementer subagents. NOTE: this boundary is **prose-enforced, not platform-enforced** (`disallowedTools: []` — see known gap G-016), because the orchestrator legitimately needs Write/Edit for state files. Honor it strictly; the PostToolUse hook logs every Write/Edit and reviewers will flag direct product-code edits.
 - **maxTurns: 100** with `memory: true` enables the orchestrator to persist across long-running work cycles, resuming from run state (state.json) on continuation turns.

@@ -2,11 +2,10 @@
 name: lazy-review-work
 description: "Post-implementation review orchestrator. Launches 5 parallel subagents (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner) — all must pass."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # review-work
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/review-work/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -156,12 +155,12 @@ Compile the report: overall verdict, per-agent verdict table with confidence, ag
 
 ## WorkBuddy-Native Features
 
-- **Agent tool:** All 5 subagents are spawned via the WorkBuddy Agent tool with `run_in_background=true`. Oracle agents receive full context in their prompt (TASK/DELIVERABLE/SCOPE/VERIFY). Autonomous agents receive goal, scope, and tool permissions. This replaces LazyCodex's `multi_agent_v1.spawn_agent` with `agent_type`.
-- **TaskOutput:** Polling for subagent completions uses WorkBuddy's `TaskOutput` tool instead of LazyCodex's `multi_agent_v1.wait_agent`. Track spawned task IDs locally and poll with bounded cycles.
+- **Agent tool:** All 5 subagents are spawned via the WorkBuddy Agent tool with `run_in_background=true`. Oracle agents receive full context in their prompt (TASK/DELIVERABLE/SCOPE/VERIFY). Autonomous agents receive goal, scope, and tool permissions. This replaces earlier host implementation's `multi_agent_v1.spawn_agent` with `agent_type`.
+- **TaskOutput:** Polling for subagent completions uses WorkBuddy's `TaskOutput` tool instead of earlier host implementation's `multi_agent_v1.wait_agent`. Track spawned task IDs locally and poll with bounded cycles.
 - **TaskCreate/TaskUpdate:** The orchestrator tracks progress via WorkBuddy's native task management. Each review lane is a separate task; status transitions are marked with TaskUpdate.
-- **Worktree discipline:** Use `git worktree add` for isolated review workspaces. Review evidence is collected from the worktree path, not the main worktree. The `.lazybuddy/` directory replaces LazyCodex's `.omo/` for review artifacts.
-- **Browser testing:** QA Executor uses WebFetch for HTTP-visible surfaces and the WorkBuddy Agent tool with browser instructions for visual surfaces. This replaces LazyCodex's `browser:control-in-app-browser`.
+- **Worktree discipline:** Use `git worktree add` for isolated review workspaces. Review evidence is collected from the worktree path, not the main worktree. The `.lazybuddy/` directory replaces earlier host implementation's `.lazybuddy/` for review artifacts.
+- **Browser testing:** QA Executor uses WebFetch for HTTP-visible surfaces and the WorkBuddy Agent tool with browser instructions for visual surfaces. This replaces earlier host implementation's `browser:control-in-app-browser`.
 - **Retry budget:** 3 retries per lane, tracked manually by the orchestrator. Each retry spawns a fresh, smaller `isolation: true` agent with only the missing deliverable.
 
 ---
-_Adapted from LazyCodex review-work/SKILL.md. Preserved verbatim: the 5-agent taxonomy (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner), the ALL-MUST-PASS verdict logic, the Phase 0/1/2/3 procedure, the per-agent review checklists, the INCONCLUSIVE retry protocol. Adapted: `multi_agent_v1.spawn_agent` + `agent_type` → WorkBuddy Agent tool; `multi_agent_v1.wait_agent` → TaskOutput; `task(...)` / `call_omo_agent(...)` → WorkBuddy Agent tool with self-contained messages; `.omo/` → `.lazybuddy/`; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; `browser:control-in-app-browser` → WebFetch + Agent tool browser; `fork_context: false` → `isolation: true`._
+_Adapted from earlier host implementation review-work/SKILL.md. Preserved verbatim: the 5-agent taxonomy (Goal Verifier, QA Executor, Code Reviewer, Security Auditor, Context Miner), the ALL-MUST-PASS verdict logic, the Phase 0/1/2/3 procedure, the per-agent review checklists, the INCONCLUSIVE retry protocol. Adapted: `multi_agent_v1.spawn_agent` + `agent_type` → WorkBuddy Agent tool; `multi_agent_v1.wait_agent` → TaskOutput; `task(...)` / `call_omo_agent(...)` → WorkBuddy Agent tool with self-contained messages; `.lazybuddy/` → `.lazybuddy/`; `${PLUGIN_ROOT}` → `${CODEBUDDY_PLUGIN_ROOT}`; `browser:control-in-app-browser` → WebFetch + Agent tool browser; `fork_context: false` → `isolation: true`._

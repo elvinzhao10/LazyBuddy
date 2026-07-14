@@ -2,11 +2,10 @@
 name: lazy-init-deep
 description: "Generate hierarchical project memory for the current workspace. Inspects repo structure, identifies language/runtime/test/build commands, generates .lazybuddy/context/ knowledge base."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # init-deep
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -47,7 +46,22 @@ fi
 bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
 ```
 
-This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. Record its exact skills, commands, agents, hooks, and MCP counts in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. Run the load check first, then verify its reported skills, commands, agents, hooks, and MCP declarations before repository discovery. Record the observed package inventory in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+
+### InitDeep readiness evidence
+
+The load check is package readiness only: it does not prove a live host session or MCP connection. Do not enable optional capabilities, select a provider, initialize optional architecture tooling, export MCP configuration, or change optional capability state as part of InitDeep. Those actions require a separate explicit user request.
+
+Record observed, not inferred, readiness evidence in the completion report with these exact fields:
+
+```text
+readiness_result: {load-check result}
+readiness_host: {host/package readiness boundary}
+capability_statuses: {observed read-only status summary}
+optional_policy: {unchanged unless separately explicitly requested}
+receipt_state: {observed receipt/ownership state or not inspected}
+evidence_paths: {load-check output and inspected package paths}
+```
 
 ## Tool Access
 
@@ -114,6 +128,17 @@ Write to `.lazybuddy/context/`:
 - Trim to size limits
 - Verify telegraphic style
 
+### Phase 6: Create the consumer compatibility pointer
+
+After generating or updating `workbuddy.md`, explicitly invoke the consumer helper once:
+
+```bash
+CWD="$PWD" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" \
+  bash "$PLUGIN_ROOT/scripts/ensure-consumer-agents.sh"
+```
+
+The helper creates `AGENTS.md` only when it is absent and reports `AGENTS_STATUS=created`; it preserves an existing regular `AGENTS.md` byte-for-byte and reports `AGENTS_STATUS=preserved`. Do not merge, overwrite, or manually edit an existing `AGENTS.md`. Include the observed created/preserved status in the completion report.
+
 ## Expected Output Artifacts
 
 - `workbuddy.md` at root (50-150 lines, quality-gate passing)
@@ -128,6 +153,7 @@ Write to `.lazybuddy/context/`:
 2. No generic filler content (tested by checking for common phrases)
 3. Hierarchy is correct (child does not repeat parent)
 4. `.lazybuddy/context/` files exist and are parseable
+5. Consumer helper completed after `workbuddy.md` generation, with its created/preserved result recorded
 
 ## Failure Behavior
 
@@ -147,6 +173,13 @@ Files:
 Dirs Analyzed: {N}
 workbuddy.md Created: {N}
 workbuddy.md Updated: {N}
+Consumer AGENTS.md: {created | preserved}
+readiness_result: {load-check result}
+readiness_host: {package readiness only; live host/MCP connection not proven}
+capability_statuses: {observed read-only status summary}
+optional_policy: {unchanged unless separately explicitly requested}
+receipt_state: {observed receipt/ownership state or not inspected}
+evidence_paths: {load-check output and inspected package paths}
 Hierarchy:
   ./workbuddy.md
   └── src/.../workbuddy.md
@@ -154,7 +187,7 @@ Hierarchy:
 
 ## WorkBuddy-Native Features
 
-- **Subagent spawning:** Use WorkBuddy Agent tool for parallel exploration with `isolation: true` (matching LazyCodex `fork_context: false`)
+- **Subagent spawning:** Use WorkBuddy Agent tool for parallel exploration with `isolation: true` (matching earlier host implementation `fork_context: false`)
 - **Skills:** Self-referencing — this is itself a WorkBuddy Skill
 - **Project memory:** Writes to `workbuddy.md` (WorkBuddy-native project memory format)
 - **`.lazybuddy/`:** Context knowledge base goes in the run state directory
@@ -162,4 +195,4 @@ Hierarchy:
 
 ---
 
-_Adapted from LazyCodex init-deep. All semantics preserved; paths adapted to WorkBuddy conventions. `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `AGENTS.md` → `workbuddy.md`; `.omo/` → `.lazybuddy/`._
+_Adapted from earlier host implementation init-deep. All semantics preserved; paths adapted to WorkBuddy conventions. `multi_agent_v1.spawn_agent` → WorkBuddy Agent tool; `AGENTS.md` → `workbuddy.md`; `.lazybuddy/` → `.lazybuddy/`._

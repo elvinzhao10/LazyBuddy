@@ -2,11 +2,10 @@
 name: lazy-ulw-loop
 description: "Verified completion loop for open-ended tasks. Creates goals with binding success criteria, decomposes into evidence-bound steps, runs until all criteria have proof."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # ulw-loop
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/ulw-loop/SKILL.md)
+> **earlier host implementation source:** `local project documentation`
 
 ## Purpose
 
@@ -135,7 +134,7 @@ Seven steering types govern how the loop handles results. Trigger conditions are
 6. **merge_criteria** — two criteria are verified by the same evidence; merge and mark both complete
 7. **revert_last_cycle** — cycle produced regressions or corrupted state; revert changes and re-dispatch
 
-See LazyCodex source: full-workflow.md lines 206-220
+See earlier host implementation source: full-workflow.md lines 206-220
 
 ## Final Quality Gate (v0.9 hardening)
 
@@ -146,7 +145,7 @@ Before declaring completion, run the final quality gate:
 3. **Evidence audit** — confirm every criterion has real-surface evidence (not `--dry-run`, not assertion-only); confirm all cleanup receipts are recorded
 4. Gate-reviewer must return UNCONDITIONAL approval before completion is declared
 
-See LazyCodex source: full-workflow.md lines 183-204
+See earlier host implementation source: full-workflow.md lines 183-204
 
 ## Delegation Model (v0.9)
 
@@ -160,7 +159,7 @@ ATLAS-style task sizing for subagent delegation:
 
 **Wave-based parallelism:** When criteria are independent (no shared files, no state coupling), dispatch them as parallel waves. All workers in a wave share the same `SCOPE` but operate on disjoint files. Wait for the full wave to complete before starting the next wave.
 
-See LazyCodex source: full-workflow.md lines 35-61
+See earlier host implementation source: full-workflow.md lines 35-61
 
 ## WorkBuddy-Native Features
 
@@ -171,4 +170,4 @@ See LazyCodex source: full-workflow.md lines 35-61
 
 ---
 
-_Adapted from LazyCodex ulw-loop. Preserved: goal creation with binding criteria, evidence-backed completion, iteration caps, real-surface proof requirement, "tests alone never prove done" axiom. Adapted: `omo ulw-loop` CLI → inline skill logic + future MCP tools; `.omo/ulw-loop` → `.lazybuddy/ulw-loop/`; Codex subagent tools → WorkBuddy Agent tool._
+_Adapted from earlier host implementation ulw-loop. Preserved: goal creation with binding criteria, evidence-backed completion, iteration caps, real-surface proof requirement, "tests alone never prove done" axiom. Adapted: inline loop workflow → inline skill logic + future MCP tools; `.lazybuddy/ulw-loop` → `.lazybuddy/ulw-loop/`; Codex subagent tools → WorkBuddy Agent tool._

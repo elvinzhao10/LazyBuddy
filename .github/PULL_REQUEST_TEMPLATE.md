@@ -6,14 +6,14 @@
 
 - [ ] Bug fix
 - [ ] New feature
-- [ ] Parity improvement
+- [ ] Compatibility improvement
 - [ ] Documentation
 - [ ] Refactor
 - [ ] Other
 
-## Parity Impact
+## Compatibility Impact
 
-<!-- Does this change LazyCodex parity? Reference the parity ledger if applicable. -->
+<!-- Does this change an existing LazyBuddy workflow, host integration, or documented behavior? -->
 
 ## Verification
 
@@ -21,7 +21,7 @@
 - [ ] `bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh` passes
 - [ ] `bash lazybuddy-plugin/scripts/lazybuddy-verify.sh` passes
 - [ ] No secrets introduced (verified by `lazybuddy-security-check.sh`)
-- [ ] Known gaps updated if parity changed
+- [ ] Known gaps updated if compatibility changed
 - [ ] CHANGELOG updated
 
 ## Related Issues

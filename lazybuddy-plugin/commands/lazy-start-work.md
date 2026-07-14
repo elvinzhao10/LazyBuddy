@@ -35,7 +35,7 @@ Orchestrate plan execution. The orchestrator reads a plan, bootstraps run state,
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

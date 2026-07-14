@@ -34,6 +34,11 @@ check() {
     fi
 }
 
+validator_reports_failure() {
+    local output="$1"
+    printf '%s\n' "$output" | grep -qiE 'validation[[:space:]]+(failed|failure)|found[[:space:]]+[1-9][0-9]*[[:space:]]+errors?|(^|[^[:alnum:]])errors?[[:space:]]*:|status code [45][0-9]{2}|HTTP(/[0-9.]+)?[[:space:]]+[45][0-9]{2}'
+}
+
 echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
 echo ""
@@ -107,7 +112,7 @@ fi
 
 if command -v codebuddy >/dev/null 2>&1; then
     if validator_output=$(codebuddy plugin validate "$PLUGIN_ROOT" 2>&1); then
-        if printf '%s\n' "$validator_output" | grep -qiE 'validation failed|found [0-9]+ error'; then
+        if validator_reports_failure "$validator_output"; then
             check "CodeBuddy manifest validator" "$validator_output"
         else
             check "CodeBuddy manifest validator" ok
@@ -150,6 +155,66 @@ if [ -f "${PLUGIN_ROOT}/.mcp.json" ]; then
     fi
 else
     check ".mcp.json exists" "missing"
+fi
+
+if contract_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+import hashlib
+import json
+import os
+import sys
+
+root = sys.argv[1]
+contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
+digest_path = contract_path + ".sha256"
+policy_path = os.path.join(root, "tooling", "lazybuddy_policy.py")
+try:
+    with open(contract_path, "rb") as handle:
+        contract_bytes = handle.read()
+    with open(digest_path, encoding="utf-8") as handle:
+        expected_digest = handle.read().split()[0]
+    contract = json.loads(contract_bytes)
+    if hashlib.sha256(contract_bytes).hexdigest() != expected_digest:
+        raise ValueError("contract digest mismatch")
+    if contract.get("schema") != "lazy-series.automatic-tooling.contract" or contract.get("schema_version") != 1:
+        raise ValueError("contract schema mismatch")
+    if not os.path.isfile(policy_path):
+        raise ValueError("provider policy adapter missing")
+except (OSError, IndexError, ValueError, json.JSONDecodeError) as exc:
+    raise SystemExit(str(exc))
+print("ok")
+PY
+); then
+    check "Automatic tooling contract and provider adapter" ok
+else
+    check "Automatic tooling contract and provider adapter" "$contract_result"
+fi
+
+if readiness_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+import json
+import os
+import subprocess
+import sys
+
+root = sys.argv[1]
+adapter = os.path.join(root, "tooling", "lazybuddy_capability_readiness.py")
+try:
+    completed = subprocess.run(
+        [sys.executable, "-B", adapter, "readiness-report", "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+except subprocess.CalledProcessError as error:
+    raise SystemExit(error.stderr.strip() or "canonical readiness report failed")
+records = json.loads(completed.stdout).get("records")
+if not isinstance(records, list) or len(records) != 9:
+    raise SystemExit("canonical readiness report did not return nine records")
+print("ok")
+PY
+); then
+    check "Canonical capability readiness report" ok
+else
+    check "Canonical capability readiness report" "$readiness_result"
 fi
 
 if hook_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
@@ -274,8 +339,8 @@ if not isinstance(servers, dict):
     print("mcpServers must be an object")
     sys.exit(1)
 
-if len(servers) != 8:
-    errors.append(f"mcp server count is {len(servers)}, expected 8")
+if len(servers) != 6:
+    errors.append(f"mcp server count is {len(servers)}, expected 6")
 
 for name, server in sorted(servers.items()):
     if server.get("command") != "bash":
@@ -310,12 +375,22 @@ if errors:
 print("ok")
 PY
 ); then
-    check "MCP server scripts (8 executable)" ok
+    check "MCP server scripts (6 executable)" ok
 else
-    check "MCP server scripts (8 executable)" "${mcp_result}"
+    check "MCP server scripts (6 executable)" "${mcp_result}"
 fi
 
-# 7. Placeholder commands (8)
+if [ -d "${PLUGIN_ROOT}/commands" ]; then
+    command_count=$(find "${PLUGIN_ROOT}/commands" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')
+    if [ "$command_count" -eq 14 ]; then
+        check "Command definitions (14)" ok
+    else
+        check "Command definitions (14)" "found: ${command_count}"
+    fi
+else
+    check "Command definitions (14)" "directory missing"
+fi
+
 EXPECTED_COMMANDS="lazy-init-deep lazy-ulw-plan lazy-start-work lazy-ulw-loop lazy-verifier lazy-reviewer lazy-librarian lazy-migration-planner"
 for cmd in $EXPECTED_COMMANDS; do
     if [ -f "${PLUGIN_ROOT}/commands/${cmd}.md" ]; then
@@ -325,7 +400,6 @@ for cmd in $EXPECTED_COMMANDS; do
     fi
 done
 
-# 8. Placeholder skills (8)
 EXPECTED_SKILLS="lazy-init-deep lazy-ulw-plan lazy-start-work lazy-ulw-loop lazy-verifier lazy-reviewer lazy-librarian lazy-migration-planner"
 for skill in $EXPECTED_SKILLS; do
     if [ -f "${PLUGIN_ROOT}/skills/${skill}/SKILL.md" ]; then
@@ -335,7 +409,6 @@ for skill in $EXPECTED_SKILLS; do
     fi
 done
 
-# 9. Empty dirs check — must have real content OR .gitkeep
 for dir in agents mcp scripts schemas tests docs; do
     file_count=$(find "${PLUGIN_ROOT}/${dir}" -maxdepth 1 -type f ! -name '.gitkeep' 2>/dev/null | wc -l | tr -d ' ')
     if [ "$file_count" -gt 0 ]; then
@@ -347,8 +420,7 @@ for dir in agents mcp scripts schemas tests docs; do
     fi
 done
 
-# 10. Validation scripts exist and are executable
-for script in lazybuddy-smoke-test.sh lazybuddy-docs-check.sh lazybuddy-parity-check.sh; do
+for script in lazybuddy-smoke-test.sh lazybuddy-docs-check.sh; do
     if [ -f "${PLUGIN_ROOT}/scripts/${script}" ]; then
         if [ -x "${PLUGIN_ROOT}/scripts/${script}" ]; then
             check "Script executable: ${script}" ok

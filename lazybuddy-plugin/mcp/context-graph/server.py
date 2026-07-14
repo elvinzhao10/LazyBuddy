@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""context-graph MCP server — WorkBuddy-native codegraph substitute.
+"""context-graph MCP server — heuristic fallback when real CodeGraph is disabled.
 
-Provides blast-radius / dependency / symbol analysis via grep (heuristic, not a
-full call graph). Replaces LazyCodex's codegraph MCP (which wraps an external
-binary). See docs/lazybuddy-known-gaps.md G-003.
+Provides blast-radius / dependency / symbol analysis via grep. It is heuristic,
+not a full semantic call graph or the optional real CodeGraph MCP capability.
 
 Single-shot JSON-RPC 2.0 over stdio (same pattern as run-ledger).
 Tools: blast_radius, file_deps, symbol_search, symbol_refs, repo_overview.
@@ -15,6 +14,7 @@ MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if MCP_ROOT not in sys.path:
     sys.path.insert(0, MCP_ROOT)
 from path_boundary import PathBoundaryError, resolve_repo_path
+from jsonrpc import serve
 
 
 USE_RG = shutil.which("rg") is not None
@@ -49,29 +49,24 @@ def stem(path):
     return b
 
 
-def main():
-    raw = sys.stdin.read()
-    try:
-        req = json.loads(raw)
-    except Exception:
-        print(json.dumps({"jsonrpc": "2.0", "id": 0, "error": {"code": -32700, "message": "parse error"}}))
-        return
-
+def handle(req, notification):
     method = req.get("method", "")
     rid = req.get("id", 0)
     params = req.get("params", {})
 
     def reply(j):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}), flush=True)
 
     def err(m):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}), flush=True)
 
     def tool_result(text):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "context-graph", "version": "0.15.0-alpha.2"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "context-graph", "version": "0.16.0-alpha.1"}})
         return
 
     if method == "tools/list":
@@ -190,6 +185,10 @@ def main():
         return
 
     err("unsupported method: " + method)
+
+
+def main():
+    serve(handle)
 
 
 if __name__ == "__main__":

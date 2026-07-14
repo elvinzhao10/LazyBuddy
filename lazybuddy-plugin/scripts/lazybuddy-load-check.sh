@@ -6,6 +6,7 @@ PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 python3 - "$PLUGIN_ROOT" <<'PY'
 import json
 import os
+import subprocess
 import sys
 
 root = os.path.realpath(sys.argv[1])
@@ -121,7 +122,7 @@ else:
     print("UNCHECKED marketplace metadata: not packaged with this installed plugin root")
 
 count_files("skills", skills_dir, 14, lambda base, name: name == "SKILL.md" and os.path.basename(base).startswith("lazy-"))
-count_files("commands", os.path.join(root, "commands"), 15, lambda _base, name: name.endswith(".md"))
+count_files("commands", os.path.join(root, "commands"), 14, lambda _base, name: name.endswith(".md"))
 count_files("agents", os.path.join(root, "agents"), 13, lambda _base, name: name.endswith(".md"))
 
 hooks = load_json(os.path.join(root, "hooks", "hooks.json"), "hooks configuration")
@@ -134,7 +135,49 @@ mcp = load_json(os.path.join(root, ".mcp.json"), "MCP configuration")
 if mcp is not None:
     actual = mcp.get("mcpServers")
     count = len(actual) if isinstance(actual, dict) else -1
-    result("PASS" if count == 8 else "FAIL", "MCP servers", f"{count}/8")
+    result("PASS" if count == 6 else "FAIL", "MCP servers", f"{count}/6")
+
+contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
+contract_digest_path = contract_path + ".sha256"
+policy_adapter_path = os.path.join(root, "tooling", "lazybuddy_policy.py")
+readiness_adapter_path = os.path.join(root, "tooling", "lazybuddy_capability_readiness.py")
+try:
+    import hashlib
+    with open(contract_path, "rb") as handle:
+        contract_bytes = handle.read()
+    with open(contract_digest_path, encoding="utf-8") as handle:
+        expected_digest = handle.read().split()[0]
+    contract = json.loads(contract_bytes)
+    if (
+        hashlib.sha256(contract_bytes).hexdigest() != expected_digest
+        or contract.get("schema") != "lazy-series.automatic-tooling.contract"
+        or contract.get("schema_version") != 1
+    ):
+        raise ValueError("invalid contract digest or schema")
+except (FileNotFoundError, IndexError, OSError, ValueError, json.JSONDecodeError) as exc:
+    result("FAIL", "automatic tooling contract", str(exc))
+else:
+    result("PASS", "automatic tooling contract", "verified")
+
+if os.path.isfile(policy_adapter_path):
+    result("PASS", "provider policy adapter", "present")
+else:
+    result("FAIL", "provider policy adapter", "missing")
+
+try:
+    report = subprocess.run(
+        [sys.executable, "-B", readiness_adapter_path, "readiness-report", "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    records = json.loads(report.stdout).get("records")
+    if not isinstance(records, list) or len(records) != 9:
+        raise ValueError("canonical report did not return nine records")
+except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
+    result("FAIL", "canonical capability readiness", str(exc))
+else:
+    result("PASS", "canonical capability readiness", "read-only report available; host and MCP connection remain unchecked")
 
 if failed:
     print("PACKAGE_READINESS=failed")

@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # session-start.sh — SessionStart hook: detect active run, load summary, warn if memory missing.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/session-start-loading-project-rules.json
 set -euo pipefail
 
 INPUT=$(cat 2>/dev/null || echo "{}")
 CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd','.'))" 2>/dev/null || echo ".")
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
-echo "(LazyBuddy v0.15.0-alpha.2): Session starting — checking project state..."
+echo "(LazyBuddy v0.16.0-alpha.1): Session starting — checking project state..."
 
 if [ ! -d "$PLUGIN_ROOT" ] || [ ! -x "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh" ]; then
     echo "SESSIONSTART_READINESS=failed reason=plugin-root-unavailable" >&2

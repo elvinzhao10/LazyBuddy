@@ -1,0 +1,89 @@
+{
+  "schema": "lazy-series.automatic-tooling.contract",
+  "schema_version": 1,
+  "contract_version": "1.1.0",
+  "providers": {
+    "ripgrep": { "kind": "local_binary", "commands": ["rg"], "network": "none" },
+    "ast_grep": { "kind": "local_binary", "commands": ["sg"], "network": "none" },
+    "lsp": { "kind": "local_service", "commands": ["typescript-language-server", "basedpyright-langserver"], "network": "none" },
+    "codegraph": { "kind": "local_service", "commands": ["codegraph"], "network": "none" },
+    "context7": { "kind": "remote_mcp", "endpoint": "https://mcp.context7.com/mcp", "network": "explicit" },
+    "web": { "kind": "host_tool", "network": "host_governed" },
+    "grep_app": { "kind": "remote_mcp", "endpoint": "https://mcp.grep.app", "network": "explicit" },
+    "playwright": { "kind": "local_mcp", "package": "@playwright/mcp@0.0.78", "network": "explicit" },
+    "filesystem": { "kind": "local_mcp", "package": "@modelcontextprotocol/server-filesystem@2026.7.10", "network": "none" }
+  },
+  "capabilities": {
+    "local_search": { "id": "local_search", "providers": ["ripgrep"], "fallbacks": [] },
+    "structural_search": { "id": "structural_search", "providers": ["ast_grep"], "fallbacks": ["local_search"] },
+    "code_navigation": { "id": "code_navigation", "providers": ["lsp"], "fallbacks": ["structural_search", "local_search"] },
+    "architecture_search": { "id": "architecture_search", "providers": ["codegraph"], "fallbacks": ["code_navigation", "structural_search"] },
+    "documentation_search": { "id": "documentation_search", "providers": ["context7"], "fallbacks": ["web_search"] },
+    "web_search": { "id": "web_search", "providers": ["web"], "fallbacks": [] },
+    "external_code_search": { "id": "external_code_search", "providers": ["grep_app"], "fallbacks": ["web_search"] },
+    "browser_automation": { "id": "browser_automation", "providers": ["playwright"], "fallbacks": [] },
+    "filesystem_read": { "id": "filesystem_read", "providers": ["filesystem"], "fallbacks": ["local_search"] }
+  },
+  "permissions": {
+    "default": "deny",
+    "local_read": "allowed_within_workspace",
+    "network": "explicit_provider_selection",
+    "browser": "explicit_provider_selection",
+    "filesystem": "read_only_and_project_scoped"
+  },
+  "provenance": {
+    "source": "lazy-series-automatic-tooling",
+    "release": "0.16.0-alpha.1",
+    "provider_pinning": "packages are version-pinned; remote endpoints are declared, not downloaded during validation",
+    "integrity": "sha256_sidecar_required"
+  },
+  "automatic_provisioning": {
+    "local_foundation": {
+      "providers": ["ripgrep", "ast_grep", "lsp"],
+      "install_and_use": "allowed_without_interruption",
+      "destination": "private_receipt_owned_lazyseries_toolpack",
+      "lsp": "matching_workspace_language_only",
+      "download": "version_pinned_normal_size_only",
+      "forbid_writes": ["target_repository_dependencies", "target_repository_lockfiles", "host_configuration"]
+    },
+    "ask_once": {
+      "providers": ["codegraph", "playwright"],
+      "conditions": ["unusual_large_tooling_or_models", "outside_root_access"]
+    },
+    "remote": {
+      "costs": "ask_once",
+      "credentials_or_auth": "ask_once",
+      "writes": "ask_once",
+      "egress": "explicit_provider_selection"
+    }
+  },
+  "operating_bounds": {
+    "supported_os": ["darwin"],
+    "other_os": "unverified",
+    "downloads": "automatic only for pinned normal-size local foundation providers in a private receipt-owned LazySeries toolpack; all other downloads require ask-once approval",
+    "download_scope": "automatic downloads stay in the private receipt-owned LazySeries toolpack",
+    "workspace_scope": "project root and explicitly selected paths only; automatic provisioning never writes target repository dependencies, lockfiles, or host configuration"
+  },
+  "timeouts": {
+    "local_ms": 10000,
+    "remote_ms": 30000,
+    "browser_ms": 30000,
+    "download_ms": 120000
+  },
+  "error_types": {
+    "unknown_schema": "AUTOMATIC_TOOLING_UNKNOWN_SCHEMA",
+    "unknown_provider": "AUTOMATIC_TOOLING_UNKNOWN_PROVIDER",
+    "unknown_capability": "AUTOMATIC_TOOLING_UNKNOWN_CAPABILITY",
+    "checksum_mismatch": "AUTOMATIC_TOOLING_CHECKSUM_MISMATCH",
+    "permission_denied": "AUTOMATIC_TOOLING_PERMISSION_DENIED",
+    "provider_unavailable": "AUTOMATIC_TOOLING_PROVIDER_UNAVAILABLE",
+    "timeout": "AUTOMATIC_TOOLING_TIMEOUT",
+    "egress_denied": "AUTOMATIC_TOOLING_EGRESS_DENIED"
+  },
+  "cost_egress_data_policy": {
+    "cost": "no paid provider is selected by default; host-governed costs require host approval",
+    "egress": "no network request before explicit provider selection; remote requests obey host policy",
+    "data": "send the minimum request data required by the selected provider; never persist credentials in project state",
+    "telemetry": "none added by this contract"
+  }
+}

@@ -1,5 +1,24 @@
 # LazyBuddy Plugin Changelog
 
+> **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
+
+## v0.16.0-alpha.1 — LazySeries tooling foundation (2026-07-12)
+
+- Added the package-owned, local-first tooling foundation: host-or-owned
+  `rg`/`sg`, repository-native verification, read-only TypeScript/JavaScript
+  and Python LSP navigation, and explicitly enabled real CodeGraph.
+- Added disabled-by-default Context7 and experimental `grep_app` registration
+  fragments. They never alter host configuration or persist credentials.
+- Kept all tooling lifecycle state receipt-owned, with safe uninstall and no
+  LazyCodex/OmO operational dependency.
+
+## v0.15.0-alpha.3 — Self-contained package cleanup (2026-07-12)
+
+- Released package-only documentation contracts: copied plugin validation no
+  longer depends on repository-root `docs/` or `dev/`.
+- Updated manifest, marketplace, MCP server, hook, and verification metadata
+  to `0.15.0-alpha.3`.
+
 ## v0.15.0-alpha.2 — Host Contract and Release Metadata Audit (2026-07-11)
 
 - Clarified CodeBuddy plugin loading, WorkBuddy marketplace/session verification, and the verified local Skill-import/manual-MCP fallback.
@@ -8,7 +27,7 @@
 
 ## v0.15.0-alpha.1 — Fresh Workspace Load Check (2026-07-11)
 
-- Added an exact 14-skill, 15-command, 13-agent, 12-hook, and 8-MCP readiness check.
+- Added an exact 14-skill, 14-command, 13-agent, 12-hook, and 6-MCP readiness check.
 - Run the check during onboarding and from the host-executed SessionStart hook, so a newly opened repository reports partial plugin loading immediately.
 
 ## v0.12.0 — Release Hardening (2026-07-09)

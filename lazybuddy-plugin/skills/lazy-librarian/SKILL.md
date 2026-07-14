@@ -2,11 +2,10 @@
 name: lazy-librarian
 description: "Update project memory after accepted changes: workbuddy.md, command index, parity ledger, known gaps, risk register."
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # librarian
 
-> **LazyCodex source:** [dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md) (update mode concept — modify existing + create new where warranted) and the librarian agent role from [dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md](../../../dev/reference/lazycodex/plugins/omo/skills/start-work/SKILL.md) (knowledge-management agent).
+> **earlier host implementation source:** `local project documentation` (update mode concept — modify existing + create new where warranted) and the librarian agent role from `local project documentation` (knowledge-management agent).
 
 ## Purpose
 
@@ -57,7 +56,7 @@ Apply updates to each file in priority order. Use `Edit` when the file exists; u
 Follow the init-deep update-mode semantics:
 - **STRUCTURE** section: update only if directory layout changed
 - **WHERE TO LOOK** table: add entries for new modules; remove entries for deleted modules
-- **CODE MAP** table: add symbols that were introduced; remove symbols that were deleted. Update ref counts if LSP/codegraph revealed changes
+- **CODE MAP** table: add symbols that were introduced; remove symbols that were deleted. Update ref counts when canonical navigation or architecture evidence reveals changes
 - **CONVENTIONS** section: add new conventions; strike deprecated ones
 - **ANTI-PATTERNS** section: add newly discovered anti-patterns; remove those no longer observed
 - **UNIQUE STYLES** section: add if the change introduced a project-specific style
@@ -120,7 +119,7 @@ This is mandatory — do not skip. The CHANGELOG is the user-facing record of wh
 
 ### 3. Guard: never rewrite the canonical method map
 
-The canonical method map (`.lazybuddy/canonical-method-map.md`) is the authoritative architecture summary. It is generated from repo evidence — LSP symbol inventory, codegraph call graphs, module boundaries. **Only update it when the repo structure changed**, not when conventions, notes, or usage patterns changed.
+The canonical method map (`.lazybuddy/canonical-method-map.md`) is the authoritative architecture summary. It is generated from repository evidence, navigation inventories, dependency relationships, and module boundaries. **Only update it when the repo structure changed**, not when conventions, notes, or usage patterns changed.
 
 Before touching the method map, verify the trigger:
 - Was a new top-level module created or removed? → Update module entry
@@ -129,7 +128,7 @@ Before touching the method map, verify the trigger:
 
 If none of these hold, record `"canonical_map_unchanged": true` in the parity ledger and move on.
 
-**v0.9 hardening:** The canonical method map is regenerated ONLY when `dev/reference/lazycodex/` evidence changes AND the diff justifies a structural update. Conventions, usage notes, and WorkBuddy-specific adaptations recorded in `workbuddy.md` or the parity ledger do NOT trigger a method map rewrite. The method map is a mirror of the LazyCodex architecture, not a design document.
+**v0.9 hardening:** The canonical method map is regenerated ONLY when `local project documentation` evidence changes AND the diff justifies a structural update. Conventions, usage notes, and WorkBuddy-specific adaptations recorded in `workbuddy.md` or the parity ledger do NOT trigger a method map rewrite. The method map is a mirror of the earlier host implementation architecture, not a design document.
 
 ### 4. Post-accept update scope (v0.9)
 
@@ -216,7 +215,7 @@ The librarian now writes memory update records through the state/ script layer, 
 - **TaskCreate/TaskUpdate:** Track each memory file update as a task step. Mark `in_progress` when starting a file, `completed` when done.
 - **Read/Write/Edit discipline:** Use `Read` to inspect every file before modifying. Use `Edit` for in-place changes. Use `Write` only for new files.
 - **Subdirectory parallelism:** When multiple subdirectory `workbuddy.md` files need updating, use the WorkBuddy Agent tool to spawn parallel librarian subagents — one per subdirectory — with `isolation: true` and the specific subdirectory diff as context.
-- **Parity ledger:** All `.lazybuddy/` state paths use the WorkBuddy-native directory convention instead of LazyCodex `.omo/`.
+- **Parity ledger:** All `.lazybuddy/` state paths use the WorkBuddy-native directory convention instead of earlier host implementation `.lazybuddy/`.
 
 ---
-_Adapted from LazyCodex init-deep update mode (modify existing, create new where warranted, never blind-regenerate) and the librarian agent role from start-work (external docs, knowledge management, read-mostly curation). The canonical method map guard is a LazyBuddy pattern: the architecture summary is repo-evidence-derived, never hand-curated. Adapted: `AGENTS.md` → `workbuddy.md`; `.omo/` → `.lazybuddy/`; `multi_agent_v1` → WorkBuddy Agent tool; `call_omo_agent(librarian)` → WorkBuddy Agent tool with librarian role in message._
+_Adapted from earlier host implementation init-deep update mode (modify existing, create new where warranted, never blind-regenerate) and the librarian agent role from start-work (external docs, knowledge management, read-mostly curation). The canonical method map guard is a LazyBuddy pattern: the architecture summary is repo-evidence-derived, never hand-curated. Adapted: `AGENTS.md` → `workbuddy.md`; `.lazybuddy/` → `.lazybuddy/`; `multi_agent_v1` → WorkBuddy Agent tool; `call_omo_agent(librarian)` → WorkBuddy Agent tool with librarian role in message._

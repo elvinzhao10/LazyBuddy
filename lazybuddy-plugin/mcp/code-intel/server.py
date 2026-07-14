@@ -2,9 +2,8 @@
 """code-intel MCP server — WorkBuddy-native LSP substitute.
 
 Provides diagnostics (runs the project's real linter/typechecker) plus heuristic
-symbol tools (find_references, goto_definition, symbols) via grep. Replaces
-LazyCodex's lsp MCP (a real LSP daemon) — this is a lighter, tooling-driven
-substitute. See docs/lazybuddy-known-gaps.md G-003.
+symbol tools (find_references, goto_definition, symbols) via grep. This is a
+lighter, tooling-driven substitute.
 
 NOT a real LSP: no go-to-definition via language server, no workspace rename.
 diagnostics runs actual linters; symbol ops are grep heuristics.
@@ -19,6 +18,7 @@ MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if MCP_ROOT not in sys.path:
     sys.path.insert(0, MCP_ROOT)
 from path_boundary import resolve_repo_path
+from jsonrpc import serve
 
 USE_RG = shutil.which("rg") is not None
 EXCLUDES = [".git", "node_modules", "dist", "build", ".next", ".lazybuddy", "reference", ".workbuddy"]
@@ -109,29 +109,24 @@ def detect_and_run_diagnostics(path):
     return out
 
 
-def main():
-    raw = sys.stdin.read()
-    try:
-        req = json.loads(raw)
-    except Exception:
-        print(json.dumps({"jsonrpc": "2.0", "id": 0, "error": {"code": -32700, "message": "parse error"}}))
-        return
-
+def handle(req, notification):
     method = req.get("method", "")
     rid = req.get("id", 0)
     params = req.get("params", {})
 
     def reply(j):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}), flush=True)
 
     def err(m):
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}))
+        if not notification:
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}), flush=True)
 
     def tool_result(text):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "0.15.0-alpha.2"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "0.16.0-alpha.1"}})
         return
 
     if method == "tools/list":
@@ -200,6 +195,10 @@ def main():
         return
 
     err("unsupported method: " + method)
+
+
+def main():
+    serve(handle)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # pre-tool-use.sh — PreToolUse hook: block dangerous operations, enforce deny/ask rules.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/pre-tool-use-enforcing-unlimited-goal-budget.json
 # Applies LazyBuddy's host-neutral deny/ask policy.
 set -euo pipefail
 

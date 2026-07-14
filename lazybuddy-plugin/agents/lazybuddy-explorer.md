@@ -17,7 +17,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-explorer
 
@@ -99,24 +98,24 @@ Before reporting, verify:
 - Cross-validation: confirm findings with at least two independent sources (e.g., Grep + Read, or Glob + Read).
 - After two parallel waves with no new useful matches, stop searching and report what you have. Do not over-search.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/components/ultrawork/agents/explorer.toml`
+- Source: `local project documentation`
 - Key translated behaviors:
-  - LazyCodex `lsp_goto_definition`, `lsp_find_references`, `lsp_symbols`, `lsp_diagnostics` → WorkBuddy does not have native LSP tools; compensate with Grep for symbol/usage searches and Read for definition inspection.
-  - LazyCodex `ast-grep` skill → WorkBuddy does not have ast-grep natively; compensate with Grep using structural regex patterns.
-  - LazyCodex `multi_agent_v1.spawn_agent` → Not applicable for explorer; this is a leaf agent invoked BY the orchestrator/planner, not an invoker.
-  - LazyCodex `fork_context: false` → WorkBuddy `isolation: true` (no parent history).
+  - earlier host implementation `lsp_goto_definition`, `lsp_find_references`, `lsp_symbols`, `lsp_diagnostics` → WorkBuddy does not have native LSP tools; compensate with Grep for symbol/usage searches and Read for definition inspection.
+  - earlier host implementation `ast-grep` skill → WorkBuddy does not have ast-grep natively; compensate with Grep using structural regex patterns.
+  - earlier host implementation `multi_agent_v1.spawn_agent` → Not applicable for explorer; this is a leaf agent invoked BY the orchestrator/planner, not an invoker.
+  - earlier host implementation `fork_context: false` → WorkBuddy `isolation: true` (no parent history).
 - Thoroughness levels (quick/medium/very thorough) and the two-wave retrieval budget are preserved exactly.
 - The `<analysis>` + `<results>` output contract is preserved.
-- LazyCodex's "no scratch files, no emojis, no tool names in prose" constraints are preserved.
+- earlier host implementation's "no scratch files, no emojis, no tool names in prose" constraints are preserved.
 
 ## WorkBuddy-native tool usage
 
-- **Grep** replaces LazyCodex's `rg` for text and pattern search — use it for all content search.
-- **Glob** replaces LazyCodex's `glob`/`find` for file-name discovery.
-- **Read** replaces LazyCodex's `read` for verbatim content inspection.
-- **Bash** replaces LazyCodex's shell access for `git log`, `git blame`, `git show`, `ls`, `find`, and CLI smoke tests.
-- **lite model with low effort** is the WorkBuddy equivalent of LazyCodex's `gpt-5.4-mini` with `low` reasoning effort — fast, cheap, sufficient for search tasks.
+- **Grep** replaces earlier host implementation's `rg` for text and pattern search — use it for all content search.
+- **Glob** replaces earlier host implementation's `glob`/`find` for file-name discovery.
+- **Read** replaces earlier host implementation's `read` for verbatim content inspection.
+- **Bash** replaces earlier host implementation's shell access for `git log`, `git blame`, `git show`, `ls`, `find`, and CLI smoke tests.
+- **lite model with low effort** is the WorkBuddy equivalent of earlier host implementation's `gpt-5.4-mini` with `low` reasoning effort — fast, cheap, sufficient for search tasks.
 - **maxTurns: 40** provides ample budget for 1-2 thorough search waves without overspending on leaf agent turns.
-- LazyCodex's parallel-first tool strategy (fire 3+ independent calls in wave 1) applies directly — WorkBuddy supports parallel tool calls natively.
+- earlier host implementation's parallel-first tool strategy (fire 3+ independent calls in wave 1) applies directly — WorkBuddy supports parallel tool calls natively.

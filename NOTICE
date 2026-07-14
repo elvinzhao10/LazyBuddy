@@ -16,6 +16,27 @@ repository. All implementations are original work based on studying the
 canonical behavior. The SUL governs omo itself; it does not extend to this
 repo's original WorkBuddy-native output.
 
+## Optional v0.16 tooling dependencies
+
+LazyBuddy pins the following tools in package-owned manifests for optional,
+caller-selected provisioning. They are not LazyCodex or omo dependencies and
+are not installed globally or into a target repository. License identifiers
+below are the identifiers published with the pinned package versions; consult
+each linked upstream project for its complete license text and notices.
+
+- `@vscode/ripgrep` 1.18.0, MIT:
+  https://github.com/microsoft/vscode-ripgrep
+- `@ast-grep/cli` 0.44.1, MIT:
+  https://github.com/ast-grep/ast-grep
+- `@colbymchenry/codegraph` 1.4.1, MIT:
+  https://github.com/colbymchenry/codegraph
+- `typescript` 5.9.3, Apache-2.0:
+  https://github.com/microsoft/TypeScript
+- `typescript-language-server` 5.3.0, Apache-2.0:
+  https://github.com/typescript-language-server/typescript-language-server
+- `basedpyright` 1.39.9, MIT:
+  https://github.com/detachhead/basedpyright
+
 The MIT License of the lazycodex reference layer is reproduced below.
 
 ---

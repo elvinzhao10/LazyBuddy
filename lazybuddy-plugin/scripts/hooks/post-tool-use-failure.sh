@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # post-tool-use-failure.sh — PostToolUseFailure hook: append failure event + suggest retry/fallback/blocker.
-# LazyCodex source: dev/reference/lazycodex/plugins/omo/hooks/post-tool-use-failure.json
 # Always exits 0.
 set -euo pipefail
 

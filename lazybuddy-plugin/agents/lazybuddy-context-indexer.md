@@ -18,7 +18,6 @@ skills:
 memory: false
 isolation: true
 ---
-<!-- Derived from omo/lazycodex (MIT, (c) 2026 Yeongyu Kim) -->
 
 # lazybuddy-context-indexer (Context Indexer)
 
@@ -71,15 +70,15 @@ Return three file paths with sizes and entry counts.
 - Directory scoring uses init-deep weights; remove anything generic to the language/framework.
 - No generic advice — any sentence that applies to all projects of this type must be cut.
 
-## LazyCodex mapping
+## earlier host implementation mapping
 
-- Source: `dev/reference/lazycodex/plugins/omo/skills/init-deep/SKILL.md` (Phase 1 discovery agents)
+- Source: `local project documentation` (Phase 1 discovery agents)
 - Key translations:
-  - LazyCodex explore background agents → single-agent Bash/Grep/Glob discovery
-  - LazyCodex scoring matrix and directory decision rules preserved exactly
-  - LazyCodex AGENTS.md format → `.lazybuddy/context/index.md` (same structure)
-  - LazyCodex `--create-new` → full regeneration
-- **Not ported**: LSP/codegraph symbol queries — WorkBuddy uses file-based Grep/Glob discovery.
+  - earlier host implementation explore background agents → single-agent Bash/Grep/Glob discovery
+  - earlier host implementation scoring matrix and directory decision rules preserved exactly
+  - earlier host implementation AGENTS.md format → `.lazybuddy/context/index.md` (same structure)
+  - earlier host implementation `--create-new` → full regeneration
+- **Not ported**: direct navigation and architecture queries — WorkBuddy uses file-based Grep/Glob discovery.
 
 ## WorkBuddy-native tool usage
 

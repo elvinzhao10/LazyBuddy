@@ -36,7 +36,7 @@ Independent evidence verification. Runs the exact verification commands a worker
 
 ## Constitution
 
-Link to command constitution: `../../docs/lazybuddy-command-constitution.md`
+This command is governed by its package-local skill contract below.
 
 Do not claim completion without verification.
 

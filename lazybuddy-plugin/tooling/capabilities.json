@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "owner": "lazybuddy-tooling",
+  "capabilities": {
+    "local_search": [
+      {
+        "command": "rg",
+        "fallback_package": "@vscode/ripgrep@1.18.0",
+        "provider_order": ["host", "owned"]
+      }
+    ],
+    "structural_search": [
+      {
+        "command": "sg",
+        "fallback_package": "@ast-grep/cli@0.44.1",
+        "provider_order": ["host", "owned"]
+      }
+    ],
+    "semantic_navigation": [
+      {
+        "languages": ["javascript", "typescript"],
+        "source_markers": ["js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "tsconfig.json", "jsconfig.json"],
+        "command": "typescript-language-server",
+        "arguments": ["--stdio"],
+        "fallback_packages": ["typescript-language-server@5.3.0", "typescript@5.9.3"],
+        "provider_order": ["project", "host", "owned"]
+      },
+      {
+        "languages": ["python"],
+        "source_markers": ["py", "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"],
+        "command": "basedpyright-langserver",
+        "arguments": ["--stdio"],
+        "fallback_packages": ["basedpyright@1.39.9"],
+        "provider_order": ["project", "host", "owned"]
+      }
+    ],
+    "architecture_exploration": [
+      {
+        "command": "codegraph",
+        "fallback_package": "@colbymchenry/codegraph@1.4.1",
+        "provider_order": ["owned"],
+        "activation": "explicit",
+        "recommend_when": {
+          "supported_source_files": 500,
+          "supported_source_lines": 100000
+        }
+      }
+    ],
+    "library_documentation": [
+      {
+        "name": "context7",
+        "endpoint": "https://mcp.context7.com/mcp",
+        "activation": "explicit",
+        "transport": "remote",
+        "credentials": "environment-only"
+      }
+    ],
+    "external_code_examples": [
+      {
+        "name": "grep_app",
+        "endpoint": "https://mcp.grep.app",
+        "activation": "explicit",
+        "transport": "remote",
+        "experimental": true,
+        "versioning": "unpinned"
+      }
+    ],
+    "repository_verification": [
+      {
+        "kind": "declared-script",
+        "allowlist": ["lint", "typecheck", "test", "build"],
+        "requires_explicit_run_selection": true
+      }
+    ]
+  }
+}

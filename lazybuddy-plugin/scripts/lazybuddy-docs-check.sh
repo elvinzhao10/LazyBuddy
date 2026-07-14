@@ -1,13 +1,4 @@
 #!/bin/bash
-# lazybuddy-docs-check.sh — Broken internal markdown link checker (v0.9)
-#
-# Scans all .md files in docs/ and lazybuddy-plugin/ directories for internal
-# [text](path.md) links. For each link, verifies the target file exists.
-# Outputs a JSON summary. Exit code 0 if no broken links; exit code 1 if broken links found.
-#
-# Usage: ./scripts/lazybuddy-docs-check.sh
-# Env:   CODEBUDDY_PLUGIN_ROOT (if installed), otherwise defaults to script-relative plugin root.
-
 set -euo pipefail
 
 if [ -n "${CODEBUDDY_PLUGIN_ROOT:-}" ]; then
@@ -16,11 +7,12 @@ else
     PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fi
 
-PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 BROKEN=""
 FIRST=true
 TOTAL=0
 BROKEN_COUNT=0
+POLICY_VIOLATIONS=""
+POLICY_COUNT=0
 
 append_broken() {
     local source_file="$1"
@@ -39,8 +31,80 @@ append_broken() {
     BROKEN+="{\"source\":\"${esc_source}\",\"link\":\"${esc_link}\",\"resolved\":\"${esc_resolved}\",\"reason\":\"${esc_reason}\"}"
 }
 
-# Scan markdown files in both docs/ and lazybuddy-plugin/
-for scan_dir in "${PROJECT_ROOT}/docs" "${PLUGIN_ROOT}"; do
+append_policy_violation() {
+    local source_file="$1"
+    local pattern="$2"
+    POLICY_COUNT=$((POLICY_COUNT + 1))
+    if [ -n "$POLICY_VIOLATIONS" ]; then
+        POLICY_VIOLATIONS+=','
+    fi
+    local esc_source="${source_file//\\/\\\\}"; esc_source="${esc_source//\"/\\\"}"
+    local esc_pattern="${pattern//\\/\\\\}"; esc_pattern="${esc_pattern//\"/\\\"}"
+    POLICY_VIOLATIONS+="{\"source\":\"${esc_source}\",\"pattern\":\"${esc_pattern}\"}"
+}
+
+check_active_documentation_policy() {
+    local active_paths=(
+        "${PLUGIN_ROOT}/README.md"
+        "${PLUGIN_ROOT}/skills"
+        "${PLUGIN_ROOT}/agents"
+        "${PLUGIN_ROOT}/commands"
+        "${PLUGIN_ROOT}/templates"
+    )
+    local forbidden_patterns=(
+        '\\.omo(/|[^[:alnum:]_])'
+        'lazycodex'
+        '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)'
+        'lazybuddy-parity-check'
+        'lazy-parity-report'
+        'source-map'
+    )
+    local active_path pattern policy_file
+
+    for active_path in "${active_paths[@]}"; do
+        [ -e "$active_path" ] || continue
+        while IFS= read -r -d '' policy_file; do
+            for pattern in "${forbidden_patterns[@]}"; do
+                if grep -Eiq "$pattern" "$policy_file"; then
+                    append_policy_violation "$policy_file" "$pattern"
+                fi
+            done
+        done < <(find "$active_path" -type f -name '*.md' -print0 2>/dev/null)
+    done
+}
+
+check_init_deep_evidence_contract() {
+    local document key
+    local documents=(
+        "${PLUGIN_ROOT}/skills/lazy-init-deep/SKILL.md"
+        "${PLUGIN_ROOT}/commands/lazy-init-deep.md"
+    )
+    local required_keys=(
+        readiness_result
+        readiness_host
+        capability_statuses
+        optional_policy
+        receipt_state
+        evidence_paths
+    )
+
+    for document in "${documents[@]}"; do
+        [ -f "$document" ] || { append_policy_violation "$document" "missing InitDeep document"; continue; }
+        for key in "${required_keys[@]}"; do
+            grep -Fq "$key" "$document" || append_policy_violation "$document" "missing InitDeep evidence key: $key"
+        done
+    done
+
+    grep -Fq 'load check first' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must load-check first"
+    grep -Fq 'skills, commands, agents, hooks, and MCP declarations' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must verify package inventory and declarations"
+    grep -Fq 'does not prove a live host session or MCP connection' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must not claim live host or MCP connection"
+    grep -Fq 'Do not enable optional capabilities' "${documents[0]}" || append_policy_violation "${documents[0]}" "InitDeep must preserve optional capability state"
+    if grep -Eqi 'automatically enable optional|auto-enable optional|enables optional capabilities' "${documents[@]}"; then
+        append_policy_violation "${documents[0]}" "InitDeep must not claim automatic optional capability activation"
+    fi
+}
+
+for scan_dir in "${PLUGIN_ROOT}"; do
     [ -d "$scan_dir" ] || continue
     while IFS= read -r -d '' md_file; do
         file_dir="$(dirname "$md_file")"
@@ -74,10 +138,13 @@ for scan_dir in "${PROJECT_ROOT}/docs" "${PLUGIN_ROOT}"; do
     done < <(find "$scan_dir" -name "*.md" -print0 2>/dev/null || true)
 done
 
-if [ "$BROKEN_COUNT" -eq 0 ]; then
-    echo "{\"total_links\":${TOTAL},\"broken\":0,\"broken_links\":[]}"
+check_active_documentation_policy
+check_init_deep_evidence_contract
+
+if [ "$BROKEN_COUNT" -eq 0 ] && [ "$POLICY_COUNT" -eq 0 ]; then
+    echo "{\"total_links\":${TOTAL},\"broken\":0,\"broken_links\":[],\"policy_violations\":0}"
     exit 0
 else
-    echo "{\"total_links\":${TOTAL},\"broken\":${BROKEN_COUNT},\"broken_links\":[${BROKEN}]}"
+    echo "{\"total_links\":${TOTAL},\"broken\":${BROKEN_COUNT},\"broken_links\":[${BROKEN}],\"policy_violations\":${POLICY_COUNT},\"policy_details\":[${POLICY_VIOLATIONS}]}"
     exit 1
 fi

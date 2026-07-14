@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# lazybuddy-mcp-test.sh — integration test for all 8 MCP servers.
 # Exercises initialize + tools/list on every server, plus one safe representative
 # tool call per server. Reports pass/fail per server + tool. Exit 0 = all pass.
 #
@@ -48,6 +47,73 @@ rpc() {
     printf '%s' "$json" | bash "$PLUGIN/mcp/$server/server.sh" 2>/dev/null || echo '{}'
 }
 
+check_stream_protocol() {
+    local server="$1"
+    if python3 - "$PLUGIN" "$server" "$CWD" <<'PYEOF'
+import json
+import os
+import subprocess
+import sys
+
+plugin, server, cwd = sys.argv[1:]
+requests = "\n".join((
+    "{bad json",
+    "null",
+    json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}),
+    json.dumps({"jsonrpc": "2.0", "id": 41, "method": "initialize"}),
+    json.dumps({"jsonrpc": "2.0", "id": 42, "method": "tools/list"}),
+)) + "\n"
+environment = os.environ.copy()
+environment["CWD"] = cwd
+environment["CODEBUDDY_PLUGIN_ROOT"] = plugin
+try:
+    completed = subprocess.run(
+        ["bash", os.path.join(plugin, "mcp", server, "server.sh")],
+        input=requests,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+        env=environment,
+        timeout=10,
+        check=False,
+    )
+except subprocess.TimeoutExpired as error:
+    raise SystemExit(f"{server}: stream process timed out and was cleaned up") from error
+if completed.returncode != 0:
+    raise SystemExit(f"{server}: stream process exited {completed.returncode}; stderr={completed.stderr}")
+try:
+    responses = [json.loads(line) for line in completed.stdout.splitlines() if line]
+except json.JSONDecodeError as error:
+    raise SystemExit(f"{server}: stdout was not newline-delimited JSON: {error}") from error
+if len(responses) != 4:
+    raise SystemExit(f"{server}: expected four responses (notification is silent), got {len(responses)}: {responses}")
+assert responses[0]["jsonrpc"] == "2.0"
+assert responses[0]["id"] is None
+assert responses[0]["error"]["code"] == -32700
+assert responses[1]["jsonrpc"] == "2.0"
+assert responses[1]["id"] is None
+assert responses[1]["error"]["code"] == -32600
+assert responses[2]["id"] == 41 and isinstance(responses[2]["result"]["serverInfo"]["name"], str)
+assert responses[3]["id"] == 42 and isinstance(responses[3]["result"]["tools"], list)
+PYEOF
+    then
+        PASS=$((PASS+1)); PASS_LIST+=("$server/stream-protocol")
+    else
+        FAIL=$((FAIL+1)); FAIL_LIST+=("$server/stream-protocol")
+        echo "  FAIL: $server/stream-protocol" >&2
+    fi
+}
+
+check_invalid_tool_params() {
+    if CWD="$CWD" CODEBUDDY_PLUGIN_ROOT="$PLUGIN" bash "$PLUGIN/tests/v017-mcp-params-regression.sh"; then
+        PASS=$((PASS+1)); PASS_LIST+=("tools/call-invalid-params")
+    else
+        FAIL=$((FAIL+1)); FAIL_LIST+=("tools/call-invalid-params")
+        echo "  FAIL: tools/call-invalid-params" >&2
+    fi
+}
+
 tools_call() {
     python3 - "$1" <<'PYEOF'
 import json
@@ -62,13 +128,10 @@ print(json.dumps({
 PYEOF
 }
 
-echo "=== LazyBuddy MCP integration test (8 servers) ==="
+echo "=== LazyBuddy MCP integration test (7 servers) ==="
 echo "Plugin root: $PLUGIN"
 echo ""
 
-# ── Per-server: initialize + tools/list + one safe tool call ──
-
-# 1. run-ledger
 OUT=$(rpc run-ledger '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "run-ledger/initialize" "run-ledger" "$OUT"
 OUT=$(rpc run-ledger '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
@@ -76,40 +139,16 @@ check "run-ledger/tools-list" "create_run" "$OUT"
 OUT=$(rpc run-ledger '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_runs","arguments":{}}}')
 check "run-ledger/list_runs" "runs" "$OUT"
 
-# 2. parity
-OUT=$(rpc parity '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
-check "parity/initialize" "parity" "$OUT"
-OUT=$(rpc parity '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
-check "parity/tools-list" "list_methods" "$OUT"
-if [ -f "$CWD/docs/lazybuddy-parity-ledger.md" ]; then
-    OUT=$(rpc parity '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_methods","arguments":{}}}')
-    check "parity/list_methods" "method\|matched\|adapted" "$OUT"
-else
-    OUT=$(rpc parity '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"lazybuddy-smoke-unknown","arguments":{}}}')
-    check "parity/no-project-ledger" "unknown tool" "$OUT"
-fi
-
-# 3. verification
 OUT=$(rpc verification '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "verification/initialize" "verification" "$OUT"
 OUT=$(rpc verification '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
 check "verification/tools-list" "discover_checks\|summarize" "$OUT"
 
-# 4. source-map
-OUT=$(rpc source-map '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
-check "source-map/initialize" "source-map" "$OUT"
-OUT=$(rpc source-map '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
-check "source-map/tools-list" "list_source_paths\|index_repo" "$OUT"
-OUT=$(rpc source-map '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_source_paths","arguments":{}}}')
-check "source-map/list_source_paths" "reference\|source\|path" "$OUT"
-
-# 5. status-dashboard
 OUT=$(rpc status-dashboard '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "status-dashboard/initialize" "status-dashboard" "$OUT"
 OUT=$(rpc status-dashboard '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
-check "status-dashboard/tools-list" "show_parity_coverage\|show_run_status" "$OUT"
+check "status-dashboard/tools-list" "show_run_status" "$OUT"
 
-# 6. context-graph
 OUT=$(rpc context-graph '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "context-graph/initialize" "context-graph" "$OUT"
 OUT=$(rpc context-graph '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
@@ -117,7 +156,6 @@ check "context-graph/tools-list" "blast_radius\|symbol_search" "$OUT"
 OUT=$(rpc context-graph '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"symbol_refs","arguments":{"symbol":"lazybuddy","limit":3}}}')
 check "context-graph/symbol_refs" "symbol_refs\|hits" "$OUT"
 
-# 7. code-intel
 OUT=$(rpc code-intel '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "code-intel/initialize" "code-intel" "$OUT"
 OUT=$(rpc code-intel '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
@@ -130,13 +168,17 @@ else
     check "code-intel/no-project-file" "file not found" "$OUT"
 fi
 
-# 8. docs
 OUT=$(rpc docs '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
 check "docs/initialize" "docs" "$OUT"
 OUT=$(rpc docs '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
 check "docs/tools-list" "get_library_docs" "$OUT"
 OUT=$(rpc docs '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_supported_registries","arguments":{}}}')
 check "docs/list_registries" "npm\|pypi" "$OUT"
+
+for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
+    check_stream_protocol "$server"
+done
+check_invalid_tool_params
 
 echo ""
 echo "=== Results ==="
