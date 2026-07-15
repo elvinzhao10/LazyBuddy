@@ -3,7 +3,8 @@
 > Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
 
 LazyBuddy v0.17.0 is the current package baseline.
-Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
+Capability-readiness contract v0.17.0 records package readiness; publication
+and live host integration require separate verification.
 
 ## Quick Start
 

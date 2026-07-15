@@ -9,7 +9,8 @@ WorkBuddy uses its documented plugin/marketplace UI; its copied-repository
 installer is not verified. The verified no-package-manager WorkBuddy fallback
 is local `lazybuddy-plugin/skills/` import plus manual MCP configuration.
 LazyBuddy v0.17.0 is the current package baseline.
-Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
+Capability-readiness contract v0.17.0 records package readiness; publication
+and live host integration require separate verification.
 Verification is on macOS only.
 
 ## `onboard` protocol
