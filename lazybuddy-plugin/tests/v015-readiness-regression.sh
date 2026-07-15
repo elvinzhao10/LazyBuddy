@@ -64,9 +64,12 @@ expect_contains full-package-doctor '^  \[PASS\] Command definitions \(14\)$'
 expect_status self-contained-package-contract 0 python3 - "$INSTALLED_PLUGIN" <<'PY'
 import json
 import os
+from pathlib import Path
 import sys
 
-root = sys.argv[1]
+root = Path(sys.argv[1])
+assert (root / "LICENSE").is_file()
+assert (root / "NOTICE").is_file()
 with open(os.path.join(root, ".mcp.json"), encoding="utf-8") as handle:
     servers = json.load(handle)["mcpServers"]
 
@@ -82,14 +85,16 @@ assert set(servers) == expected_servers, sorted(servers)
 assert not os.path.exists(os.path.join(root, "commands", "lazy-parity-report.md"))
 assert not os.path.exists(os.path.join(root, "mcp", "parity"))
 assert not os.path.exists(os.path.join(root, "mcp", "source-map"))
+mcp_test = (root / "scripts" / "lazybuddy-mcp-test.sh").read_text(encoding="utf-8")
+assert "MCP integration test (6 declared servers + optional LSP endpoint)" in mcp_test
+assert "for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do" in mcp_test
 PY
 
-expect_status operational-mcp-reference-inventory 0 python3 - "$INSTALLED_PLUGIN" "$PROJECT_ROOT" <<'PY'
+expect_status operational-mcp-reference-inventory 0 python3 - "$INSTALLED_PLUGIN" <<'PY'
 from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
-project_root = Path(sys.argv[2])
 operational_sources = (
     "mcp/code-intel/server.py",
     "mcp/context-graph/server.py",
@@ -100,25 +105,44 @@ for relative_path in operational_sources:
     assert "lazycodex" not in source, relative_path
     assert "omo" not in source, relative_path
 
-# NOTICE is legal attribution and the checker intentionally keeps policy deny-list patterns.
-assert "lazycodex" in (project_root / "NOTICE").read_text(encoding="utf-8").lower()
+# NOTICE is package-local legal attribution and the checker intentionally keeps
+# policy deny-list patterns.
+assert "lazycodex" in (root / "NOTICE").read_text(encoding="utf-8").lower()
 policy_source = (root / "scripts/lazybuddy-docs-check.sh").read_text(encoding="utf-8").lower()
 assert "lazycodex" in policy_source
 assert "omo" in policy_source
 PY
 
-expect_status documentation-boundary-inventory 0 python3 - "$PROJECT_ROOT" <<'PY'
+expect_status documentation-boundary-inventory 0 python3 - "$INSTALLED_PLUGIN" "$PROJECT_ROOT" <<'PY'
 from pathlib import Path
 import sys
 
-project_root = Path(sys.argv[1])
-docs_index = (project_root / "docs" / "README.md").read_text(encoding="utf-8")
-handoff = (project_root / "docs" / "handoff.md").read_text(encoding="utf-8")
+root = Path(sys.argv[1])
+project_root = Path(sys.argv[2])
 
-assert "private local material" in docs_index.lower()
-assert "LazyBuddy documentation handoff" in handoff
-assert not (project_root / "docs" / "lazybuddy-command-index.md").exists()
+if (project_root / "lazybuddy-evaluation.md").is_file():
+    assert not (project_root / "docs").exists(), "repository-root docs/ must remain absent"
+assert (root / "docs" / "verification-matrix.md").is_file(), "copied plugin must retain package-owned docs"
+for relative_path in (
+    "scripts/lazybuddy-load-check.sh",
+    "scripts/lazybuddy-plugin-doctor.sh",
+    "scripts/lazybuddy-mcp-test.sh",
+):
+    source = (root / relative_path).read_text(encoding="utf-8")
+    assert "../docs" not in source, relative_path
+    assert "docs/handoff.md" not in source, relative_path
 PY
+
+if [ "${LAZYBUDDY_READINESS_PARENT_COPY_DEPTH:-0}" -eq 0 ]; then
+    PARENT_COPY="$TMP/poisoned-parent/lazybuddy-plugin"
+    mkdir -p "$TMP/poisoned-parent/docs"
+    printf '# poisoned parent handoff\n' > "$TMP/poisoned-parent/docs/handoff.md"
+    cp -R "$PLUGIN_ROOT" "$PARENT_COPY"
+    expect_status copied-plugin-ignores-parent-docs 0 env \
+        LAZYBUDDY_READINESS_PARENT_COPY_DEPTH=1 \
+        CODEBUDDY_PLUGIN_ROOT="$PARENT_COPY" \
+        bash "$PARENT_COPY/tests/v015-readiness-regression.sh"
+fi
 
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"
 expect_status invalid-workbuddy-manifest 1 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
@@ -172,15 +196,24 @@ printf '%s\n' '---' 'name: lazy-manual' '---' '# manual' > "$TMP/manual-skills/s
 expect_status manual-skill-only-readiness 0 env CODEBUDDY_PLUGIN_ROOT="$TMP/manual-skills" bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
 expect_contains manual-skill-only-readiness '^PACKAGE_READINESS=degraded$'
 expect_contains manual-skill-only-readiness '^UNCHECKED commands/hooks/MCP:'
+if grep -Fq 'FAIL package ' "$TMP/manual-skill-only-readiness.out"; then
+    fail "manual-skill-only-readiness must not report package legal failures"
+else
+    pass "manual-skill-only-readiness omits unavailable package legal checks"
+fi
 
 rm -rf "$TMP/installed-plugin"
 cp -R "$PLUGIN_ROOT" "$TMP/installed-plugin"
 INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
 expect_status installed-root-mcp 0 env CWD="$PROJECT_ROOT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-mcp-test.sh"
 expect_contains installed-root-mcp "Plugin root: $INSTALLED_PLUGIN"
-expect_contains installed-root-mcp '^Passed: 16$'
-expect_status installed-root-master-verify 0 env CWD="$PROJECT_ROOT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-verify.sh"
+expect_contains installed-root-mcp '^=== LazyBuddy MCP integration test \(6 declared servers \+ optional LSP endpoint\) ===$'
+expect_contains installed-root-mcp '^Failed: 0$'
+expect_contains installed-root-mcp '^MCP test: ALL PASS$'
+expect_status installed-root-master-verify 0 env CWD="$PROJECT_ROOT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 bash "$INSTALLED_PLUGIN/scripts/lazybuddy-verify.sh"
 expect_contains installed-root-master-verify '"all_pass":true'
+expect_contains installed-root-master-verify '"regression_inventory":"pass"'
+expect_contains installed-root-master-verify '"automatic_tooling_regressions":"skipped-nested"'
 
 expect_status missing-plugin-root-pipeline 1 env CWD="$TMP/workspace" CODEBUDDY_PLUGIN_ROOT="$TMP/missing-plugin" bash "$PLUGIN_ROOT/scripts/hook-pipeline-test.sh"
 expect_contains missing-plugin-root-pipeline 'plugin root is missing'

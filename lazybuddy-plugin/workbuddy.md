@@ -40,5 +40,5 @@ bash scripts/lazybuddy-load-check.sh     # package readiness
 bash scripts/lazybuddy-plugin-doctor.sh  # 50-check health
 bash scripts/lazybuddy-verify.sh         # aggregate verification
 bash scripts/lazybuddy-docs-check.sh     # internal link integrity
-bash tests/v018-documentation-regression.sh
+bash tests/v017-documentation-regression.sh
 ```

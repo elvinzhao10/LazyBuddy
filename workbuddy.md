@@ -69,7 +69,7 @@ bash scripts/lazybuddy-plugin-doctor.sh      # 50-check health
 bash scripts/lazybuddy-verify.sh             # aggregate: doctor+smoke+docs+security+mcp+hooks
 bash scripts/lazybuddy-smoke-test.sh         # SKILL.md frontmatter + command stubs
 bash scripts/lazybuddy-docs-check.sh         # internal link integrity
-bash tests/v018-documentation-regression.sh  # documentation regression
+bash tests/v017-documentation-regression.sh  # documentation regression
 
 # Tooling broker (receipt-owned tooling root required)
 bash scripts/lazybuddy-tooling.sh detect|install|verify|uninstall --tooling-root <abs>

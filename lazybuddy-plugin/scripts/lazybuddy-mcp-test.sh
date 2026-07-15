@@ -128,7 +128,7 @@ print(json.dumps({
 PYEOF
 }
 
-echo "=== LazyBuddy MCP integration test (7 servers) ==="
+echo "=== LazyBuddy MCP integration test (6 declared servers + optional LSP endpoint) ==="
 echo "Plugin root: $PLUGIN"
 echo ""
 

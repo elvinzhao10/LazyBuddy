@@ -41,7 +41,22 @@ assert_documentation_contract() {
     check_documentation_contract "$1" || fail "documentation contract failed for $(basename "$1")"
 }
 
-# Given the current Buddy documentation, when the v0.17 documentation contract
+if [ ! -f "$REPOSITORY_ROOT/lazybuddy-evaluation.md" ]; then
+    grep -Fq 'six local MCP servers' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain the six-server inventory'
+    grep -Fq 'manual host' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain manual host verification'
+    grep -Fq 'package readiness' "$PLUGIN_ROOT/README.md" || fail 'package README must distinguish package readiness'
+    grep -Fq 'this repository does not endorse a mutable marketplace URL' "$PLUGIN_ROOT/README.md" || fail 'package README must require immutable marketplace discovery'
+    grep -Fq 'retained root guidance' "$PLUGIN_ROOT/commands/lazy-librarian.md" || fail 'librarian command must name retained root guidance'
+    grep -Fq 'package README and `docs/verification-matrix.md` inventory' "$PLUGIN_ROOT/workbuddy.md" || fail 'package maintainer guide must name package-owned MCP inventory documentation'
+    grep -Fq 'LazyBuddy v0.17.0 is the current package baseline.' "$PLUGIN_ROOT/README.md" || fail 'package README must retain the v0.17.0 package baseline'
+    if grep -Eq '\]\((\./)*\.\./docs/' "$PLUGIN_ROOT/README.md"; then
+        fail 'package README must not link to removed repository-root docs/'
+    fi
+    pass 'standalone package documentation satisfies the v0.17 release baseline'
+    exit 0
+fi
+
+# Given the current v0.17 Buddy documentation, when the v0.17 documentation contract
 # is checked, then the retained evidence remains package-local.
 for document in "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; do
     assert_documentation_contract "$document"
@@ -65,14 +80,18 @@ if grep -Eq 'codebuddy plugin marketplace add[[:space:]]+https://github\.com/' \
     fail 'marketplace guidance must not provide a mutable GitHub marketplace command'
 fi
 grep -Fq 'package readiness' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must distinguish package readiness'
-version_namespace_statement='Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.'
+readiness_boundary_statement='Capability-readiness contract v0.17.0 records package readiness; publication'
+legacy_release_claim='does not claim a LazyBuddy package release'
 for document in \
     "$REPOSITORY_ROOT/README.md" \
     "$REPOSITORY_ROOT/AGENTS.md" \
     "$REPOSITORY_ROOT/lazybuddy-evaluation.md" \
     "$PLUGIN_ROOT/README.md"; do
     grep -Fq 'LazyBuddy v0.17.0 is the current package baseline.' "$document" || fail "$(basename "$document") must retain the v0.17.0 package baseline"
-    grep -Fq "$version_namespace_statement" "$document" || fail "$(basename "$document") must distinguish the v0.17.0 readiness contract from a package release"
+    grep -Fq "$readiness_boundary_statement" "$document" || fail "$(basename "$document") must distinguish package readiness from publication and live host integration"
+    if grep -Fq "$legacy_release_claim" "$document"; then
+        fail "$(basename "$document") must not retain the legacy package-release disclaimer"
+    fi
 done
 grep -Fqx '![LazyBuddy](lazybuddy-banner.jpg)' "$REPOSITORY_ROOT/README.md" || fail 'README must embed the public LazyBuddy banner'
 grep -Fqx '## `offboard` protocol' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must provide an explicit offboard protocol'
