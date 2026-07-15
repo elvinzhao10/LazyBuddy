@@ -43,6 +43,14 @@ echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
 echo ""
 
+for legal_file in LICENSE NOTICE; do
+    if [ -f "${PLUGIN_ROOT}/${legal_file}" ]; then
+        check "Package legal file: ${legal_file}" ok
+    else
+        check "Package legal file: ${legal_file}" "missing from plugin root"
+    fi
+done
+
 # 1-3. Both host manifests exist, parse, and describe the same plugin contract.
 CODEBUDDY_MANIFEST="${PLUGIN_ROOT}/.codebuddy-plugin/plugin.json"
 WORKBUDDY_MANIFEST="${PLUGIN_ROOT}/.workbuddy-plugin/plugin.json"

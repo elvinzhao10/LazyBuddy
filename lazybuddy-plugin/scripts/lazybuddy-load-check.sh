@@ -64,6 +64,13 @@ if not os.path.exists(code_manifest_path) and not os.path.exists(work_manifest_p
     print("Package readiness is degraded; host registration and runtime loading are unchecked.")
     sys.exit(0)
 
+for legal_name in ("LICENSE", "NOTICE"):
+    legal_path = os.path.join(root, legal_name)
+    if os.path.isfile(legal_path):
+        result("PASS", f"package {legal_name}", "present")
+    else:
+        result("FAIL", f"package {legal_name}", "missing from plugin root")
+
 expected_components = {
     "skills": ["./skills/"],
     "commands": ["./commands/"],

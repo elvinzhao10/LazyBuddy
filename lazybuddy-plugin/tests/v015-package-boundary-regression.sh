@@ -87,18 +87,52 @@ PYEOF
 
 mkdir -p "$PARENT"
 cp -R "$PLUGIN_ROOT" "$INSTALLED_PLUGIN"
+printf 'PARENT LICENSE POISON\n' > "$PARENT/LICENSE"
+printf 'PARENT NOTICE POISON\n' > "$PARENT/NOTICE"
+mkdir -p "$PARENT/docs"
+printf '# poisoned parent documentation\n' > "$PARENT/docs/handoff.md"
 
 for script in lazybuddy-load-check.sh lazybuddy-plugin-doctor.sh lazybuddy-mcp-test.sh lazybuddy-verify.sh; do
     expect_status "copied-${script}" 0 env \
         "CWD=$PARENT" \
         "CODEBUDDY_PLUGIN_ROOT=$INSTALLED_PLUGIN" \
+        "LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1" \
         bash "$INSTALLED_PLUGIN/scripts/$script"
 done
+if grep -Fq '"regression_inventory":"pass"' "$TMP/copied-lazybuddy-verify.sh.out" \
+    && grep -Fq '"automatic_tooling_regressions":"skipped-nested"' "$TMP/copied-lazybuddy-verify.sh.out"; then
+    pass "copied verifier validates inventory without recursive regressions"
+else
+    fail "copied verifier validates inventory without recursive regressions"
+fi
+
+rm "$INSTALLED_PLUGIN/LICENSE"
+expect_status "missing-package-license-fails-readiness" 1 env \
+    "CWD=$PARENT" \
+    "CODEBUDDY_PLUGIN_ROOT=$INSTALLED_PLUGIN" \
+    bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
+if grep -Fq 'FAIL package LICENSE: missing from plugin root' "$TMP/missing-package-license-fails-readiness.out"; then
+    pass "missing package LICENSE is not masked by parent poison"
+else
+    fail "missing package LICENSE is reported clearly"
+fi
+cp "$PLUGIN_ROOT/LICENSE" "$INSTALLED_PLUGIN/LICENSE"
+
+rm "$INSTALLED_PLUGIN/NOTICE"
+expect_status "missing-package-notice-fails-readiness" 1 env \
+    "CWD=$PARENT" \
+    "CODEBUDDY_PLUGIN_ROOT=$INSTALLED_PLUGIN" \
+    bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
+if grep -Fq 'FAIL package NOTICE: missing from plugin root' "$TMP/missing-package-notice-fails-readiness.out"; then
+    pass "missing package NOTICE is not masked by parent poison"
+else
+    fail "missing package NOTICE is reported clearly"
+fi
+cp "$PLUGIN_ROOT/NOTICE" "$INSTALLED_PLUGIN/NOTICE"
 
 first_response="$(discover_checks "$INSTALLED_PLUGIN" | CWD="$PARENT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/mcp/verification/server.sh")"
 assert_discovery_contract "package-owned discovery works without parent docs" "$first_response"
 
-mkdir -p "$PARENT/docs"
 cat > "$PARENT/docs/lazybuddy-verification-matrix.md" <<'EOF'
 ## Poisoned parent contract
 | Verification Step | Command | Expected | Artifact |

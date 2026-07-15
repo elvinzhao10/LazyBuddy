@@ -286,7 +286,7 @@ bash scripts/lazybuddy-tooling.sh remote-disable \
 
 ## License
 
-MIT — see the repository [LICENSE](../LICENSE).
+MIT — see the package [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ---
 
