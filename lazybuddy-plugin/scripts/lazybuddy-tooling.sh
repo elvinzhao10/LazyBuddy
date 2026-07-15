@@ -29,6 +29,8 @@ Usage:
   lazybuddy-tooling.sh detector fallback CAPABILITY --outcomes-json JSON [--result UNTRUSTED_RESULT]
 
 install requires an existing, empty, non-symlink directory supplied by the caller.
+codegraph-install requires an absent final tooling-root pathname and publishes
+only with a no-clobber rename; it never replaces a caller-owned entry.
 status and doctor inspect only. uninstall deletes only a verified, receipt-owned root.
 readiness-report is a read-only canonical JSON report; it never invokes providers or exports MCP configuration.
 CodeGraph remains disabled until its caller explicitly installs, initializes, and enables it.
@@ -87,7 +89,8 @@ regular_unlinked_file() {
 }
 
 receipt_contents() {
-    python3 -B - "$TOOLING_ROOT" "$(node_modules_digest)" <<'PY'
+    local receipt_root="${1:-$TOOLING_ROOT}" node_modules_root="${2:-$TOOLING_ROOT/node_modules}"
+    python3 -B - "$receipt_root" "$(node_modules_digest "$node_modules_root")" <<'PY'
 import json
 import sys
 
@@ -173,7 +176,8 @@ remote_state_is_valid() {
 }
 
 node_modules_digest() {
-    python3 -B - "$TOOLING_ROOT/node_modules" <<'PY'
+    local node_modules_root="${1:-$TOOLING_ROOT/node_modules}"
+    python3 -B - "$node_modules_root" <<'PY'
 import hashlib
 import os
 import stat
@@ -602,7 +606,7 @@ codegraph_status() {
     local index_state enabled
     if ! owned_root_is_valid; then
         echo "STATE: disabled"
-        echo "REASON: CodeGraph is optional; run codegraph-install in an explicit empty tooling root"
+        echo "REASON: CodeGraph is optional; run codegraph-install with an explicit absent tooling-root pathname"
         return 0
     fi
     if ! codegraph_binary_is_available; then
@@ -635,32 +639,133 @@ codegraph_status() {
     fi
 }
 
+run_codegraph_install() {
+    python3 -B - "$TOOLING_ROOT" "$1" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+
+tooling_root, timeout_seconds = sys.argv[1:]
+process = subprocess.Popen(
+    ["npm", "ci", "--ignore-scripts", "--no-audit", "--fund=false"],
+    cwd=tooling_root,
+    start_new_session=True,
+    env=os.environ.copy(),
+)
+try:
+    raise SystemExit(process.wait(timeout=int(timeout_seconds)))
+except subprocess.TimeoutExpired:
+    os.killpg(process.pid, signal.SIGTERM)
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+    raise SystemExit(124)
+PY
+}
+
+staged_codegraph_root_is_valid() {
+    local staging_root="$1" final_root="$2"
+    (
+        TOOLING_ROOT="$staging_root"
+        root_is_safe_existing || return 1
+        root_contains_only_owned_entries || return 1
+        regular_unlinked_file "$TOOLING_ROOT/package.json" || return 1
+        regular_unlinked_file "$TOOLING_ROOT/package-lock.json" || return 1
+        regular_unlinked_file "$TOOLING_ROOT/capabilities.json" || return 1
+        remote_state_is_valid || return 1
+        regular_unlinked_file "$TOOLING_ROOT/$RECEIPT_NAME" || return 1
+        cmp -s "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json" || return 1
+        cmp -s "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json" || return 1
+        cmp -s "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json" || return 1
+        node_modules_digest "$TOOLING_ROOT/node_modules" >/dev/null 2>&1 || return 1
+        cmp -s <(receipt_contents "$final_root" "$TOOLING_ROOT/node_modules") "$TOOLING_ROOT/$RECEIPT_NAME"
+    )
+}
+
+promote_codegraph_staging_root() {
+    local staging_root="$1"
+    python3 -B - "$staging_root" "$TOOLING_ROOT" <<'PY'
+import ctypes
+import errno
+import os
+import platform
+import sys
+
+staging_root, tooling_root = sys.argv[1:]
+if platform.system() != "Darwin":
+    raise SystemExit("CODEGRAPH_INSTALL_NO_CLOBBER_UNAVAILABLE: macOS renameatx_np is required for safe publication")
+
+# Darwin's RENAME_EXCL atomically publishes only when the destination name is
+# absent. os.replace would overwrite a caller-created path after staging.
+renameatx_np = ctypes.CDLL(None, use_errno=True).renameatx_np
+renameatx_np.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+renameatx_np.restype = ctypes.c_int
+result = renameatx_np(-2, os.fsencode(staging_root), -2, os.fsencode(tooling_root), 0x00000004)
+if result == 0:
+    raise SystemExit(0)
+error = ctypes.get_errno()
+if error == errno.EEXIST:
+    raise SystemExit("CODEGRAPH_INSTALL_ROOT_COLLISION: tooling root appeared during provisioning; caller entry was preserved")
+raise SystemExit(f"CODEGRAPH_INSTALL_NO_CLOBBER_UNAVAILABLE: unable to publish verified CodeGraph staging root: {os.strerror(error)}")
+PY
+}
+
 codegraph_install() {
     (
-        local runtime_root
-        require_safe_existing_root
-        if ! root_is_empty; then
-            fail "CodeGraph tooling root must be empty when provisioning the pinned package"
+        local final_root="$TOOLING_ROOT" staging_root="" timeout_seconds install_status=0
+        if [[ "/$TOOLING_ROOT/" == *"/../"* ]] || [[ "$TOOLING_ROOT" != /* ]]; then
+            fail "CodeGraph tooling root must be an absolute traversal-free absent path"
+        fi
+        if [ -e "$TOOLING_ROOT" ] || [ -L "$TOOLING_ROOT" ]; then
+            fail "CodeGraph tooling root must be absent when provisioning the pinned package"
+        fi
+        if [ ! -d "$(dirname "$TOOLING_ROOT")" ] || [ -L "$(dirname "$TOOLING_ROOT")" ]; then
+            fail "CodeGraph tooling-root parent must be an existing real directory"
         fi
         command -v npm >/dev/null 2>&1 || fail "npm is required to install the locked CodeGraph package"
-        cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
-        cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
-        cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
-        write_remote_state false false
-        prepare_npm_runtime
-        runtime_root="$(npm_runtime_root)"
-        export HOME="$runtime_root/home"
-        export XDG_CACHE_HOME="$runtime_root/cache"
-        export PYTHONPYCACHEPREFIX="$runtime_root/cache/python"
-        export npm_config_cache="$runtime_root/cache"
-        export npm_config_userconfig="$runtime_root/config/npmrc"
-        export npm_config_update_notifier=false
-        export NO_UPDATE_NOTIFIER=1
+        timeout_seconds="${LAZYBUDDY_CODEGRAPH_INSTALL_TIMEOUT_SECONDS:-300}"
+        [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || fail "LAZYBUDDY_CODEGRAPH_INSTALL_TIMEOUT_SECONDS must be a positive integer"
+        staging_root="$(mktemp -d "$(dirname "$TOOLING_ROOT")/.lazybuddy-codegraph-install.XXXXXX")" \
+            || fail "unable to create private CodeGraph install staging directory"
+        chmod 700 "$staging_root"
         (
-            cd "$TOOLING_ROOT"
-            npm ci --ignore-scripts --no-audit --fund=false
-        )
-        receipt_contents > "$TOOLING_ROOT/$RECEIPT_NAME"
+            TOOLING_ROOT="$staging_root"
+            cp "$PACKAGE_SOURCE" "$TOOLING_ROOT/package.json"
+            cp "$LOCK_SOURCE" "$TOOLING_ROOT/package-lock.json"
+            cp "$REGISTRY_SOURCE" "$TOOLING_ROOT/capabilities.json"
+            write_remote_state false false
+            prepare_npm_runtime
+            local runtime_root
+            runtime_root="$(npm_runtime_root)"
+            export HOME="$runtime_root/home"
+            export XDG_CACHE_HOME="$runtime_root/cache"
+            export PYTHONPYCACHEPREFIX="$runtime_root/cache/python"
+            export npm_config_cache="$runtime_root/cache"
+            export npm_config_userconfig="$runtime_root/config/npmrc"
+            export npm_config_update_notifier=false
+            export NO_UPDATE_NOTIFIER=1
+            run_codegraph_install "$timeout_seconds" || exit $?
+            receipt_contents "$final_root" "$TOOLING_ROOT/node_modules" > "$TOOLING_ROOT/$RECEIPT_NAME"
+        ) || install_status=$?
+        if [ "$install_status" -ne 0 ]; then
+            rm -rf -- "$staging_root"
+            if [ "$install_status" -eq 124 ]; then
+                echo "ERROR: CODEGRAPH_INSTALL_TIMEOUT: CodeGraph installation exceeded ${timeout_seconds}s and was rolled back" >&2
+            fi
+            return "$install_status"
+        fi
+        if ! staged_codegraph_root_is_valid "$staging_root" "$final_root"; then
+            rm -rf -- "$staging_root"
+            fail "CodeGraph installation did not produce a verified staging root"
+        fi
+        if ! promote_codegraph_staging_root "$staging_root"; then
+            rm -rf -- "$staging_root"
+            return 1
+        fi
+        staging_root=""
         if ! owned_root_is_valid; then
             fail "CodeGraph installation did not produce a verified receipt-owned root"
         fi
@@ -813,7 +918,28 @@ PY
 }
 
 stop_owned_codegraph_processes() {
-    python3 -B - "$TOOLING_ROOT" "$TARGET_ROOT" <<'PY'
+    local binary process_snapshot=""
+    case "$#" in
+        0)
+            for process_snapshot in /bin/ps /usr/bin/ps; do
+                [ -x "$process_snapshot" ] && break
+                process_snapshot=""
+            done
+            [ -n "$process_snapshot" ] || fail "refusing CodeGraph uninstall: trusted system ps is unavailable"
+            ;;
+        2)
+            [ "$1" = "--test-process-snapshot" ] || fail "refusing CodeGraph uninstall: invalid process inspection override"
+            process_snapshot="$2"
+            [[ "$process_snapshot" = /* ]] \
+                && [ -f "$process_snapshot" ] \
+                && [ ! -L "$process_snapshot" ] \
+                && [ -x "$process_snapshot" ] \
+                || fail "refusing CodeGraph uninstall: test process snapshot must be an executable regular absolute path"
+            ;;
+        *) fail "refusing CodeGraph uninstall: invalid process inspection arguments" ;;
+    esac
+    binary="$(codegraph_binary)" || fail "refusing CodeGraph uninstall: package-managed binary path is unavailable"
+    python3 -B - "$TOOLING_ROOT" "$TARGET_ROOT" "$binary" "$process_snapshot" <<'PY'
 import os
 import signal
 import shlex
@@ -821,30 +947,89 @@ import subprocess
 import sys
 import time
 
-tooling_root, target_root = sys.argv[1:]
-marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
-output = subprocess.check_output(["ps", "-axo", "pid=,ppid=,command="], text=True)
-processes = {}
-children = {}
-for line in output.splitlines():
-    parts = line.strip().split(maxsplit=2)
-    if len(parts) != 3:
-        continue
+tooling_root, target_root, codegraph_binary, process_snapshot = sys.argv[1:]
+owner_marker = "--lazybuddy-codegraph-mcp-owner=v1"
+
+
+def read_processes():
+    """Return identity snapshots, never just reusable numeric PIDs.
+
+    A CodeGraph receipt owns a process tree only while each member still has the
+    same parent, process group, start time, and command observed during the
+    initial ownership scan.  The identity is re-read immediately before every
+    signal, so a PID which exited and was reused cannot be signalled during
+    uninstall.
+    """
     try:
-        pid, parent_pid = (int(parts[0]), int(parts[1]))
-    except ValueError:
-        continue
-    processes[pid] = (parent_pid, parts[2])
+        output = subprocess.check_output(
+            [process_snapshot, "-axo", "pid=,ppid=,pgid=,lstart=,command="], text=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    processes = {}
+    for line in output.splitlines():
+        # pid ppid pgid weekday month day HH:MM:SS year command
+        parts = line.strip().split(maxsplit=8)
+        if len(parts) != 9:
+            continue
+        try:
+            pid, parent_pid, process_group = map(int, parts[:3])
+        except ValueError:
+            continue
+        processes[pid] = (parent_pid, process_group, " ".join(parts[3:8]), parts[8])
+    return processes
+
+
+def same_identity(expected, current):
+    return current is not None and expected[1:] == current[1:]
+
+
+def signal_if_still_owned(pid, expected, signum):
+    """Signal only an unchanged snapshot; never trust a stale PID alone."""
+    current = read_processes().get(pid)
+    if not same_identity(expected, current):
+        return False
+    try:
+        os.kill(pid, signum)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+processes = read_processes()
+children = {}
+for pid, (parent_pid, _, _, _) in processes.items():
     children.setdefault(parent_pid, set()).add(pid)
 roots = set()
-for pid, (_, command) in processes.items():
-    if marker not in command:
+self_pid = os.getpid()
+runtime_root = os.path.join(tooling_root, ".lazybuddy-codegraph-runtime")
+
+
+def is_documented_mcp_launcher(tokens):
+    if len(tokens) < 8 or not os.path.basename(tokens[0]).lower().startswith("python"):
+        return False
+    if tokens[1:3] != ["-B", "-c"]:
+        return False
+    if tokens[-4:] != [owner_marker, codegraph_binary, target_root, runtime_root]:
+        return False
+    source = " ".join(tokens[3:-4])
+    return (
+        "subprocess.Popen(" in source
+        and "binary," in source
+        and "serve," in source
+        and "--mcp" in source
+        and "start_new_session=True" in source
+    )
+
+
+for pid, (_, _, _, command) in processes.items():
+    if pid == self_pid:
         continue
     try:
-        tokens = shlex.split(command)
+        tokens = shlex.split(command.replace(r"\012", "\n"))
     except ValueError:
         continue
-    if target_root in tokens:
+    if is_documented_mcp_launcher(tokens):
         roots.add(pid)
 pids = set(roots)
 pending = list(roots)
@@ -854,34 +1039,45 @@ while pending:
         if child_pid not in pids:
             pids.add(child_pid)
             pending.append(child_pid)
-for pid in sorted(pids, reverse=True):
-    try:
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
+
+
+def depth(pid):
+    value = 0
+    current = pid
+    seen = set()
+    while current in pids and current not in seen:
+        seen.add(current)
+        current = processes[current][0]
+        value += 1
+    return value
+
+
+# Stop descendants before their parents so their PPID identity remains stable.
+ordered_pids = sorted(pids, key=lambda pid: (depth(pid), pid), reverse=True)
+tracked = {pid: processes[pid] for pid in pids}
+for pid in ordered_pids:
+    signal_if_still_owned(pid, tracked[pid], signal.SIGTERM)
 deadline = time.monotonic() + 5
-while pids and time.monotonic() < deadline:
-    pids = {
-        pid for pid in pids
-        if subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0
+remaining = set(tracked)
+while remaining and time.monotonic() < deadline:
+    remaining = {
+        pid for pid in remaining
+        if same_identity(tracked[pid], read_processes().get(pid))
     }
-    if pids:
+    if remaining:
         time.sleep(0.1)
-for pid in sorted(pids, reverse=True):
-    try:
-        os.kill(pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+for pid in sorted(remaining, key=lambda pid: (depth(pid), pid), reverse=True):
+    signal_if_still_owned(pid, tracked[pid], signal.SIGKILL)
 deadline = time.monotonic() + 2
-while pids and time.monotonic() < deadline:
-    pids = {
-        pid for pid in pids
-        if subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0
+while remaining and time.monotonic() < deadline:
+    remaining = {
+        pid for pid in remaining
+        if same_identity(tracked[pid], read_processes().get(pid))
     }
-    if pids:
+    if remaining:
         time.sleep(0.1)
-if pids:
-    raise SystemExit(f"refusing uninstall: receipt-owned CodeGraph process did not terminate: {sorted(pids)}")
+if remaining:
+    raise SystemExit(f"refusing uninstall: receipt-owned CodeGraph process did not terminate: {sorted(remaining)}")
 PY
 }
 
@@ -1559,6 +1755,7 @@ verify_target() {
     fi
 }
 
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 if [ "$#" -lt 1 ]; then
     usage >&2
     exit 2
@@ -1624,3 +1821,4 @@ case "$COMMAND" in
         ;;
     *) usage >&2; exit 2 ;;
 esac
+fi

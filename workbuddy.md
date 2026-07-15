@@ -1,13 +1,12 @@
 # workbuddy.md — LazyBuddy
 
 ## OVERVIEW
-LazyBuddy is a self-contained agent workflow harness plugin for CodeBuddy IDE/CLI and WorkBuddy. It turns a request into plan → implementation → verification → evidence trail. The installable package lives in `lazybuddy-plugin/` (v0.16.0-alpha.1): 14 skills, 14 commands, 13 agents, 12 hook events, 6 local MCP servers. Stack: Bash scripts + Markdown skills + JSON manifests; MCP servers in Node/Python. No build step.
+LazyBuddy is a self-contained agent workflow harness plugin for CodeBuddy IDE/CLI and WorkBuddy. It turns a request into plan → implementation → verification → evidence trail. The installable package lives in `lazybuddy-plugin/` (v0.17.0): 14 skills, 14 commands, 13 agents, 12 hook events, 6 local MCP servers. Stack: Bash scripts + Markdown skills + JSON manifests; MCP servers in Node/Python. No build step.
 
 ## STRUCTURE
 ```
 README.md                 # public workflow + automatic capability boundaries
 AGENTS.md                 # agent onboarding/offboarding contract (host paths table)
-docs/handoff.md           # documentation handoff — authority for doc claims/boundaries
 lazybuddy-evaluation.md   # public verification boundary evidence
 lazybuddy-plugin/         # THE self-contained installable package
   skills/                 # 14 lazy-* workflow playbooks (one SKILL.md per dir)
@@ -42,10 +41,10 @@ dev/
 | Verify package readiness | `lazybuddy-plugin/scripts/lazybuddy-load-check.sh` | plus `doctor`, `verify`, `docs-check` |
 | Tooling/capability broker | `lazybuddy-plugin/scripts/lazybuddy-tooling.sh` | rg/sg/LSP/CodeGraph/remote capability policy |
 | Capability contract fixtures | `lazybuddy-plugin/contracts/fixtures/v017/` | v0.17.0 readiness (separate from package version) |
-| Documentation governance | `docs/handoff.md` | authority for doc boundaries; verify links with `lazybuddy-docs-check.sh` |
+| Documentation governance | `README.md`, `AGENTS.md`, `lazybuddy-evaluation.md` | retained root guidance; verify package links with `lazybuddy-docs-check.sh` |
 
 ## CONVENTIONS
-- Package version must agree across 3 manifests: `lazybuddy-plugin/.codebuddy-plugin/plugin.json`, `lazybuddy-plugin/.workbuddy-plugin/plugin.json`, root `.codebuddy-plugin/marketplace.json`. Currently `0.16.0-alpha.1`.
+- Package version must agree across 3 manifests: `lazybuddy-plugin/.codebuddy-plugin/plugin.json`, `lazybuddy-plugin/.workbuddy-plugin/plugin.json`, root `.codebuddy-plugin/marketplace.json`. Currently `0.17.0`.
 - Capability-readiness contract version (`0.17.0`) is separate from package release version — never conflate or claim one implies the other.
 - Skills/commands are `lazy-` prefixed; commands namespaced `/lazybuddy:lazy-<command>` in a CodeBuddy plugin session.
 - `lazybuddy-plugin/` is self-contained: works without root `README.md`/`AGENTS.md`/`docs/`. No runtime dependencies on root docs.

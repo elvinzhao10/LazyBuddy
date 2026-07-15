@@ -21,7 +21,7 @@
   "properties": {
     "schema_version": { "const": 1 },
     "contract_version": { "const": "0.17.0" },
-    "contract_digest": { "const": "0c098d88c2e14b8b600c9ce345a70787baf44229794eac7331ed010b47b459c5" },
+    "contract_digest": { "const": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a" },
     "host": { "type": "string", "enum": ["lazytrae", "lazybuddy"] },
     "capability": { "type": "string", "minLength": 1 },
     "provider": { "type": ["string", "null"] },

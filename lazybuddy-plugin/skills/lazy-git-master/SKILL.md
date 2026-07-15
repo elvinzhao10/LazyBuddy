@@ -101,7 +101,7 @@ Before finishing:
 ## WorkBuddy-Native Features
 
 - **Git operations:** All git commands run via WorkBuddy Bash tool. No Codex-specific git wrappers.
-- **PR body evidence:** For PR screenshots, use the auth flow referenced at `docs/reference/github-attachment-upload.md`. Never commit temporary images or use external hosts.
+- **PR body evidence:** For PR screenshots, use the code host's built-in attachment flow. Keep temporary images out of the repository and do not use external image hosts.
 - **Never skip hooks:** No `--no-verify`, `--no-gpg-sign`, or `-c commit.gpgsign=false` unless the user explicitly demands it. Hook failures are investigated and fixed at their root cause.
 
 ---

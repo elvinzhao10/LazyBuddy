@@ -172,8 +172,8 @@ try:
         text=True,
     )
     records = json.loads(report.stdout).get("records")
-    if not isinstance(records, list) or len(records) != 9:
-        raise ValueError("canonical report did not return nine records")
+    if not isinstance(records, list) or len(records) != 9 or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records):
+        raise ValueError("canonical report did not return nine integrity-valid records")
 except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
     result("FAIL", "canonical capability readiness", str(exc))
 else:

@@ -2,7 +2,7 @@
 
 > Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
 
-LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+LazyBuddy v0.17.0 is the current package baseline.
 Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
 
 ## Quick Start
@@ -228,7 +228,7 @@ bash scripts/lazybuddy-tooling.sh codegraph-doctor \
 
 # Provision the pinned package, build the project-local index, then enable it.
 bash scripts/lazybuddy-tooling.sh codegraph-install \
-  --target /absolute/project --tooling-root /absolute/empty/lazybuddy-codegraph-tools
+  --target /absolute/project --tooling-root /absolute/absent/lazybuddy-codegraph-tools
 bash scripts/lazybuddy-tooling.sh codegraph-init \
   --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
 bash scripts/lazybuddy-tooling.sh codegraph-enable \

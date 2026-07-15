@@ -159,6 +159,76 @@ assert {entry["reason_code"] for entry in report} == {"CONTRACT_INTEGRITY_INVALI
 PY
 pass 'readiness contract checksum mismatch fails safely'
 
+# Given a packaged readiness contract with a stale embedded policy digest, when
+# the report and load-check run from a disposable plugin copy, then the report
+# must fail safely and the package check must also fail. Regenerating the copied
+# contract digest, sidecar, and source pin restores normal readiness.
+DISPOSABLE_PLUGIN="$TMP/disposable-plugin"
+cp -R "$PLUGIN_ROOT" "$DISPOSABLE_PLUGIN"
+DISPOSABLE_TOOLING="$DISPOSABLE_PLUGIN/scripts/lazybuddy-tooling.sh"
+DISPOSABLE_LOAD_CHECK="$DISPOSABLE_PLUGIN/scripts/lazybuddy-load-check.sh"
+DISPOSABLE_ROOT="$TMP/disposable-tooling-root"
+
+python3 - "$DISPOSABLE_PLUGIN" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+plugin = Path(sys.argv[1])
+contract_path = plugin / "contracts" / "lazyseries-capability-readiness.v1.json"
+contract = json.loads(contract_path.read_text(encoding="utf-8"))
+contract["properties"]["contract_digest"]["const"] = "0" * 64
+contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
+schema_digest = hashlib.sha256(contract_path.read_bytes()).hexdigest()
+contract_path.with_suffix(contract_path.suffix + ".sha256").write_text(f"{schema_digest}  {contract_path.name}\n", encoding="utf-8")
+source_path = plugin / "tooling" / "lazybuddy_capability_readiness.py"
+source_path.write_text(source_path.read_text(encoding="utf-8").replace('READINESS_SCHEMA_SHA256: Final = "d74a0aaac8801b04655d873bd3b7651f22096b63ba60a10fa1d9241fd18f34af"', f'READINESS_SCHEMA_SHA256: Final = "{schema_digest}"'), encoding="utf-8")
+PY
+
+bash "$DISPOSABLE_TOOLING" readiness-report --tooling-root "$DISPOSABLE_ROOT" --target "$WORKSPACE" --json > "$TMP/stale-digest.json"
+python3 - "$TMP/stale-digest.json" <<'PY'
+import json
+import sys
+records = json.load(open(sys.argv[1], encoding="utf-8"))["records"]
+assert {record["status"] for record in records} == {"failed-optional"}
+assert {record["reason_code"] for record in records} == {"CONTRACT_INTEGRITY_INVALID"}
+PY
+if CODEBUDDY_PLUGIN_ROOT="$DISPOSABLE_PLUGIN" bash "$DISPOSABLE_LOAD_CHECK" > "$TMP/stale-digest-load-check.out" 2>&1; then
+    fail 'load-check reported full readiness despite invalid readiness contract integrity'
+fi
+grep -Fq 'FAIL canonical capability readiness:' "$TMP/stale-digest-load-check.out" || fail 'invalid readiness integrity was not surfaced by load-check'
+
+python3 - "$DISPOSABLE_PLUGIN" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+plugin = Path(sys.argv[1])
+policy_digest = hashlib.sha256((plugin / "contracts" / "automatic-tooling-contract.v1.json").read_bytes()).hexdigest()
+contract_path = plugin / "contracts" / "lazyseries-capability-readiness.v1.json"
+contract = json.loads(contract_path.read_text(encoding="utf-8"))
+contract["properties"]["contract_digest"]["const"] = policy_digest
+contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
+schema_digest = hashlib.sha256(contract_path.read_bytes()).hexdigest()
+contract_path.with_suffix(contract_path.suffix + ".sha256").write_text(f"{schema_digest}  {contract_path.name}\n", encoding="utf-8")
+source_path = plugin / "tooling" / "lazybuddy_capability_readiness.py"
+source_path.write_text(re.sub(r'(READINESS_SCHEMA_SHA256: Final = ")[0-9a-f]{64}(")', rf'\g<1>{schema_digest}\2', source_path.read_text(encoding="utf-8")), encoding="utf-8")
+PY
+
+bash "$DISPOSABLE_TOOLING" readiness-report --tooling-root "$DISPOSABLE_ROOT" --target "$WORKSPACE" --json > "$TMP/regenerated-digest.json"
+python3 - "$TMP/regenerated-digest.json" <<'PY'
+import json
+import sys
+records = json.load(open(sys.argv[1], encoding="utf-8"))["records"]
+assert "CONTRACT_INTEGRITY_INVALID" not in {record["reason_code"] for record in records}
+assert {record["status"] for record in records} != {"failed-optional"}
+PY
+CODEBUDDY_PLUGIN_ROOT="$DISPOSABLE_PLUGIN" bash "$DISPOSABLE_LOAD_CHECK" > "$TMP/regenerated-digest-load-check.out"
+grep -Fqx 'PACKAGE_READINESS=full' "$TMP/regenerated-digest-load-check.out" || fail 'load-check did not return full after readiness contract regeneration'
+pass 'invalid readiness integrity fails load-check and regenerated integrity restores readiness'
+
 # Given a stale receipt-like root with no local host provider, when the report
 # runs, then it fails closed as incompatible rather than claiming owned-ready.
 mkdir "$TOOLING_ROOT"

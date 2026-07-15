@@ -4,7 +4,7 @@ set -euo pipefail
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONTRACT="$PLUGIN_ROOT/contracts/lazyseries-capability-readiness.v1.json"
 FIXTURE="$PLUGIN_ROOT/contracts/fixtures/v017/readiness-records.json"
-POLICY_DIGEST='0c098d88c2e14b8b600c9ce345a70787baf44229794eac7331ed010b47b459c5'
+POLICY_DIGEST='e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a'
 
 [ -f "$CONTRACT" ] || { printf 'FAIL: missing readiness contract\n' >&2; exit 1; }
 [ -f "$CONTRACT.sha256" ] || { printf 'FAIL: missing readiness contract checksum\n' >&2; exit 1; }

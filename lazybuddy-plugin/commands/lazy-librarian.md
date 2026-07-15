@@ -21,7 +21,7 @@ Memory and documentation maintenance agent. Updates current package documentatio
 
 ## Outputs
 
-- Updated current package documentation and `docs/handoff.md` with relevant changes
+- Updated package documentation and retained root guidance (`README.md`, `AGENTS.md`, and `workbuddy.md`) with relevant changes
 - Updated project memory (`workbuddy.md`) if structural changes warrant
 
 ## Success Criteria

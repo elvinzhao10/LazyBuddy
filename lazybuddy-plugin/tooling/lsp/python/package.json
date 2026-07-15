@@ -1,6 +1,6 @@
 {
   "name": "@lazyseries/lazybuddy-lsp-python",
-  "version": "0.16.0-alpha.1",
+  "version": "0.17.0",
   "private": true,
   "description": "Locked Python LSP provider for LazyBuddy.",
   "engines": {

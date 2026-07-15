@@ -8,7 +8,7 @@ LazyBuddy supports CodeBuddy IDE and CodeBuddy CLI through their plugin flows.
 WorkBuddy uses its documented plugin/marketplace UI; its copied-repository
 installer is not verified. The verified no-package-manager WorkBuddy fallback
 is local `lazybuddy-plugin/skills/` import plus manual MCP configuration.
-LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+LazyBuddy v0.17.0 is the current package baseline.
 Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
 Verification is on macOS only.
 
@@ -91,5 +91,5 @@ proof from the table before relying on integration behavior.
 
 - [Public usage guide](README.md)
 - [Package commands and safe tooling lifecycle](lazybuddy-plugin/README.md)
-- [Documentation handoff](docs/handoff.md)
+- [Project memory](workbuddy.md)
 - [Public verification evidence](lazybuddy-evaluation.md)

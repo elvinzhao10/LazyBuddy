@@ -4,7 +4,7 @@ This document records public, present-tense evidence for the LazyBuddy package.
 It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
 plugin. Verification is on macOS only.
 
-LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+LazyBuddy v0.17.0 is the current package baseline.
 Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
 
 ## Features and verification

@@ -36,13 +36,16 @@ export CODEGRAPH_NO_DOWNLOAD=1
 export CODEGRAPH_TELEMETRY=0
 export CODEGRAPH_NO_WATCHDOG=1
 export CODEGRAPH_INSTALL_DIR="$RUNTIME_ROOT/install"
+OWNER_MARKER='--lazybuddy-codegraph-mcp-owner=v1'
 exec python3 -B -c '
 import os
 import signal
 import subprocess
 import sys
 
-binary, target_root, runtime_root = sys.argv[1:]
+owner_marker, binary, target_root, runtime_root = sys.argv[1:]
+if owner_marker != "--lazybuddy-codegraph-mcp-owner=v1":
+    raise SystemExit("invalid LazyBuddy CodeGraph launcher ownership marker")
 environment = os.environ | {
     "HOME": f"{runtime_root}/home",
     "XDG_CONFIG_HOME": f"{runtime_root}/config",
@@ -68,4 +71,4 @@ def forward_signal(_signal, _frame):
 signal.signal(signal.SIGTERM, forward_signal)
 signal.signal(signal.SIGINT, forward_signal)
 raise SystemExit(process.wait())
-' "$BINARY" "$TARGET_ROOT" "$RUNTIME_ROOT"
+' "$OWNER_MARKER" "$BINARY" "$TARGET_ROOT" "$RUNTIME_ROOT"

@@ -33,7 +33,7 @@
   },
   "provenance": {
     "source": "lazy-series-automatic-tooling",
-    "release": "0.16.0-alpha.1",
+    "release": "0.17.0",
     "provider_pinning": "packages are version-pinned; remote endpoints are declared, not downloaded during validation",
     "integrity": "sha256_sidecar_required"
   },

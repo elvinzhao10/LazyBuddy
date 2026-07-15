@@ -1,39 +1,97 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
-LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-codegraph.XXXXXX")"
-TMP="$(cd "$TMP" && pwd -P)"
-cleanup() {
-    python3 - "$TMP" <<'PY'
+if [ "${LAZYBUDDY_CODEGRAPH_TEST_SESSION_ISOLATED:-}" != 1 ]; then
+    python3 -B - "$0" "$@" <<'PY'
 import os
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
-marker = f"{sys.argv[1]}/tools/node_modules/@colbymchenry/codegraph-"
-pids = []
-for line in subprocess.check_output(["ps", "-axo", "pid=,command="], text=True).splitlines():
-    parts = line.strip().split(maxsplit=1)
-    if len(parts) == 2 and marker in parts[1]:
+try:
+    timeout_seconds = int(os.environ.get("LAZYBUDDY_CODEGRAPH_TEST_TIMEOUT_SECONDS", "90"))
+except ValueError as error:
+    raise SystemExit(f"FAIL invalid CodeGraph lifecycle test timeout: {error}")
+if timeout_seconds < 1:
+    raise SystemExit("FAIL CodeGraph lifecycle test timeout must be at least one second")
+
+descriptor, output_path = tempfile.mkstemp(prefix="lazybuddy-codegraph-lifecycle-", suffix=".log")
+timed_out = False
+try:
+    with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+        process = subprocess.Popen(
+            ["bash", sys.argv[1], *sys.argv[2:]],
+            start_new_session=True,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=os.environ | {"LAZYBUDDY_CODEGRAPH_TEST_SESSION_ISOLATED": "1"},
+        )
+    deadline = time.monotonic() + timeout_seconds
+    while process.poll() is None and time.monotonic() < deadline:
+        time.sleep(0.05)
+    if process.poll() is None:
+        timed_out = True
+        os.killpg(process.pid, signal.SIGTERM)
         try:
-            pids.append(int(parts[0]))
-        except ValueError:
-            pass
-for pid in pids:
-    try:
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-time.sleep(0.1)
-for pid in pids:
-    try:
-        os.kill(pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+    status = process.wait()
+    with open(output_path, encoding="utf-8") as output:
+        sys.stdout.write(output.read())
+finally:
+    os.unlink(output_path)
+
+if timed_out:
+    raise SystemExit(f"FAIL CodeGraph lifecycle test exceeded {timeout_seconds}s")
+if status < 0:
+    raise SystemExit(f"FAIL CodeGraph lifecycle test session exited by signal {-status}")
+raise SystemExit(status)
 PY
+    exit $?
+fi
+
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-codegraph.XXXXXX")"
+TMP="$(cd "$TMP" && pwd -P)"
+LIVE_HELPER_PID=""
+LIVE_HELPER_IDENTITY=""
+OTHER_PROCESS_PID=""
+OTHER_PROCESS_IDENTITY=""
+
+# Only signal a process that is still the exact direct child this test started.
+# This prevents a stale PID in the EXIT trap from affecting a reused PID.
+process_identity() {
+    local pid="$1"
+    ps -o ppid= -o lstart= -p "$pid" 2>/dev/null | tr -s ' ' | sed 's/^ //'
+}
+
+stop_owned_process() {
+    local pid="$1" expected_identity="$2" current_identity=""
+    case "$pid" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+    [ -n "$expected_identity" ] || return 0
+    current_identity="$(process_identity "$pid")"
+    [ "$current_identity" = "$expected_identity" ] || return 0
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 0.2
+    current_identity="$(process_identity "$pid")"
+    [ "$current_identity" = "$expected_identity" ] || return 0
+    kill -KILL "$pid" 2>/dev/null || true
+}
+
+cleanup() {
+    stop_owned_process "$LIVE_HELPER_PID" "$LIVE_HELPER_IDENTITY"
+    stop_owned_process "$OTHER_PROCESS_PID" "$OTHER_PROCESS_IDENTITY"
+    if [ "${LAZYBUDDY_KEEP_TEST_FIXTURES:-}" = 1 ]; then
+        printf 'KEEP fixture: %s\n' "$TMP" >&2
+        return
+    fi
     rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -52,16 +110,109 @@ expect() {
 
 TARGET="$TMP/project"
 TOOLING_ROOT="$TMP/tools"
-mkdir "$TARGET" "$TOOLING_ROOT"
+mkdir "$TARGET"
 printf 'export const value = 1;\n' > "$TARGET/source.ts"
 
-# Given a fresh project and caller-owned empty tooling root, when CodeGraph is
+MOCK_BIN="$TMP/mock-bin"
+FAKE_LOG="$TMP/fake-codegraph.log"
+FAKE_SERVER_PID_FILE="$TMP/fake-codegraph-server.pid"
+mkdir "$MOCK_BIN"
+python3 -B - "$MOCK_BIN/npm" <<'PY'
+from pathlib import Path
+import sys
+
+destination = Path(sys.argv[1])
+destination.write_text(
+    r"""#!/usr/bin/env python3
+import os
+from pathlib import Path
+import platform
+import stat
+import sys
+
+if sys.argv[1:] != ["ci", "--ignore-scripts", "--no-audit", "--fund=false"]:
+    raise SystemExit(f"unexpected fake npm invocation: {sys.argv[1:]}")
+
+suffixes = {
+    ("Darwin", "arm64"): "darwin-arm64",
+    ("Darwin", "x86_64"): "darwin-x64",
+    ("Linux", "aarch64"): "linux-arm64",
+    ("Linux", "arm64"): "linux-arm64",
+    ("Linux", "x86_64"): "linux-x64",
+}
+try:
+    suffix = suffixes[(platform.system(), platform.machine())]
+except KeyError as error:
+    raise SystemExit(f"unsupported fake CodeGraph test platform: {error.args[0]}")
+
+binary = Path.cwd() / "node_modules" / f"@colbymchenry/codegraph-{suffix}" / "bin" / "codegraph"
+binary.parent.mkdir(parents=True)
+binary.write_text(
+    r'''#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import sys
+
+required = {
+    "CODEGRAPH_NO_DOWNLOAD": "1",
+    "CODEGRAPH_TELEMETRY": "0",
+    "CODEGRAPH_NO_WATCHDOG": "1",
+}
+for key, value in required.items():
+    if os.environ.get(key) != value:
+        raise SystemExit(f"fake CodeGraph missing {key}={value}")
+
+log_path = os.environ.get("LAZYBUDDY_CODEGRAPH_TEST_LOG")
+if log_path:
+    with open(log_path, "a", encoding="utf-8") as stream:
+        stream.write(f"{sys.argv[1:]} cwd={Path.cwd()}\n")
+
+if sys.argv[1:] == ["init"]:
+    (Path.cwd() / ".codegraph").mkdir()
+    raise SystemExit(0)
+if sys.argv[1:] != ["serve", "--mcp"]:
+    raise SystemExit(f"unexpected fake CodeGraph invocation: {sys.argv[1:]}")
+
+pid_path = os.environ.get("LAZYBUDDY_CODEGRAPH_TEST_SERVER_PID_FILE")
+if pid_path:
+    Path(pid_path).write_text(f"{os.getpid()}\n", encoding="utf-8")
+for line in sys.stdin:
+    request = json.loads(line)
+    if request.get("method") == "initialize":
+        print(json.dumps({
+            "jsonrpc": "2.0",
+            "id": request.get("id"),
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "fake-codegraph", "version": "test"},
+            },
+        }), flush=True)
+''',
+    encoding="utf-8",
+)
+binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+log_path = os.environ.get("LAZYBUDDY_CODEGRAPH_TEST_LOG")
+if log_path:
+    with open(log_path, "a", encoding="utf-8") as stream:
+        stream.write(f"npm ci cwd={Path.cwd()}\n")
+""",
+    encoding="utf-8",
+)
+destination.chmod(destination.stat().st_mode | 0o111)
+PY
+export PATH="$MOCK_BIN:$PATH"
+export LAZYBUDDY_CODEGRAPH_TEST_LOG="$FAKE_LOG"
+export LAZYBUDDY_CODEGRAPH_TEST_SERVER_PID_FILE="$FAKE_SERVER_PID_FILE"
+
+# Given a fresh project and absent caller-selected tooling-root pathname, when CodeGraph is
 # inspected before explicit provisioning, then it is non-blocking and writes
 # neither the target nor the tooling root.
 expect 'CodeGraph status is disabled by default' 0 bash "$LIFECYCLE" codegraph-status --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -Fxq 'STATE: disabled' "$TMP/CodeGraph status is disabled by default.out" || fail 'default CodeGraph state'
 [ ! -e "$TARGET/.codegraph" ] || fail 'default status created project index'
-[ -z "$(find "$TOOLING_ROOT" -mindepth 1 -print -quit)" ] || fail 'default status wrote tooling root'
+[ ! -e "$TOOLING_ROOT" ] || fail 'default status created tooling root'
 pass 'disabled status is non-mutating'
 
 # Given a large but uninitialized project, when CodeGraph doctor runs, then it
@@ -72,7 +223,7 @@ done
 expect 'CodeGraph doctor is recommendation-only' 0 bash "$LIFECYCLE" codegraph-doctor --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -q 'RECOMMENDATION: CodeGraph may materially improve architecture exploration' "$TMP/CodeGraph doctor is recommendation-only.out" || fail 'large project recommendation'
 [ ! -e "$TARGET/.codegraph" ] || fail 'doctor created project index'
-[ -z "$(find "$TOOLING_ROOT" -mindepth 1 -print -quit)" ] || fail 'doctor wrote tooling root'
+[ ! -e "$TOOLING_ROOT" ] || fail 'doctor created tooling root'
 pass 'doctor is non-mutating'
 
 SYMLINK_TARGET="$TMP/symlink-project"
@@ -94,6 +245,9 @@ grep -Fxq 'STATE: initialized' "$TMP/CodeGraph initialize creates a receipt-owne
 [ -d "$TARGET/.codegraph" ] && [ ! -L "$TARGET/.codegraph" ] || fail 'initialization did not create real project index'
 expect 'CodeGraph enable is explicit' 0 bash "$LIFECYCLE" codegraph-enable --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -Fxq 'STATE: ready' "$TMP/CodeGraph enable is explicit.out" || fail 'enable state'
+EXPECTED_CODEGRAPH_BINARY="$(sed -n 's/^PROVIDER: codegraph owned //p' "$TMP/CodeGraph enable is explicit.out")"
+[ -n "$EXPECTED_CODEGRAPH_BINARY" ] && [ -x "$EXPECTED_CODEGRAPH_BINARY" ] || fail 'CodeGraph did not use the exact package-owned selector'
+grep -Fqx "PROVIDER: codegraph owned $EXPECTED_CODEGRAPH_BINARY" "$TMP/CodeGraph enable is explicit.out" || fail 'CodeGraph provider selector drifted'
 expect 'CodeGraph enable is repeat-safe' 0 bash "$LIFECYCLE" codegraph-enable --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 expect 'CodeGraph exports a package-owned MCP configuration' 0 bash "$LIFECYCLE" codegraph-export-mcp --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -q 'mcp/codegraph/server.sh' "$TMP/CodeGraph exports a package-owned MCP configuration.out" || fail 'exported launcher path'
@@ -102,6 +256,7 @@ LIVE_READY="$TMP/live-mcp-ready"
 python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TARGET" "$TOOLING_ROOT" "$TMP/launcher-pid" "$LIVE_READY" <<'PY' &
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -116,6 +271,14 @@ process = subprocess.Popen(
     text=True,
     env=environment,
 )
+stop_requested = False
+
+def stop_child(_signum, _frame):
+    global stop_requested
+    stop_requested = True
+
+signal.signal(signal.SIGTERM, stop_child)
+signal.signal(signal.SIGINT, stop_child)
 assert process.stdin is not None
 assert process.stdout is not None
 process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n")
@@ -137,47 +300,85 @@ with open(pid_path, "w", encoding="utf-8") as destination:
 with open(ready_path, "w", encoding="utf-8") as destination:
     destination.write("ready\n")
 while process.poll() is None:
+    if stop_requested:
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        raise SystemExit(0)
     time.sleep(0.1)
 PY
 LIVE_HELPER_PID=$!
+LIVE_HELPER_IDENTITY="$(process_identity "$LIVE_HELPER_PID")"
+[ -n "$LIVE_HELPER_IDENTITY" ] || fail 'could not record live CodeGraph helper identity'
 for _ in $(seq 1 100); do
     [ -f "$LIVE_READY" ] && break
     sleep 0.1
 done
 [ -f "$LIVE_READY" ] || fail 'live CodeGraph MCP did not initialize'
+[ -f "$FAKE_SERVER_PID_FILE" ] || fail 'test-owned fake CodeGraph server did not start'
+FAKE_SERVER_PID="$(cat "$FAKE_SERVER_PID_FILE")"
+case "$FAKE_SERVER_PID" in ''|*[!0-9]*) fail 'fake CodeGraph server PID was invalid' ;; esac
+grep -Fqx "['serve', '--mcp'] cwd=$TARGET" "$FAKE_LOG" || fail 'launcher did not invoke the test-owned exact binary'
 pass 'CodeGraph launcher completes persistent MCP initialize'
 
 OTHER_TARGET="$TMP/other-target"
 mkdir "$OTHER_TARGET"
 python3 -c 'import time; time.sleep(30)' "$TOOLING_ROOT/node_modules/@colbymchenry/codegraph-sentinel" "$OTHER_TARGET" &
 OTHER_PROCESS_PID=$!
+OTHER_PROCESS_IDENTITY="$(process_identity "$OTHER_PROCESS_PID")"
+[ -n "$OTHER_PROCESS_IDENTITY" ] || fail 'could not record other-target process identity'
 
 expect 'CodeGraph uninstall removes only receipt-owned index' 0 bash "$LIFECYCLE" codegraph-uninstall --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 [ ! -e "$TARGET/.codegraph" ] || fail 'receipt-owned index was not removed'
-expect 'CodeGraph uninstall stops live matching MCP tree' 0 python3 - "$TMP/launcher-pid" "$TOOLING_ROOT" "$TARGET" "$LIVE_HELPER_PID" <<'PY'
+expect 'CodeGraph uninstall stops the test-owned launcher' 0 python3 - "$TMP/launcher-pid" <<'PY'
 import os
 import subprocess
 import sys
 import time
 
-pid_path, tooling_root, target_root, helper_pid = sys.argv[1:]
+pid_path = sys.argv[1]
 pid = int(open(pid_path, encoding="utf-8").read().strip())
 deadline = time.monotonic() + 5
-for checked_pid in (pid, int(helper_pid)):
-    while time.monotonic() < deadline:
-        try:
-            os.kill(checked_pid, 0)
-        except ProcessLookupError:
-            break
-        time.sleep(0.1)
-    else:
-        raise SystemExit(f"persistent launcher helper {checked_pid} remained alive after uninstall")
-marker = f"{tooling_root}/node_modules/@colbymchenry/codegraph-"
-for line in subprocess.check_output(["ps", "-axo", "pid=,command="], text=True).splitlines():
-    if marker in line and target_root in line:
-        raise SystemExit(f"owned CodeGraph process remained alive after uninstall: {line}")
+while time.monotonic() < deadline:
+    inspection = subprocess.run(
+        ["ps", "-o", "stat=", "-p", str(pid)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    state = inspection.stdout.strip()
+    if not state or state.startswith("Z"):
+        break
+    time.sleep(0.1)
+else:
+    raise SystemExit(f"test-owned CodeGraph launcher {pid} remained running after uninstall")
+PY
+expect 'CodeGraph uninstall stops the test-owned fake server' 0 python3 - "$FAKE_SERVER_PID" <<'PY'
+import subprocess
+import sys
+import time
+
+pid = int(sys.argv[1])
+deadline = time.monotonic() + 5
+while time.monotonic() < deadline:
+    inspection = subprocess.run(
+        ["ps", "-o", "stat=", "-p", str(pid)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    state = inspection.stdout.strip()
+    if not state or state.startswith("Z"):
+        raise SystemExit(0)
+    time.sleep(0.1)
+raise SystemExit("test-owned fake CodeGraph server remained running after uninstall")
 PY
 wait "$LIVE_HELPER_PID" || true
+LIVE_HELPER_PID=""
+LIVE_HELPER_IDENTITY=""
 
 expect 'uninstall preserves similarly named other-target process' 0 python3 - "$OTHER_PROCESS_PID" <<'PY'
 import os
@@ -187,6 +388,8 @@ os.kill(int(sys.argv[1]), 0)
 PY
 kill "$OTHER_PROCESS_PID" 2>/dev/null || true
 wait "$OTHER_PROCESS_PID" 2>/dev/null || true
+OTHER_PROCESS_PID=""
+OTHER_PROCESS_IDENTITY=""
 printf 'preserve\n' > "$TOOLING_ROOT/unowned"
 expect 'unowned tooling-root entry blocks uninstall' 2 bash "$LIFECYCLE" uninstall --tooling-root "$TOOLING_ROOT"
 [ "$(cat "$TOOLING_ROOT/unowned")" = preserve ] || fail 'unsafe tooling uninstall changed unowned entry'
@@ -196,7 +399,7 @@ expect 'tooling uninstall removes owned package after index cleanup' 0 bash "$LI
 
 PREEXISTING_ROOT="$TMP/preexisting-project"
 PREEXISTING_TOOLS="$TMP/preexisting-tools"
-mkdir "$PREEXISTING_ROOT" "$PREEXISTING_TOOLS" "$PREEXISTING_ROOT/.codegraph"
+mkdir "$PREEXISTING_ROOT" "$PREEXISTING_ROOT/.codegraph"
 printf 'preserve\n' > "$PREEXISTING_ROOT/.codegraph/sentinel"
 expect 'pre-existing index install provisions package' 0 bash "$LIFECYCLE" codegraph-install --target "$PREEXISTING_ROOT" --tooling-root "$PREEXISTING_TOOLS"
 expect 'pre-existing index can be explicitly enabled' 0 bash "$LIFECYCLE" codegraph-enable --target "$PREEXISTING_ROOT" --tooling-root "$PREEXISTING_TOOLS"

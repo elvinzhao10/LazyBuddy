@@ -58,6 +58,7 @@ check_active_documentation_policy() {
         'lazybuddy-parity-check'
         'lazy-parity-report'
         'source-map'
+        'docs/reference/'
     )
     local active_path pattern policy_file
 

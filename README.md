@@ -7,12 +7,12 @@ LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
 It helps an agent turn a request into a clear plan, focused implementation,
 observable verification, and a durable evidence trail.
 
-LazyBuddy v0.16.0-alpha.1 is the current package baseline.
+LazyBuddy v0.17.0 is the current package baseline.
 Capability-readiness contract version 0.17.0 is separate from LazyBuddy package release versioning and does not claim a LazyBuddy package release.
 
 > **Install and host setup:** [AGENTS.md](AGENTS.md).
 >
-> **Learn the repository:** [docs/handoff.md](docs/handoff.md).
+> **Project memory:** [workbuddy.md](workbuddy.md).
 > **Package commands and tooling lifecycle:** [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
 
 LazyBuddy is verified on macOS only. Package checks prove copied package assets
@@ -161,7 +161,7 @@ with the package's documented lifecycle command.
 `lazybuddy-plugin/` is the self-contained installable package: skills,
 commands, agents, hooks, MCP servers, templates, tooling policy, and scripts
 must work without the repository root's documentation. The public learning map
-is [docs/handoff.md](docs/handoff.md); package verification evidence is in
+is [workbuddy.md](workbuddy.md); package verification evidence is in
 [lazybuddy-evaluation.md](lazybuddy-evaluation.md) and the package
 [verification matrix](lazybuddy-plugin/docs/verification-matrix.md).
 

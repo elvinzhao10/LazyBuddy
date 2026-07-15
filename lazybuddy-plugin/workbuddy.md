@@ -4,7 +4,7 @@
 > For user-facing install/usage see `README.md` in this dir; for repo-wide context see root `workbuddy.md`.
 
 ## OVERVIEW
-This directory is the self-contained installable CodeBuddy/WorkBuddy package. v0.16.0-alpha.1. Everything here must work when copied without root docs. Editing here affects 14 skills, 14 commands, 13 agents, 12 hooks, 6 MCP servers.
+This directory is the self-contained installable CodeBuddy/WorkBuddy package. v0.17.0. Everything here must work when copied without root docs. Editing here affects 14 skills, 14 commands, 13 agents, 12 hooks, 6 MCP servers.
 
 ## WHERE TO LOOK (package editing)
 | Change | Location | Notes |
@@ -25,7 +25,7 @@ This directory is the self-contained installable CodeBuddy/WorkBuddy package. v0
 - Version must agree across: this `.codebuddy-plugin/plugin.json`, this `.workbuddy-plugin/plugin.json`, AND root `.codebuddy-plugin/marketplace.json`. Bump all three together.
 - `.workbuddy-plugin/plugin.json` is compatibility metadata, NOT an executable WorkBuddy installer — do not add installer claims to it.
 - New skill → also add matching command stub in `commands/` and update load-check expectations if inventory changes.
-- New MCP server → add to `.mcp.json`, create `mcp/<name>/`, update doctor/load-check counts, and update docs inventory (root README, handoff).
+- New MCP server → add to `.mcp.json`, create `mcp/<name>/`, update doctor/load-check counts, and update the package README and `docs/verification-matrix.md` inventory.
 - Tests are shell scripts in `tests/`. Run `bash scripts/lazybuddy-verify.sh` before claiming a change is safe.
 - `context-graph` is grep heuristic. Do not implement or document it as semantic CodeGraph.
 

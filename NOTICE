@@ -16,7 +16,7 @@ repository. All implementations are original work based on studying the
 canonical behavior. The SUL governs omo itself; it does not extend to this
 repo's original WorkBuddy-native output.
 
-## Optional v0.16 tooling dependencies
+## Optional v0.17 tooling dependencies
 
 LazyBuddy pins the following tools in package-owned manifests for optional,
 caller-selected provisioning. They are not LazyCodex or omo dependencies and
