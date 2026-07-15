@@ -7,7 +7,23 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-tooling-lifecycle.XXXXXX")"
 TMP="$(cd "$TMP" && pwd -P)"
 INSTALL_BIN="$TMP/install-bin"
 mkdir "$INSTALL_BIN"
-ln -s "$(command -v npm)" "$INSTALL_BIN/npm"
+FAKE_NPM_LOG="$TMP/fixture-npm.log"
+cat > "$INSTALL_BIN/npm" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This lifecycle regression validates receipt ownership and provider discovery.
+# It must not depend on registry availability or mutate a caller's npm state.
+[ "${1:-}" = ci ] || { printf 'unexpected fixture npm command: %s\n' "$*" >&2; exit 64; }
+[ -n "${LAZYBUDDY_TOOLING_FAKE_NPM_LOG:-}" ] || { printf 'missing test-owned npm log\n' >&2; exit 64; }
+printf '%s\n' "$PWD" >> "$LAZYBUDDY_TOOLING_FAKE_NPM_LOG"
+mkdir -p "$PWD/node_modules/@vscode/ripgrep/bin" "$PWD/node_modules/@ast-grep/cli"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture rg 1.0\\n"' > "$PWD/node_modules/@vscode/ripgrep/bin/rg"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture sg 1.0\\n"' > "$PWD/node_modules/@ast-grep/cli/sg"
+chmod +x "$PWD/node_modules/@vscode/ripgrep/bin/rg" "$PWD/node_modules/@ast-grep/cli/sg"
+printf '%s\n' '{"name":"@ast-grep/cli","version":"fixture"}' > "$PWD/node_modules/@ast-grep/cli/package.json"
+SH
+chmod +x "$INSTALL_BIN/npm"
 ln -s "$(command -v node)" "$INSTALL_BIN/node"
 INSTALL_PATH="$INSTALL_BIN:/usr/bin:/bin"
 PASS=0
@@ -92,7 +108,7 @@ else
 fi
 HOST_ONLY_ROOT="$TMP/host-only-root"
 mkdir "$HOST_ONLY_ROOT"
-expect_status "install skips owned fallback when host tools are ready" 0 env PATH="$HOST_BIN:$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$HOST_ONLY_ROOT"
+expect_status "install skips owned fallback when host tools are ready" 0 env PATH="$HOST_BIN:$INSTALL_PATH" LAZYBUDDY_TOOLING_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$LIFECYCLE" install --tooling-root "$HOST_ONLY_ROOT"
 if [ -z "$(find "$HOST_ONLY_ROOT" -mindepth 1 -print -quit)" ]; then
     pass "host-only install leaves caller root untouched"
 else
@@ -157,7 +173,7 @@ fi
 
 ROOT="$TMP/tooling-root"
 mkdir "$ROOT"
-expect_status "install into explicit empty root" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$ROOT"
+expect_status "install into explicit empty root" 0 env PATH="$INSTALL_PATH" LAZYBUDDY_TOOLING_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$LIFECYCLE" install --tooling-root "$ROOT"
 if [ -f "$ROOT/.lazybuddy-tooling-receipt.json" ] && [ -f "$ROOT/package-lock.json" ]; then
     pass "install writes receipt and locked manifest"
 else
@@ -227,7 +243,7 @@ fi
 
 CLEAN_ROOT="$TMP/clean-root"
 mkdir "$CLEAN_ROOT"
-expect_status "fresh install for uninstall" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$CLEAN_ROOT"
+expect_status "fresh install for uninstall" 0 env PATH="$INSTALL_PATH" LAZYBUDDY_TOOLING_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$LIFECYCLE" install --tooling-root "$CLEAN_ROOT"
 expect_status "receipt-owned uninstall" 0 bash "$LIFECYCLE" uninstall --tooling-root "$CLEAN_ROOT"
 if [ ! -e "$CLEAN_ROOT" ]; then
     pass "receipt-owned root removed"
@@ -237,7 +253,12 @@ fi
 
 STALE_ROOT="$TMP/stale-root"
 mkdir "$STALE_ROOT"
-expect_status "fresh install for stale provider receipt" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$STALE_ROOT"
+expect_status "fresh install for stale provider receipt" 0 env PATH="$INSTALL_PATH" LAZYBUDDY_TOOLING_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$LIFECYCLE" install --tooling-root "$STALE_ROOT"
+if [ "$(wc -l < "$FAKE_NPM_LOG" | tr -d ' ')" -eq 3 ]; then
+    pass "tooling installs use the bounded test-owned npm fixture"
+else
+    fail "tooling installs use the bounded test-owned npm fixture"
+fi
 printf '\n' >> "$STALE_ROOT/node_modules/@ast-grep/cli/package.json"
 expect_status "stale provider receipt reports unavailable" 0 bash "$LIFECYCLE" status --tooling-root "$STALE_ROOT"
 expect_status "stale provider receipt blocks uninstall" 2 bash "$LIFECYCLE" uninstall --tooling-root "$STALE_ROOT"

@@ -38,12 +38,33 @@ mkdir "$CALLER_HOME"
 printf 'caller-owned\n' > "$CALLER_HOME/sentinel"
 INSTALL_BIN="$TMP/install-bin"
 mkdir "$INSTALL_BIN"
-ln -s "$(command -v npm)" "$INSTALL_BIN/npm"
+FAKE_NPM_LOG="$TMP/fixture-npm.log"
+cat > "$INSTALL_BIN/npm" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Remote capability policy is tested above the package installation seam. Keep
+# its owned-tooling fixture offline and independent of registry availability.
+[ "${1:-}" = ci ] || { printf 'unexpected fixture npm command: %s\n' "$*" >&2; exit 64; }
+[ -n "${LAZYBUDDY_REMOTE_FAKE_NPM_LOG:-}" ] || { printf 'missing remote fixture npm log\n' >&2; exit 64; }
+printf '%s\n' "$PWD" >> "$LAZYBUDDY_REMOTE_FAKE_NPM_LOG"
+mkdir -p "$PWD/node_modules/@vscode/ripgrep/bin" "$PWD/node_modules/@ast-grep/cli"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture rg 1.0\\n"' > "$PWD/node_modules/@vscode/ripgrep/bin/rg"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture sg 1.0\\n"' > "$PWD/node_modules/@ast-grep/cli/sg"
+chmod +x "$PWD/node_modules/@vscode/ripgrep/bin/rg" "$PWD/node_modules/@ast-grep/cli/sg"
+printf '%s\n' '{"name":"@ast-grep/cli","version":"fixture"}' > "$PWD/node_modules/@ast-grep/cli/package.json"
+SH
+chmod +x "$INSTALL_BIN/npm"
 ln -s "$(command -v node)" "$INSTALL_BIN/node"
 INSTALL_PATH="$INSTALL_BIN:/usr/bin:/bin"
-expect 'install owned tooling' 0 env HOME="$CALLER_HOME" PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$TOOLS"
+expect 'install owned tooling' 0 env HOME="$CALLER_HOME" PATH="$INSTALL_PATH" LAZYBUDDY_REMOTE_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$LIFECYCLE" install --tooling-root "$TOOLS"
 [ "$(cat "$CALLER_HOME/sentinel")" = caller-owned ] || fail 'tooling install changed caller home sentinel'
 [ "$(find "$CALLER_HOME" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')" = 1 ] || fail 'tooling install wrote caller home state'
+if [ "$(wc -l < "$FAKE_NPM_LOG" | tr -d ' ')" = 1 ]; then
+    pass 'remote lifecycle uses the bounded test-owned npm fixture'
+else
+    fail 'remote lifecycle uses the bounded test-owned npm fixture'
+fi
 pass 'tooling install keeps npm state receipt-owned'
 
 NETWORK_MARKER="$TMP/network-called"

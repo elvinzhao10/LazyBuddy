@@ -30,6 +30,13 @@ LOAD_RESULT="fail"
 CONTRACT_RESULT="fail"
 AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
 AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT="not_applicable"
+REGRESSION_INVENTORY_RESULT="fail"
+REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
+
+if ! [[ "$REGRESSION_DEPTH" =~ ^[0-9]+$ ]]; then
+    printf 'ERROR: LAZYBUDDY_VERIFY_REGRESSION_DEPTH must be a non-negative integer\n' >&2
+    exit 2
+fi
 
 run_check() {
     local script="$1"
@@ -75,7 +82,8 @@ run_hook_pipeline_check() {
 }
 
 run_isolated_test() {
-    python3 - "$1" <<'PY'
+    local next_depth=$((REGRESSION_DEPTH + 1))
+    LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 - "$1" <<'PY'
 import subprocess
 import sys
 
@@ -87,10 +95,23 @@ raise SystemExit(completed.returncode)
 PY
 }
 
-run_automatic_tooling_regressions() {
-    local test_name test_path
+run_regression_inventory() {
+    local test_name test_path candidate inventory_failed=false
     local tests_dir="${PLUGIN_ROOT}/tests"
-    local required_tests=(
+    # The normal release gate owns every package-local v*.sh regression. The
+    # two explicit-root parity checks intentionally remain release-only.
+    local standalone_tests=(
+        "v015-consumer-agents-regression.sh"
+        "v015-cwd-injection-regression.sh"
+        "v015-finalize-sections-regression.sh"
+        "v015-installed-root-loop-regression.sh"
+        "v015-mcp-path-boundary-regression.sh"
+        "v015-package-boundary-regression.sh"
+        "v015-persistent-mcp-regression.sh"
+        "v015-readiness-regression.sh"
+        "v015-run-ledger-rpc-regression.sh"
+        "v015-security-regression.sh"
+        "v015-verification-mcp-boundary-regression.sh"
         "v016-tooling-policy-regression.sh"
         "v016-capability-broker-regression.sh"
         "v016-capability-detector-regression.sh"
@@ -101,25 +122,82 @@ run_automatic_tooling_regressions() {
         "v016-codegraph-regression.sh"
         "v016-lsp-regression.sh"
         "v016-runtime-version-regression.sh"
+        "v017-capability-readiness-contract-regression.sh"
         "v017-capability-readiness-regression.sh"
+        "v017-codegraph-fixture-cleanup-regression.sh"
+        "v017-codegraph-install-timeout-regression.sh"
+        "v017-codegraph-lifecycle-caller-survival-regression.sh"
+        "v017-codegraph-uninstall-pid-identity-regression.sh"
+        "v017-documentation-regression.sh"
+        "v017-mcp-params-regression.sh"
         "v017-receipt-init-deep-regression.sh"
     )
+    local paired_only_tests=(
+        "v016-automatic-tooling-contract-parity.sh"
+        "v017-capability-readiness-contract-parity.sh"
+    )
 
-    for test_name in "${required_tests[@]}"; do
+    contains_test() {
+        local needle="$1"
+        shift
+        for candidate in "$@"; do
+            [ "$candidate" = "$needle" ] && return 0
+        done
+        return 1
+    }
+
+    for test_name in "${standalone_tests[@]}" "${paired_only_tests[@]}"; do
         test_path="${tests_dir}/${test_name}"
         if [ ! -f "$test_path" ] || [ ! -s "$test_path" ] || ! bash -n "$test_path"; then
-            AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
-            ALL_PASS=false
-            return
-        fi
-        if ! run_isolated_test "$test_path"; then
-            AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
-            ALL_PASS=false
-            return
+            printf 'ERROR: classified regression is missing, empty, or invalid: %s\n' "$test_name" >&2
+            inventory_failed=true
         fi
     done
 
-    AUTOMATIC_TOOLING_REGRESSIONS_RESULT="pass"
+    while IFS= read -r test_path; do
+        test_name="$(basename "$test_path")"
+        if contains_test "$test_name" "${standalone_tests[@]}"; then
+            :
+        elif contains_test "$test_name" "${paired_only_tests[@]}"; then
+            :
+        else
+            printf 'ERROR: unclassified package-local regression: %s\n' "$test_name" >&2
+            inventory_failed=true
+        fi
+    done < <(find "$tests_dir" -maxdepth 1 -type f -name 'v*.sh' -print | LC_ALL=C sort)
+
+    for test_name in "${standalone_tests[@]}"; do
+        if contains_test "$test_name" "${paired_only_tests[@]}"; then
+            printf 'ERROR: regression has conflicting classifications: %s\n' "$test_name" >&2
+            inventory_failed=true
+        fi
+    done
+
+    if [ "$inventory_failed" = true ]; then
+        REGRESSION_INVENTORY_RESULT="fail"
+        AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
+        ALL_PASS=false
+        return
+    fi
+    REGRESSION_INVENTORY_RESULT="pass"
+
+    if [ "$REGRESSION_DEPTH" -gt 0 ]; then
+        AUTOMATIC_TOOLING_REGRESSIONS_RESULT="skipped-nested"
+        return
+    fi
+
+    for test_name in "${standalone_tests[@]}"; do
+        test_path="${tests_dir}/${test_name}"
+        if ! run_isolated_test "$test_path"; then
+            printf 'FAIL: standalone regression failed: %s\n' "$test_name" >&2
+            AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
+            ALL_PASS=false
+        fi
+    done
+
+    if [ "$ALL_PASS" = true ]; then
+        AUTOMATIC_TOOLING_REGRESSIONS_RESULT="pass"
+    fi
 }
 
 run_check "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
@@ -130,10 +208,10 @@ run_check "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
 run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
 run_check "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
-run_automatic_tooling_regressions
+run_regression_inventory
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"all_pass\":${ALL_PASS}}"
+json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

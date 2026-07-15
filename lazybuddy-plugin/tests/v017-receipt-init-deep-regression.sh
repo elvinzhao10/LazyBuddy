@@ -9,10 +9,41 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-receipt-init-deep.XXXXXX")"
 TMP="$(cd "$TMP" && pwd -P)"
 INSTALL_BIN="$TMP/install-bin"
 mkdir "$INSTALL_BIN"
-ln -s "$(command -v npm)" "$INSTALL_BIN/npm"
+FAKE_NPM_LOG="$TMP/fixture-npm.log"
+cat > "$INSTALL_BIN/npm" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This receipt matrix verifies ownership and preservation. Its package fixture
+# must be deterministic and must not contact a registry.
+[ "${1:-}" = ci ] || { printf 'unexpected fixture npm command: %s\n' "$*" >&2; exit 64; }
+[ -n "${LAZYBUDDY_RECEIPT_FAKE_NPM_LOG:-}" ] || { printf 'missing receipt fixture npm log\n' >&2; exit 64; }
+printf '%s\n' "$PWD" >> "$LAZYBUDDY_RECEIPT_FAKE_NPM_LOG"
+case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) codegraph_suffix=darwin-arm64 ;;
+    Darwin-x86_64) codegraph_suffix=darwin-x64 ;;
+    Linux-aarch64|Linux-arm64) codegraph_suffix=linux-arm64 ;;
+    Linux-x86_64) codegraph_suffix=linux-x64 ;;
+    *) printf 'unsupported fixture platform\n' >&2; exit 64 ;;
+esac
+mkdir -p "$PWD/node_modules/@vscode/ripgrep/bin" \
+    "$PWD/node_modules/@ast-grep/cli" \
+    "$PWD/node_modules/@colbymchenry/codegraph-$codegraph_suffix/bin"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture rg 1.0\\n"' > "$PWD/node_modules/@vscode/ripgrep/bin/rg"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture sg 1.0\\n"' > "$PWD/node_modules/@ast-grep/cli/sg"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$PWD/node_modules/@colbymchenry/codegraph-$codegraph_suffix/bin/codegraph"
+chmod +x "$PWD/node_modules/@vscode/ripgrep/bin/rg" \
+    "$PWD/node_modules/@ast-grep/cli/sg" \
+    "$PWD/node_modules/@colbymchenry/codegraph-$codegraph_suffix/bin/codegraph"
+printf '%s\n' '{"name":"@ast-grep/cli","version":"fixture"}' > "$PWD/node_modules/@ast-grep/cli/package.json"
+SH
+chmod +x "$INSTALL_BIN/npm"
 ln -s "$(command -v node)" "$INSTALL_BIN/node"
 INSTALL_PATH="$INSTALL_BIN:/usr/bin:/bin"
-WORKTREE_BEFORE="$(git -C "$PLUGIN_ROOT" status --porcelain)"
+WORKTREE_BEFORE=""
+if git -C "$PLUGIN_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    WORKTREE_BEFORE="$(git -C "$PLUGIN_ROOT" status --porcelain)"
+fi
 
 cleanup() {
     rm -rf "$TMP"
@@ -41,7 +72,7 @@ expect_refusal() {
 install_owned() {
     local root="$1"
     mkdir "$root"
-    expect_status "install-$(basename "$root")" 0 env PATH="$INSTALL_PATH" bash "$LIFECYCLE" install --tooling-root "$root"
+    expect_status "install-$(basename "$root")" 0 env PATH="$INSTALL_PATH" LAZYBUDDY_RECEIPT_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$LIFECYCLE" install --tooling-root "$root"
     [ -f "$root/.lazybuddy-tooling-receipt.json" ] || fail "$(basename "$root") did not receive a receipt"
 }
 
@@ -197,5 +228,15 @@ expect_status 'codegraph-root-uninstall-after-index-preserved' 0 bash "$LIFECYCL
 [ ! -e "$CODEGRAPH_ROOT" ] || fail 'CodeGraph tooling root was not removed after receipt cleanup'
 pass 'caller-owned CodeGraph index remains outside receipt-owned removal'
 
-[ "$WORKTREE_BEFORE" = "$(git -C "$PLUGIN_ROOT" status --porcelain)" ] || fail 'matrix changed the dirty worktree instead of temporary fixtures'
+if [ "$(wc -l < "$FAKE_NPM_LOG" | tr -d ' ')" -eq 7 ]; then
+    pass 'receipt matrix uses the bounded test-owned npm fixture'
+else
+    fail 'receipt matrix uses the bounded test-owned npm fixture'
+fi
+
+if [ -n "$WORKTREE_BEFORE" ]; then
+    [ "$WORKTREE_BEFORE" = "$(git -C "$PLUGIN_ROOT" status --porcelain)" ] || fail 'matrix changed the dirty worktree instead of temporary fixtures'
+else
+    pass 'matrix runs without a surrounding Git worktree'
+fi
 printf 'v0.17 LazyBuddy receipt/uninstall and InitDeep regression: PASS\n'

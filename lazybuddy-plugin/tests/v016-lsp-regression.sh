@@ -58,12 +58,25 @@ CALLER_CONFIG="$TMP/caller-config"
 CALLER_TMP="$TMP/caller-tmp"
 CALLER_NODE_CACHE="$TMP/caller-node-cache"
 FAKE_BIN="$TMP/fake-bin"
+FAKE_NPM_LOG="$TMP/fixture-npm.log"
 mkdir "$TS_ROOT" "$PY_ROOT" "$ISOLATED_ROOT" "$CALLER_HOME" "$CALLER_CONFIG" "$CALLER_TMP" "$CALLER_NODE_CACHE" "$FAKE_BIN"
 CALLER_SENTINEL="$CALLER_HOME/npm-state-written"
-REAL_NPM="$(command -v npm)"
 printf 'caller-owned\n' > "$CALLER_NODE_CACHE/sentinel"
 fingerprint "$CALLER_NODE_CACHE" > "$TMP/caller-node-cache-before"
-printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' "if [ \"\${HOME:-}\" = \"$CALLER_HOME\" ] || [ \"\${XDG_CONFIG_HOME:-}\" = \"$CALLER_CONFIG\" ]; then" "  touch \"$CALLER_SENTINEL\"" 'fi' "exec \"$REAL_NPM\" \"\$@\"" > "$FAKE_BIN/npm"
+cat > "$FAKE_BIN/npm" <<SH
+#!/usr/bin/env bash
+set -euo pipefail
+[ "\${1:-}" = ci ] || { printf 'unexpected fixture npm command: %s\\n' "\$*" >&2; exit 64; }
+printf '%s\\n' "\$PWD" >> "$FAKE_NPM_LOG"
+case "\$PWD" in
+    */lsp/typescript) command_name=typescript-language-server ;;
+    */lsp/python) command_name=basedpyright-langserver ;;
+    *) printf 'unexpected fixture npm directory: %s\\n' "\$PWD" >&2; exit 64 ;;
+esac
+mkdir -p "\$PWD/node_modules/.bin"
+printf '%s\\n' '#!/usr/bin/env bash' "exec python3 '$PLUGIN_ROOT/tests/fixtures/lsp-fixture-server.py'" > "\$PWD/node_modules/.bin/\$command_name"
+chmod +x "\$PWD/node_modules/.bin/\$command_name"
+SH
 chmod +x "$FAKE_BIN/npm"
 printf 'import { answer } from "./source";\nconsole.log(answer);\n' > "$TS_TARGET/use.ts"
 printf 'from source import answer\nprint(answer)\n' > "$PY_TARGET/use.py"
@@ -89,8 +102,8 @@ if environment["HOME"] != str(runtime / "home") or environment["XDG_CONFIG_HOME"
     raise SystemExit("owned LSP runtime inherited caller environment")
 PY
 expect "uninstall isolated LSP provider" 0 bash "$LIFECYCLE" lsp-uninstall --target "$TS_TARGET" --tooling-root "$ISOLATED_ROOT"
-expect "install locked TypeScript provider" 0 bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$TS_ROOT"
-expect "install locked Python provider" 0 bash "$LIFECYCLE" lsp-install --target "$PY_TARGET" --tooling-root "$PY_ROOT"
+expect "install locked TypeScript provider" 0 env PATH="$FAKE_BIN:$PATH" bash "$LIFECYCLE" lsp-install --target "$TS_TARGET" --tooling-root "$TS_ROOT"
+expect "install locked Python provider" 0 env PATH="$FAKE_BIN:$PATH" bash "$LIFECYCLE" lsp-install --target "$PY_TARGET" --tooling-root "$PY_ROOT"
 expect "TypeScript provider status" 0 bash "$LIFECYCLE" lsp-status --target "$TS_TARGET" --tooling-root "$TS_ROOT"
 expect "Python provider status" 0 bash "$LIFECYCLE" lsp-status --target "$PY_TARGET" --tooling-root "$PY_ROOT"
 grep -Fxq 'STATE: ready' "$TMP/TypeScript provider status.out" || fail 'TypeScript provider ready state'
@@ -100,6 +113,12 @@ fingerprint "$PY_TARGET" > "$TMP/py-after-install"
 cmp -s "$TMP/ts-before-install" "$TMP/ts-after-install" || fail 'TypeScript lifecycle mutated target'
 cmp -s "$TMP/py-before-install" "$TMP/py-after-install" || fail 'Python lifecycle mutated target'
 pass 'LSP lifecycle preserves target fingerprints'
+
+if [ "$(wc -l < "$FAKE_NPM_LOG" | tr -d ' ')" = 3 ]; then
+    pass 'LSP lifecycle uses the bounded test-owned npm fixture'
+else
+    fail 'LSP fixture npm invocation count'
+fi
 
 expect "TypeScript transient definition retries" 0 python3 - "$TMP" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
 import json
@@ -219,8 +238,8 @@ if "error" not in responses[7] or "rename is intentionally unsupported" not in r
 PY
 }
 
-expect "TypeScript bridge real read-only operations" 0 bridge_checks "$TS_TARGET" "$TS_ROOT" source.ts use.ts
-expect "Python bridge real read-only operations" 0 bridge_checks "$PY_TARGET" "$PY_ROOT" source.py use.py
+expect "TypeScript bridge read-only operations" 0 bridge_checks "$TS_TARGET" "$TS_ROOT" source.ts use.ts
+expect "Python bridge read-only operations" 0 bridge_checks "$PY_TARGET" "$PY_ROOT" source.py use.py
 expect "TypeScript direct session cross-file definition" 0 python3 - "$TS_TARGET" "$TS_ROOT" "$PLUGIN_ROOT/mcp/lsp" <<'PY'
 import sys
 from pathlib import Path

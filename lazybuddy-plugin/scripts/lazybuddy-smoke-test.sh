@@ -47,12 +47,12 @@ for skill_dir in "${PLUGIN_ROOT}"/skills/*/; do
 
         # Extract frontmatter and check for required fields
         frontmatter=$(sed -n '/^---$/,/^---$/p' "$skill_file")
-        if echo "$frontmatter" | grep -q "^name:"; then
+        if grep -qm1 "^name:" <<<"$frontmatter"; then
             check "Skill ${skill_name}: has 'name' field" ok
         else
             check "Skill ${skill_name}: has 'name' field" "missing"
         fi
-        if echo "$frontmatter" | grep -q "^description:"; then
+        if grep -qm1 "^description:" <<<"$frontmatter"; then
             check "Skill ${skill_name}: has 'description' field" ok
         else
             check "Skill ${skill_name}: has 'description' field" "missing"

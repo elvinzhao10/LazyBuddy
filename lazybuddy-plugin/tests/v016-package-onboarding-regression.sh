@@ -12,7 +12,8 @@ HOME_ROOT="$TMP/home"
 CONFIG_ROOT="$TMP/config"
 HOST_MCP="$TMP/host-mcp.json"
 TOOLING_ROOT="$TMP/tooling-root"
-NPM_BIN="$(dirname "$(command -v npm)")"
+NPM_BIN="$TMP/npm-bin"
+FAKE_NPM_LOG="$TMP/fixture-npm.log"
 PASS=0
 FAIL=0
 
@@ -31,8 +32,29 @@ expect() {
     if [ "$rc" -eq "$expected" ]; then pass "$label"; else fail "$label (exit $rc, expected $expected): ${output:0:200}"; fi
 }
 
-mkdir -p "$INSTALLED" "$HOME_ROOT" "$CONFIG_ROOT" "$TOOLING_ROOT"
+mkdir -p "$INSTALLED" "$HOME_ROOT" "$CONFIG_ROOT" "$TOOLING_ROOT" "$NPM_BIN"
 cp -R "$PLUGIN_ROOT/." "$INSTALLED/"
+cat > "$NPM_BIN/npm" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ "${1:-}" = ci ] || { printf 'unexpected fixture npm command: %s\n' "$*" >&2; exit 64; }
+[ -n "${LAZYBUDDY_PACKAGE_FAKE_NPM_LOG:-}" ] || { printf 'missing fixture npm log\n' >&2; exit 64; }
+printf '%s\n' "$PWD" >> "$LAZYBUDDY_PACKAGE_FAKE_NPM_LOG"
+case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) suffix=darwin-arm64 ;;
+    Darwin-x86_64) suffix=darwin-x64 ;;
+    Linux-aarch64|Linux-arm64) suffix=linux-arm64 ;;
+    Linux-x86_64) suffix=linux-x64 ;;
+    *) printf 'unsupported fixture platform\n' >&2; exit 64 ;;
+esac
+mkdir -p "$PWD/node_modules/@vscode/ripgrep-$suffix/bin" "$PWD/node_modules/@ast-grep/cli"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture rg 1.0\\n"' > "$PWD/node_modules/@vscode/ripgrep-$suffix/bin/rg"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture sg 1.0\\n"' > "$PWD/node_modules/@ast-grep/cli/sg"
+chmod +x "$PWD/node_modules/@vscode/ripgrep-$suffix/bin/rg" "$PWD/node_modules/@ast-grep/cli/sg"
+printf '%s\n' '{"name":"@ast-grep/cli","version":"fixture"}' > "$PWD/node_modules/@ast-grep/cli/package.json"
+SH
+chmod +x "$NPM_BIN/npm"
 printf '{"caller":"owned"}\n' > "$HOST_MCP"
 cp "$HOST_MCP" "$TMP/host-mcp.before"
 
@@ -58,7 +80,8 @@ assert payload["providers"]["playwright"]["decision"] == "ask"
 PY
 then pass "providers report offline remote and approval-gated browser state"; else fail "providers report offline remote and approval-gated browser state"; fi
 
-expect "tooling install receipt" 0 env PATH="$NPM_BIN:/usr/bin:/bin" bash "$INSTALLED/scripts/lazybuddy-tooling.sh" install --tooling-root "$TOOLING_ROOT"
+expect "tooling install receipt" 0 env PATH="$NPM_BIN:/usr/bin:/bin" LAZYBUDDY_PACKAGE_FAKE_NPM_LOG="$FAKE_NPM_LOG" bash "$INSTALLED/scripts/lazybuddy-tooling.sh" install --tooling-root "$TOOLING_ROOT"
+if [ "$(wc -l < "$FAKE_NPM_LOG" | tr -d ' ')" = 1 ]; then pass "tooling install uses the bounded test-owned npm fixture"; else fail "tooling fixture npm invocation count"; fi
 printf 'caller-owned\n' > "$TOOLING_ROOT/caller-owned"
 expect "unsafe tooling uninstall is rejected" 2 bash "$INSTALLED/scripts/lazybuddy-tooling.sh" uninstall --tooling-root "$TOOLING_ROOT"
 if [ -f "$TOOLING_ROOT/caller-owned" ]; then pass "unsafe uninstall preserves caller-owned root"; else fail "unsafe uninstall preserves caller-owned root"; fi

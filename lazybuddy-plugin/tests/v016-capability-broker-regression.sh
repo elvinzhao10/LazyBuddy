@@ -87,7 +87,40 @@ NO_HOST_BIN="$TMP/no-host-bin"
 NO_HOST_PACK="$TMP/no-host-toolpack"
 mkdir "$NO_HOST_BIN" "$NO_HOST_PACK"
 ln -s "$(command -v node)" "$NO_HOST_BIN/node"
-ln -s "$(command -v npm)" "$NO_HOST_BIN/npm"
+FAKE_NPM_LOG="$TMP/no-host-npm.log"
+cat > "$NO_HOST_BIN/npm" <<SH
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This regression exercises receipt ownership, not the registry.  Keep the
+# no-host path deterministic and offline while creating only the locked
+# providers that the lifecycle validates.
+[ "\${1:-}" = ci ] || { printf 'unexpected fixture npm command: %s\n' "\$*" >&2; exit 64; }
+printf '%s\n' "\$PWD" >> "$FAKE_NPM_LOG"
+
+case "\$PWD" in
+    */lsp/python)
+        mkdir -p "\$PWD/node_modules/.bin"
+        printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture basedpyright 1.0\\n"' > "\$PWD/node_modules/.bin/basedpyright-langserver"
+        chmod +x "\$PWD/node_modules/.bin/basedpyright-langserver"
+        ;;
+    *)
+        case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64) suffix=darwin-arm64 ;;
+            Darwin-x86_64) suffix=darwin-x64 ;;
+            Linux-aarch64|Linux-arm64) suffix=linux-arm64 ;;
+            Linux-x86_64) suffix=linux-x64 ;;
+            *) printf 'unsupported fixture platform\n' >&2; exit 64 ;;
+        esac
+        mkdir -p "\$PWD/node_modules/@vscode/ripgrep-\$suffix/bin" "\$PWD/node_modules/@ast-grep/cli"
+        printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture rg TODO\\n"' > "\$PWD/node_modules/@vscode/ripgrep-\$suffix/bin/rg"
+        printf '%s\n' '#!/usr/bin/env bash' 'printf "fixture sg TODO\\n"' > "\$PWD/node_modules/@ast-grep/cli/sg"
+        chmod +x "\$PWD/node_modules/@vscode/ripgrep-\$suffix/bin/rg" "\$PWD/node_modules/@ast-grep/cli/sg"
+        printf '%s\n' '{"name":"@ast-grep/cli","version":"fixture"}' > "\$PWD/node_modules/@ast-grep/cli/package.json"
+        ;;
+esac
+SH
+chmod +x "$NO_HOST_BIN/npm"
 output="$(cd "$WORKSPACE" && PATH="$NO_HOST_BIN:/usr/bin:/bin" expect_status 0 bash "$TOOLING" capability run code_navigation --query symbol --toolpack-root "$NO_HOST_PACK")"
 printf '%s' "$output" > "$TMP/no-host-lsp.json"
 python3 - "$TMP/no-host-lsp.json" "$NO_HOST_PACK" <<'PY'
@@ -117,6 +150,12 @@ fi
 grep -Fq 'AUTOMATIC_TOOLING_PERMISSION_DENIED' "$TMP/file-lsp.json" || fail 'regular-file LSP root lacked typed permission error'
 git -C "$WORKSPACE" diff --quiet || fail 'regular-file LSP root changed the workspace'
 pass 'regular-file LSP root fails closed with typed permission error'
+
+if [ "$(wc -l < "$FAKE_NPM_LOG" | tr -d ' ')" = 2 ]; then
+    pass 'forced no-host providers use the bounded test-owned npm fixture'
+else
+    fail 'forced no-host provider fixture invocation count'
+fi
 
 # Given an unknown capability, when it is requested, then the broker fails closed
 # with the contract-owned typed error and leaves the workspace unchanged.
