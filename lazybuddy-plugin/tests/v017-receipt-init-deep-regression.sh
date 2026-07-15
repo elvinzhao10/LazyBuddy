@@ -40,8 +40,10 @@ SH
 chmod +x "$INSTALL_BIN/npm"
 ln -s "$(command -v node)" "$INSTALL_BIN/node"
 INSTALL_PATH="$INSTALL_BIN:/usr/bin:/bin"
+IN_GIT_WORKTREE=false
 WORKTREE_BEFORE=""
-if git -C "$PLUGIN_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if [ "$(git -C "$PLUGIN_ROOT" rev-parse --is-inside-work-tree 2>/dev/null)" = true ]; then
+    IN_GIT_WORKTREE=true
     WORKTREE_BEFORE="$(git -C "$PLUGIN_ROOT" status --porcelain)"
 fi
 
@@ -52,6 +54,30 @@ trap cleanup EXIT
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
+
+CLEAN_GIT_FIXTURE="$TMP/clean-git-worktree"
+mkdir "$CLEAN_GIT_FIXTURE"
+git -C "$CLEAN_GIT_FIXTURE" init -q
+git -C "$CLEAN_GIT_FIXTURE" config user.email 'lazybuddy-test@example.invalid'
+git -C "$CLEAN_GIT_FIXTURE" config user.name 'LazyBuddy regression fixture'
+printf 'tracked fixture\n' > "$CLEAN_GIT_FIXTURE/tracked"
+git -C "$CLEAN_GIT_FIXTURE" add tracked
+git -C "$CLEAN_GIT_FIXTURE" commit -qm 'fixture'
+CLEAN_GIT_STATUS="$(git -C "$CLEAN_GIT_FIXTURE" status --porcelain)"
+[ -z "$CLEAN_GIT_STATUS" ] || fail 'clean Git fixture unexpectedly has a status entry'
+[ "$(git -C "$CLEAN_GIT_FIXTURE" rev-parse --is-inside-work-tree)" = true ] \
+    || fail 'clean Git fixture was not detected as a Git worktree'
+FINAL_GUARD="$(tail -n 12 "$0")"
+case "$FINAL_GUARD" in
+    *'[ -n "$WORKTREE_BEFORE" ]'*) fail 'clean Git worktree guard still relies on a nonempty status snapshot' ;;
+esac
+grep -Fq 'IN_GIT_WORKTREE=false' "$0" \
+    || fail 'clean Git worktree guard is not independently recorded'
+case "$FINAL_GUARD" in
+    *'if [ "$IN_GIT_WORKTREE" = true ]; then'*) ;;
+    *) fail 'clean Git worktree guard is not enforced' ;;
+esac
+pass 'clean Git worktree retains mutation protection with an empty status snapshot'
 
 expect_status() {
     local label="$1" expected="$2"
@@ -234,8 +260,8 @@ else
     fail 'receipt matrix uses the bounded test-owned npm fixture'
 fi
 
-if [ -n "$WORKTREE_BEFORE" ]; then
-    [ "$WORKTREE_BEFORE" = "$(git -C "$PLUGIN_ROOT" status --porcelain)" ] || fail 'matrix changed the dirty worktree instead of temporary fixtures'
+if [ "$IN_GIT_WORKTREE" = true ]; then
+    [ "$WORKTREE_BEFORE" = "$(git -C "$PLUGIN_ROOT" status --porcelain)" ] || fail 'matrix changed the Git worktree instead of temporary fixtures'
 else
     pass 'matrix runs without a surrounding Git worktree'
 fi
