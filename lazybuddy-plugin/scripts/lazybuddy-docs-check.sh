@@ -66,6 +66,15 @@ check_active_documentation_policy() {
         [ -e "$active_path" ] || continue
         while IFS= read -r -d '' policy_file; do
             for pattern in "${forbidden_patterns[@]}"; do
+                # The public package overview names its study references and
+                # immediately states its independent runtime boundary. Other
+                # active workflow documents must remain free of legacy names.
+                if [ "$policy_file" = "${PLUGIN_ROOT}/README.md" ] && \
+                    { [ "$pattern" = 'lazycodex' ] || [ "$pattern" = '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)' ]; } && \
+                    grep -Fq 'primarily inspired by LazyCodex' "$policy_file" && \
+                    grep -Fq 'LazyCodex or OmO at runtime' "$policy_file"; then
+                    continue
+                fi
                 if grep -Eiq "$pattern" "$policy_file"; then
                     append_policy_violation "$policy_file" "$pattern"
                 fi

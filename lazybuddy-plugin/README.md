@@ -2,9 +2,10 @@
 
 > Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
 
-LazyBuddy v0.17.0 is the current package baseline.
-Capability-readiness contract v0.17.0 records package readiness; publication
-and live host integration require separate verification.
+This package belongs to the LazyBuddy learning project. It is
+primarily inspired by LazyCodex, while [NOTICE](NOTICE) records LazyCodex and
+OmO upstream attribution. It is an independent implementation and does not
+require LazyCodex or OmO at runtime.
 
 ## Quick Start
 

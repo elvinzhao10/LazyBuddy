@@ -19,9 +19,7 @@ grep -q "lazybuddy-docs/$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/docs/server.py"
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/status-dashboard/dashboard.html"
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/hooks/session-start.sh"
 grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/README.md"
 grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/CHANGELOG.md"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/workbuddy.md"
 if grep -Eq '\]\((\./)*\.\./docs/' "$PLUGIN_ROOT/README.md"; then
   printf 'FAIL package README must not link to removed repository-root docs/\n' >&2
   exit 1

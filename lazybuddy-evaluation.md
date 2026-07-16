@@ -4,9 +4,13 @@ This document records public, present-tense evidence for the LazyBuddy package.
 It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
 plugin. Verification is on macOS only.
 
-LazyBuddy v0.17.0 is the current package baseline.
-Capability-readiness contract v0.17.0 records package readiness; publication
-and live host integration require separate verification.
+## Project purpose and attribution
+
+LazyBuddy is a learning project for evidence-led agent workflows. It is
+primarily inspired by LazyCodex
+([upstream project](https://github.com/code-yeongyu/lazycodex)). OmO upstream
+attribution is recorded in [NOTICE](NOTICE). The package is an independent
+implementation and does not require LazyCodex or OmO at runtime.
 
 ## Features and verification
 

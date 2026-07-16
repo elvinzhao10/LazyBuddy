@@ -47,16 +47,15 @@ if [ ! -f "$REPOSITORY_ROOT/lazybuddy-evaluation.md" ]; then
     grep -Fq 'package readiness' "$PLUGIN_ROOT/README.md" || fail 'package README must distinguish package readiness'
     grep -Fq 'this repository does not endorse a mutable marketplace URL' "$PLUGIN_ROOT/README.md" || fail 'package README must require immutable marketplace discovery'
     grep -Fq 'retained root guidance' "$PLUGIN_ROOT/commands/lazy-librarian.md" || fail 'librarian command must name retained root guidance'
-    grep -Fq 'package README and `docs/verification-matrix.md` inventory' "$PLUGIN_ROOT/workbuddy.md" || fail 'package maintainer guide must name package-owned MCP inventory documentation'
-    grep -Fq 'LazyBuddy v0.17.0 is the current package baseline.' "$PLUGIN_ROOT/README.md" || fail 'package README must retain the v0.17.0 package baseline'
+    grep -Fq 'primarily inspired by LazyCodex' "$PLUGIN_ROOT/README.md" || fail 'package README must explain the LazyCodex inspiration'
     if grep -Eq '\]\((\./)*\.\./docs/' "$PLUGIN_ROOT/README.md"; then
         fail 'package README must not link to removed repository-root docs/'
     fi
-    pass 'standalone package documentation satisfies the v0.17 release baseline'
+    pass 'standalone package documentation explains the current package boundary'
     exit 0
 fi
 
-# Given the current v0.17 Buddy documentation, when the v0.17 documentation contract
+# Given the current Buddy documentation, when its documentation contract
 # is checked, then the retained evidence remains package-local.
 for document in "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; do
     assert_documentation_contract "$document"
@@ -70,25 +69,21 @@ grep -Fq 'retained root guidance' "$PLUGIN_ROOT/commands/lazy-librarian.md" || f
 if grep -Fq 'docs/handoff.md' "$PLUGIN_ROOT/commands/lazy-librarian.md"; then
     fail 'librarian command must not direct users to deleted root docs'
 fi
-grep -Fq 'package README and `docs/verification-matrix.md` inventory' "$PLUGIN_ROOT/workbuddy.md" || fail 'package maintainer guide must name package-owned MCP inventory documentation'
-if grep -Fq 'root README, handoff' "$PLUGIN_ROOT/workbuddy.md"; then
-    fail 'package maintainer guide must not direct MCP changes to deleted root handoff documentation'
-fi
 grep -Fq 'before running the host-generated install command' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must require immutable marketplace discovery'
 if grep -Eq 'codebuddy plugin marketplace add[[:space:]]+https://github\.com/' \
     "$PLUGIN_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md"; then
     fail 'marketplace guidance must not provide a mutable GitHub marketplace command'
 fi
 grep -Fq 'package readiness' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must distinguish package readiness'
-readiness_boundary_statement='Capability-readiness contract v0.17.0 records package readiness; publication'
 legacy_release_claim='does not claim a LazyBuddy package release'
 for document in \
     "$REPOSITORY_ROOT/README.md" \
     "$REPOSITORY_ROOT/AGENTS.md" \
     "$REPOSITORY_ROOT/lazybuddy-evaluation.md" \
     "$PLUGIN_ROOT/README.md"; do
-    grep -Fq 'LazyBuddy v0.17.0 is the current package baseline.' "$document" || fail "$(basename "$document") must retain the v0.17.0 package baseline"
-    grep -Fq "$readiness_boundary_statement" "$document" || fail "$(basename "$document") must distinguish package readiness from publication and live host integration"
+    grep -Fq 'primarily inspired by LazyCodex' "$document" || fail "$(basename "$document") must explain the LazyCodex inspiration"
+    grep -Fq 'independent' "$document" || fail "$(basename "$document") must describe its independent runtime boundary"
+    grep -Fq 'LazyCodex or OmO' "$document" || fail "$(basename "$document") must describe its independent runtime boundary"
     if grep -Fq "$legacy_release_claim" "$document"; then
         fail "$(basename "$document") must not retain the legacy package-release disclaimer"
     fi
@@ -102,13 +97,15 @@ if grep -Eqi 'alignment candidate|no longer maintained|practice project' \
 fi
 if grep -Eq '\]\((\./|\.\./)*docs/' \
     "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md" \
-    "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$REPOSITORY_ROOT/workbuddy.md"; then
+    "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; then
     fail 'active documentation must not link to removed repository-root docs/'
 fi
 if grep -Eq '\]\((\./)*\.\./docs/' "$PLUGIN_ROOT/README.md"; then
     fail 'package README must not link to removed repository-root docs/'
 fi
-pass 'current documentation satisfies the v0.17 release baseline'
+test ! -e "$REPOSITORY_ROOT/workbuddy.md" || fail 'repository root must not ship workbuddy.md'
+test ! -e "$PLUGIN_ROOT/workbuddy.md" || fail 'package root must not ship workbuddy.md'
+pass 'current documentation satisfies the public learning-project contract'
 
 # Given copied documentation, when a required heading is removed, then the same
 # contract fails instead of accepting incomplete release documentation.
