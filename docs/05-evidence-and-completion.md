@@ -24,7 +24,7 @@ The expected package evidence is respectively `PACKAGE_READINESS=full` (or an
 explained degraded state), `Doctor check: ALL PASS`, `MCP test: ALL PASS`, and
 aggregate JSON containing `"all_pass":true`. The aggregate JSON also records a
 bounded per-check status/reason; a timeout is failure, not proof of success.
-The package documentation contract is checked with `bash tests/v017-documentation-regression.sh`.
+The release-only publication contract is checked with `bash tests/publication-regression.sh`.
 
 Timeout cleanup is best-effort for trusted package-owned checks: the verifier
 terminates the check's dedicated process group and records whether descendants

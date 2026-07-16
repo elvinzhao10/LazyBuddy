@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v0.18.0)
+# lazybuddy-verify.sh — Master verification runner (v0.19.0)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -129,7 +129,7 @@ run_isolated_test() {
 run_regression_inventory() {
     local test_name test_path candidate inventory_failed=false
     local tests_dir="${PLUGIN_ROOT}/tests"
-    # The normal release gate owns every package-local v*.sh regression. The
+    # The normal release gate owns every package-local *-regression.sh. The
     # two explicit-root parity checks intentionally remain release-only.
     local standalone_tests=(
         "v015-consumer-agents-regression.sh"
@@ -159,7 +159,6 @@ run_regression_inventory() {
         "v017-codegraph-install-timeout-regression.sh"
         "v017-codegraph-lifecycle-caller-survival-regression.sh"
         "v017-codegraph-uninstall-pid-identity-regression.sh"
-        "v017-documentation-regression.sh"
         "v017-mcp-params-regression.sh"
         "v017-receipt-init-deep-regression.sh"
         "v018-verifier-regression.sh"
@@ -174,6 +173,9 @@ run_regression_inventory() {
         "v017-capability-readiness-contract-parity.sh"
         "v018-docs-manifest-parity.sh"
     )
+    local publication_tests=(
+        "publication-regression.sh"
+    )
 
     contains_test() {
         local needle="$1"
@@ -184,7 +186,7 @@ run_regression_inventory() {
         return 1
     }
 
-    for test_name in "${standalone_tests[@]}" "${paired_only_tests[@]}"; do
+    for test_name in "${standalone_tests[@]}" "${paired_only_tests[@]}" "${publication_tests[@]}"; do
         test_path="${tests_dir}/${test_name}"
         if [ ! -f "$test_path" ] || [ ! -s "$test_path" ] || ! bash -n "$test_path"; then
             printf 'ERROR: classified regression is missing, empty, or invalid: %s\n' "$test_name" >&2
@@ -198,14 +200,23 @@ run_regression_inventory() {
             :
         elif contains_test "$test_name" "${paired_only_tests[@]}"; then
             :
+        elif contains_test "$test_name" "${publication_tests[@]}"; then
+            :
         else
             printf 'ERROR: unclassified package-local regression: %s\n' "$test_name" >&2
             inventory_failed=true
         fi
-    done < <(find "$tests_dir" -maxdepth 1 -type f -name 'v*.sh' -print | LC_ALL=C sort)
+    done < <(find "$tests_dir" -maxdepth 1 -type f -name '*-regression.sh' -print | LC_ALL=C sort)
 
     for test_name in "${standalone_tests[@]}"; do
         if contains_test "$test_name" "${paired_only_tests[@]}"; then
+            printf 'ERROR: regression has conflicting classifications: %s\n' "$test_name" >&2
+            inventory_failed=true
+        fi
+    done
+
+    for test_name in "${publication_tests[@]}"; do
+        if contains_test "$test_name" "${standalone_tests[@]}" || contains_test "$test_name" "${paired_only_tests[@]}"; then
             printf 'ERROR: regression has conflicting classifications: %s\n' "$test_name" >&2
             inventory_failed=true
         fi

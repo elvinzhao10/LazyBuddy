@@ -106,6 +106,10 @@ bash scripts/lazybuddy-docs-check.sh
 bash scripts/lazybuddy-verify.sh
 ```
 
+The aggregate command is installed package health and does not read repository-
+root learner pages. In a repository checkout, publication validation is a
+separate release check: `bash lazybuddy-plugin/tests/publication-regression.sh`.
+
 Package readiness, doctor, and capability-status output are read-only package
 evidence. They do not activate optional providers, install a global host
 integration, or prove that a live host session connected an MCP server. See the

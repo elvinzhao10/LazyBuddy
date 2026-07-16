@@ -12,7 +12,13 @@ and names the host observation required before a user-facing integration claim.
 | Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS` | command output |
 | MCP integration | `bash scripts/lazybuddy-mcp-test.sh` | `MCP test: ALL PASS` | command output |
 | Package verification | `bash scripts/lazybuddy-verify.sh` | JSON with `"all_pass":true` | command output |
-| Documentation contract | `bash tests/v017-documentation-regression.sh` | shared headings and host-boundary policy pass | command output |
+
+## Repository publication check
+
+The installed package checks above do not read repository-root learner pages.
+Release CI runs `bash tests/publication-regression.sh` separately from a full
+repository checkout to validate the learner route, local links, and public
+semantic claims.
 
 ## Capability and host boundary
 

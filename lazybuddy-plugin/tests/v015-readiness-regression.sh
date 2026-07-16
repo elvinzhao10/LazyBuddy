@@ -113,16 +113,12 @@ assert "lazycodex" in policy_source
 assert "omo" in policy_source
 PY
 
-expect_status documentation-boundary-inventory 0 python3 - "$INSTALLED_PLUGIN" "$PROJECT_ROOT" <<'PY'
+expect_status documentation-boundary-inventory 0 python3 - "$INSTALLED_PLUGIN" <<'PY'
 from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
-project_root = Path(sys.argv[2])
 
-if (project_root / "lazybuddy-evaluation.md").is_file():
-    assert (project_root / "docs" / "README.md").is_file(), "repository-root docs index must be present"
-    assert (project_root / "docs" / "00-learning-path.md").is_file(), "repository-root learning path must be present"
 assert (root / "docs" / "verification-matrix.md").is_file(), "copied plugin must retain package-owned docs"
 for relative_path in (
     "scripts/lazybuddy-load-check.sh",
@@ -215,6 +211,23 @@ expect_status installed-root-master-verify 0 env CWD="$PROJECT_ROOT" CODEBUDDY_P
 expect_contains installed-root-master-verify '"all_pass":true'
 expect_contains installed-root-master-verify '"regression_inventory":"pass"'
 expect_contains installed-root-master-verify '"automatic_tooling_regressions":"skipped-nested"'
+
+cp -R "$PLUGIN_ROOT" "$TMP/directory-link-plugin"
+printf '%s\n' '[docs directory](docs/)' >> "$TMP/directory-link-plugin/README.md"
+expect_status package-docs-directory-link 0 env CODEBUDDY_PLUGIN_ROOT="$TMP/directory-link-plugin" bash "$TMP/directory-link-plugin/scripts/lazybuddy-docs-check.sh"
+expect_contains package-docs-directory-link '"broken":0'
+
+for link_case in empty missing escape; do
+    cp -R "$PLUGIN_ROOT" "$TMP/$link_case-link-plugin"
+    case "$link_case" in
+        empty) markdown='[empty]()'; expected='empty link target' ;;
+        missing) markdown='[missing](missing.md)'; expected='target not found' ;;
+        escape) markdown='[escape](../outside.md)'; expected='target escapes plugin root' ;;
+    esac
+    printf '%s\n' "$markdown" >> "$TMP/$link_case-link-plugin/README.md"
+    expect_status "package-docs-$link_case-link" 1 env CODEBUDDY_PLUGIN_ROOT="$TMP/$link_case-link-plugin" bash "$TMP/$link_case-link-plugin/scripts/lazybuddy-docs-check.sh"
+    expect_contains "package-docs-$link_case-link" "$expected"
+done
 
 expect_status missing-plugin-root-pipeline 1 env CWD="$TMP/workspace" CODEBUDDY_PLUGIN_ROOT="$TMP/missing-plugin" bash "$PLUGIN_ROOT/scripts/hook-pipeline-test.sh"
 expect_contains missing-plugin-root-pipeline 'plugin root is missing'

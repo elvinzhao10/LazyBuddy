@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="0.18.0"
+EXPECTED_VERSION="0.19.0"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
@@ -51,7 +51,7 @@ for relative in (
     assert value["packages"][""]["version"] == expected, f"{relative} root package reported {value['packages']['']['version']!r}"
 
 contract = json.loads((root / "contracts/automatic-tooling-contract.v1.json").read_text(encoding="utf-8"))
-assert contract["provenance"]["release"] == expected, f"automatic tooling contract reported {contract['provenance']['release']!r}"
+assert contract["provenance"]["release"] == "0.18.0", "shared protocol snapshot must remain byte-stable at 0.18.0"
 
 marketplace_path = root.parent / ".codebuddy-plugin/marketplace.json"
 if marketplace_path.is_file():
@@ -59,4 +59,4 @@ if marketplace_path.is_file():
     entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
     assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 PY
-printf 'v0.18 runtime version regression: PASS\n'
+printf 'v0.19 runtime version regression: PASS\n'

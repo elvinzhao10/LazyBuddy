@@ -124,7 +124,7 @@ while IFS= read -r INPUT || [ -n "$INPUT" ]; do
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"0.18.0"}}' ;;
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"0.19.0"}}' ;;
   tools/list) reply "$TOOL_LIST" ;;
   tools/call)
     if ! python3 -c "import json, sys; params=json.load(sys.stdin).get('params'); assert isinstance(params, dict) and isinstance(params.get('name'), str) and isinstance(params.get('arguments', {}), dict)" 2>/dev/null <<<"$INPUT"; then

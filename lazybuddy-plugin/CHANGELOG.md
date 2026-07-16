@@ -2,6 +2,15 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v0.19.0 — Package and publication gate separation (2026-07-17)
+
+- Separated repository-root publication checks from installed package health so
+  copied packages remain independent of parent learner documentation.
+- Corrected Markdown validation to accept existing file or directory targets
+  while continuing to reject empty, missing, and escaping local links.
+- Retained package-boundary, operational-guidance, security, manifest, MCP, and
+  immutable-marketplace protections as blocking package checks.
+
 ## v0.18.0 — Release identity alignment (2026-07-16)
 
 - Aligned CodeBuddy and WorkBuddy manifests, marketplace metadata, MCP server

@@ -116,6 +116,20 @@ PY
 grep -q '^PASS: later-check$' "$TMP/repeat.stderr"
 pass "independent later aggregate runs"
 
+# Given an unversioned regression matching the package suffix, when the
+# aggregate inventory runs, then it rejects the unclassified script.
+cat > "$FIXTURE/tests/unlisted-regression.sh" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+chmod +x "$FIXTURE/tests/unlisted-regression.sh"
+if CODEBUDDY_PLUGIN_ROOT="$FIXTURE" LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 bash "$FIXTURE/scripts/lazybuddy-verify.sh" >"$TMP/unclassified.json" 2>"$TMP/unclassified.stderr"; then
+    fail "unversioned unclassified regression must fail inventory"
+else
+    pass "unversioned unclassified regression fails inventory"
+fi
+grep -Fq 'ERROR: unclassified package-local regression: unlisted-regression.sh' "$TMP/unclassified.stderr" && pass "unversioned regression rejection is identified" || fail "unversioned regression rejection detail"
+
 mkdir "$TMP/fake-bin"
 cat > "$TMP/fake-bin/codebuddy" <<'SH'
 #!/usr/bin/env bash

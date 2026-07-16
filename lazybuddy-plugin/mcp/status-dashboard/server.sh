@@ -82,7 +82,7 @@ fi
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"0.18.0"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"0.19.0"}}'
     ;;
   tools/list)
     reply '{"tools":[

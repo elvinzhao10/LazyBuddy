@@ -24,9 +24,9 @@ fail() {
     FAIL=$((FAIL + 1))
 }
 
-# Given the release-only learner-manifest comparison, when the normal package
-# verifier inventories regressions, then it classifies that comparison as an
-# explicit-root paired check and does not schedule it as standalone work.
+# Given the publication regression, when the normal package verifier inventories
+# regressions, then it classifies that check separately and never schedules it as
+# standalone package work.
 if python3 - "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh" <<'PYEOF'
 from pathlib import Path
 import re
@@ -35,14 +35,18 @@ import sys
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
 standalone = re.search(r'local standalone_tests=\((.*?)\n    \)', source, re.S)
 paired = re.search(r'local paired_only_tests=\((.*?)\n    \)', source, re.S)
-assert standalone is not None and paired is not None
-assert '"v018-docs-manifest-parity.sh"' not in standalone.group(1)
-assert '"v018-docs-manifest-parity.sh"' in paired.group(1)
+publication = re.search(r'local publication_tests=\((.*?)\n    \)', source, re.S)
+assert standalone is not None and paired is not None and publication is not None
+assert '"publication-regression.sh"' not in standalone.group(1)
+assert '"publication-regression.sh"' not in paired.group(1)
+assert '"publication-regression.sh"' in publication.group(1)
+scheduled = source[source.index('if [ "$REGRESSION_DEPTH" -gt 0 ]'):]
+assert '"${publication_tests[@]}"' not in scheduled
 PYEOF
 then
-    pass "release-only learner manifest regression is paired-only"
+    pass "publication regression is classified but not scheduled"
 else
-    fail "release-only learner manifest regression classification"
+    fail "publication regression classification"
 fi
 
 expect_status() {

@@ -2,9 +2,9 @@
 set -euo pipefail
 
 if [ -n "${CODEBUDDY_PLUGIN_ROOT:-}" ]; then
-    PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT}"
+    PLUGIN_ROOT="$(cd "${CODEBUDDY_PLUGIN_ROOT}" && pwd -P)"
 else
-    PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+    PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 fi
 
 BROKEN=""
@@ -66,13 +66,8 @@ check_active_documentation_policy() {
         [ -e "$active_path" ] || continue
         while IFS= read -r -d '' policy_file; do
             for pattern in "${forbidden_patterns[@]}"; do
-                # The public package overview names its study references and
-                # immediately states its independent runtime boundary. Other
-                # active workflow documents must remain free of legacy names.
                 if [ "$policy_file" = "${PLUGIN_ROOT}/README.md" ] && \
-                    { [ "$pattern" = 'lazycodex' ] || [ "$pattern" = '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)' ]; } && \
-                    grep -Fq 'primarily inspired by LazyCodex' "$policy_file" && \
-                    grep -Fq 'LazyCodex or OmO at runtime' "$policy_file"; then
+                    { [ "$pattern" = 'lazycodex' ] || [ "$pattern" = '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)' ]; }; then
                     continue
                 fi
                 if grep -Eiq "$pattern" "$policy_file"; then
@@ -81,6 +76,9 @@ check_active_documentation_policy() {
             done
         done < <(find "$active_path" -type f -name '*.md' -print0 2>/dev/null)
     done
+    if grep -Eqi '(requires|depends on)[^.]*(LazyCodex|OmO)' "${PLUGIN_ROOT}/README.md"; then
+        append_policy_violation "${PLUGIN_ROOT}/README.md" "must not claim a LazyCodex or OmO runtime dependency"
+    fi
 }
 
 check_init_deep_evidence_contract() {
@@ -118,33 +116,26 @@ for scan_dir in "${PLUGIN_ROOT}"; do
     [ -d "$scan_dir" ] || continue
     while IFS= read -r -d '' md_file; do
         file_dir="$(dirname "$md_file")"
-        # Extract markdown links: [text](path) where path ends in .md
-        # Strip inline code (content between backticks) first to avoid false positives
-        links=$(sed 's/`[^`]*`//g' "$md_file" 2>/dev/null | grep -oE '\[[^]]+\]\([^)]*\.md[^)]*\)' | sed 's/\[[^]]*\](\(.*\))/\1/' || true)
-        for link in $links; do
-            # Skip absolute URLs
-            if echo "$link" | grep -qE '^https?://'; then
+        while IFS= read -r link; do
+            if echo "$link" | grep -qE '^(https?://|mailto:|#)'; then
                 continue
             fi
-            # Strip anchor
             link_path="${link%%#*}"
             TOTAL=$((TOTAL + 1))
+            if [ -z "$link_path" ]; then
+                append_broken "$md_file" "$link" "" "empty link target"
+                continue
+            fi
             resolved="${file_dir}/${link_path}"
-            # Normalize the path to resolve .. and . components
-            # realpath is not available on all macOS versions; fall back to python
-            if command -v realpath &>/dev/null; then
-                resolved_normalized=$(realpath "$resolved" 2>/dev/null || echo "$resolved")
-            elif command -v python3 &>/dev/null; then
-                resolved_normalized=$(python3 -c "import os; print(os.path.realpath('${resolved}'))" 2>/dev/null || echo "$resolved")
+            resolved_normalized=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$resolved")
+            if [ "$resolved_normalized" != "$PLUGIN_ROOT" ] && [[ "$resolved_normalized" != "$PLUGIN_ROOT/"* ]]; then
+                append_broken "$md_file" "$link" "$resolved_normalized" "target escapes plugin root"
+            elif [ -e "$resolved_normalized" ]; then
+                :
             else
-                resolved_normalized="$resolved"
+                append_broken "$md_file" "$link" "$resolved_normalized" "target not found"
             fi
-            if [ -f "$resolved_normalized" ]; then
-                : # OK
-            else
-                append_broken "$md_file" "$link" "$resolved_normalized" "file not found"
-            fi
-        done
+        done < <(sed 's/`[^`]*`//g' "$md_file" 2>/dev/null | grep -oE '\[[^]]+\]\([^)]*\)' | sed 's/\[[^]]*\](\(.*\))/\1/' || true)
     done < <(find "$scan_dir" -name "*.md" -print0 2>/dev/null || true)
 done
 

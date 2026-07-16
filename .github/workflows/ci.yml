@@ -31,3 +31,6 @@ jobs:
 
       - name: Run package verification
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
+      - name: Run publication verification
+        run: bash lazybuddy-plugin/tests/publication-regression.sh
