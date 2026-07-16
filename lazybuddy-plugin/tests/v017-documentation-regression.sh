@@ -41,6 +41,81 @@ assert_documentation_contract() {
     check_documentation_contract "$1" || fail "documentation contract failed for $(basename "$1")"
 }
 
+required_root_docs=(
+    'docs/README.md'
+    'docs/00-learning-path.md'
+    'docs/01-mental-model.md'
+    'docs/02-first-task.md'
+    'docs/03-install-and-host-verification.md'
+    'docs/04-workflow-playbooks.md'
+    'docs/05-evidence-and-completion.md'
+    'docs/06-capabilities-and-approvals.md'
+    'docs/07-package-map.md'
+    'docs/08-safe-removal.md'
+    'docs/reference/host-routes.md'
+    'docs/reference/verification-contract.md'
+    'docs/reference/terminology.md'
+)
+
+check_root_docs_contract() {
+    local relative_path
+    for relative_path in "${required_root_docs[@]}"; do
+        [ -f "$REPOSITORY_ROOT/$relative_path" ] || fail "required root doc is missing: $relative_path"
+    done
+
+    python3 - "$REPOSITORY_ROOT" <<'PY'
+import pathlib
+import re
+import sys
+
+repository_root = pathlib.Path(sys.argv[1]).resolve()
+docs_root = repository_root / "docs"
+link_pattern = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+
+for source in sorted(docs_root.rglob("*.md")):
+    for target in link_pattern.findall(source.read_text(encoding="utf-8")):
+        target = target.strip()
+        if not target:
+            raise SystemExit(f"FAIL: root documentation link target is empty: {source.relative_to(repository_root)}")
+        if target.startswith("#") or re.match(r"(?:https?://|mailto:)", target):
+            continue
+        target_path = target.split("#", 1)[0]
+        resolved = (source.parent / target_path).resolve()
+        try:
+            relative_target = resolved.relative_to(repository_root).as_posix()
+        except ValueError:
+            relative_target = None
+        if relative_target == "docs/handoff.md":
+            raise SystemExit(f"FAIL: root documentation must not link to docs/handoff.md ({source.relative_to(repository_root)})")
+        if not resolved.is_file():
+            raise SystemExit(f"FAIL: root documentation link target is missing: {source.relative_to(repository_root)} -> {target}")
+PY
+}
+
+# Given an empty Markdown link destination, when the root-doc link resolver is
+# exercised, then it rejects that destination rather than silently skipping it.
+if python3 - <<'PY'
+import re
+
+link_pattern = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+
+try:
+    for target in link_pattern.findall("[empty]()"):
+        target = target.strip()
+        if not target:
+            raise ValueError("root documentation link target is empty")
+except ValueError as error:
+    if str(error) != "root documentation link target is empty":
+        raise SystemExit(f"unexpected empty-link rejection: {error}")
+else:
+    raise SystemExit("empty Markdown link destination was accepted")
+PY
+then
+    pass 'empty Markdown link destinations are rejected'
+else
+    fail 'empty Markdown link destination rejection regressed'
+fi
+
 if [ ! -f "$REPOSITORY_ROOT/lazybuddy-evaluation.md" ]; then
     grep -Fq 'six local MCP servers' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain the six-server inventory'
     grep -Fq 'manual host' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain manual host verification'
@@ -60,7 +135,7 @@ fi
 for document in "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; do
     assert_documentation_contract "$document"
 done
-test ! -e "$REPOSITORY_ROOT/docs" || fail 'repository-root docs/ must remain absent'
+check_root_docs_contract
 grep -Fq 'six local MCP servers' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain the six-server inventory'
 grep -Fq 'manual host' "$PLUGIN_ROOT/docs/verification-matrix.md" || fail 'verification matrix must retain manual host verification'
 grep -Fq 'package readiness' "$PLUGIN_ROOT/README.md" || fail 'package README must distinguish package readiness'
@@ -95,13 +170,8 @@ if grep -Eqi 'alignment candidate|no longer maintained|practice project' \
     "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; then
     fail 'public documentation must not use legacy candidate or practice-project framing'
 fi
-if grep -Eq '\]\((\./|\.\./)*docs/' \
-    "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md" \
-    "$REPOSITORY_ROOT/lazybuddy-evaluation.md"; then
-    fail 'active documentation must not link to removed repository-root docs/'
-fi
 if grep -Eq '\]\((\./)*\.\./docs/' "$PLUGIN_ROOT/README.md"; then
-    fail 'package README must not link to removed repository-root docs/'
+    fail 'package README must not depend on repository-root docs/'
 fi
 test ! -e "$REPOSITORY_ROOT/workbuddy.md" || fail 'repository root must not ship workbuddy.md'
 test ! -e "$PLUGIN_ROOT/workbuddy.md" || fail 'package root must not ship workbuddy.md'
@@ -123,15 +193,3 @@ if check_documentation_contract "$COPIED_EVALUATION" > "$TMP/missing-heading.out
 fi
 grep -Fq 'JSON-RPC resilience' "$TMP/missing-heading.out" || fail 'missing-heading failure did not identify the removed heading'
 pass 'copied documentation with a missing heading is rejected'
-
-# Given a copied root guide, when a stale root-doc link is restored, then the
-# root-doc absence policy rejects it.
-COPIED_ROOT_GUIDE="$TMP/README.md"
-cp "$REPOSITORY_ROOT/README.md" "$COPIED_ROOT_GUIDE"
-for stale_link in 'docs/handoff.md' './docs/handoff.md'; do
-    printf '\n[stale handoff](%s)\n' "$stale_link" > "$COPIED_ROOT_GUIDE"
-    if ! grep -Eq '\]\((\./|\.\./)*docs/' "$COPIED_ROOT_GUIDE"; then
-        fail "stale root-doc link fixture was not detected: $stale_link"
-    fi
-done
-pass 'copied documentation with a stale root-doc link is rejected'
