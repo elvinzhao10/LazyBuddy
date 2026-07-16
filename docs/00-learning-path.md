@@ -1,36 +1,36 @@
-# Learning path
+# Architecture tour
 
-Use this path in order the first time. It is deliberately short: learn the evidence boundary, make one focused request, then prove the host surface you intend to use.
+LazyBuddy is not one runtime. It is a package of declarative host assets plus small local executables. The technical question at every boundary is: *who owns this file or process, and what observation can prove it ran?*
 
-## 1. Understand the boundary
+```mermaid
+flowchart LR
+    Request["user request"] --> Policy["skill / command text"]
+    Policy --> Role["agent role"]
+    Role --> Host["host invokes tools"]
+    Host --> Hook["hook payload"]
+    Hook --> Script["shell/Python policy script"]
+    Script --> Run["run ledger + evidence"]
+    Script --> Verify["bounded verifier"]
+    Verify --> Result["structured status"]
+    Host --> MCP["MCP stdio process"]
+    MCP --> Run
+```
 
-Read the [mental model](01-mental-model.md). The key distinction is between a package check and a host observation. LazyBuddy is verified on macOS only, and passing a local script does not prove a CodeBuddy or WorkBuddy session is live.
+The arrows are not all automatic. Skills and commands are instructions that a host or agent may invoke; the host decides whether it loads them. Hook scripts receive host-provided structured input. MCP declarations merely tell a host how to start a local process. The package can validate every file in that path, but only a host observation proves loading or connection.
 
-## 2. Choose the smallest task
+## Package boundary
 
-Start with one observable outcome. The [first-task guide](02-first-task.md) uses project search as an example, but a small bug fix or focused UI adjustment works just as well. Include the behavior that must work and how it will be checked.
+`lazybuddy-plugin/` is the distributable unit. It contains:
 
-## 3. Install only for your host
+- `skills/`, `commands/`, and `agents/`: policy and role definitions;
+- `hooks/` and `scripts/hooks/`: event mappings and input-policy adapters;
+- `scripts/state/` and `scripts/loop/`: durable run/plan transitions;
+- `mcp/`: narrow local JSON-RPC endpoints and their launchers;
+- `tooling/`: local capability policy, receipt handling, and provider checks;
+- `tests/`: package-boundary and hostile-input regressions.
 
-Follow [installation and host verification](03-install-and-host-verification.md), then use the detailed [host routes](reference/host-routes.md). Choose one surface:
+The repository root holds public explanations and evaluation evidence. It is not required by the package at runtime. Conversely, marketplace installation, credentials, host configuration, and live sessions are host/user state, not package state.
 
-- CodeBuddy IDE through its plugin flow.
-- CodeBuddy CLI through its current marketplace discovery flow.
-- WorkBuddy through its documented plugin/marketplace UI.
-- WorkBuddy's verified no-package-manager fallback: import local skills and configure compatible MCP connectors manually.
+## Follow one real path
 
-Do not assume that a copied repository installs a WorkBuddy plugin. The local skills import intentionally exposes a smaller surface.
-
-## 4. Work proportionally
-
-For a focused change, ask normally. For an uncertain, multi-file, or architectural change, use the appropriate [workflow playbook](04-workflow-playbooks.md) and approve the resulting plan before implementation. Use the durable loop only for long-running outcomes.
-
-## 5. Finish with evidence
-
-Read [evidence and completion](05-evidence-and-completion.md). A passing unit test is useful evidence, but it is not automatically proof of the user-facing result. Exercise the matching CLI, page, API, or other requested surface.
-
-If optional tooling is relevant, consult [capabilities and approvals](06-capabilities-and-approvals.md) before enabling anything. Then read [security and authority](06a-security-and-authority.md) and [receipts and owned tooling](06b-receipts-and-owned-tooling.md). Normal onboarding and readiness checks do not enable providers, register MCP servers, install global tools, or change host settings.
-
-## 6. Learn lifecycle and release proof
-
-Before relying on state or a local MCP declaration, read [state and validation](07a-state-and-validation.md) and [MCP lifecycle](07b-mcp-lifecycle.md). Finish the learning path with [test and release verification](09-test-and-release-verification.md) and the [host capability matrix](10-host-capability-matrix.md).
+Start in [07 — Package map](07-package-map.md). Then trace a workflow request through [04 — Workflow playbooks](04-workflow-playbooks.md), a persisted record through [07a — State and validation](07a-state-and-validation.md), and a protocol request through [07b — MCP lifecycle](07b-mcp-lifecycle.md). Finish with [09 — Test and release verification](09-test-and-release-verification.md) to see how the repository tests each boundary.

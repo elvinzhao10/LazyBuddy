@@ -1,39 +1,30 @@
 # State and validation
 
-LazyBuddy keeps workflow state under `.lazybuddy/` in the project being worked
-on. State makes progress inspectable and recoverable; it does not make a host
-integration active or authorize edits outside the task.
+LazyBuddy makes long-running work inspectable by writing explicit run artifacts instead of relying on conversation memory. State scripts own the transition rules; callers should not synthesize ledger files by hand.
+
+```mermaid
+stateDiagram-v2
+    [*] --> created: create-run
+    created --> active: checkpoint / next-task
+    active --> blocked: record blocker
+    blocked --> active: repair task
+    active --> verified: bounded checks pass
+    verified --> finalized: finalize-run
+    active --> failed: verification failure
+```
 
 ## Run artifacts
 
-A run can include `state.json`, append-only `events.jsonl`, checkpoints,
-evidence, verification, review, agent outputs, artifacts, and memory updates.
-State commands create and update these artifacts as part of the planned
-workflow. The precise roles and retention boundary are in [state artifact
-reference](reference/state-artifact-reference.md).
+The `scripts/state/` helpers create, locate, load, summarize, and validate the active run. `scripts/loop/` builds on that stable layout to classify a failure, create a repair task, select the next task, checkpoint progress, and finalize a completed run. Event append operations preserve a chronological record instead of rewriting a narrative summary.
+
+The important invariant is that state is descriptive rather than authoritative over the host: a record can show that the package ran a check, but it cannot prove that CodeBuddy or WorkBuddy loaded a plugin or completed a host action.
 
 ## Validation is observable and bounded
 
-The aggregate verifier runs checks with a finite timeout. Each check emits
-progress/status records and receives a `pass`, `fail`, `timeout`, or
-`unavailable` outcome with a reason in the final JSON. A timeout is a failure,
-not a passing slow check. `LAZYBUDDY_VERIFY_TIMEOUT_SECONDS` and
-`LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS` must be positive integers when set.
+`lazybuddy-verify.sh` is an aggregate dispatcher, not a sandbox. It invokes package-owned checks through `lazybuddy-bounded-run.py`, which starts each check in a separate process group and records status, reason, output tail, timeout information, and detectable escaped descendants.
 
-Trusted package-owned verification commands start in a dedicated process
-group. On timeout, LazyBuddy best-effort terminates that owned group and reports
-whether any still-running descendants were detectable during cleanup. This is
-not a security sandbox and does not guarantee cleanup of descendants that leave
-the group or re-parent. Run genuinely untrusted commands in a VM or container-backed runner; the verifier does not enable a no-fork sandbox by default.
-
-When the CodeBuddy CLI is absent, the doctor marks its host validator
-**UNCHECKED**. A validator launch failure is unavailable; a timeout, nonzero,
-or semantic failure is not a host-success claim. These classifications provide
-local process evidence only—host proof still requires a fresh host session.
+On deadline the runner performs **best-effort** termination of its owned process group. It reports a detectable escape instead of promising descendant cleanup. This is **not a security sandbox**: verification commands are trusted package-owned code. A genuinely untrusted command belongs in a **VM or container-backed runner**, not this process-group mechanism.
 
 ## Read state at the correct boundary
 
-Do not infer a live CodeBuddy or WorkBuddy session from `.lazybuddy/` files,
-success-looking JSON, or a DoneClaim. Use [MCP lifecycle](07b-mcp-lifecycle.md)
-for the host connection sequence and [test and release verification](09-test-and-release-verification.md)
-for the layers of evidence.
+`lazybuddy-load-check.sh` and doctor examine copied package inventory and contracts. The run ledger records package-local workflow activity. Neither means a host discovered the package, ran SessionStart, enforced a hook, or connected MCP. The required final fact for those claims is a host observation.

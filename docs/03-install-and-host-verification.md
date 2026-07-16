@@ -1,41 +1,24 @@
-# Install and host verification
+# Package delivery
 
-This page separates the safe local package checks from the live host proof needed before relying on LazyBuddy integration behavior. All published verification is **macOS only**.
+This page explains the deployment boundary in code terms. A plugin package contains files a host may load; it does not contain the host's marketplace database, session state, or connector process table.
 
-## The two-step rule
+## Copyable versus observed state
 
-1. Run package checks to establish **package readiness**.
-2. Use the selected host and observe its loaded session or settings to establish **host proof**.
+`lazybuddy-plugin/` can be copied and checked in isolation. `scripts/lazybuddy-load-check.sh` inspects the selected package root, manifests, inventories, declarations, executable scripts, and tooling contract. `lazybuddy-plugin-doctor.sh` adds health diagnostics. Neither script asks a host to install a plugin or open an MCP connection.
 
-Package readiness validates copied package assets, declarations, inventories, and local contracts. It does not prove plugin discovery, marketplace installation, SessionStart, hook execution, MCP connection, or a running host session. The [verification contract](reference/verification-contract.md) records the detailed check-to-claim boundary.
+The host is a second runtime. CodeBuddy and WorkBuddy choose how plugins are discovered, when hooks receive events, and when MCP launchers are spawned. The package models that with declarations and tests; it deliberately does not scan or mutate host-owned paths to infer success.
 
-## Run the package checks
+## Two evidence channels
 
-From the repository root, run:
-
-```bash
-bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
-bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
-bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+```mermaid
+flowchart LR
+    Copy["copied package"] --> Check["load-check / doctor"] --> Ready["package readiness"]
+    Host["selected host"] --> Session["new/reloaded session"] --> Live["observed integration"]
+    Ready -. does not imply .-> Live
 ```
 
-The load check reports package readiness, such as `PACKAGE_READINESS=full` or an explained degraded state. The doctor and aggregate verification add local package evidence. They are read-only package checks: they do not activate optional providers, register host MCP entries, install a global host integration, or prove a host connection.
+The first channel supports claims about package contents. The second supports claims about host loading. Keeping the channels separate is what lets uninstall be safe: package removal cannot guess where a host stored marketplace or connector data.
 
-## Pick exactly one host route
+## Delivery surfaces
 
-Use the detailed steps and required observation in [host routes](reference/host-routes.md).
-
-| Surface | Setup boundary | Required proof |
-| --- | --- | --- |
-| CodeBuddy IDE | Use the host plugin flow for the copied package; reload only if the host offers it. | In a new session, observe a `lazybuddy` skill or command and MCP status. |
-| CodeBuddy CLI | Use current host marketplace discovery, confirm the publisher and immutable revision or release reference, then use the host-generated install action. | Start a new CLI session and inspect plugin/MCP activation. |
-| WorkBuddy plugin/marketplace | Use WorkBuddy’s documented plugin/marketplace UI. | Confirm a loaded session before relying on plugin hooks, agents, commands, or MCP. |
-| WorkBuddy skills-only fallback | Import `lazybuddy-plugin/skills/` with Skills UI and add compatible MCP connectors manually. | Observe an imported skill and every manual connector in Settings. |
-
-The copied repository is **not** a verified WorkBuddy plugin installer. The skills-only fallback is deliberately narrower: it does not claim automatic loading of hooks, agents, commands, or MCP declarations. Its manual connector route is explained in [MCP lifecycle](07b-mcp-lifecycle.md).
-
-## What not to do during onboarding
-
-Do not treat package scripts as authority to change marketplace, account, credentials, host settings, remote providers, browser automation, or optional architecture tooling. Those are separate user decisions. For optional-capability details, see [capabilities and approvals](06-capabilities-and-approvals.md).
-
-After the required host proof, continue with [your first task](02-first-task.md). For safe removal, use [safe removal](08-safe-removal.md) rather than guessing host-managed paths. See the [host capability matrix](10-host-capability-matrix.md) for boundaries by surface.
+CodeBuddy IDE and CLI use host plugin discovery. WorkBuddy may use a documented plugin/marketplace surface or a narrower local-skills import path. The latter imports skills only; it is intentionally not represented as automatic agent, hook, command, or MCP loading. The detailed host adapters are in [Host capability matrix](10-host-capability-matrix.md) and [Host routes](reference/host-routes.md).

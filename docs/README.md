@@ -1,48 +1,66 @@
-# Learning guide
+# Technical architecture guide
 
-LazyBuddy is a learning project for safe, evidence-led agent workflows on CodeBuddy and WorkBuddy. It is independently implemented and does not require LazyCodex or OmO at runtime. This is a source-reading guide: it explains the control flow, ownership boundaries, and tests behind the harness before it describes a host workflow.
+This tree explains how LazyBuddy is built. It is a source-reading guide, not
+an installation manual: each page names the executable boundary, the data it
+owns, and the evidence that constrains its behavior. Use the root
+[README](../README.md) for host directions.
 
-> **Verification scope:** the documented package evidence is verified on macOS only. A package check is not proof that a host loaded a plugin, ran hooks, or connected MCP.
+## System at a glance
 
-## Read the code in this order
+```mermaid
+flowchart TD
+    Host["CodeBuddy / WorkBuddy host"] --> Surface["skills, commands, agents"]
+    Host --> Hooks["structured hook events"]
+    Host --> MCP["local stdio MCP declarations"]
+    Surface --> Scripts["package scripts"]
+    Hooks --> Scripts
+    Scripts --> State["run state + evidence"]
+    Scripts --> Tooling["receipt-owned local tooling"]
+    MCP --> State
+    Scripts --> Evidence["bounded verification results"]
+    Host -. host-owned .-> HostState["marketplace, credentials, live connections"]
+```
 
-1. Read [the package map](07-package-map.md) to locate executable components and boundaries.
-2. Read [security and authority](06a-security-and-authority.md) and [receipts](06b-receipts-and-owned-tooling.md) to understand why the package refuses broad ownership.
-3. Follow [state and validation](07a-state-and-validation.md) to see how plans, loops, evidence, and verification become durable records.
-4. Follow [MCP lifecycle](07b-mcp-lifecycle.md) from a static declaration to a connected stdio tool without confusing either with host proof.
-5. Read [test and release verification](09-test-and-release-verification.md) to see the difference between unit, package, protocol, and host evidence.
+The host loads integrations; `lazybuddy-plugin/` supplies their definitions.
+Scripts and MCP endpoints operate only on their defined package/project
+boundaries. Host state is deliberately outside those boundaries.
 
-## Guide map
+## Read the implementation in this order
 
-| Guide | Use it when |
+1. [00 — Architecture tour](00-learning-path.md) identifies the package
+   boundary and the request-to-evidence path.
+2. [01 — Execution model](01-mental-model.md) explains workflow text, agents,
+   hooks, scripts, and proof as separate layers.
+3. [07 — Package map](07-package-map.md) maps those layers to files; follow it
+   with [07a — State and validation](07a-state-and-validation.md) and
+   [07b — MCP lifecycle](07b-mcp-lifecycle.md).
+4. [06a — Security and authority](06a-security-and-authority.md) and
+   [06b — Receipts and owned tooling](06b-receipts-and-owned-tooling.md)
+   explain why the package refuses broad discovery and deletion.
+5. [09 — Test and release verification](09-test-and-release-verification.md)
+   connects unit, package, protocol, and host evidence.
+
+## Technical map
+
+| Page | Implementation question answered |
 | --- | --- |
-| [00 — Learning path](00-learning-path.md) | You want the recommended reading and action order. |
-| [01 — Mental model](01-mental-model.md) | You need to distinguish a task request, package evidence, and host evidence. |
-| [02 — First task](02-first-task.md) | You are ready to ask for a small, concrete change. |
-| [03 — Install and host verification](03-install-and-host-verification.md) | You need the exact package-check and host-proof boundary. |
-| [04 — Workflow playbooks](04-workflow-playbooks.md) | Your task needs planning, debugging, review, or a durable loop. |
-| [05 — Evidence and completion](05-evidence-and-completion.md) | You need to decide what is sufficient to call work complete. |
-| [06 — Capabilities and approvals](06-capabilities-and-approvals.md) | You need optional local, remote, browser, or architecture capability details. |
-| [06a — Security and authority](06a-security-and-authority.md) | You need secret-path, registry, explicit-root, and approval boundaries. |
-| [06b — Receipts and owned tooling](06b-receipts-and-owned-tooling.md) | You need to understand limited ownership and removal receipts. |
-| [07 — Package map](07-package-map.md) | You want to find skills, commands, agents, hooks, or MCP declarations. |
-| [07a — State and validation](07a-state-and-validation.md) | You need state artifacts and bounded verifier statuses. |
-| [07b — MCP lifecycle](07b-mcp-lifecycle.md) | You need declaration-to-removal and host-connection boundaries. |
-| [08 — Safe removal](08-safe-removal.md) | You want to remove LazyBuddy without touching host-managed state. |
-| [09 — Test and release verification](09-test-and-release-verification.md) | You need the five layers of evidence. |
-| [10 — Host capability matrix](10-host-capability-matrix.md) | You need the CodeBuddy/WorkBuddy capability boundaries. |
+| [00 — Architecture tour](00-learning-path.md) | Which component receives an event, and where does its result go? |
+| [01 — Execution model](01-mental-model.md) | Why are instructions, execution, state, and proof distinct layers? |
+| [02 — Request decomposition](02-first-task.md) | How does an outcome become acceptance criteria and a proof surface? |
+| [03 — Package delivery](03-install-and-host-verification.md) | What does copying a package establish, and what does it not establish? |
+| [04 — Workflow playbooks](04-workflow-playbooks.md) | How do skills, commands, and agent roles encode proportional workflow policy? |
+| [05 — Evidence and completion](05-evidence-and-completion.md) | How are checks, statuses, timeouts, and completion claims kept honest? |
+| [06 — Capabilities and approvals](06-capabilities-and-approvals.md) | How does local-first capability selection avoid persistent mutation? |
+| [06a — Security and authority](06a-security-and-authority.md) | Which inputs, paths, registries, and user decisions are trusted? |
+| [06b — Receipts and owned tooling](06b-receipts-and-owned-tooling.md) | How does tooling record and later prove limited ownership? |
+| [07 — Package map](07-package-map.md) | Which source directories implement each runtime surface? |
+| [07a — State and validation](07a-state-and-validation.md) | Which artifacts are durable, validated, and safe to mutate? |
+| [07b — MCP lifecycle](07b-mcp-lifecycle.md) | How does a declaration become a JSON-RPC process without becoming host proof? |
+| [08 — Safe removal](08-safe-removal.md) | Why does removal stop at package-owned paths? |
+| [09 — Test and release verification](09-test-and-release-verification.md) | What does each release gate prove? |
+| [10 — Host capability matrix](10-host-capability-matrix.md) | Where do CodeBuddy and WorkBuddy intentionally diverge? |
 
-Detailed lookup material lives in the [host routes](reference/host-routes.md), [state artifact reference](reference/state-artifact-reference.md), [MCP inventory](reference/mcp-inventory.md), [verification contract](reference/verification-contract.md), and [terminology](reference/terminology.md) references.
-
-## The implementation loop
-
-Skills and commands provide the policy text an agent sees. Agents provide
-role-specific instructions. Hooks and MCP servers are narrow host/protocol
-adapters. Scripts perform the actual local state transitions: creating
-receipts, validating inventory, running a bounded verification check, and
-emitting a machine-readable result. Tests exercise those layers independently
-so a host-facing declaration is never mistaken for a live integration.
-
-## What this guide does not claim
-
-The included checks can establish **package readiness**: copied assets, declarations, inventories, and local contracts are present. They cannot establish marketplace activation, a new host session, SessionStart, hook execution, or a live MCP connection. Complete the applicable host observation before making an integration claim.
+The lookup tables in [state artifact reference](reference/state-artifact-reference.md),
+[MCP inventory](reference/mcp-inventory.md), [verification contract](reference/verification-contract.md),
+[host routes](reference/host-routes.md), and [terminology](reference/terminology.md)
+provide the concrete artifacts and vocabulary used by these explanations.

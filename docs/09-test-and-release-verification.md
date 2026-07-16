@@ -1,39 +1,28 @@
 # Test and release verification
 
-LazyBuddy uses five layers of evidence. Passing one layer must not be reported
-as proof of a stronger layer.
+LazyBuddy uses layered evidence. A release check is useful only when its scope is explicit: a syntax check does not prove a protocol, a protocol fixture does not prove a host connection, and host observation does not rewrite package ownership.
 
-| Layer | What it checks | What it does not prove |
-| --- | --- | --- |
-| 1. Static/documentation contracts | Required files, headings, inventories, and safe local links. | Host loading or connection. |
-| 2. Focused regressions | Security, path, protocol, state, and failure behavior. | A host invoked the behavior. |
-| 3. Local package checks | Readiness, doctor, MCP protocol, hook pipeline, and aggregate verification. | Marketplace activation or a live host session. |
-| 4. Manual product QA | The requested CLI, page, API, or other real product surface. | Every host/plugin route. |
-| 5. Host observation | A selected host's new-session command/skill and MCP status. | All package or product checks. |
+```mermaid
+flowchart TB
+    Unit["unit + focused regression"] --> Package["copied package checks"]
+    Package --> Aggregate["lazybuddy-verify.sh"]
+    Aggregate --> Release["release evidence"]
+    Release -. separate observation .-> Host["live host session"]
+    Pair["explicit paired parity"] -. release-only .-> Release
+```
 
 ## Read the aggregate result
 
-`bash scripts/lazybuddy-verify.sh` produces final JSON with per-check status
-and reason. It prints bounded progress while checks run. A `timeout` is a
-failure; `unavailable` means the relevant command could not be launched; an
-absent CodeBuddy validator is reported as UNCHECKED by doctor. None of these
-states prove a host feature.
+`scripts/lazybuddy-verify.sh` calls doctor, smoke, documentation, security, MCP, hook-pipeline, load-check, contract, and classified regression checks. It uses `lazybuddy-bounded-run.py` for package-owned checks so the JSON result contains a status and reason instead of a bare exit code. A timeout or failed check is a failure; an unavailable host-side validator is reported as an unchecked condition rather than a fabricated host success.
 
-For trusted package-owned checks, a timeout terminates the dedicated process
-group and JSON/stderr show whether descendants were still detectable at cleanup
-time. This is best-effort cleanup, not a security boundary or a guarantee that
-all descendants stopped. Genuinely untrusted commands need a VM or
-container-backed runner; LazyBuddy does not enable a no-fork sandbox by
-default.
+The verifier's timeout cleanup is **best-effort** process-group cleanup. It is **not a security sandbox** and does not guarantee descendant cleanup. Tests that need to execute untrusted input need a **VM or container-backed runner**.
+
+## Regression families
+
+The `tests/v*.sh` inventory covers copied-package boundaries, manifest and readiness structure, hook inputs, path policy, MCP protocol handling, tooling receipts, provider lifecycle, CodeGraph cleanup, and security regressions such as documentation-MCP SSRF and secret-target handling. Tests construct temporary fixtures so a pass means the package can stand alone rather than relying on the repository's current checkout.
 
 ## Release boundary
 
-Normal CI is self-contained and does not require a sibling repository. A
-release-only paired comparison may use an explicitly supplied sibling root as
-evidence; it is not installation, runtime, or ordinary CI dependency. The
-published check scope is macOS only.
+Normal CI is self-contained: it does not require a sibling repository. Documentation and contract parity with LazyTrae are release-only paired parity checks, run only when both absolute roots are explicitly supplied. That keeps the shared safety contract auditable without creating a runtime, installer, or CI dependency between packages.
 
-Use [verification contract](reference/verification-contract.md) for commands,
-[security and authority](06a-security-and-authority.md) for adversarial
-boundaries, and [evidence and completion](05-evidence-and-completion.md) for a
-reproducible DoneClaim.
+The final host layer is intentionally manual. A CodeBuddy or WorkBuddy session must show the selected plugin surface, hook behavior where relevant, and MCP connection before those facts are claimed. Current package evidence is verified on macOS only.

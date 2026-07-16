@@ -1,17 +1,25 @@
 # Host capability matrix
 
-This matrix prevents package inventory from being mistaken for verified host
-behavior. All published validation is **macOS only**.
+LazyBuddy deliberately aligns policy and package safety across hosts while keeping host adapters distinct. The same package may be present on two surfaces without both hosts exposing the same loading or registration behavior.
 
-| Capability | CodeBuddy IDE/CLI | WorkBuddy plugin/marketplace | WorkBuddy local fallback |
+## What each host needs
+
+| Capability | CodeBuddy IDE / CLI | WorkBuddy | Package assertion |
 | --- | --- | --- | --- |
-| Package assets and local checks | Present; prove package readiness only. | Present; prove package readiness only. | Local skills are an import source. |
-| Commands, agents, hooks | Require a verified host session. | Require a verified plugin/marketplace session. | Not automatically loaded or claimed. |
-| Six local MCP declarations | Package declarations; host connection must be observed. | Connection needs a verified session. | Configure compatible connectors manually. |
-| Host setup/removal | Use CodeBuddy's plugin flow. | Use WorkBuddy's documented UI/marketplace flow. | Use Skills UI and Settings; preserve unrelated entries. |
-| Proof | New-session command/skill plus MCP status. | Loaded-session observation. | Imported skill plus every manual connector observed. |
+| Skills and commands | Host plugin discovery | Plugin/marketplace or local skills import | Files and metadata are present. |
+| Agents and hooks | Host plugin lifecycle | Only if the host loads the plugin surface | Package declares adapters; host must execute them. |
+| MCP | Host consumes `.mcp.json` declaration | Manual compatible connector configuration for local fallback | Launchers and protocol tests are present. |
+| Package readiness | Local scripts | Local scripts | Checks copied assets and contracts, not sessions. |
+| Removal | Host plugin flow | Host UI/manual connectors | Package never guesses host locations. |
 
-No row implies feature parity between CodeBuddy and WorkBuddy. The copied
-repository is not a verified WorkBuddy installer, and a local check cannot
-prove plugin discovery, hook execution, or MCP connection. See [install and
-host verification](03-install-and-host-verification.md) and [MCP lifecycle](07b-mcp-lifecycle.md).
+## Structural differences
+
+The host adapter differs, but the safety model does not:
+
+- **Host integration:** CodeBuddy and WorkBuddy decide plugin discovery, connector registration, session lifetime, and event delivery.
+- **State/path:** package run state and receipt-owned tooling roots are local; marketplace directories, `.workbuddy` data, credentials, and connector state remain host/user-owned.
+- **Inventory:** six local MCP servers are packaged. Optional remote exports and browser work remain separate explicit decisions.
+
+## macOS-only scope
+
+The package evidence is verified on macOS only. It does not claim equivalent host loading, marketplace behavior, hook execution, or MCP connection on other operating systems. Those are observed per host session.

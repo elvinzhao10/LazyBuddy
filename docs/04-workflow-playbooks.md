@@ -68,3 +68,18 @@ skills describe the workflow. They are not proof of live host loading.
 
 Next: learn what counts as completion in [evidence and completion](05-evidence-and-completion.md),
 or see the complete [package map](07-package-map.md).
+
+## How policy becomes behavior
+
+The playbooks are deliberately declarative. `skills/lazy-*/SKILL.md` tells an agent which evidence and constraints matter; `commands/lazy-*.md` gives a host named entry point; `agents/*.md` narrows the prompt to a specialist role. The operational side effects live elsewhere, in scripts, hooks, MCP endpoints, and the project being changed.
+
+```mermaid
+flowchart LR
+    Skill["skill policy"] --> Command["optional command wrapper"]
+    Command --> Agent["specialist role"]
+    Agent --> Tools["host tool calls"]
+    Tools --> Scripts["state / verifier scripts"]
+    Scripts --> Evidence["durable evidence"]
+```
+
+This split is intentional. A host can expose a skill without exposing a slash command, and a declared agent can exist without being selected for a task. The package tests the files and local scripts; actual selection and execution are host/session observations.

@@ -1,33 +1,26 @@
-# Your first task
+# Request decomposition
 
-Start with a small request whose success can be observed. You do not need to learn every command first.
+The workflow layer converts an open-ended request into three durable concepts: an outcome, acceptance criteria, and a proof surface. The package does not parse product intent automatically; skills and agents make these concepts explicit so later state and verification have something concrete to reference.
 
-## Write a useful request
+## Input shape
 
-State the outcome, the important constraints, and the surface that should prove it. For example:
-
-> Add project search. Results must work on a real project, have tests, and be checked in the user interface before completion.
-
-This gives the agent three essentials: a feature, acceptance criteria, and a proof surface. Replace project search with your own bounded change.
-
-## Ask it in your host
-
-In a verified CodeBuddy plugin session, workflow commands use the namespace `/lazybuddy:lazy-<command>`. For a small task, asking in plain language is enough. If slash commands are not exposed, make the equivalent natural-language request.
-
-For a task that needs planning, a CodeBuddy session can use:
+An effective workflow request has this conceptual shape:
 
 ```text
-/lazybuddy:lazy-ulw-plan "add project search"
+outcome: what changes for the user
+constraints: scope, safety, compatibility, ownership limits
+acceptance criteria: observable pass/fail conditions
+proof surface: test, CLI, API, browser, or host session
 ```
 
-Review and approve the plan before requesting execution. The exact choices for planning, debugging, review, and long-running work are in [workflow playbooks](04-workflow-playbooks.md).
+`skills/lazy-ulw-plan/` teaches the planning role to preserve uncertainty as a decision rather than silently inventing it. `skills/lazy-start-work/` assumes that a plan has already identified the acceptance criteria. This is why planning and execution are separate files and separate host actions.
 
-In WorkBuddy, use the equivalent natural-language workflow or an imported skill unless a verified plugin/marketplace session exposes a command. With the skills-only fallback, do not assume commands, agents, hooks, or MCP declarations were automatically loaded.
+## From request to records
 
-## Check the result where it matters
+The state helpers under `scripts/state/` provide the persistence layer for the workflow: a run contains tasks, checkpoints, events, and evidence references. The loop helpers operate on that state rather than trying to infer current work from the latest chat message. A verifier can therefore inspect the claimed outcome, named checks, and recorded result independently.
 
-Before calling the work complete, run the relevant repository checks and exercise the user-facing surface named in the request. For a UI feature, that means checking the UI; for a CLI feature, invoking the CLI; for an API, exercising the API. Use [evidence and completion](05-evidence-and-completion.md) for a fuller completion checklist.
+## Proof surface selection
 
-## If this is your first host session
+The proof surface is intentionally not always a test suite. A library change may be proved by tests; a command requires a command invocation; a UI needs a visual/user interaction check; a host integration requires host observation. The workflow text only directs that selection. The executable verifier records package-local checks, while the person or host supplies the final surface observation.
 
-First establish the correct host proof. [Install and host verification](03-install-and-host-verification.md) explains why local readiness scripts are not sufficient, and [host routes](reference/host-routes.md) contains the host-specific procedure.
+See [Workflow playbooks](04-workflow-playbooks.md) for policy roles and [State and validation](07a-state-and-validation.md) for the persisted representation.

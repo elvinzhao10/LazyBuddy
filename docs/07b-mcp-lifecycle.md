@@ -1,37 +1,32 @@
 # MCP lifecycle
 
-An MCP declaration is not a connection. Treat the lifecycle as five distinct
-steps, each with a different owner and proof requirement.
+An MCP declaration is static configuration. A connected MCP tool is a running stdio process speaking JSON-RPC. LazyBuddy documents and tests both layers without confusing either with host proof.
 
-1. **Declaration:** the copied package contains six local declarations in
-   `.mcp.json`.
-2. **Host registration:** CodeBuddy uses its plugin flow; WorkBuddy's local
-   fallback requires manual compatible-connector configuration in Settings.
-3. **Connection:** the host starts and connects the server in a new session.
-4. **Tool availability:** the connected host reports the tools it exposes.
-5. **Removal:** remove host-managed registrations through that host and remove
-   receipt-owned tooling only through its ownership check.
-
-Package checks can validate step 1 and exercise local JSON-RPC behavior. They
-cannot prove steps 2–4. A successful local server process is not a claim that
-CodeBuddy or WorkBuddy connected it.
+```mermaid
+sequenceDiagram
+    participant Package as lazybuddy-plugin/.mcp.json
+    participant Host as CodeBuddy or WorkBuddy
+    participant Launcher as server.sh
+    participant Server as local MCP server
+    participant State as package/project state
+    Package->>Host: declaration available
+    Host->>Launcher: spawn only after host selection
+    Launcher->>Server: execute local endpoint
+    Host->>Server: initialize / tools/list / tools/call
+    Server->>State: bounded read or write
+    Server-->>Host: JSON-RPC result or structured error
+```
 
 ## The six local declarations
 
-`run-ledger`, `verification`, `status-dashboard`, `context-graph`,
-`code-intel`, and `docs` are the bundled declarations. Context7 and `grep_app`
-are optional remote export fragments, while filesystem and Playwright are not
-part of this six-server inventory. Exact tool and boundary details are in
-[MCP inventory](reference/mcp-inventory.md).
+`.mcp.json` contains six package-local launcher entries: `run-ledger`, `verification`, `status-dashboard`, `context-graph`, `code-intel`, and `docs`. Their server scripts derive the package root from their own location rather than a sibling checkout. The docs endpoint accepts only validated package identifiers and fixed HTTPS registry endpoints; it does not follow package metadata homepages or arbitrary redirects.
+
+`context-graph` is a local grep-based heuristic. It is intentionally not a semantic CodeGraph replacement. Filesystem and Playwright are not part of the base local inventory.
+
+## Protocol boundary
+
+Python helpers under `mcp/` use shared JSON-RPC and path-boundary logic. A server must emit protocol messages only on stdout, keep diagnostics on stderr, reject malformed requests with a structured JSON-RPC error, and keep reading later lines after a bad request. Regression fixtures exercise the malformed-stream behavior so one client mistake does not poison the next request.
 
 ## Host-specific route
 
-CodeBuddy may expose the package declarations after its plugin flow and a new
-session; observe the command/skill and MCP status in that session. WorkBuddy
-plugin or marketplace behavior needs its own live-session observation. The
-verified WorkBuddy fallback is narrower: import local skills, then configure
-each compatible connector manually. It does not establish CodeBuddy feature
-parity.
-
-For the proof boundary, see [host routes](reference/host-routes.md); for safe
-removal, see [safe removal](08-safe-removal.md).
+The host decides whether and when to spawn a declaration. Package readiness can prove that launcher files and declarations exist; it cannot prove the host imported them, created a child process, or completed `initialize`. Host settings, credentials, connector state, and session lifetime remain host-owned. Optional CodeGraph and remote providers export explicit, user-merged fragments rather than silently registering persistent connectors.

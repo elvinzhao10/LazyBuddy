@@ -1,80 +1,52 @@
 # Package map
 
-LazyBuddy is a self-contained workflow harness for CodeBuddy IDE, CodeBuddy
-CLI, and WorkBuddy. It is independently implemented and does not require
-LazyCodex or OmO at runtime.
+`lazybuddy-plugin/` is the only runtime package. Its directory layout mirrors the way a host sees the harness: declarative workflow text, event adapters, local executable services, and verification.
 
-| Component | Inventory | Purpose and boundary |
-| --- | ---: | --- |
-| `skills/` | 14 | Portable workflow instructions; CodeBuddy content and verified WorkBuddy local-import source. |
-| `commands/` | 14 | Current slash-command workflows in CodeBuddy; WorkBuddy only after a verified plugin/marketplace session. |
-| `agents/` | 13 | Role definitions for planning, implementation, research, QA, review, security, and verification. |
-| `hooks/hooks.json` | 12 | CodeBuddy hook-event declarations; WorkBuddy behavior requires a verified plugin/marketplace session. |
-| `mcp/` and `.mcp.json` | 6 | Local MCP declarations for CodeBuddy; WorkBuddy fallback uses manual connector configuration. |
-| `scripts/` | — | State, hook, loop, tooling, and validation utilities. |
-| `templates/AGENTS.md` | — | Reusable onboarding template, not proof that an installer generated it. |
+```mermaid
+flowchart TB
+    Manifest[".codebuddy-plugin / .workbuddy-plugin manifests"] --> Assets
+    subgraph Assets["plugin assets"]
+      Skills["skills/ + commands/"]
+      Agents["agents/"]
+      HookMap["hooks/hooks.json"]
+      HookScripts["scripts/hooks/"]
+      MCP["mcp/*/server.*"]
+      State["scripts/state/ + scripts/loop/"]
+      Tooling["tooling/*.py + scripts/lazybuddy-tooling.sh"]
+    end
+    HookMap --> HookScripts
+    Skills --> Agents
+    HookScripts --> State
+    MCP --> State
+    Tooling --> Receipt["explicit receipt-owned root"]
+    Tests["tests/v*.sh"] -. probes .-> Assets
+```
 
 ## Roles and events
 
-The 13 agents are `lazybuddy-context-indexer`, `lazybuddy-context-miner`,
-`lazybuddy-explorer`, `lazybuddy-gate-reviewer`, `lazybuddy-implementer`,
-`lazybuddy-librarian`, `lazybuddy-migration-planner`,
-`lazybuddy-orchestrator`, `lazybuddy-planner`, `lazybuddy-qa-executor`,
-`lazybuddy-reviewer`, `lazybuddy-security-auditor`, and `lazybuddy-verifier`.
+`skills/` and `commands/` are prompt-facing policy. Each describes a bounded workflow and its expected evidence. `agents/` provides focused roles such as planning, implementation, verification, QA, security, and context gathering. These files have no process authority by themselves; they are loaded only if the host accepts the package.
 
-The 12 hook events are `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
-`PostToolUse`, `PostToolUseFailure`, `PreCompact`, `Stop`, `StopFailure`,
-`TaskCreated`, `TaskCompleted`, `SubagentStart`, and `SubagentStop`. A declared
-hook is package inventory, not evidence that a host invoked it.
+`hooks/hooks.json` declares which host event may call a script. The scripts under `scripts/hooks/` read structured input, apply narrow local policy, and avoid treating untrusted text as a shell command. Their output is host advice or local evidence, not proof that the host enforced the result.
 
 ## Local MCP inventory
 
-The six bundled local MCP declarations are `run-ledger`, `verification`,
-`status-dashboard`, `context-graph`, `code-intel`, and `docs`. Context7 and
-`grep_app` are optional remote export fragments, not bundled servers.
-Filesystem and Playwright are also not part of this six-server inventory.
+The six declarations in `.mcp.json` launch package-local services:
 
-The `context-graph` endpoint is a clearly labelled grep-based heuristic
-fallback. It must not be represented as CodeGraph semantic analysis. See the
-complete [MCP inventory](reference/mcp-inventory.md) and [MCP lifecycle](07b-mcp-lifecycle.md).
+| Server | Source boundary | Purpose |
+| --- | --- | --- |
+| `run-ledger` | shell launcher + state scripts | Read/write durable workflow records. |
+| `verification` | shell launcher + verifier | Report bounded package checks. |
+| `status-dashboard` | launcher + static dashboard | Display package/run status. |
+| `context-graph` | Python heuristic | Local grep-based relationships, not semantic CodeGraph. |
+| `code-intel` | Python service | Local code-oriented helpers. |
+| `docs` | Python registry client | Fixed-registry documentation lookup with SSRF boundaries. |
 
-## Where components run
-
-CodeBuddy uses its plugin flow and can expose the commands, agents, hooks, and
-MCP declarations after the user verifies a new session. WorkBuddy plugin or
-marketplace behavior is live-session evidence, not copied-repository evidence.
-The verified no-package-manager WorkBuddy path is to import `skills/` locally
-and configure compatible MCP connectors manually. See [host routes](reference/host-routes.md).
-
-The package's inventory and contracts can be checked locally, but they do not
-prove host discovery, marketplace activation, SessionStart, hook execution, or
-MCP connection. See [evidence and completion](05-evidence-and-completion.md)
-for the correct claims to make.
+Each declaration is a recipe for a host. It becomes a service only when the host starts it over stdio. [07b — MCP lifecycle](07b-mcp-lifecycle.md) follows that boundary in detail.
 
 ## Trace one request through the code
 
-For a learner, the shortest useful trace begins at the input boundary rather
-than at a skill file. A host event is parsed by a hook script or MCP server;
-the adapter treats it as untrusted structured data, selects only the fields its
-policy needs, and emits a compact allow/deny or JSON-RPC result. The
-verification path is similarly explicit: `lazybuddy-verify.sh` inventories the
-package, runs named checks through `lazybuddy-bounded-run.py`, and reduces each
-result to a status and reason in its aggregate JSON report.
-
-The bounded runner creates one process group per trusted package-owned check.
-On a deadline it requests termination for that group and reports any descendant
-it can still detect. This is cleanup evidence, not process isolation: a program
-that deliberately detaches can escape, so untrusted commands belong in a VM or
-container-backed runner. Read this path together with
-[test and release verification](09-test-and-release-verification.md) and its
-regressions; the tests explain both the ordinary cleanup case and the explicit
-escape limitation.
-
-The docs MCP is a contrasting narrow adapter. It validates an npm or PyPI
-package identifier, constructs only a fixed registry URL, disables redirects,
-and returns protocol data. It does not treat package metadata as a URL to
-fetch. Read [security and authority](06a-security-and-authority.md) alongside
-the server and its regression tests to see how a small boundary prevents a
-documentation lookup from becoming arbitrary network access.
-
-Next: see [state and validation](07a-state-and-validation.md), [capabilities and approvals](06-capabilities-and-approvals.md), or the [verification contract](reference/verification-contract.md).
+1. A user request selects a skill/command and, where applicable, a role definition.
+2. Host tool activity can produce a structured hook event. `pre-tool-use.sh` and `post-tool-use.sh` inspect supported fields, while the package avoids granting authority based on free-form text.
+3. State helpers under `scripts/state/` create or update a run, plan, task, event, or checkpoint. Loop helpers use that state to choose the next bounded action.
+4. `lazybuddy-verify.sh` runs package-owned checks through `lazybuddy-bounded-run.py`. Each check gets an owned process group, a deadline, JSON status/reason, and best-effort cleanup. This is not a security sandbox; untrusted commands need VM or container-backed isolation.
+5. The tests invoke these boundaries from copied/isolated fixtures, so package readiness never relies on a sibling checkout or a live host.

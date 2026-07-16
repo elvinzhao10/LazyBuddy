@@ -1,27 +1,26 @@
-# Mental model
+# Execution model
 
-LazyBuddy helps turn a request into a scoped change and evidence that the requested result works. It is not a replacement for the host: CodeBuddy and WorkBuddy remain responsible for loading plugins, running hooks, and connecting MCP servers.
+LazyBuddy separates *policy*, *execution*, *durable state*, and *proof*. That separation prevents a descriptive Markdown file, an installed declaration, or a passing local check from being mistaken for a live host capability.
 
-## A task has three parts
+```mermaid
+flowchart TB
+    Policy["skills + commands\nwhat the workflow asks for"]
+    Roles["agents\nwho investigates, implements, verifies"]
+    Adapter["hooks + MCP\nhost/protocol adapters"]
+    Runtime["scripts\nstate changes and checks"]
+    State["run files, plans, evidence, receipts"]
+    Proof["test/CLI/API/host observation"]
+    Policy --> Roles --> Adapter --> Runtime --> State --> Proof
+```
 
-1. **Outcome** — what should be true when the task is done.
-2. **Acceptance criteria** — the observable behaviors or constraints that decide whether the outcome is acceptable.
-3. **Proof surface** — where the behavior will be checked: a test suite, CLI, API, page, or a host session.
+## Policy is not execution
 
-For example: “Add project search. It must work on a real project, have tests, and be checked in the user interface.” The [first-task guide](02-first-task.md) turns that into a practical request.
+Skills and commands describe how an agent should approach planning, debugging, review, or completion. Agent files narrow that guidance to a role. They do not gain authority merely by existing: a host must select and load them, and an agent must still perform the described work.
 
-## Two different kinds of evidence
+## Execution is not proof
 
-**Package readiness** is evidence about copied package contents and contracts: manifests, component inventories, local MCP declarations, and tooling policy. The package readiness script can report `PACKAGE_READINESS=full`; doctor and aggregate checks add package-health evidence. See the exact contract in [verification contract](reference/verification-contract.md).
+The shell and Python scripts are the operational layer. They create run records, validate state, run bounded checks, and format machine-readable results. Their output establishes local package evidence. Proof must be chosen for the requested surface: a test for library behavior, a CLI invocation for a CLI, a browser check for a page, or an observed host session for an integration.
 
-**Host proof** is evidence from the selected host. It requires a new session or applicable host UI observation: a loaded LazyBuddy command or skill and the relevant MCP status. It is the only evidence that supports a claim that the integration is active. The required observation varies by host; see [host routes](reference/host-routes.md).
+## Host ownership stays external
 
-Package evidence does **not** prove marketplace installation, plugin discovery, SessionStart, hook execution, a running host session, or a live MCP connection. This distinction matters especially because the published verification scope is macOS only.
-
-## Use the smallest capable workflow
-
-Ask normally for a small, clear task. Request a plan for ambiguity or broad work, debugging for a failure, review for material risk, and a durable loop only for a long-running goal. The [workflow playbooks](04-workflow-playbooks.md) explain those choices; [terminology](reference/terminology.md) defines the terms used across this guide.
-
-## Capabilities are separate decisions
-
-Routine local discovery may use a suitable local capability without creating a persistent host registration. Optional remote, browser, or architecture work has explicit approval and lifecycle boundaries. Learn those boundaries in [capabilities and approvals](06-capabilities-and-approvals.md) and [security and authority](06a-security-and-authority.md) before opting in. Receipts establish limited ownership, not host authority; see [receipts and owned tooling](06b-receipts-and-owned-tooling.md).
+The package can check manifest structure, local declarations, executable bits, and protocol fixtures. It cannot prove plugin discovery, SessionStart, hook execution, marketplace activation, or a connected MCP session. Those are host facts. This distinction is central to [05 — Evidence and completion](05-evidence-and-completion.md).
