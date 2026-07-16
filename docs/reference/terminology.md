@@ -26,3 +26,13 @@ Use [workflow playbooks](../04-workflow-playbooks.md) to choose a workflow,
 [verification contract](verification-contract.md) to interpret checks,
 [MCP lifecycle](../07b-mcp-lifecycle.md) for connection boundaries, and
 [safe removal](../08-safe-removal.md) before deleting tooling.
+
+## How to read these terms in the code
+
+Start with **package readiness**, **host observation**, and **MCP lifecycle**
+when following an install or connection path. Then use **receipt-owned**,
+**tooling dependency**, and **host-native capability** to decide whether a
+script may write or remove a path. Finally, use **evidence gate** and
+**DoneClaim** when following a workflow to completion. This order mirrors the
+implementation: package facts first, host boundaries second, and outcome
+claims last.

@@ -35,3 +35,13 @@ discovery, marketplace activation, SessionStart, hook execution, a running
 session, or MCP connection. See [verification contract](verification-contract.md)
 and [safe removal](../08-safe-removal.md). The declaration-to-connection
 boundary is explained in [MCP lifecycle](../07b-mcp-lifecycle.md).
+
+## What the route actually changes
+
+Each route gives the host a package artifact or a manual connector recipe; it
+does not make the package an owner of host state. CodeBuddy discovery and
+WorkBuddy marketplace loading remain host-native operations. That is why the
+package validates its own manifests and launchers but does not scan a
+marketplace database, rewrite a settings directory, or infer that an MCP
+entry belongs to LazyBuddy. Treat a host UI observation as the final boundary
+between a valid package and an active integration.

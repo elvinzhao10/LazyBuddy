@@ -19,3 +19,20 @@ reports detectable remaining descendants; it does not guarantee descendant
 cleanup. Read [state and validation](../07a-state-and-validation.md),
 [receipts and owned tooling](../06b-receipts-and-owned-tooling.md), and the
 [verification contract](verification-contract.md).
+
+## State transition ownership
+
+```mermaid
+flowchart LR
+  A["Workflow skill or command"] --> B["Validate project and run identity"]
+  B --> C["Read or update .lazybuddy state"]
+  C --> D["Append evidence or event"]
+  D --> E["Verification interprets recorded scope"]
+```
+
+The state helpers in `scripts/state/` first constrain the project and run
+identifier, then read or update the matching project-local artifact. Loop and
+verification scripts add events, checkpoints, and evidence; they do not use
+these records to alter a CodeBuddy or WorkBuddy setting. The last step is
+deliberately interpretive: recorded state explains what was attempted, while
+the recorded check and any host observation establish what is proved.

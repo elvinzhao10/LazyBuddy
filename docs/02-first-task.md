@@ -24,3 +24,18 @@ The state helpers under `scripts/state/` provide the persistence layer for the w
 The proof surface is intentionally not always a test suite. A library change may be proved by tests; a command requires a command invocation; a UI needs a visual/user interaction check; a host integration requires host observation. The workflow text only directs that selection. The executable verifier records package-local checks, while the person or host supplies the final surface observation.
 
 See [Workflow playbooks](04-workflow-playbooks.md) for policy roles and [State and validation](07a-state-and-validation.md) for the persisted representation.
+
+## Implementation handoff
+
+The request text is interpreted by policy files first, then becomes state only when an execution path chooses to record it. `skills/lazy-ulw-plan/` defines the questions that must be answered before implementation; `skills/lazy-start-work/` expects an approved plan and directs evidence collection. The state scripts turn those ideas into `state.json`, `events.jsonl`, checkpoints, and evidence references.
+
+```mermaid
+flowchart LR
+    Prompt["request text"] --> Skill["workflow policy"]
+    Skill --> Plan["plan/acceptance criteria"]
+    Plan --> State["run + task state"]
+    State --> Check["chosen verification"]
+    Check --> Evidence["event/evidence record"]
+```
+
+Nothing in this flow infers success from the prompt itself. Each transition is an explicit script, host invocation, or recorded observation; that makes the result inspectable after the original conversation has ended.

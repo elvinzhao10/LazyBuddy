@@ -37,6 +37,20 @@ dependency. Release-only paired parity may compare explicitly supplied sibling
 roots as release evidence; it is not runtime, installation, or normal-CI
 dependency.
 
+## Claim matrix
+
+| Evidence type | Establishes | Does not establish |
+| --- | --- | --- |
+| Manifest and readiness checks | The shipped package inventory and declarations are internally consistent. | Host discovery or a connected MCP server. |
+| State and schema checks | Recorded local workflow data has the expected shape. | That the recorded task outcome is correct. |
+| MCP protocol tests | A local server handles supported JSON-RPC requests and errors. | That a host has launched or authorized that server. |
+| Focused tests and manual QA | The requested behavior was checked on its stated surface. | Behavior outside the tested scope. |
+| Host-session observation | The selected host exposed the observed integration in that session. | A guarantee about another host, version, or operating system. |
+
+Use the narrowest matching sentence in a release note or DoneClaim. Combining
+different evidence types is useful, but it never upgrades one kind of proof
+into another.
+
 Read [test and release verification](../09-test-and-release-verification.md)
 for the five evidence layers and [evidence and completion](../05-evidence-and-completion.md)
 for how to use these results in a done claim.

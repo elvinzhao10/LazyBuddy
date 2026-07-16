@@ -48,3 +48,19 @@ Read [host routes](reference/host-routes.md) for the exact boundaries,
 [MCP lifecycle](07b-mcp-lifecycle.md) for the host-registration sequence, and
 [receipts and owned tooling](06b-receipts-and-owned-tooling.md) for receipt
 ownership and optional tooling.
+
+## Removal decision flow
+
+```mermaid
+flowchart TD
+    Request["requested removal"] --> Scope["identify package, tooling, or host scope"]
+    Scope --> Owned{exact receipt-owned asset?}
+    Owned -->|yes| Match{unmodified and unlinked?}
+    Match -->|yes| Remove["remove only recorded asset"]
+    Match -->|no| Preserve["preserve and report"]
+    Owned -->|no| Host{host/user-managed?}
+    Host -->|yes| Manual["direct user to host UI/command"]
+    Host -->|no| Preserve
+```
+
+The important implementation rule is that a refusal is a successful safety outcome. `lazybuddy-tooling.sh` validates an explicit root and receipt before deleting a toolpack; it never turns a filename match, parent directory, or host plugin name into ownership. Host removal remains a separate user action because the package cannot safely enumerate host-managed installation paths.
