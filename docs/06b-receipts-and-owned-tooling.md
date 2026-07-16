@@ -38,3 +38,32 @@ it has no receipt that automatically installs a WorkBuddy plugin.
 
 Next, read [state and validation](07a-state-and-validation.md) or the
 [verification contract](reference/verification-contract.md).
+
+## Receipt verification sequence
+
+The tooling script treats installation and removal as inverse operations, not
+as two directory commands:
+
+```mermaid
+sequenceDiagram
+    participant User as caller-selected root
+    participant Tool as lazybuddy-tooling.sh
+    participant Receipt as receipt file
+    User->>Tool: install with absolute empty root
+    Tool->>Tool: reject links / unsafe / nonempty root
+    Tool->>Receipt: write owned manifest and digest
+    User->>Tool: uninstall with same root
+    Tool->>Receipt: re-read and validate exact contents
+    alt receipt and entries match
+        Tool->>User: remove owned root
+    else mismatch, link, or foreign entry
+        Tool-->>User: refuse and preserve root
+    end
+```
+
+In `lazybuddy-tooling.sh`, `root_is_safe_existing`, `root_is_empty`,
+`receipt_contents`, `root_contains_only_owned_entries`, and
+`owned_root_is_valid` form that validation chain. The same pattern is applied
+to LSP and CodeGraph roots with separate receipts because they may have
+different binaries and lifecycle state. A CodeGraph project index is not a
+toolpack receipt entry, so it remains caller-owned.

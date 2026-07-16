@@ -28,3 +28,35 @@ On deadline the runner performs **best-effort** termination of its owned process
 ## Read state at the correct boundary
 
 `lazybuddy-load-check.sh` and doctor examine copied package inventory and contracts. The run ledger records package-local workflow activity. Neither means a host discovered the package, ran SessionStart, enforced a hook, or connected MCP. The required final fact for those claims is a host observation.
+
+## Artifact lifecycle at field level
+
+The state helpers divide work into small operations instead of one mutable
+database API. `create-run.sh` establishes an initial run directory;
+`load-run.sh` and `latest-run.sh` locate it; `append-event.sh` adds chronology;
+`update-task.sh` and `update-plan-checkbox.sh` change the current work view;
+`checkpoint.sh` records a resumable boundary; and `finalize-run.sh` creates the
+terminal summary. `validate-state.sh` is the guardrail between these scripts
+and malformed on-disk state.
+
+This produces three useful properties:
+
+1. **Replayability:** events and checkpoints reveal what the package recorded
+   rather than only the latest status.
+2. **Narrow mutation:** a task update does not need to rewrite verification
+   output or unrelated evidence.
+3. **Recoverability:** `recover-run.sh` and `summarize-run.sh` can work from
+   durable artifacts after a session ends.
+
+## Bounded-run result contract
+
+`lazybuddy-bounded-run.py` writes one JSON object to the requested result file.
+At minimum, callers use `status`, `reason`, and a bounded `tail`; timeout
+handling adds process-group cleanup facts. `lazybuddy-verify.sh` consumes that
+object in `record_check` and includes the per-check status/reason under its
+aggregate `checks` member. A consumer should use the explicit reason rather
+than infer success from a missing line of stderr.
+
+The result contract intentionally distinguishes a check that failed, timed out,
+was unavailable, or left detectable descendants. It does not promote cleanup
+attempts into a claim that a hostile process tree was fully contained.

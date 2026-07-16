@@ -93,3 +93,21 @@ Read [safe removal](08-safe-removal.md) before uninstalling any tooling, and
 see [receipts and owned tooling](06b-receipts-and-owned-tooling.md) for the
 ownership boundary. The fixed-registry docs MCP and structured secret-path
 policy are described in [security and authority](06a-security-and-authority.md).
+
+## Capability decision pipeline
+
+The tooling implementation separates discovery, policy, execution, and ownership so a missing executable cannot silently become an install request:
+
+```mermaid
+flowchart LR
+    Task["structured capability request"] --> Detect["detect local/project provider"]
+    Detect --> Policy["contract + approval decision"]
+    Policy -->|allowed local| Run["ephemeral capability run"]
+    Policy -->|missing + explicit setup| Toolpack["receipt-owned toolpack"]
+    Policy -->|remote/approval absent| Refuse["disabled or ask"]
+    Toolpack --> Receipt["digest + ownership receipt"]
+```
+
+`lazybuddy_capability.py` selects providers through `installed_provider`, `local_provider`, and `lsp_provider`; `sanitized_query` constrains query input before remote dispatch. `lazybuddy_policy.py:approval_decision` resolves the policy using the workspace, capability, provider, requested policy, and contract digest. A changed digest invalidates a stored decision rather than reusing consent for a different contract.
+
+`lazybuddy_capability_receipt.py:prepare_toolpack` requires an explicit safe directory and prepares a temporary/owned pair. `write_receipt` stores a digest and installed-provider status. The receipt is later checked before removal; the provider code does not infer ownership from a convenient directory name.

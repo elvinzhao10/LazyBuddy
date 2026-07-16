@@ -64,3 +64,7 @@ The lookup tables in [state artifact reference](reference/state-artifact-referen
 [MCP inventory](reference/mcp-inventory.md), [verification contract](reference/verification-contract.md),
 [host routes](reference/host-routes.md), and [terminology](reference/terminology.md)
 provide the concrete artifacts and vocabulary used by these explanations.
+
+For the full split between package-built functions, receipt-owned dependencies,
+optional providers, and raw host capabilities, read the [dependency and host
+boundary reference](reference/dependency-and-host-boundaries.md).

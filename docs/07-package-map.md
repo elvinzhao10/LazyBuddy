@@ -50,3 +50,34 @@ Each declaration is a recipe for a host. It becomes a service only when the host
 3. State helpers under `scripts/state/` create or update a run, plan, task, event, or checkpoint. Loop helpers use that state to choose the next bounded action.
 4. `lazybuddy-verify.sh` runs package-owned checks through `lazybuddy-bounded-run.py`. Each check gets an owned process group, a deadline, JSON status/reason, and best-effort cleanup. This is not a security sandbox; untrusted commands need VM or container-backed isolation.
 5. The tests invoke these boundaries from copied/isolated fixtures, so package readiness never relies on a sibling checkout or a live host.
+
+## Source-level reading map
+
+The following table is the shortest route from an observed behavior to the
+function that implements it. Read the call sites before changing a helper: most
+of the safety rules are composed across a launcher, a shared helper, and a
+regression fixture.
+
+| Question | Entry point | Implementation to follow | Invariant |
+| --- | --- | --- | --- |
+| What does package readiness inspect? | `scripts/lazybuddy-load-check.sh` | `reject_symlinked_path_components`, JSON loading, and inventory counters | A copied package is checked through the selected root; symlinked path components are rejected. |
+| How is aggregate verification run? | `scripts/lazybuddy-verify.sh` | `run_check`, `run_hook_pipeline_check`, `run_regression_inventory` | Every classified package regression is either executed or explicitly release-only. |
+| How is a timeout represented? | `scripts/lazybuddy-bounded-run.py` | `process_records`, `descendant_records`, `terminate_owned_group`, `main` | Result JSON records timeout and detectable escapes; cleanup is best-effort. |
+| How are hook paths interpreted? | `scripts/hooks/pre-tool-use.sh` | `components`, `matches`, `dangerous_operand` | Supported structured fields are inspected without evaluating user text as shell syntax. |
+| How is a local path constrained? | `mcp/path_boundary.py` | `resolve_repo_path` | A resolved path must remain below the supplied repository root. |
+| How does a capability acquire a toolpack? | `tooling/lazybuddy_capability.py` | `absolute_directory`, `local_provider`, `lsp_provider`, `run` | Toolpacks use an explicit absolute directory; project and host tools are considered first. |
+
+## Control-plane versus data-plane
+
+LazyBuddy has a useful internal split:
+
+- The **control plane** is Markdown policy, manifests, command names, agent
+  roles, capability configuration, and receipts. It decides what is allowed
+  and how a host should invoke the package.
+- The **data plane** is structured hook input, run files, evidence records,
+  JSON-RPC messages, subprocess output, and local search results. It carries
+  work through narrow adapters.
+
+This distinction explains why a command definition cannot directly mutate a
+project, and why an MCP request cannot authorize a provider: each needs an
+operational implementation that rechecks its own input and ownership boundary.

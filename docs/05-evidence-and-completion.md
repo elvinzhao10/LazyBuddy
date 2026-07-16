@@ -71,3 +71,24 @@ installer.
 For check meanings, expected output, and exclusions, use the
 [verification contract](reference/verification-contract.md). For all five
 evidence layers, use [test and release verification](09-test-and-release-verification.md). For workflow selection, return to [workflow playbooks](04-workflow-playbooks.md).
+
+## Evidence data flow
+
+Evidence is not a single boolean. The package carries several facts from a
+check into the final report:
+
+```mermaid
+flowchart LR
+    Request["acceptance criteria"] --> Check["chosen package or project check"]
+    Check --> Runner["bounded execution"]
+    Runner --> Status["status + reason + output tail"]
+    Status --> Ledger["run event / evidence reference"]
+    Ledger --> Claim["scoped completion claim"]
+    Host["manual host observation"] -. separate evidence .-> Claim
+```
+
+`lazybuddy-verify.sh` constructs the aggregate status from individual result
+files rather than parsing prose. State scripts preserve a run event/evidence
+reference separately from verifier output. This lets a reviewer distinguish
+“the package check passed,” “the requested surface was observed,” and “the
+claim remains limited by an unverified host fact.”

@@ -55,3 +55,15 @@ browser automation, and any connector registration require the host flow or an
 explicit approval. The capability broker is task-scoped; it does not rewrite
 host configuration or persist a registration. Continue with [receipts and
 owned tooling](06b-receipts-and-owned-tooling.md) and [host routes](reference/host-routes.md).
+
+## Enforcement points and deliberate limits
+
+| Boundary | Enforced by | What it deliberately does not claim |
+| --- | --- | --- |
+| Structured secret target | `pre-tool-use.sh` path component matching | A full shell parser or content-scanning authorization system. |
+| Shell command text | Conservative `Bash` literal scan | Semantic understanding of every shell expansion or subcommand. |
+| Documentation network access | `mcp/docs/server.py` fixed npm/PyPI registries, HTTPS, redirects disabled | Permission to follow package metadata URLs. |
+| Plugin root | Explicit `CODEBUDDY_PLUGIN_ROOT` or documented package layout | Discovery of any plausible sibling/parent plugin. |
+| Capability consent | Policy/approval records keyed by contract digest | A permanent grant across contract or workspace changes. |
+
+Security is therefore fail-closed at the boundaries the package can model, not a claim that the package can sandbox a host or make arbitrary external code safe. The regression suite attacks each of these narrow boundaries directly.
