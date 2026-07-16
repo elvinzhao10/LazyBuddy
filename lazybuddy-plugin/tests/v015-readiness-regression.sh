@@ -121,7 +121,8 @@ root = Path(sys.argv[1])
 project_root = Path(sys.argv[2])
 
 if (project_root / "lazybuddy-evaluation.md").is_file():
-    assert not (project_root / "docs").exists(), "repository-root docs/ must remain absent"
+    assert (project_root / "docs" / "README.md").is_file(), "repository-root docs index must be present"
+    assert (project_root / "docs" / "00-learning-path.md").is_file(), "repository-root learning path must be present"
 assert (root / "docs" / "verification-matrix.md").is_file(), "copied plugin must retain package-owned docs"
 for relative_path in (
     "scripts/lazybuddy-load-check.sh",

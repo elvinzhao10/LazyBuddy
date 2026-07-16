@@ -17,6 +17,8 @@ runtime.
 > **Install and host setup:** [AGENTS.md](AGENTS.md).
 >
 > **Package commands and tooling lifecycle:** [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
+>
+> **Learner guide:** [docs/README.md](docs/README.md).
 
 LazyBuddy is verified on macOS only. Package checks prove copied package assets
 and contracts; a real CodeBuddy or WorkBuddy session is still the authority for
