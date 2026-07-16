@@ -33,4 +33,5 @@ contains command files.
 Local checks establish package evidence only. They do not prove plugin
 discovery, marketplace activation, SessionStart, hook execution, a running
 session, or MCP connection. See [verification contract](verification-contract.md)
-and [safe removal](../08-safe-removal.md).
+and [safe removal](../08-safe-removal.md). The declaration-to-connection
+boundary is explained in [MCP lifecycle](../07b-mcp-lifecycle.md).

@@ -1,4 +1,4 @@
-# Your first LazyBuddy task
+# Your first task
 
 Start with a small request whose success can be observed. You do not need to learn every command first.
 

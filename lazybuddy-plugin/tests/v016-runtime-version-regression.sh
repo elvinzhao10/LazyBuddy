@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="0.17.0"
+EXPECTED_VERSION="0.18.0"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
@@ -59,4 +59,4 @@ if marketplace_path.is_file():
     entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
     assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 PY
-printf 'v0.17 runtime version regression: PASS\n'
+printf 'v0.18 runtime version regression: PASS\n'

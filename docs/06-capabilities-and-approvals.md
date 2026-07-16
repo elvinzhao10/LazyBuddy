@@ -90,5 +90,6 @@ lines. `context-graph` remains a grep-based heuristic fallback, not semantic
 CodeGraph analysis.
 
 Read [safe removal](08-safe-removal.md) before uninstalling any tooling, and
-see the complete [terminology](reference/terminology.md) for the terms used
-here.
+see [receipts and owned tooling](06b-receipts-and-owned-tooling.md) for the
+ownership boundary. The fixed-registry docs MCP and structured secret-path
+policy are described in [security and authority](06a-security-and-authority.md).

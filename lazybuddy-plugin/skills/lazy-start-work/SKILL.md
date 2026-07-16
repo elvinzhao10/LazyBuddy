@@ -59,8 +59,36 @@ Write `.lazybuddy/runs/<run_id>/state.json` with:
 4. **DELEGATE EVERYTHING.** Spawn worker subagents for ALL independent sub-tasks in parallel using WorkBuddy Agent tool. Each subagent message must include: TASK, DELIVERABLE, SCOPE, VERIFY.
 5. For LIGHT: direct implementation. For HEAVY: failing-first proof then implementation.
 
+#### Coupled implementation bundles (narrow exception)
+
+Keep independent work split and dispatched in parallel. A single worker may receive a coupled file/test bundle only when one of these makes a split unsafe:
+
+- a shared mutable interface;
+- an atomic fixture; or
+- an invalid intermediate state while the split work is incomplete.
+
+The dispatch must explicitly enumerate the coupled bundle and record all of the
+following with it: `coupled: true`; the qualifying reason; the exact
+checkbox/file scope; and why parallel decomposition is unsafe. For example:
+
+```
+COUPLED DISPATCH RECORD
+coupled: true
+reason: atomic fixture
+checkbox_scope: task-7 acceptance fixture
+file_scope: tests/fixture.json, tests/fixture.test.sh
+parallel_unsafe: either half leaves the fixture invalid for every worker
+```
+
+This is dispatch evidence, not a ledger schema or an automated exemption.
+Coupling is never allowed for convenience, capacity, or generic multi-file
+changes. It does not allow root product edits and does not bypass the normal
+tests, Manual-QA, applicable adversarial probes, independent verifier verdict,
+or final review gates.
+
 **Each subagent task message must include:**
 - Goal and exact files/directories in scope
+- For a coupled bundle only: the coupled dispatch record above, with no broader scope
 - Baseline characterization test (if touching existing behavior)
 - Implementation constraints from plan and project rules
 - Automated verification commands

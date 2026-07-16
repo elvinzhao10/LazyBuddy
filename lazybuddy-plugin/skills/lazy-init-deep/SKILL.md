@@ -46,7 +46,20 @@ fi
 bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
 ```
 
-This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. Run the load check first, then verify its reported skills, commands, agents, hooks, and MCP declarations before repository discovery. Record the observed package inventory in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
+This is required every time `lazy-init-deep` is invoked, including an existing workspace. It works without `CODEBUDDY_PLUGIN_ROOT` when invoked from the copied repository root or plugin root; elsewhere it fails clearly instead of expanding to `/scripts/...`. With no override, it tries only those two documented copied-repository/plugin-root layouts: it does not search parents, siblings, marketplaces, or the filesystem.
+
+### Sibling-plugin checkout from an unrelated workspace
+
+If this workspace is unrelated to a separately checked-out sibling plugin, use the plugin's **absolute** path explicitly. For example:
+
+```bash
+CODEBUDDY_PLUGIN_ROOT="/absolute/path/to/lazybuddy-plugin" \
+  bash "/absolute/path/to/lazybuddy-plugin/scripts/lazybuddy-load-check.sh"
+```
+
+Expected successful output includes `PACKAGE_READINESS=full`. Do not replace the absolute path with a parent or sibling search; without the override, only the two local layouts above are tried and the unavailable-root diagnostic is the expected result from an unrelated workspace.
+
+Run the load check first, then verify its reported skills, commands, agents, hooks, and MCP declarations before repository discovery. Record the observed package inventory in the final report. If it fails, reload or reinstall the plugin and re-run the check before continuing. Do not claim project memory initialization is complete while the plugin load check fails.
 
 ### InitDeep readiness evidence
 

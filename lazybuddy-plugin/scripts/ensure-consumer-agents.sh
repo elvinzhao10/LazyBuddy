@@ -6,6 +6,10 @@ fail() {
     exit 1
 }
 
+is_macos_var_alias() {
+    [ "$1" = /var ] && [ "$(CDPATH= cd -P -- /var && pwd)" = /private/var ]
+}
+
 reject_symlinked_path_components() {
     local label="$1"
     local path="$2"
@@ -51,7 +55,9 @@ reject_symlinked_path_components() {
             candidate="$prefix/$component"
         fi
 
-        [ ! -L "$candidate" ] || fail "$label path must not be symlinked"
+        if [ -L "$candidate" ] && ! is_macos_var_alias "$candidate"; then
+            fail "$label path must not be symlinked"
+        fi
         prefix="$candidate"
     done
 }

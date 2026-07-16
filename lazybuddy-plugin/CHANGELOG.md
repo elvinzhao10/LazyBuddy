@@ -2,6 +2,17 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v0.18.0 — Release identity alignment (2026-07-16)
+
+- Aligned CodeBuddy and WorkBuddy manifests, marketplace metadata, MCP server
+  metadata, hook/banner text, documentation User-Agent, and package-owned
+  tooling metadata with the v0.18.0 release identity.
+- Kept the `v017` capability-readiness records as historical fixtures and
+  added a v0.18 fixture for the active release contract.
+- Defined verifier timeout cleanup as best-effort process-group termination
+  for trusted package-owned checks, with detectable-descendant reporting rather
+  than a descendant-cleanup guarantee or security-sandbox claim.
+
 ## v0.17.0 — LazySeries tooling foundation (2026-07-12)
 
 - Added the package-owned, local-first tooling foundation: host-or-owned

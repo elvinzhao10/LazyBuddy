@@ -33,6 +33,16 @@ Orchestrate plan execution. The orchestrator reads a plan, bootstraps run state,
 4. Global review gate passed (5-agent review, all PASS)
 5. Prints `ORCHESTRATION COMPLETE`
 
+## Coupled worker exception
+
+Independent work remains split and parallel. Assign one worker an explicitly
+enumerated coupled file/test bundle only when a shared mutable interface, atomic
+fixture, or invalid intermediate state makes a split unsafe. Its dispatch record
+must include `coupled: true`, the reason, exact checkbox/file scope, and why
+parallel decomposition is unsafe. Coupling is not for convenience, capacity, or
+generic multi-file work; it never permits root product edits or bypasses tests,
+Manual-QA, adversarial QA, independent verifier confirmation, or final review.
+
 ## Constitution
 
 This command is governed by its package-local skill contract below.

@@ -12,7 +12,7 @@ primarily inspired by LazyCodex
 attribution is recorded in [NOTICE](NOTICE). The package is an independent
 implementation and does not require LazyCodex or OmO at runtime.
 
-## Features and verification
+## Implemented package behavior
 
 LazyBuddy packages 14 `lazy-` skills, 14 command workflows, 13 agents, 12
 hook-event declarations, and six local MCP declarations: `run-ledger`,
@@ -27,6 +27,31 @@ are complete. `lazybuddy-plugin-doctor.sh` and
 `lazybuddy-plugin/scripts/lazybuddy-verify.sh` provide package health and an
 aggregate verification gate. These commands are evidence about the package,
 not a host session.
+
+The `docs` MCP boundary accepts validated npm or PyPI package names and
+requests only the fixed HTTPS npm or PyPI registry endpoint. Redirects and
+metadata URLs such as a package homepage, repository, or documentation link
+are not followed. Structured `Write` and `Edit` secret protection examines
+only the supported target-path fields; text that merely mentions a secret-like
+filename is not a target. `Bash` retains its conservative literal scan, so a
+command that merely contains such a path can still be denied.
+
+InitDeep can use an explicitly supplied absolute `CODEBUDDY_PLUGIN_ROOT` from
+an unrelated workspace. It does not search parents, siblings, marketplaces,
+or the filesystem for another plugin. A parent marketplace file may be read
+only to compare its entry version with the already selected root; this is
+metadata validation, not root discovery or host proof.
+
+Aggregate verification emits bounded per-check status and reason. A deadline
+is a failure, an absent CodeBuddy validator is **UNCHECKED**, and a validator
+timeout, launch failure, nonzero result, or semantic failure never becomes a
+host-success claim.
+
+For trusted package-owned verification commands, each bounded check starts in
+its own process group. A deadline triggers best-effort termination of that
+owned group, and the JSON/stderr result reports whether descendants were still
+detectable at cleanup time. This is not a security sandbox and does not
+guarantee all descendants are gone; genuinely untrusted commands require a VM or container-backed runner. A no-fork sandbox is not enabled by default.
 
 The package's local-first tooling policy detects compatible `rg` and `sg`,
 supports JavaScript/TypeScript and Python LSP navigation, and recognizes
@@ -92,6 +117,15 @@ including malformed input and subsequent-request behavior. This is protocol
 evidence for the package, not proof that a host process launched or connected
 an endpoint.
 
+## Learner references
+
+The complete 21-page learner tree starts at [docs/README.md](docs/README.md).
+Use [security and authority](docs/06a-security-and-authority.md) for the
+registry, secret-path, and explicit-root boundaries, then [state and
+validation](docs/07a-state-and-validation.md) and [test and release
+verification](docs/09-test-and-release-verification.md) for bounded-status
+and release-evidence vocabulary.
+
 ## Host-specific exclusions
 
 - **Host integration:** CodeBuddy IDE/CLI use host plugin flows; WorkBuddy uses
@@ -122,3 +156,24 @@ dependency.
 [NOTICE](NOTICE) and [LICENSE](LICENSE) are the attribution and license
 records. This evidence describes the package's tested boundaries and does not
 claim host behavior beyond the required manual observations.
+
+## Comparison with the upstream reference harness
+
+The reference named in the attribution above publicly describes project memory,
+planning, execution, verified completion, specialized skills, hooks,
+diagnostics, and multi-agent roles. The comparison below is a capability
+comparison, not a compatibility or drop-in replacement claim.
+
+| Reference capability family | LazyBuddy realization | Deliberate difference or limitation |
+| --- | --- | --- |
+| Project memory | `lazy-init-deep`, managed agent instructions, and explicit plugin-root selection. | No automatic parent/sibling or marketplace discovery; host loading remains unverified until observed. |
+| Planning and durable execution | Plan, start-work, loop, evidence, and verifier instruction surfaces. | The host decides whether commands, hooks, and agents are actually available in a session. |
+| Specialized roles and review | Packaged planning, implementation, QA, security, context, and verifier roles. | Role definitions are package assets; they are not evidence that a host spawned a role. |
+| Hooks and lifecycle | Declared hook events plus structured pre/post-tool policy scripts. | Hooks are host-governed and are not an enforcement boundary until the host reports them loaded. |
+| Local development tooling | Local-first ripgrep, ast-grep, LSP, repository-native verification, and optional CodeGraph lifecycle. | Remote Context7 and grep_app remain explicit opt-in exports; filesystem and Playwright are not bundled local MCP servers. |
+| Diagnostics and removal | Load-check, doctor, aggregate verifier, receipts, and conservative removal. | Results establish package readiness, not marketplace activation, live session behavior, or MCP connection. |
+| Installation model | A self-contained CodeBuddy/WorkBuddy package with manual host steps. | It intentionally does not reproduce the reference harness's installer, managed global configuration, provisioning, model routing, or automatic host mutation. |
+
+The upstream project is a useful architectural reference, but LazyBuddy keeps a
+smaller ownership model: package-owned assets are verifiable and removable;
+host-owned settings and live integrations require an explicit user observation.

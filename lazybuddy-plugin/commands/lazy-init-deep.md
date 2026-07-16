@@ -37,6 +37,12 @@ Generate hierarchical project memory. Scores directories by complexity, produces
   [ -n "$PLUGIN_ROOT" ] || { echo "LazyBuddy plugin root is unavailable; reopen the copied repository or install the plugin." >&2; exit 1; }
   bash "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh"
   ```
+- From an unrelated workspace that uses a separately checked-out sibling plugin, provide its **absolute** path explicitly:
+  ```bash
+  CODEBUDDY_PLUGIN_ROOT="/absolute/path/to/lazybuddy-plugin" \
+    bash "/absolute/path/to/lazybuddy-plugin/scripts/lazybuddy-load-check.sh"
+  ```
+  A successful check reports `PACKAGE_READINESS=full`. With no override, the resolver tries only the documented copied-repository and plugin-root layouts above; it does not search parents, siblings, marketplaces, or the filesystem. An unrelated workspace therefore reports that the plugin root is unavailable.
 - InitDeep readiness evidence. Run the load check first, then verify its reported skills, commands, agents, hooks, and MCP declarations. This is package readiness only and does not prove a live host session or MCP connection. Do not enable optional capabilities, select providers, initialize optional architecture tooling, or export MCP configuration without a separate explicit user request. Record these exact fields in the completion report:
   ```text
   readiness_result: {load-check result}
@@ -59,7 +65,7 @@ Generate hierarchical project memory. Scores directories by complexity, produces
 2. No generic filler content
 3. Hierarchy is correct (child does not repeat parent)
 4. `.lazybuddy/context/` files exist and are parseable
-5. Plugin load check passes before discovery and is included in the completion report. With no `CODEBUDDY_PLUGIN_ROOT`, run this command from the copied repository root or the plugin root; otherwise it fails clearly.
+5. Plugin load check passes before discovery and is included in the completion report. With no `CODEBUDDY_PLUGIN_ROOT`, only the copied repository root or plugin root layouts are tried; an unrelated workspace fails clearly.
 6. The post-`workbuddy.md` consumer helper reports `AGENTS_STATUS=created` or `AGENTS_STATUS=preserved`.
 
 ## Constitution

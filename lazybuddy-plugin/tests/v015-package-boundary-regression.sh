@@ -24,6 +24,27 @@ fail() {
     FAIL=$((FAIL + 1))
 }
 
+# Given the release-only learner-manifest comparison, when the normal package
+# verifier inventories regressions, then it classifies that comparison as an
+# explicit-root paired check and does not schedule it as standalone work.
+if python3 - "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh" <<'PYEOF'
+from pathlib import Path
+import re
+import sys
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+standalone = re.search(r'local standalone_tests=\((.*?)\n    \)', source, re.S)
+paired = re.search(r'local paired_only_tests=\((.*?)\n    \)', source, re.S)
+assert standalone is not None and paired is not None
+assert '"v018-docs-manifest-parity.sh"' not in standalone.group(1)
+assert '"v018-docs-manifest-parity.sh"' in paired.group(1)
+PYEOF
+then
+    pass "release-only learner manifest regression is paired-only"
+else
+    fail "release-only learner manifest regression classification"
+fi
+
 expect_status() {
     local label="$1"
     local expected="$2"

@@ -1,7 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+reject_symlinked_path_components() {
+    local remaining="${1#/}"
+    local prefix=/
+    local component
+    local candidate
+
+    while [ -n "$remaining" ]; do
+        component="${remaining%%/*}"
+        if [ "$component" = "$remaining" ]; then
+            remaining=
+        else
+            remaining="${remaining#*/}"
+        fi
+
+        case "$component" in
+            ''|.) continue ;;
+            ..) prefix="$prefix/.."; continue ;;
+        esac
+
+        candidate="$prefix$component"
+        if [ -L "$candidate" ] && ! is_macos_var_alias "$candidate"; then
+            echo "CODEBUDDY_PLUGIN_ROOT path must not be symlinked" >&2
+            exit 1
+        fi
+        prefix="$candidate/"
+    done
+}
+
+is_macos_var_alias() {
+    [ "$1" = /var ] && [ "$(CDPATH= cd -P -- /var && pwd)" = /private/var ]
+}
+
+if [ -n "${CODEBUDDY_PLUGIN_ROOT:-}" ]; then
+    case "$CODEBUDDY_PLUGIN_ROOT" in
+        /*)
+            PLUGIN_ROOT="$CODEBUDDY_PLUGIN_ROOT"
+            reject_symlinked_path_components "$PLUGIN_ROOT"
+            ;;
+        *)
+            echo "CODEBUDDY_PLUGIN_ROOT must be an absolute path" >&2
+            exit 1
+            ;;
+    esac
+else
+    PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fi
 
 python3 - "$PLUGIN_ROOT" <<'PY'
 import json

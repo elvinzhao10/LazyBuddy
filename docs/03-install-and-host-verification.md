@@ -32,10 +32,10 @@ Use the detailed steps and required observation in [host routes](reference/host-
 | WorkBuddy plugin/marketplace | Use WorkBuddy’s documented plugin/marketplace UI. | Confirm a loaded session before relying on plugin hooks, agents, commands, or MCP. |
 | WorkBuddy skills-only fallback | Import `lazybuddy-plugin/skills/` with Skills UI and add compatible MCP connectors manually. | Observe an imported skill and every manual connector in Settings. |
 
-The copied repository is **not** a verified WorkBuddy plugin installer. The skills-only fallback is deliberately narrower: it does not claim automatic loading of hooks, agents, commands, or MCP declarations.
+The copied repository is **not** a verified WorkBuddy plugin installer. The skills-only fallback is deliberately narrower: it does not claim automatic loading of hooks, agents, commands, or MCP declarations. Its manual connector route is explained in [MCP lifecycle](07b-mcp-lifecycle.md).
 
 ## What not to do during onboarding
 
 Do not treat package scripts as authority to change marketplace, account, credentials, host settings, remote providers, browser automation, or optional architecture tooling. Those are separate user decisions. For optional-capability details, see [capabilities and approvals](06-capabilities-and-approvals.md).
 
-After the required host proof, continue with [your first task](02-first-task.md). For safe removal, use [safe removal](08-safe-removal.md) rather than guessing host-managed paths.
+After the required host proof, continue with [your first task](02-first-task.md). For safe removal, use [safe removal](08-safe-removal.md) rather than guessing host-managed paths. See the [host capability matrix](10-host-capability-matrix.md) for boundaries by surface.

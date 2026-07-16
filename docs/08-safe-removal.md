@@ -44,6 +44,7 @@ using a host removal UI, confirm that the plugin/skills and manually configured
 connectors are gone in that host. Only then may the copied repository be
 deleted; it is independent of host removal and is not itself a host installer.
 
-Read [host routes](reference/host-routes.md) for the exact boundaries and
-[capabilities and approvals](06-capabilities-and-approvals.md) for receipt
+Read [host routes](reference/host-routes.md) for the exact boundaries,
+[MCP lifecycle](07b-mcp-lifecycle.md) for the host-registration sequence, and
+[receipts and owned tooling](06b-receipts-and-owned-tooling.md) for receipt
 ownership and optional tooling.

@@ -4,8 +4,9 @@
 
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
 **CodeBuddy CLI**, and the documented **WorkBuddy** plugin/marketplace surface.
-It helps an agent turn a request into a clear plan, focused implementation,
-observable verification, and a durable evidence trail.
+This public repository is also a code-study project: it shows how an agent
+harness turns a request into durable state, bounded execution, evidence, and
+host-facing declarations without treating host state as package-owned state.
 
 LazyBuddy is a learning project for studying safe, evidence-led agent
 workflows on CodeBuddy and WorkBuddy, primarily inspired by LazyCodex
@@ -14,6 +15,10 @@ relationship to OmO and the upstream sources is recorded in [NOTICE](NOTICE).
 It is an independent implementation and does not require LazyCodex or OmO at
 runtime.
 
+> **Study the implementation:** [docs/README.md](docs/README.md), then
+> [the package map](docs/07-package-map.md), [state and validation](docs/07a-state-and-validation.md),
+> [MCP lifecycle](docs/07b-mcp-lifecycle.md), and [verification](docs/09-test-and-release-verification.md).
+>
 > **Install and host setup:** [AGENTS.md](AGENTS.md).
 >
 > **Package commands and tooling lifecycle:** [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
@@ -24,7 +29,35 @@ LazyBuddy is verified on macOS only. Package checks prove copied package assets
 and contracts; a real CodeBuddy or WorkBuddy session is still the authority for
 plugin loading, hooks, and MCP connection.
 
-## What you do with LazyBuddy
+## How to study the harness
+
+Read the repository as a pipeline rather than as a menu of commands:
+
+```text
+host event or request
+        │
+        ├── skills / commands explain the intended workflow
+        ├── agents divide planning, implementation, QA, and review roles
+        ├── hooks inspect structured host events and enforce local policy
+        ├── scripts own receipts, bounded verification, and package readiness
+        └── MCP servers expose narrow stdio tools after a host connects
+```
+
+The important implementation boundary is ownership. `lazybuddy-plugin/` is the
+standalone distributable unit. It owns its templates, scripts, declarations,
+and receipt-managed tooling roots. A host owns marketplace state, loaded
+plugins, session hooks, MCP registration, credentials, and every live
+connection. The harness records package evidence, but never upgrades that
+evidence into a claim about a running host session.
+
+Start with [docs/07-package-map.md](docs/07-package-map.md) for the source
+layout, [docs/06a-security-and-authority.md](docs/06a-security-and-authority.md)
+for input and authority boundaries, and
+[docs/09-test-and-release-verification.md](docs/09-test-and-release-verification.md)
+for the evidence pipeline. The remainder of this README describes the host
+surface those components support.
+
+## Host-facing workflow
 
 Describe the outcome, its acceptance criteria, and the surface that should
 prove it works. For a focused change, ask normally. For uncertain or

@@ -3,8 +3,8 @@ set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONTRACT="$PLUGIN_ROOT/contracts/lazyseries-capability-readiness.v1.json"
-FIXTURE="$PLUGIN_ROOT/contracts/fixtures/v017/readiness-records.json"
-POLICY_DIGEST='e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a'
+FIXTURE="$PLUGIN_ROOT/contracts/fixtures/v018/readiness-records.json"
+POLICY_DIGEST='3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a'
 
 [ -f "$CONTRACT" ] || { printf 'FAIL: missing readiness contract\n' >&2; exit 1; }
 [ -f "$CONTRACT.sha256" ] || { printf 'FAIL: missing readiness contract checksum\n' >&2; exit 1; }
@@ -34,7 +34,7 @@ checksum = contract_path.with_suffix(contract_path.suffix + ".sha256").read_text
 assert hashlib.sha256(contract_bytes).hexdigest() == checksum, "readiness contract checksum mismatch"
 schema = json.loads(contract_bytes)
 assert schema["schema_version"] == 1
-assert schema["contract_version"] == "0.17.0"
+assert schema["contract_version"] == "0.18.0"
 properties = schema["properties"]
 assert properties["contract_digest"]["const"] == policy_digest, "v1.1 automatic-tooling policy digest changed"
 assert properties["status"]["enum"] == statuses, "status enum must remain exact and ordered"
@@ -66,4 +66,4 @@ invalid["status"] = "ready"
 assert invalid["status"] not in properties["status"]["enum"], "temporary ready status copy must fail validation"
 PY
 
-printf 'v0.17 capability readiness contract regression: PASS\n'
+printf 'v0.18 capability readiness contract regression: PASS\n'

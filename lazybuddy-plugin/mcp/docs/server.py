@@ -11,6 +11,7 @@ Single-shot JSON-RPC 2.0 over stdio.
 Tools: get_library_docs, list_supported_registries.
 """
 import sys, json, os, subprocess, re
+from urllib.parse import quote
 
 MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if MCP_ROOT not in sys.path:
@@ -18,6 +19,10 @@ if MCP_ROOT not in sys.path:
 from jsonrpc import serve
 
 CWD = os.environ.get("CWD", ".")
+_NPM_PACKAGE = re.compile(r"(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
+_PYPI_PACKAGE = re.compile(r"[a-z0-9]+(?:[-._][a-z0-9]+)*$", re.I)
+_NPM_REGISTRY_URL = re.compile(r"https://registry\.npmjs\.org/(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*/latest$")
+_PYPI_REGISTRY_URL = re.compile(r"https://pypi\.org/pypi/[a-z0-9]+(?:[-._][a-z0-9]+)*/json$", re.I)
 CURL = None
 for c in ["curl", "/usr/bin/curl"]:
     try:
@@ -29,10 +34,12 @@ for c in ["curl", "/usr/bin/curl"]:
 
 
 def fetch(url, timeout=20):
+    if not (_NPM_REGISTRY_URL.fullmatch(url) or _PYPI_REGISTRY_URL.fullmatch(url)):
+        return None, "only fixed package registry URLs are allowed"
     if not CURL:
         return None, "curl not available"
     try:
-        r = subprocess.run([CURL, "-sSL", "--max-time", str(timeout), "-A", "lazybuddy-docs/0.17.0", url],
+        r = subprocess.run([CURL, "-sS", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "0", "--max-time", str(timeout), "-A", "lazybuddy-docs/0.18.0", url],
                            capture_output=True, text=True, timeout=timeout + 5)
         if r.returncode == 0 and r.stdout:
             return r.stdout, None
@@ -72,8 +79,33 @@ def section(readme, topic):
     return "\n".join(out).strip()
 
 
+def invalid_package_name(library):
+    return (
+        not isinstance(library, str)
+        or not library
+        or any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in library)
+        or any(char in library for char in ("?", "#", "\\"))
+        or "://" in library
+    )
+
+
+def npm_package_url(library):
+    if invalid_package_name(library) or not _NPM_PACKAGE.fullmatch(library):
+        return None
+    return "https://registry.npmjs.org/" + quote(library, safe="@/") + "/latest"
+
+
+def pypi_package_url(library):
+    if invalid_package_name(library) or "/" in library or not _PYPI_PACKAGE.fullmatch(library):
+        return None
+    return "https://pypi.org/pypi/" + quote(library, safe="") + "/json"
+
+
 def get_npm_docs(library, topic):
-    data, err = fetch_json("https://registry.npmjs.org/" + library + "/latest")
+    url = npm_package_url(library)
+    if not url:
+        return None, "npm: invalid package name"
+    data, err = fetch_json(url)
     if err:
         return None, "npm: " + err
     readme = data.get("readme") or ""
@@ -82,12 +114,6 @@ def get_npm_docs(library, topic):
     repo = ""
     if isinstance(data.get("repository"), dict):
         repo = data["repository"].get("url", "")
-    if not readme or len(readme) < 50:
-        # try fetching homepage or github readme
-        if homepage:
-            body, _ = fetch(homepage)
-            if body:
-                readme = body
     if topic:
         sec = section(readme, topic)
         if sec:
@@ -105,7 +131,10 @@ def get_npm_docs(library, topic):
 
 
 def get_pypi_docs(library, topic):
-    data, err = fetch_json("https://pypi.org/pypi/" + library + "/json")
+    url = pypi_package_url(library)
+    if not url:
+        return None, "pypi: invalid package name"
+    data, err = fetch_json(url)
     if err:
         return None, "pypi: " + err
     info = data.get("info", {})
@@ -163,7 +192,7 @@ def handle(req, notification):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "docs", "version": "0.17.0"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "docs", "version": "0.18.0"}})
         return
 
     if method == "tools/list":

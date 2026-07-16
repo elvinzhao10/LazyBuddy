@@ -16,6 +16,8 @@ else
     PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fi
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
+RUNNER="${PLUGIN_ROOT}/scripts/lazybuddy-bounded-run.py"
+HOST_VALIDATOR_TIMEOUT="${LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS:-15}"
 
 PASS=0
 FAIL=0
@@ -38,6 +40,11 @@ validator_reports_failure() {
     local output="$1"
     printf '%s\n' "$output" | grep -qiE 'validation[[:space:]]+(failed|failure)|found[[:space:]]+[1-9][0-9]*[[:space:]]+errors?|(^|[^[:alnum:]])errors?[[:space:]]*:|status code [45][0-9]{2}|HTTP(/[0-9.]+)?[[:space:]]+[45][0-9]{2}'
 }
+
+if ! [[ "$HOST_VALIDATOR_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+    printf 'ERROR: LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS must be a positive integer\n' >&2
+    exit 2
+fi
 
 echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
@@ -119,15 +126,36 @@ else
 fi
 
 if command -v codebuddy >/dev/null 2>&1; then
-    if validator_output=$(codebuddy plugin validate "$PLUGIN_ROOT" 2>&1); then
+    validator_result="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-host-validator.XXXXXX")"
+    if python3 "$RUNNER" --label "CodeBuddy manifest validator" --timeout "$HOST_VALIDATOR_TIMEOUT" --result-file "$validator_result" -- codebuddy plugin validate "$PLUGIN_ROOT"; then
+        validator_output="$(python3 - "$validator_result" <<'PY'
+import json
+import sys
+print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
+PY
+)"
         if validator_reports_failure "$validator_output"; then
             check "CodeBuddy manifest validator" "$validator_output"
         else
             check "CodeBuddy manifest validator" ok
         fi
     else
-        check "CodeBuddy manifest validator" "$validator_output"
+        validator_state="$(python3 - "$validator_result" <<'PY'
+import json
+import sys
+result = json.load(open(sys.argv[1], encoding="utf-8"))
+print(f'{result["status"]} {result["reason"]}')
+PY
+)"
+        if [ "$validator_state" = "timeout deadline_exceeded" ]; then
+            check "CodeBuddy manifest validator" "timeout"
+        elif [ "$validator_state" = "unavailable launch_error" ]; then
+            check "CodeBuddy manifest validator" "unavailable"
+        else
+            check "CodeBuddy manifest validator" "validation command failed"
+        fi
     fi
+    rm -f "$validator_result"
 else
     echo "  [UNCHECKED] CodeBuddy manifest validator — codebuddy CLI unavailable"
 fi

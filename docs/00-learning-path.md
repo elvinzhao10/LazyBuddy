@@ -29,4 +29,8 @@ For a focused change, ask normally. For an uncertain, multi-file, or architectur
 
 Read [evidence and completion](05-evidence-and-completion.md). A passing unit test is useful evidence, but it is not automatically proof of the user-facing result. Exercise the matching CLI, page, API, or other requested surface.
 
-If optional tooling is relevant, consult [capabilities and approvals](06-capabilities-and-approvals.md) before enabling anything. Normal onboarding and readiness checks do not enable providers, register MCP servers, install global tools, or change host settings.
+If optional tooling is relevant, consult [capabilities and approvals](06-capabilities-and-approvals.md) before enabling anything. Then read [security and authority](06a-security-and-authority.md) and [receipts and owned tooling](06b-receipts-and-owned-tooling.md). Normal onboarding and readiness checks do not enable providers, register MCP servers, install global tools, or change host settings.
+
+## 6. Learn lifecycle and release proof
+
+Before relying on state or a local MCP declaration, read [state and validation](07a-state-and-validation.md) and [MCP lifecycle](07b-mcp-lifecycle.md). Finish the learning path with [test and release verification](09-test-and-release-verification.md) and the [host capability matrix](10-host-capability-matrix.md).

@@ -112,6 +112,11 @@ integration, or prove that a live host session connected an MCP server. See the
 package-owned [verification matrix](docs/verification-matrix.md) for the local
 checks and manual host observations.
 
+Verification timeouts are best-effort cleanup for trusted package-owned
+commands. Each command receives its own process group; a deadline terminates
+that group and reports any still-detectable descendants in JSON/stderr. This is
+not a security sandbox or a guarantee that every descendant stopped. Use a VM or container-backed runner for genuinely untrusted commands; no no-fork sandbox is enabled by default.
+
 ## Optional local tooling
 
 LazyBuddy can use a local, package-owned fallback for `rg` (ripgrep) and `sg`

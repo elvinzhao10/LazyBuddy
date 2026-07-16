@@ -13,9 +13,9 @@ from typing import Final
 
 from lazybuddy_capability_contract import BrokerError, PLUGIN_ROOT, contract_digest
 
-READINESS_CONTRACT: Final = PLUGIN_ROOT / "contracts" / "lazyseries-capability-readiness.v1.json"; READINESS_VERSION: Final = "0.17.0"
+READINESS_CONTRACT: Final = PLUGIN_ROOT / "contracts" / "lazyseries-capability-readiness.v1.json"; READINESS_VERSION: Final = "0.18.0"
 READINESS_CHECKSUM: Final = READINESS_CONTRACT.with_suffix(READINESS_CONTRACT.suffix + ".sha256")
-READINESS_SCHEMA_SHA256: Final = "d74a0aaac8801b04655d873bd3b7651f22096b63ba60a10fa1d9241fd18f34af"
+READINESS_SCHEMA_SHA256: Final = "517890bd5bfb22de7cf1a6dec02bd1001fdbe7d7ffed8e0e74bdc1f8a427b78f"
 READINESS_STATUSES: Final = frozenset({"host-ready", "owned-ready", "missing", "incompatible", "disabled", "failed-optional", "not-initialized"})
 READINESS_REQUIRED_FIELDS: Final = frozenset({"schema_version", "contract_version", "contract_digest", "host", "capability", "provider", "status", "reason_code", "message", "receipt", "details"})
 READINESS_CAPABILITIES: Final = (

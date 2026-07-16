@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v0.17.0)
+# lazybuddy-verify.sh — Master verification runner (v0.18.0)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -16,6 +16,7 @@ else
 fi
 
 SCRIPTS_DIR="${PLUGIN_ROOT}/scripts"
+RUNNER="${SCRIPTS_DIR}/lazybuddy-bounded-run.py"
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 export CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}"
 export CWD="${CWD:-${PROJECT_ROOT}}"
@@ -32,33 +33,63 @@ AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
 AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT="not_applicable"
 REGRESSION_INVENTORY_RESULT="fail"
 REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
+VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"
 
 if ! [[ "$REGRESSION_DEPTH" =~ ^[0-9]+$ ]]; then
     printf 'ERROR: LAZYBUDDY_VERIFY_REGRESSION_DEPTH must be a non-negative integer\n' >&2
     exit 2
 fi
+if ! [[ "$VERIFY_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+    printf 'ERROR: LAZYBUDDY_VERIFY_TIMEOUT_SECONDS must be a positive integer\n' >&2
+    exit 2
+fi
+
+CHECK_DETAILS="{}"
+record_check() {
+    local name="$1" result_file="$2"
+    CHECK_DETAILS="$(python3 - "$CHECK_DETAILS" "$name" "$result_file" <<'PY'
+import json
+import sys
+details, name, path = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    result = json.load(handle)
+payload = json.loads(details)
+payload[name] = {key: result[key] for key in ("status", "reason")}
+print(json.dumps(payload, separators=(",", ":")))
+PY
+)"
+}
 
 run_check() {
-    local script="$1"
-    local result_var="$2"
+    local name="$1" script="$2" result_var="$3" result_file
+    result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-verify-result.XXXXXX")"
     if [ -x "$script" ]; then
-        if output=$("$script" 2>&1); then
+        if python3 "$RUNNER" --label "$name" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- "$script"; then
             eval "${result_var}=pass"
         else
             eval "${result_var}=fail"
             ALL_PASS=false
         fi
     else
+        python3 - "$result_file" <<'PY'
+import json
+import sys
+with open(sys.argv[1], "w", encoding="utf-8") as handle:
+    json.dump({"status": "unavailable", "reason": "not_executable", "tail": ""}, handle)
+PY
+        printf 'FAIL: %s\n' "$name" >&2
         eval "${result_var}=fail"
         ALL_PASS=false
     fi
+    record_check "$name" "$result_file"
+    rm -f "$result_file"
 }
 
 run_hook_pipeline_check() {
-    local script="$1"
-    local result_var="$2"
+    local name="$1" script="$2" result_var="$3"
     local hook_root=""
     if [ ! -x "$script" ]; then
+        printf 'FAIL: %s\n' "$name" >&2
         ALL_PASS=false
         return
     fi
@@ -67,8 +98,10 @@ run_hook_pipeline_check() {
         ALL_PASS=false
         return
     }
+    local result_file
+    result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-verify-result.XXXXXX")"
     if ln -s "${PLUGIN_ROOT}" "${hook_root}/lazybuddy-plugin" 2>/dev/null; then
-        if output=$(CWD="${hook_root}" CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}" "$script" 2>&1); then
+        if CWD="${hook_root}" CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}" python3 "$RUNNER" --label "$name" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- "$script"; then
             eval "${result_var}=pass"
         else
             eval "${result_var}=fail"
@@ -78,21 +111,19 @@ run_hook_pipeline_check() {
         eval "${result_var}=fail"
         ALL_PASS=false
     fi
+    record_check "$name" "$result_file"
+    rm -f "$result_file"
     rm -rf "${hook_root}"
 }
 
 run_isolated_test() {
     local next_depth=$((REGRESSION_DEPTH + 1))
-    LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 - "$1" <<'PY'
-import subprocess
-import sys
-
-completed = subprocess.run(
-    ["bash", sys.argv[1]],
-    start_new_session=True,
-)
-raise SystemExit(completed.returncode)
-PY
+    local result_file
+    result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-regression-result.XXXXXX")"
+    LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 "$RUNNER" --label "regression:$(basename "$1")" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- bash "$1"
+    local status=$?
+    rm -f "$result_file"
+    return "$status"
 }
 
 run_regression_inventory() {
@@ -131,10 +162,17 @@ run_regression_inventory() {
         "v017-documentation-regression.sh"
         "v017-mcp-params-regression.sh"
         "v017-receipt-init-deep-regression.sh"
+        "v018-verifier-regression.sh"
+        "v018-docs-ssrf-regression.sh"
+        "v018-init-deep-sibling-plugin-regression.sh"
+        "v018-secret-target-regression.sh"
+        "v018-coupled-work-contract-regression.sh"
+        "v018-post-tool-use-injection-regression.sh"
     )
     local paired_only_tests=(
         "v016-automatic-tooling-contract-parity.sh"
         "v017-capability-readiness-contract-parity.sh"
+        "v018-docs-manifest-parity.sh"
     )
 
     contains_test() {
@@ -200,18 +238,18 @@ run_regression_inventory() {
     fi
 }
 
-run_check "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
-run_hook_pipeline_check "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
-run_check "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
+run_check doctor "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
+run_check smoke "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
+run_check docs "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
+run_check security "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
+run_check mcp_test "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
+run_hook_pipeline_check hook_pipeline "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
+run_check load_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
+run_check automatic_tooling_contract "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
 run_regression_inventory
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"all_pass\":${ALL_PASS}}"
+json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"checks\":${CHECK_DETAILS},\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

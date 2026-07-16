@@ -15,7 +15,10 @@
 | **Manual-QA evidence** | An observable real-surface result used alongside appropriate automated checks; a green test suite alone does not prove every user-facing claim. |
 | **Done claim** | A concise statement of outcome, changed files, commands/results, manual QA, cleanup, and remaining risks that an independent verifier can reproduce. |
 | **Verification gate** | A workflow requirement that withholds completion until required evidence/review criteria pass. |
+| **MCP lifecycle** | Declaration, host registration, connection, tool availability, and removal: distinct steps with distinct proof. |
+| **Timeout status** | A bounded local check that exceeded its deadline; it is failure, never a pass or host-success claim. |
 
 Use [workflow playbooks](../04-workflow-playbooks.md) to choose a workflow,
-[verification contract](verification-contract.md) to interpret checks, and
+[verification contract](verification-contract.md) to interpret checks,
+[MCP lifecycle](../07b-mcp-lifecycle.md) for connection boundaries, and
 [safe removal](../08-safe-removal.md) before deleting tooling.

@@ -35,7 +35,8 @@ The six bundled local MCP declarations are `run-ledger`, `verification`,
 Filesystem and Playwright are also not part of this six-server inventory.
 
 The `context-graph` endpoint is a clearly labelled grep-based heuristic
-fallback. It must not be represented as CodeGraph semantic analysis.
+fallback. It must not be represented as CodeGraph semantic analysis. See the
+complete [MCP inventory](reference/mcp-inventory.md) and [MCP lifecycle](07b-mcp-lifecycle.md).
 
 ## Where components run
 
@@ -50,5 +51,30 @@ prove host discovery, marketplace activation, SessionStart, hook execution, or
 MCP connection. See [evidence and completion](05-evidence-and-completion.md)
 for the correct claims to make.
 
-Next: see [capabilities and approvals](06-capabilities-and-approvals.md) or
-the [verification contract](reference/verification-contract.md).
+## Trace one request through the code
+
+For a learner, the shortest useful trace begins at the input boundary rather
+than at a skill file. A host event is parsed by a hook script or MCP server;
+the adapter treats it as untrusted structured data, selects only the fields its
+policy needs, and emits a compact allow/deny or JSON-RPC result. The
+verification path is similarly explicit: `lazybuddy-verify.sh` inventories the
+package, runs named checks through `lazybuddy-bounded-run.py`, and reduces each
+result to a status and reason in its aggregate JSON report.
+
+The bounded runner creates one process group per trusted package-owned check.
+On a deadline it requests termination for that group and reports any descendant
+it can still detect. This is cleanup evidence, not process isolation: a program
+that deliberately detaches can escape, so untrusted commands belong in a VM or
+container-backed runner. Read this path together with
+[test and release verification](09-test-and-release-verification.md) and its
+regressions; the tests explain both the ordinary cleanup case and the explicit
+escape limitation.
+
+The docs MCP is a contrasting narrow adapter. It validates an npm or PyPI
+package identifier, constructs only a fixed registry URL, disables redirects,
+and returns protocol data. It does not treat package metadata as a URL to
+fetch. Read [security and authority](06a-security-and-authority.md) alongside
+the server and its regression tests to see how a small boundary prevents a
+documentation lookup from becoming arbitrary network access.
+
+Next: see [state and validation](07a-state-and-validation.md), [capabilities and approvals](06-capabilities-and-approvals.md), or the [verification contract](reference/verification-contract.md).

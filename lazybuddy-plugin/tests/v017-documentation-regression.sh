@@ -50,18 +50,46 @@ required_root_docs=(
     'docs/04-workflow-playbooks.md'
     'docs/05-evidence-and-completion.md'
     'docs/06-capabilities-and-approvals.md'
+    'docs/06a-security-and-authority.md'
+    'docs/06b-receipts-and-owned-tooling.md'
     'docs/07-package-map.md'
+    'docs/07a-state-and-validation.md'
+    'docs/07b-mcp-lifecycle.md'
     'docs/08-safe-removal.md'
+    'docs/09-test-and-release-verification.md'
+    'docs/10-host-capability-matrix.md'
     'docs/reference/host-routes.md'
+    'docs/reference/state-artifact-reference.md'
+    'docs/reference/mcp-inventory.md'
     'docs/reference/verification-contract.md'
     'docs/reference/terminology.md'
 )
 
+required_learner_headings=(
+    'docs/06a-security-and-authority.md|# Security and authority'
+    'docs/06b-receipts-and-owned-tooling.md|# Receipts and owned tooling'
+    'docs/07a-state-and-validation.md|# State and validation'
+    'docs/07b-mcp-lifecycle.md|# MCP lifecycle'
+    'docs/09-test-and-release-verification.md|# Test and release verification'
+    'docs/10-host-capability-matrix.md|# Host capability matrix'
+    'docs/reference/state-artifact-reference.md|# State artifact reference'
+    'docs/reference/mcp-inventory.md|# MCP inventory'
+)
+
 check_root_docs_contract() {
-    local relative_path
+    local relative_path heading_contract heading
     for relative_path in "${required_root_docs[@]}"; do
         [ -f "$REPOSITORY_ROOT/$relative_path" ] || fail "required root doc is missing: $relative_path"
     done
+    for heading_contract in "${required_learner_headings[@]}"; do
+        relative_path="${heading_contract%%|*}"
+        heading="${heading_contract#*|}"
+        grep -Fqx "$heading" "$REPOSITORY_ROOT/$relative_path" || fail "required learner heading is missing: $relative_path :: $heading"
+    done
+    grep -Fq 'The explicit override selects that plugin root directly' \
+        "$REPOSITORY_ROOT/docs/06a-security-and-authority.md" || fail 'security authority page must distinguish root selection from metadata validation'
+    grep -Fq 'marketplace entry' \
+        "$REPOSITORY_ROOT/docs/06a-security-and-authority.md" || fail 'security authority page must disclose parent marketplace metadata validation'
 
     python3 - "$REPOSITORY_ROOT" <<'PY'
 import pathlib
@@ -84,7 +112,7 @@ for source in sorted(docs_root.rglob("*.md")):
         try:
             relative_target = resolved.relative_to(repository_root).as_posix()
         except ValueError:
-            relative_target = None
+            raise SystemExit(f"FAIL: root documentation link escapes repository: {source.relative_to(repository_root)} -> {target}")
         if relative_target == "docs/handoff.md":
             raise SystemExit(f"FAIL: root documentation must not link to docs/handoff.md ({source.relative_to(repository_root)})")
         if not resolved.is_file():
@@ -150,6 +178,20 @@ if grep -Eq 'codebuddy plugin marketplace add[[:space:]]+https://github\.com/' \
     fail 'marketplace guidance must not provide a mutable GitHub marketplace command'
 fi
 grep -Fq 'package readiness' "$REPOSITORY_ROOT/AGENTS.md" || fail 'onboarding guide must distinguish package readiness'
+for document in \
+    "$REPOSITORY_ROOT/docs/07a-state-and-validation.md" \
+    "$REPOSITORY_ROOT/docs/05-evidence-and-completion.md" \
+    "$REPOSITORY_ROOT/docs/reference/verification-contract.md" \
+    "$REPOSITORY_ROOT/lazybuddy-evaluation.md" \
+    "$PLUGIN_ROOT/README.md"; do
+    grep -Fqi 'best-effort' "$document" || fail "$(basename "$document") must describe timeout cleanup as best-effort"
+    grep -Fqi 'not a security sandbox' "$document" || fail "$(basename "$document") must reject a sandbox claim"
+    grep -Eqi 'VM or container-backed runner' "$document" || fail "$(basename "$document") must direct untrusted commands to isolation"
+done
+if rg -n -i 'guaranteed descendant cleanup|guarantees all descendants|timeout cleans all descendants' \
+    "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/docs" "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$PLUGIN_ROOT/README.md" "$PLUGIN_ROOT/CHANGELOG.md"; then
+    fail 'public verifier language retains a descendant-cleanup guarantee'
+fi
 legacy_release_claim='does not claim a LazyBuddy package release'
 for document in \
     "$REPOSITORY_ROOT/README.md" \
@@ -176,6 +218,58 @@ fi
 test ! -e "$REPOSITORY_ROOT/workbuddy.md" || fail 'repository root must not ship workbuddy.md'
 test ! -e "$PLUGIN_ROOT/workbuddy.md" || fail 'package root must not ship workbuddy.md'
 pass 'current documentation satisfies the public learning-project contract'
+
+# Given copied root docs, when a required learner page is absent, then the
+# manifest contract rejects the incomplete learning route.
+COPIED_REPOSITORY="$TMP/repository"
+mkdir -p "$COPIED_REPOSITORY"
+cp -R "$REPOSITORY_ROOT/docs" "$COPIED_REPOSITORY/docs"
+rm "$COPIED_REPOSITORY/docs/07b-mcp-lifecycle.md"
+if (REPOSITORY_ROOT="$COPIED_REPOSITORY"; check_root_docs_contract) > "$TMP/missing-page.out" 2>&1; then
+    fail 'copied documentation with missing 07b learner page was accepted'
+fi
+grep -Fq 'docs/07b-mcp-lifecycle.md' "$TMP/missing-page.out" || fail 'missing-page failure did not identify 07b learner page'
+pass 'copied documentation with missing 07b learner page is rejected'
+
+# Given malformed copied documentation, when the link walker sees empty,
+# missing, or escaping destinations, then it rejects each local-link violation.
+assert_bad_link() {
+    local fixture_name="$1" markdown="$2" expected="$3"
+    local fixture_root="$TMP/$fixture_name"
+    cp -R "$REPOSITORY_ROOT/docs" "$fixture_root"
+    printf '%s\n' "$markdown" >> "$fixture_root/00-learning-path.md"
+    if python3 - "$fixture_root" <<'PY' > "$TMP/link-fixture.out" 2>&1
+import pathlib
+import re
+import sys
+
+docs_root = pathlib.Path(sys.argv[1]).resolve()
+repository_root = docs_root.parent
+pattern = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+for source in sorted(docs_root.rglob("*.md")):
+    for target in pattern.findall(source.read_text(encoding="utf-8")):
+        target = target.strip()
+        if not target:
+            raise SystemExit("empty")
+        if target.startswith("#") or re.match(r"(?:https?://|mailto:)", target):
+            continue
+        resolved = (source.parent / target.split("#", 1)[0]).resolve()
+        try:
+            resolved.relative_to(repository_root)
+        except ValueError:
+            raise SystemExit("escapes repository")
+        if not resolved.is_file():
+            raise SystemExit("missing")
+PY
+    then
+        fail "$fixture_name link fixture was accepted"
+    fi
+    grep -Fq "$expected" "$TMP/link-fixture.out" || fail "$fixture_name fixture did not report $expected"
+}
+assert_bad_link empty-link '[empty]()' 'empty'
+assert_bad_link missing-link '[missing](not-a-page.md)' 'missing'
+assert_bad_link escaping-link '[escape](../../outside.md)' 'escapes repository'
+pass 'empty, missing, and escaping local links are rejected'
 
 # Given copied documentation, when a required heading is removed, then the same
 # contract fails instead of accepting incomplete release documentation.

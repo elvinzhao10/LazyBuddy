@@ -1,4 +1,4 @@
-# Mental model: request, evidence, and host proof
+# Mental model
 
 LazyBuddy helps turn a request into a scoped change and evidence that the requested result works. It is not a replacement for the host: CodeBuddy and WorkBuddy remain responsible for loading plugins, running hooks, and connecting MCP servers.
 
@@ -24,4 +24,4 @@ Ask normally for a small, clear task. Request a plan for ambiguity or broad work
 
 ## Capabilities are separate decisions
 
-Routine local discovery may use a suitable local capability without creating a persistent host registration. Optional remote, browser, or architecture work has explicit approval and lifecycle boundaries. Learn those boundaries in [capabilities and approvals](06-capabilities-and-approvals.md) before opting in.
+Routine local discovery may use a suitable local capability without creating a persistent host registration. Optional remote, browser, or architecture work has explicit approval and lifecycle boundaries. Learn those boundaries in [capabilities and approvals](06-capabilities-and-approvals.md) and [security and authority](06a-security-and-authority.md) before opting in. Receipts establish limited ownership, not host authority; see [receipts and owned tooling](06b-receipts-and-owned-tooling.md).

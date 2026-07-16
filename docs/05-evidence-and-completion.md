@@ -22,8 +22,15 @@ bash scripts/lazybuddy-verify.sh
 
 The expected package evidence is respectively `PACKAGE_READINESS=full` (or an
 explained degraded state), `Doctor check: ALL PASS`, `MCP test: ALL PASS`, and
-aggregate JSON containing `"all_pass":true`. The package documentation
-contract is checked with `bash tests/v017-documentation-regression.sh`.
+aggregate JSON containing `"all_pass":true`. The aggregate JSON also records a
+bounded per-check status/reason; a timeout is failure, not proof of success.
+The package documentation contract is checked with `bash tests/v017-documentation-regression.sh`.
+
+Timeout cleanup is best-effort for trusted package-owned checks: the verifier
+terminates the check's dedicated process group and records whether descendants
+were still detectable. It is not a security sandbox or a guarantee that every
+descendant has stopped. Use a VM or container-backed runner for
+genuinely untrusted commands; no no-fork sandbox is enabled by default.
 
 ## Read the result at the right scope
 
@@ -62,5 +69,5 @@ dependency. Do not describe a copied repository as a verified WorkBuddy plugin
 installer.
 
 For check meanings, expected output, and exclusions, use the
-[verification contract](reference/verification-contract.md). For workflow
-selection, return to [workflow playbooks](04-workflow-playbooks.md).
+[verification contract](reference/verification-contract.md). For all five
+evidence layers, use [test and release verification](09-test-and-release-verification.md). For workflow selection, return to [workflow playbooks](04-workflow-playbooks.md).

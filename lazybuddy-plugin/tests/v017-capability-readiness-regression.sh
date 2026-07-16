@@ -183,7 +183,7 @@ contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8"
 schema_digest = hashlib.sha256(contract_path.read_bytes()).hexdigest()
 contract_path.with_suffix(contract_path.suffix + ".sha256").write_text(f"{schema_digest}  {contract_path.name}\n", encoding="utf-8")
 source_path = plugin / "tooling" / "lazybuddy_capability_readiness.py"
-source_path.write_text(source_path.read_text(encoding="utf-8").replace('READINESS_SCHEMA_SHA256: Final = "d74a0aaac8801b04655d873bd3b7651f22096b63ba60a10fa1d9241fd18f34af"', f'READINESS_SCHEMA_SHA256: Final = "{schema_digest}"'), encoding="utf-8")
+source_path.write_text(source_path.read_text(encoding="utf-8").replace('READINESS_SCHEMA_SHA256: Final = "517890bd5bfb22de7cf1a6dec02bd1001fdbe7d7ffed8e0e74bdc1f8a427b78f"', f'READINESS_SCHEMA_SHA256: Final = "{schema_digest}"'), encoding="utf-8")
 PY
 
 bash "$DISPOSABLE_TOOLING" readiness-report --tooling-root "$DISPOSABLE_ROOT" --target "$WORKSPACE" --json > "$TMP/stale-digest.json"
@@ -255,4 +255,4 @@ grep -Fq 'readiness-report' "$TMP/help.out" || fail 'readiness report missing fr
 [ "$before_hashes" = "$(shasum -a 256 "$WORKSPACE/.mcp.json" "$WORKSPACE/package-lock.json" "$TMP/host-mcp.json")" ] || fail 'malformed readiness command changed caller-owned configuration'
 pass 'malformed input and help preserve read-only contract'
 
-printf 'v0.17 LazyBuddy capability readiness regression: PASS\n'
+printf 'v0.18 LazyBuddy capability readiness regression: PASS\n'

@@ -17,6 +17,7 @@ if [ ! -d "$PLUGIN_ROOT" ]; then
     exit 1
 fi
 HOOKS_DIR="$PLUGIN_ROOT/scripts/hooks"
+RUNNER="$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py"
 if [ ! -d "$HOOKS_DIR" ]; then
     echo "Hook pipeline test: FAIL (hooks directory is missing: $HOOKS_DIR)" >&2
     exit 1
@@ -39,13 +40,21 @@ test_hook() {
     local name="$1"
     local payload="$2"
     local expect_pattern="$3"
-    local output
+    local output result_file
     local status
-    if output=$(printf '%s\n' "$payload" | bash "$HOOKS_DIR/$name" 2>&1); then
+    result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-hook-result.XXXXXX")"
+    if output=$(printf '%s\n' "$payload" | python3 "$RUNNER" --label "hook:${name}" --timeout "${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}" --result-file "$result_file" -- bash "$HOOKS_DIR/$name"); then
         status=0
     else
         status=$?
     fi
+    output="$(python3 - "$result_file" <<'PY'
+import json
+import sys
+print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
+PY
+)"
+    rm -f "$result_file"
     if [ "$status" -ne 0 ]; then
         RESULTS="${RESULTS}  [FAIL] $name — exited $status: ${output:0:80}\n"
         FAIL=$((FAIL + 1))
