@@ -51,6 +51,15 @@ with mock.patch.object(module.subprocess, "run", return_value=failed_snapshot):
     else:
         raise AssertionError("nonzero ps exit was treated as an empty successful snapshot")
 
+invalid_snapshot = subprocess.CompletedProcess(["/bin/ps"], 0, stdout="not a process record\n", stderr="")
+with mock.patch.object(module.subprocess, "run", return_value=invalid_snapshot):
+    try:
+        module.process_records()
+    except OSError:
+        pass
+    else:
+        raise AssertionError("invalid ps output was treated as an empty successful snapshot")
+
 class FinishedProcess:
     pid = 424242
 

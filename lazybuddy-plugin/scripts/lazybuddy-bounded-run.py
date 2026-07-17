@@ -71,6 +71,8 @@ def process_records() -> dict[int, ProcessRecord]:
         except ValueError:
             continue
         records[record.pid] = record
+    if os.getpid() not in records:
+        raise OSError("trusted ps output did not include the runner process")
     return records
 
 
