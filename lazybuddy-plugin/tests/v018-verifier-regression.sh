@@ -100,15 +100,25 @@ else
     pass "aggregate timeout fails"
 fi
 grep -q '^START: smoke$' "$TMP/verify.stderr" && pass "progress starts immediately" || fail "missing smoke START"
-grep -q '^TIMEOUT: smoke$' "$TMP/verify.stderr" && pass "timeout is named" || fail "missing named timeout"
-python3 - "$TMP/verify.json" <<'PY'
+if grep -q '^TIMEOUT: smoke$' "$TMP/verify.stderr"; then
+    pass "timeout is named"
+else
+    cat "$TMP/verify.stderr" >&2
+    fail "missing named timeout"
+fi
+if python3 - "$TMP/verify.json" <<'PY'
 import json
 import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["all_pass"] is False
 assert payload["checks"]["smoke"] == {"status": "timeout", "reason": "deadline_exceeded"}
 PY
-pass "final summary is valid fail-closed JSON"
+then
+    pass "final summary is valid fail-closed JSON"
+else
+    cat "$TMP/verify.stderr" >&2
+    fail "final summary is valid fail-closed JSON"
+fi
 for _ in $(seq 1 50); do [ -f "$TMP/child.pid" ] && break; sleep 0.02; done
 child_pid="$(cat "$TMP/child.pid")"
 if kill -0 "$child_pid" 2>/dev/null; then fail "timeout left owned group child alive"; else pass "timeout terminates smoke process group"; fi

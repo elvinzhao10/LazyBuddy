@@ -43,12 +43,22 @@ class ProcessRecord:
 
 
 def process_records() -> dict[int, ProcessRecord]:
+    ps_path = next(
+        (
+            candidate
+            for candidate in ("/bin/ps", "/usr/bin/ps")
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK)
+        ),
+        None,
+    )
+    if ps_path is None:
+        raise FileNotFoundError("trusted ps executable is unavailable")
     completed = subprocess.run(
-        ["ps", "-axo", "pid=,ppid=,pgid=,stat=,lstart="],
+        [ps_path, "-axo", "pid=,ppid=,pgid=,stat=,lstart="],
         check=False,
         capture_output=True,
         text=True,
-        timeout=1,
+        timeout=5,
     )
     records: dict[int, ProcessRecord] = {}
     for line in completed.stdout.splitlines():
@@ -83,7 +93,12 @@ def is_same_process(record: ProcessRecord, records: dict[int, ProcessRecord]) ->
 
 
 def terminate_owned_group(process: subprocess.Popen[str]) -> dict[str, object]:
-    descendants = descendant_records(process.pid)
+    inspection_failed = False
+    try:
+        descendants = descendant_records(process.pid)
+    except (OSError, subprocess.TimeoutExpired):
+        descendants = ()
+        inspection_failed = True
     try:
         os.killpg(process.pid, signal.SIGTERM)
     except ProcessLookupError:
@@ -100,11 +115,15 @@ def terminate_owned_group(process: subprocess.Popen[str]) -> dict[str, object]:
         process.wait(timeout=1)
     except subprocess.TimeoutExpired:
         pass
-    current_records = process_records()
+    try:
+        current_records = process_records()
+    except (OSError, subprocess.TimeoutExpired):
+        current_records = {}
+        inspection_failed = True
     remaining = [record.pid for record in descendants if is_same_process(record, current_records)]
     return {
         "process_group_terminated": True,
-        "detectable_descendants_remaining": bool(remaining),
+        "detectable_descendants_remaining": inspection_failed or bool(remaining),
         "detectable_descendant_pids": sorted(remaining),
     }
 
