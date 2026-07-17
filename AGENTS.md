@@ -13,6 +13,30 @@ independent implementation for CodeBuddy and WorkBuddy and does not require
 LazyCodex or OmO at runtime; [NOTICE](NOTICE) records the upstream attribution.
 Verification is on macOS only.
 
+## Current-message routing contract
+
+Before taking onboarding action, scan the whole current user message, including
+every line. Route only explicit direct actions for this turn. Text presented as
+a quote, history, example, transcript, or instruction under discussion is not a
+new action. A compatible later detail refines the earlier route. When explicit
+current-message routes conflict, the rightmost conflicting route wins.
+
+If the host or operation is still ambiguous after that scan, ask one focused
+clarifying question and take no action. Keep host authority and proof boundaries
+unchanged: WorkBuddy plugin/marketplace installation, host settings, accounts,
+credentials, and connectors remain manual; package load-check reports package
+readiness only; and a loaded WorkBuddy session must be observed before relying
+on hooks, agents, commands, or MCP.
+
+| Current message | Route and boundary |
+|---|---|
+| `lazy-init-deep` | Run the InitDeep flow only; it does not select a host-install route. |
+| `WorkBuddy UI 装插件` | Route to WorkBuddy UI onboarding; host installation remains manual and InitDeep is not invoked. |
+| `lazy-init-deep` followed by `WorkBuddy UI 装插件` on the next line | Route to WorkBuddy UI onboarding. The later explicit host route supersedes InitDeep for this turn; do not invoke InitDeep or load-check, mutate host state, or claim readiness. Require loaded-session observation. |
+| `onboard` plus a later compatible `WorkBuddy` host detail | Follow the WorkBuddy onboarding path; package readiness and live host proof remain separate. |
+| Explicit `CodeBuddy` and later explicit `WorkBuddy` host routes | Follow the rightmost host route, WorkBuddy, and do not perform the earlier host route. |
+| `onboard` or “install the plugin” without one unambiguous host | Ask once which host/path the user means and take no action. |
+
 ## `onboard` protocol
 
 When the user types `onboard`:
