@@ -2,8 +2,6 @@
 description: "Resume the latest active LazyBuddy run"
 ---
 # /lazy-resume
-> LazyBuddy v1.0.0 MCP command
-
 ## Usage
 /lazy-resume [run_id]
 
