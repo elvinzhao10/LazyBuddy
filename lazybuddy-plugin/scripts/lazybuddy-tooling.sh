@@ -81,7 +81,7 @@ root_is_empty() {
 }
 
 link_count() {
-    stat -f '%l' "$1" 2>/dev/null || stat -c '%h' "$1"
+    stat -c '%h' "$1" 2>/dev/null || stat -f '%l' "$1"
 }
 
 regular_unlinked_file() {
