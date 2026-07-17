@@ -140,4 +140,5 @@
 
 ---
 
-_Versioning follows the v0.N convention: this is a pre-1.0 build. The plugin version tracks the latest evidence-backed release-hardening phase._
+_Versioning follows semantic versioning from v1.0.0 onward. Historical v0.x
+entries remain as the pre-stable development record._

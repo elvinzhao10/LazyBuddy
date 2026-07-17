@@ -42,11 +42,27 @@ The package never turns its own readiness check into a claim about a running
 host. It keeps package-owned state separate from marketplace state, host MCP
 registrations, credentials, and live sessions.
 
-## Install, verify, and remove
+## Install and onboard
 
-Open a copied repository in the selected host and type `onboard`. Follow the
-host-specific steps in [AGENTS.md](AGENTS.md), then observe a loaded command or
-skill and the required MCP status in a new host session.
+Start from the immutable v1.0.0 release, open the cloned folder in the host you
+want to use, and type `onboard` in the agent chat:
+
+```bash
+git clone --branch v1.0.0 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
+cd LazyBuddy
+```
+
+The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
+and downloadable release assets and notes are on the
+[v1.0.0 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.0).
+
+`onboard` asks whether you use CodeBuddy IDE, CodeBuddy CLI, WorkBuddy's
+plugin/marketplace surface, or the WorkBuddy skills-only fallback. It then
+follows only that route from [AGENTS.md](AGENTS.md), stops before changing
+host-managed settings, and tells you the exact command, skill, and MCP status
+to confirm in a new session.
+
+## Verify and remove
 
 `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` reports **package
 readiness** only. Type `offboard` for the matching safe-removal protocol; it
@@ -83,3 +99,10 @@ runtime.
 ## License
 
 [MIT](LICENSE). See [NOTICE](NOTICE) for attribution and provenance.
+
+## Contributing
+
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+for the development checks, release expectations, and guidance for reporting
+sanitized reproduction details. Report vulnerabilities privately according to
+[SECURITY.md](SECURITY.md).
