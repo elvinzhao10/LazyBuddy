@@ -45,7 +45,7 @@ When the user types `offboard`:
 ## CodeBuddy CLI installation
 
 ```bash
-git clone https://github.com/elvinzhao10/LazyBuddy.git
+git clone --branch v1.0.0 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
 cd LazyBuddy
 codebuddy plugin validate lazybuddy-plugin
 bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
@@ -59,12 +59,6 @@ marketplace reference is bundled here, so this guide intentionally provides no
 marketplace-add URL or executable install command. Start a CodeBuddy session
 afterwards. The scripts validate the package only; they do not prove a
 connected MCP server or live hook execution.
-
-For a release installation, prefer the immutable `v1.0.0` tag:
-
-```bash
-git clone --branch v1.0.0 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
-```
 
 ## MCP and capability boundaries
 

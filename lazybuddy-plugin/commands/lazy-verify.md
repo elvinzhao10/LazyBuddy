@@ -2,7 +2,7 @@
 description: "Run LazyBuddy verification checks using verification MCP tools"
 ---
 # /lazy-verify
-> LazyBuddy v0.8 MCP command
+> LazyBuddy v1.0.0 MCP command
 
 ## Usage
 /lazy-verify [run_id] [--gate <gate_name>]

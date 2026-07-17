@@ -2,7 +2,7 @@
 description: "Create a new LazyBuddy run using run-ledger MCP tools"
 ---
 # /lazy-new-run
-> LazyBuddy v0.8 MCP command
+> LazyBuddy v1.0.0 MCP command
 
 ## Usage
 /lazy-new-run <objective> [--plan <plan_file>]

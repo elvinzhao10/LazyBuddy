@@ -16,14 +16,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
 
       - name: Check out paired LazyTrae release
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           repository: elvinzhao10/LazyTrae
           ref: ${{ inputs.lazytrae_ref }}
           path: .lazytrae-contract
+          persist-credentials: false
 
       - name: Validate paired contract
         run: test -f "$GITHUB_WORKSPACE/.lazytrae-contract/lazytrae-plugin/packages/cli/contracts/automatic-tooling-contract.v1.json"

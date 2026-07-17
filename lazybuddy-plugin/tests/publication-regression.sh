@@ -112,6 +112,9 @@ fi
 if grep -Erq 'tests/v017-documentation-regression\.sh' "${publication_paths[@]}"; then
     fail 'public docs reference the deleted documentation regression'
 fi
+if grep -Erq 'git clone[[:space:]]+https://github\.com/elvinzhao10/LazyBuddy(\.git)?([[:space:]]|$)' "${publication_paths[@]}"; then
+    fail 'public docs contain an unpinned LazyBuddy clone command'
+fi
 pass 'current root learner publications satisfy semantic and link checks'
 
 # Given a copied learner route with one required page missing, when publication

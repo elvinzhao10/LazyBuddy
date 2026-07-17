@@ -27,6 +27,7 @@ fi
 python3 - "$PLUGIN_ROOT" "$EXPECTED_VERSION" <<'PY'
 import json
 import pathlib
+import re
 import sys
 
 root = pathlib.Path(sys.argv[1])
@@ -49,6 +50,17 @@ for relative in (
     value = json.loads((root / relative).read_text(encoding="utf-8"))
     assert value["version"] == expected, f"{relative} reported {value['version']!r}"
     assert value["packages"][""]["version"] == expected, f"{relative} root package reported {value['packages']['']['version']!r}"
+
+for relative in (
+    "commands/lazy-new-run.md",
+    "commands/lazy-resume.md",
+    "commands/lazy-status.md",
+    "commands/lazy-verify.md",
+    "mcp/status-dashboard/dashboard.html",
+):
+    text = (root / relative).read_text(encoding="utf-8")
+    assert f"v{expected}" in text, f"{relative} omitted the current release label"
+    assert not re.search(r"\bv0\.\d", text), f"{relative} retained a superseded release label"
 
 contract = json.loads((root / "contracts/automatic-tooling-contract.v1.json").read_text(encoding="utf-8"))
 assert contract["provenance"]["release"] == "0.18.0", "shared protocol snapshot must remain byte-stable at 0.18.0"

@@ -2,7 +2,7 @@
 description: "Show current LazyBuddy run status using status-dashboard MCP tools"
 ---
 # /lazy-status
-> LazyBuddy v0.8 MCP command
+> LazyBuddy v1.0.0 MCP command
 
 ## Usage
 /lazy-status [run_id]
