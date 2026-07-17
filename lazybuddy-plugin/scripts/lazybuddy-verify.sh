@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v1.0.0)
+# lazybuddy-verify.sh — Master verification runner (v1.0.1)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -21,19 +21,20 @@ PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 export CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}"
 export CWD="${CWD:-${PROJECT_ROOT}}"
 ALL_PASS=true
-DOCTOR_RESULT="fail"
-SMOKE_RESULT="fail"
-DOCS_RESULT="fail"
-SECURITY_RESULT="fail"
-MCP_RESULT="fail"
-HOOK_RESULT="fail"
-LOAD_RESULT="fail"
-CONTRACT_RESULT="fail"
+DOCTOR_RESULT="skipped"
+SMOKE_RESULT="skipped"
+DOCS_RESULT="skipped"
+SECURITY_RESULT="skipped"
+MCP_RESULT="skipped"
+HOOK_RESULT="skipped"
+LOAD_RESULT="skipped"
+CONTRACT_RESULT="skipped"
 AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
 AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT="not_applicable"
 REGRESSION_INVENTORY_RESULT="fail"
 REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
 VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"
+VERIFY_SUITE="${LAZYBUDDY_VERIFY_SUITE:-all}"
 
 if ! [[ "$REGRESSION_DEPTH" =~ ^[0-9]+$ ]]; then
     printf 'ERROR: LAZYBUDDY_VERIFY_REGRESSION_DEPTH must be a non-negative integer\n' >&2
@@ -41,6 +42,10 @@ if ! [[ "$REGRESSION_DEPTH" =~ ^[0-9]+$ ]]; then
 fi
 if ! [[ "$VERIFY_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
     printf 'ERROR: LAZYBUDDY_VERIFY_TIMEOUT_SECONDS must be a positive integer\n' >&2
+    exit 2
+fi
+if [[ "$VERIFY_SUITE" != "all" && "$VERIFY_SUITE" != "core" && "$VERIFY_SUITE" != "lifecycle" ]]; then
+    printf 'ERROR: LAZYBUDDY_VERIFY_SUITE must be all, core, or lifecycle\n' >&2
     exit 2
 fi
 
@@ -133,7 +138,7 @@ run_isolated_test() {
     local next_depth=$((REGRESSION_DEPTH + 1))
     local result_file status
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-regression-result.XXXXXX")"
-    if LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 "$RUNNER" --label "regression:$(basename "$1")" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- bash "$1"; then
+    if LAZYBUDDY_VERIFY_SUITE=all LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 "$RUNNER" --label "regression:$(basename "$1")" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- bash "$1"; then
         status=0
     else
         status=$?
@@ -147,8 +152,8 @@ run_regression_inventory() {
     local test_name test_path candidate inventory_failed=false
     local tests_dir="${PLUGIN_ROOT}/tests"
     # The normal release gate owns every package-local *-regression.sh. The
-    # two explicit-root parity checks intentionally remain release-only.
-    local standalone_tests=(
+    # explicit-root parity checks intentionally remain release-only.
+    local core_tests=(
         "v015-consumer-agents-regression.sh"
         "v015-cwd-injection-regression.sh"
         "v015-finalize-sections-regression.sh"
@@ -156,7 +161,6 @@ run_regression_inventory() {
         "v015-mcp-path-boundary-regression.sh"
         "v015-package-boundary-regression.sh"
         "v015-persistent-mcp-regression.sh"
-        "v015-readiness-regression.sh"
         "v015-run-ledger-rpc-regression.sh"
         "v015-security-regression.sh"
         "v015-verification-mcp-boundary-regression.sh"
@@ -165,26 +169,32 @@ run_regression_inventory() {
         "v016-capability-detector-regression.sh"
         "v016-provider-lifecycle-regression.sh"
         "v016-package-onboarding-regression.sh"
-        "v016-tooling-lifecycle-regression.sh"
         "v016-remote-capabilities-regression.sh"
-        "v016-codegraph-regression.sh"
         "v016-lsp-regression.sh"
         "v016-runtime-version-regression.sh"
         "v017-capability-readiness-contract-regression.sh"
         "v017-capability-readiness-regression.sh"
-        "v017-codegraph-fixture-cleanup-regression.sh"
-        "v017-codegraph-install-timeout-regression.sh"
-        "v017-codegraph-lifecycle-caller-survival-regression.sh"
-        "v017-codegraph-uninstall-pid-identity-regression.sh"
         "v017-mcp-params-regression.sh"
         "v017-receipt-init-deep-regression.sh"
-        "v018-verifier-regression.sh"
         "v018-docs-ssrf-regression.sh"
         "v018-init-deep-sibling-plugin-regression.sh"
         "v018-secret-target-regression.sh"
         "v018-coupled-work-contract-regression.sh"
         "v018-post-tool-use-injection-regression.sh"
+        "v101-ci-suite-separation-regression.sh"
     )
+    local lifecycle_tests=(
+        "v015-readiness-regression.sh"
+        "v016-tooling-lifecycle-regression.sh"
+        "v016-codegraph-regression.sh"
+        "v017-codegraph-fixture-cleanup-regression.sh"
+        "v017-codegraph-install-timeout-regression.sh"
+        "v017-codegraph-lifecycle-caller-survival-regression.sh"
+        "v017-codegraph-uninstall-pid-identity-regression.sh"
+        "v018-verifier-regression.sh"
+    )
+    local standalone_tests=("${core_tests[@]}" "${lifecycle_tests[@]}")
+    local selected_tests=()
     local paired_only_tests=(
         "v016-automatic-tooling-contract-parity.sh"
         "v017-capability-readiness-contract-parity.sh"
@@ -252,7 +262,13 @@ run_regression_inventory() {
         return
     fi
 
-    for test_name in "${standalone_tests[@]}"; do
+    case "$VERIFY_SUITE" in
+        all) selected_tests=("${standalone_tests[@]}") ;;
+        core) selected_tests=("${core_tests[@]}") ;;
+        lifecycle) selected_tests=("${lifecycle_tests[@]}") ;;
+    esac
+
+    for test_name in "${selected_tests[@]}"; do
         test_path="${tests_dir}/${test_name}"
         if ! run_isolated_test "$test_path"; then
             printf 'FAIL: standalone regression failed: %s\n' "$test_name" >&2
@@ -266,18 +282,20 @@ run_regression_inventory() {
     fi
 }
 
-run_check doctor "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
-run_check smoke "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
-run_check docs "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
-run_check security "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
-run_check mcp_test "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
-run_hook_pipeline_check hook_pipeline "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
-run_check load_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
-run_check automatic_tooling_contract "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
+if [ "$VERIFY_SUITE" != "lifecycle" ]; then
+    run_check doctor "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
+    run_check smoke "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
+    run_check docs "${SCRIPTS_DIR}/lazybuddy-docs-check.sh"     DOCS_RESULT
+    run_check security "${SCRIPTS_DIR}/lazybuddy-security-check.sh" SECURITY_RESULT
+    run_check mcp_test "${SCRIPTS_DIR}/lazybuddy-mcp-test.sh"       MCP_RESULT
+    run_hook_pipeline_check hook_pipeline "${SCRIPTS_DIR}/hook-pipeline-test.sh" HOOK_RESULT
+    run_check load_check "${SCRIPTS_DIR}/lazybuddy-load-check.sh" LOAD_RESULT
+    run_check automatic_tooling_contract "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
+fi
 run_regression_inventory
 
 # Build compact JSON summary
-json="{\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"checks\":${CHECK_DETAILS},\"all_pass\":${ALL_PASS}}"
+json="{\"suite\":\"${VERIFY_SUITE}\",\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"checks\":${CHECK_DETAILS},\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

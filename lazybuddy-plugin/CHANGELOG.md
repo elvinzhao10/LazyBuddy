@@ -2,6 +2,17 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.0.1 — Stable CI isolation (2026-07-17)
+
+- Split deterministic package and publication validation from timing-sensitive
+  subprocess and CodeGraph lifecycle regressions.
+- Kept the deterministic `validate` job suitable for required branch
+  protection while exposing lifecycle regressions as a separate advisory job.
+- Pinned both CI jobs to macOS 15, gave lifecycle checks their own timeout
+  budget, and retained the complete blocking suite for release publication.
+- Added regression coverage that prevents lifecycle tests from leaking back
+  into the deterministic gate or normal package checks from running twice.
+
 ## v1.0.0 — Stable public release (2026-07-17)
 
 - Published the verified package and publication-gate separation as the stable

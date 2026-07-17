@@ -126,7 +126,7 @@ def handle(req, notification):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "1.0.0"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "code-intel", "version": "1.0.1"}})
         return
 
     if method == "tools/list":

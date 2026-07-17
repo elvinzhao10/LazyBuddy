@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 45
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      LAZYBUDDY_VERIFY_SUITE: all
       LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 180
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
