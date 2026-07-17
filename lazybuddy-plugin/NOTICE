@@ -1,20 +1,20 @@
 NOTICE
 
-LazyBuddy is a clean-room learning project primarily inspired by LazyCodex.
-LazyCodex is the main conceptual reference for the workflow-harness design;
-OmO (oh-my-openagent), Copyright (c) 2026 Yeongyu Kim, is the upstream source
-that LazyCodex builds upon.
+LazyBuddy is a learning project adapted from LazyCodex for CodeBuddy and
+WorkBuddy. LazyCodex is the main source for portions of the workflow-harness
+design and skill text; OmO (oh-my-openagent), Copyright (c) 2026 Yeongyu Kim,
+is an upstream project referenced by LazyCodex.
 
 Upstream sources and licenses:
 - LazyCodex: https://github.com/code-yeongyu/lazycodex — MIT.
 - OmO: https://github.com/code-yeongyu/oh-my-openagent — Sustainable Use
   License (SUL).
 
-LazyCodex and OmO are read-only study references. No upstream source code,
-prompts, or protected material is distributed with this repository; all
-implementation here is original CodeBuddy/WorkBuddy-native work. Neither
-project is an operational dependency. The SUL governs OmO itself and does not
-extend to this repository's original output.
+This repository includes material adapted from LazyCodex under its stated MIT
+license; files that preserve upstream language identify that provenance.
+LazyBuddy also contains CodeBuddy/WorkBuddy-specific implementation. Neither
+LazyCodex nor OmO is an operational dependency. OmO is listed for upstream
+attribution; this notice does not relicense OmO material under different terms.
 
 ## Optional tooling dependencies
 

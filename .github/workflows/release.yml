@@ -48,12 +48,17 @@ jobs:
       - name: Build release archive
         run: tar -czf "lazybuddy-${RELEASE_TAG}.tar.gz" lazybuddy-plugin LICENSE NOTICE README.md AGENTS.md
 
-      - name: Publish immutable release entry
+      - name: Publish release entry and missing asset
         run: |
+          asset_name="lazybuddy-${RELEASE_TAG}.tar.gz"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+            if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "$asset_name"; then
+              echo "Release $RELEASE_TAG already contains $asset_name; leaving it unchanged."
+            else
+              gh release upload "$RELEASE_TAG" "$asset_name"
+            fi
           else
-            gh release create "$RELEASE_TAG" "lazybuddy-${RELEASE_TAG}.tar.gz" \
+            gh release create "$RELEASE_TAG" "$asset_name" \
               --verify-tag \
               --generate-notes \
               --title "LazyBuddy $RELEASE_TAG"

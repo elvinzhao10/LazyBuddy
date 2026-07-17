@@ -18,7 +18,7 @@ labels: bug
 ## Environment
 
 - LazyBuddy version: <!-- run `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh` -->
-- WorkBuddy version:
+- Host and version: <!-- CodeBuddy IDE, CodeBuddy CLI, or WorkBuddy -->
 - OS:
 
 ## Verification Output
