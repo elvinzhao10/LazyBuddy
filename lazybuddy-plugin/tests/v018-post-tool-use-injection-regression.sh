@@ -72,13 +72,13 @@ import sys
 print(json.dumps({
     "cwd": sys.argv[1],
     "tool_name": "Bash",
-    "tool_input": {"command": "curl -H 'Bearer TOP_SECRET_1234567890' --api-key API_SECRET_987654 https://example.test"},
+    "tool_input": {"command": "curl -H 'Bearer BEARER_FIXTURE' --api-key API_KEY_FIXTURE https://example.test"},
 }))
 PY
 )"
 
 printf '%s' "$bash_payload" | bash "$HOOK"
-if grep -Fq -e 'TOP_SECRET_1234567890' -e 'API_SECRET_987654' "$RUN_DIR/events.jsonl"; then
+if grep -Fq -e 'BEARER_FIXTURE' -e 'API_KEY_FIXTURE' "$RUN_DIR/events.jsonl"; then
     fail 'Bash event retained a secret value'
 fi
 python3 - "$RUN_DIR/events.jsonl" <<'PY'

@@ -980,7 +980,7 @@ def read_processes():
     return processes
 
 
-def is_zombie(pid):
+def is_gone_or_zombie(pid):
     for candidate in ("/bin/ps", "/usr/bin/ps"):
         if not os.path.isfile(candidate) or not os.access(candidate, os.X_OK):
             continue
@@ -988,9 +988,11 @@ def is_zombie(pid):
             status = subprocess.check_output(
                 [candidate, "-p", str(pid), "-o", "stat="], text=True
             ).strip()
-        except (OSError, subprocess.CalledProcessError):
+        except subprocess.CalledProcessError:
+            return True
+        except OSError:
             return False
-        return status.startswith("Z")
+        return not status or status.startswith("Z")
     return False
 
 
@@ -1076,7 +1078,7 @@ remaining = set(tracked)
 while remaining and time.monotonic() < deadline:
     remaining = {
         pid for pid in remaining
-        if same_identity(tracked[pid], read_processes().get(pid)) and not is_zombie(pid)
+        if same_identity(tracked[pid], read_processes().get(pid)) and not is_gone_or_zombie(pid)
     }
     if remaining:
         time.sleep(0.1)
@@ -1086,7 +1088,7 @@ deadline = time.monotonic() + 2
 while remaining and time.monotonic() < deadline:
     remaining = {
         pid for pid in remaining
-        if same_identity(tracked[pid], read_processes().get(pid)) and not is_zombie(pid)
+        if same_identity(tracked[pid], read_processes().get(pid)) and not is_gone_or_zombie(pid)
     }
     if remaining:
         time.sleep(0.1)

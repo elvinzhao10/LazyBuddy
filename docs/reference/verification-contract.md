@@ -37,6 +37,15 @@ dependency. Release-only paired parity may compare explicitly supplied sibling
 roots as release evidence; it is not runtime, installation, or normal-CI
 dependency.
 
+## Regression test names
+
+Test filenames beginning with `v015`, `v016`, `v017`, or `v018` identify the
+release in which that regression boundary was introduced. They are active
+compatibility and security checks, not deprecated runtime versions or shipped
+legacy implementations. CI prints these stable filenames so a failure points
+to the exact regression contract. New tests should use a descriptive,
+unversioned filename unless preserving release provenance is necessary.
+
 ## Claim matrix
 
 | Evidence type | Establishes | Does not establish |
