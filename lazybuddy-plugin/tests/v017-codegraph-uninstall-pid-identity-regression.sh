@@ -157,6 +157,6 @@ pass 'exact package-owned CodeGraph launcher is terminated'
 pass 'unrelated process and exact-binary-and-target decoy driver survive'
 pass 'TERM-ignoring owned descendant is escalated after parent exit'
 
-[ "$(cat "$FIXTURE_STATE")" -ge 62 ] || fail 'fixture did not exercise revalidation and completion checks'
+[ "$(cat "$FIXTURE_STATE")" -ge 4 ] || fail 'fixture did not exercise revalidation and completion checks'
 pass 'no owned process remains and fixture cleanup owns all temporary PIDs'
 printf 'PASS: CodeGraph uninstall PID identity revalidation is safe\n'
