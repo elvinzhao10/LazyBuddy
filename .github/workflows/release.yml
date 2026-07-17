@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 180
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+
+      - name: Validate release tag and package version
+        run: |
+          package_version="$(python3 -c 'import json; print(json.load(open("lazybuddy-plugin/.codebuddy-plugin/plugin.json"))["version"])')"
+          test "$RELEASE_TAG" = "v$package_version"
+
+      - name: Run package verification
+        run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
+      - name: Run publication verification
+        run: bash lazybuddy-plugin/tests/publication-regression.sh
+
+      - name: Build release archive
+        run: |
+          asset_name="lazybuddy-${RELEASE_TAG}.tar.gz"
+          archive_root="$(mktemp -d "$RUNNER_TEMP/lazybuddy-release.XXXXXX")"
+          git archive --format=tar.gz --output="$asset_name" "$RELEASE_TAG"
+          tar -xzf "$asset_name" -C "$archive_root"
+          if find "$archive_root" -type f \( -name '*.pyc' -o -path '*/__pycache__/*' \) -print -quit | grep -q .; then
+            echo "Release archive contains generated Python bytecode." >&2
+            exit 1
+          fi
+          bash "$archive_root/lazybuddy-plugin/tests/publication-regression.sh"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-package-${{ env.RELEASE_TAG }}
+          path: lazybuddy-${{ env.RELEASE_TAG }}.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-package-${{ env.RELEASE_TAG }}
+
+      - name: Publish release entry and missing asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset_name="lazybuddy-${RELEASE_TAG}.tar.gz"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "$asset_name"; then
+              echo "Release $RELEASE_TAG already contains $asset_name; leaving it unchanged."
+            else
+              gh release upload "$RELEASE_TAG" "$asset_name"
+            fi
+          else
+            gh release create "$RELEASE_TAG" "$asset_name" \
+              --verify-tag \
+              --generate-notes \
+              --title "LazyBuddy $RELEASE_TAG"
+          fi

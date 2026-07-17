@@ -81,7 +81,7 @@ root_is_empty() {
 }
 
 link_count() {
-    stat -f '%l' "$1" 2>/dev/null || stat -c '%h' "$1"
+    stat -c '%h' "$1" 2>/dev/null || stat -f '%l' "$1"
 }
 
 regular_unlinked_file() {
@@ -980,6 +980,22 @@ def read_processes():
     return processes
 
 
+def is_gone_or_zombie(pid):
+    for candidate in ("/bin/ps", "/usr/bin/ps"):
+        if not os.path.isfile(candidate) or not os.access(candidate, os.X_OK):
+            continue
+        try:
+            status = subprocess.check_output(
+                [candidate, "-p", str(pid), "-o", "stat="], text=True
+            ).strip()
+        except subprocess.CalledProcessError:
+            return True
+        except OSError:
+            return False
+        return not status or status.startswith("Z")
+    return False
+
+
 def same_identity(expected, current):
     return current is not None and expected[1:] == current[1:]
 
@@ -1062,7 +1078,7 @@ remaining = set(tracked)
 while remaining and time.monotonic() < deadline:
     remaining = {
         pid for pid in remaining
-        if same_identity(tracked[pid], read_processes().get(pid))
+        if same_identity(tracked[pid], read_processes().get(pid)) and not is_gone_or_zombie(pid)
     }
     if remaining:
         time.sleep(0.1)
@@ -1072,7 +1088,7 @@ deadline = time.monotonic() + 2
 while remaining and time.monotonic() < deadline:
     remaining = {
         pid for pid in remaining
-        if same_identity(tracked[pid], read_processes().get(pid))
+        if same_identity(tracked[pid], read_processes().get(pid)) and not is_gone_or_zombie(pid)
     }
     if remaining:
         time.sleep(0.1)

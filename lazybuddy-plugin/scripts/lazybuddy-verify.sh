@@ -60,6 +60,18 @@ PY
 )"
 }
 
+print_failure_tail() {
+    python3 - "$1" <<'PY' >&2
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    result = json.load(handle)
+if result["tail"]:
+    print(result["tail"], end="" if result["tail"].endswith("\n") else "\n")
+PY
+}
+
 run_check() {
     local name="$1" script="$2" result_var="$3" result_file
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-verify-result.XXXXXX")"
@@ -69,6 +81,7 @@ run_check() {
         else
             eval "${result_var}=fail"
             ALL_PASS=false
+            print_failure_tail "$result_file"
         fi
     else
         python3 - "$result_file" <<'PY'
@@ -124,15 +137,7 @@ run_isolated_test() {
         status=0
     else
         status=$?
-        python3 - "$result_file" <<'PY' >&2
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    result = json.load(handle)
-if result["tail"]:
-    print(result["tail"], end="" if result["tail"].endswith("\n") else "\n")
-PY
+        print_failure_tail "$result_file"
     fi
     rm -f "$result_file"
     return "$status"

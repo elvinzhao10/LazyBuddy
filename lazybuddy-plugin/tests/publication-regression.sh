@@ -94,23 +94,26 @@ publication_paths=(
     "$REPOSITORY_ROOT/lazybuddy-evaluation.md"
     "$REPOSITORY_ROOT/docs"
 )
-rg -qi 'package readiness' "${publication_paths[@]}" || fail 'public docs must distinguish package readiness'
-rg -qi 'host (verification|proof|session|integration)' "${publication_paths[@]}" || fail 'public docs must distinguish host verification'
-rg -qi 'independent' "${publication_paths[@]}" || fail 'public docs must describe the independent runtime boundary'
-if rg -qi '(requires|depends on)[^.]*(LazyCodex|OmO)' "${publication_paths[@]}"; then
+grep -Eriq 'package readiness' "${publication_paths[@]}" || fail 'public docs must distinguish package readiness'
+grep -Eriq 'host (verification|proof|session|integration)' "${publication_paths[@]}" || fail 'public docs must distinguish host verification'
+grep -Eriq 'independent' "${publication_paths[@]}" || fail 'public docs must describe the independent runtime boundary'
+if grep -Eriq '(requires|depends on)[^.]*(LazyCodex|OmO)' "${publication_paths[@]}"; then
     fail 'public docs must not claim a LazyCodex or OmO runtime dependency'
 fi
-if rg -qi 'codebuddy plugin marketplace add[[:space:]]+https://github\.com/' "${publication_paths[@]}"; then
+if grep -Eriq 'codebuddy plugin marketplace add[[:space:]]+https://github\.com/' "${publication_paths[@]}"; then
     fail 'public docs must not provide a mutable marketplace command'
 fi
-if rg -qi 'guaranteed descendant cleanup|guarantees all descendants|timeout cleans all descendants' "${publication_paths[@]}"; then
+if grep -Eriq 'guaranteed descendant cleanup|guarantees all descendants|timeout cleans all descendants' "${publication_paths[@]}"; then
     fail 'public docs must not overstate timeout descendant cleanup'
 fi
-if rg -qi 'alignment candidate|no longer maintained|practice project' "${publication_paths[@]}"; then
+if grep -Eriq 'alignment candidate|no longer maintained|practice project' "${publication_paths[@]}"; then
     fail 'public docs retain obsolete project framing'
 fi
-if rg -q 'tests/v017-documentation-regression\.sh' "${publication_paths[@]}"; then
+if grep -Erq 'tests/v017-documentation-regression\.sh' "${publication_paths[@]}"; then
     fail 'public docs reference the deleted documentation regression'
+fi
+if grep -Erq 'git clone[[:space:]]+https://github\.com/elvinzhao10/LazyBuddy(\.git)?([[:space:]]|$)' "${publication_paths[@]}"; then
+    fail 'public docs contain an unpinned LazyBuddy clone command'
 fi
 pass 'current root learner publications satisfy semantic and link checks'
 
@@ -130,7 +133,8 @@ copy_publication_fixture() {
     local fixture_root="$1"
     mkdir -p "$fixture_root/lazybuddy-plugin"
     cp -R "$REPOSITORY_ROOT/docs" "$fixture_root/docs"
-    cp "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md" "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$fixture_root/"
+    cp "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md" "$REPOSITORY_ROOT/CONTRIBUTING.md" \
+        "$REPOSITORY_ROOT/SECURITY.md" "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$fixture_root/"
     cp "$REPOSITORY_ROOT/LICENSE" "$REPOSITORY_ROOT/NOTICE" "$REPOSITORY_ROOT/lazybuddy-banner.jpg" "$fixture_root/"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/README.md" "$fixture_root/lazybuddy-plugin/README.md"
 }
