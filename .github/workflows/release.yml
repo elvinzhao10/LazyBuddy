@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 180
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Validate release tag and package version
+        run: |
+          package_version="$(python3 -c 'import json; print(json.load(open("lazybuddy-plugin/.codebuddy-plugin/plugin.json"))["version"])')"
+          test "$RELEASE_TAG" = "v$package_version"
+
+      - name: Run package verification
+        run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
+      - name: Run publication verification
+        run: bash lazybuddy-plugin/tests/publication-regression.sh
+
+      - name: Build release archive
+        run: tar -czf "lazybuddy-${RELEASE_TAG}.tar.gz" lazybuddy-plugin LICENSE NOTICE README.md AGENTS.md
+
+      - name: Publish immutable release entry
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+          else
+            gh release create "$RELEASE_TAG" "lazybuddy-${RELEASE_TAG}.tar.gz" \
+              --verify-tag \
+              --generate-notes \
+              --title "LazyBuddy $RELEASE_TAG"
+          fi

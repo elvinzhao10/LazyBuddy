@@ -5,10 +5,21 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 180
     steps:
       - uses: actions/checkout@v5
 
@@ -16,18 +27,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-
-      - name: Run plugin doctor
-        run: bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
-
-      - name: Run smoke test
-        run: bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh
-
-      - name: Run security check
-        run: bash lazybuddy-plugin/scripts/lazybuddy-security-check.sh
-
-      - name: Run docs check
-        run: bash lazybuddy-plugin/scripts/lazybuddy-docs-check.sh
 
       - name: Run package verification
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh

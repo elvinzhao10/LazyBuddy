@@ -8,17 +8,21 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   parity:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate LazyTrae ref
         run: test -n "${{ inputs.lazytrae_ref }}"
 
       - name: Check out paired LazyTrae release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: elvinzhao10/LazyTrae
           ref: ${{ inputs.lazytrae_ref }}
