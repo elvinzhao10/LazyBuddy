@@ -18,9 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Validate LazyTrae ref
-        run: test -n "${{ inputs.lazytrae_ref }}"
-
       - name: Check out paired LazyTrae release
         uses: actions/checkout@v5
         with:

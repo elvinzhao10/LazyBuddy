@@ -156,7 +156,7 @@ assert query.count("[redacted]") == 3
 PY
 pass 'credential-like query forms are redacted before routing'
 
-if rg -n -i 'context7|codegraph|grep[_ .-]?app|playwright|github search' "$PLUGIN_ROOT/skills" "$PLUGIN_ROOT/commands" "$PLUGIN_ROOT/templates" "$PLUGIN_ROOT/agents" --glob '*.md' >"$TMP/direct-provider-workflow.txt"; then
+if grep -ERni --include='*.md' 'context7|codegraph|grep[_ .-]?app|playwright|github search' "$PLUGIN_ROOT/skills" "$PLUGIN_ROOT/commands" "$PLUGIN_ROOT/templates" "$PLUGIN_ROOT/agents" >"$TMP/direct-provider-workflow.txt"; then
     fail "operational workflows name a provider: $(cat "$TMP/direct-provider-workflow.txt")"
 fi
 pass 'operational workflows use capability names instead of providers'
