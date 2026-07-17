@@ -21,7 +21,10 @@ printf '%s' "$output" | python3 -c 'import json, sys; d=json.load(sys.stdin); as
 pass 'provider discovery is env-name-only and redacted'
 
 CONFIG="$HOME_ROOT/.config/lazyseries/config.yaml"
-[ "$(stat -f '%Lp' "$CONFIG")" = 600 ] || fail 'config is not mode 0600'
+file_mode() {
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"
+}
+[ "$(file_mode "$CONFIG")" = 600 ] || fail 'config is not mode 0600'
 pass 'config is private'
 
 # Given a persisted workspace approval, when it is checked under the same digest,
