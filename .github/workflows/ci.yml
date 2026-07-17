@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Run plugin doctor
+        run: bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
+
+      - name: Run smoke test
+        run: bash lazybuddy-plugin/scripts/lazybuddy-smoke-test.sh
+
+      - name: Run security check
+        run: bash lazybuddy-plugin/scripts/lazybuddy-security-check.sh
+
+      - name: Run docs check
+        run: bash lazybuddy-plugin/scripts/lazybuddy-docs-check.sh
+
+      - name: Run package verification
+        run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
+      - name: Run publication verification
+        run: bash lazybuddy-plugin/tests/publication-regression.sh

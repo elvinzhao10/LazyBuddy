@@ -1,0 +1,108 @@
+{
+  "records": [
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazytrae",
+      "capability": "code_navigation",
+      "provider": "lsp",
+      "status": "host-ready",
+      "reason_code": null,
+      "message": "The host supplies an LSP service.",
+      "receipt": null,
+      "details": { "source": "host" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazytrae",
+      "capability": "local_search",
+      "provider": "ripgrep",
+      "status": "host-ready",
+      "reason_code": null,
+      "message": "The host supplies ripgrep.",
+      "receipt": null,
+      "details": { "source": "host" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazybuddy",
+      "capability": "code_navigation",
+      "provider": "lsp",
+      "status": "owned-ready",
+      "reason_code": null,
+      "message": "A receipt-owned LSP toolpack is ready.",
+      "receipt": { "owner": "lazyseries", "schema_version": 1, "state": "ready" },
+      "details": { "source": "receipt" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazytrae",
+      "capability": "external_code_search",
+      "provider": null,
+      "status": "missing",
+      "reason_code": "PROVIDER_NOT_FOUND",
+      "message": "No selected provider is available.",
+      "receipt": null,
+      "details": { "source": "detection" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazybuddy",
+      "capability": "code_navigation",
+      "provider": "lsp",
+      "status": "incompatible",
+      "reason_code": "HOST_VERSION_UNSUPPORTED",
+      "message": "The detected host version is unsupported.",
+      "receipt": null,
+      "details": { "source": "compatibility" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazytrae",
+      "capability": "architecture_search",
+      "provider": "codegraph",
+      "status": "disabled",
+      "reason_code": "EXPLICIT_ENABLE_REQUIRED",
+      "message": "The optional provider is disabled.",
+      "receipt": null,
+      "details": { "source": "policy" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazybuddy",
+      "capability": "documentation_search",
+      "provider": "context7",
+      "status": "failed-optional",
+      "reason_code": "OPTIONAL_PROVIDER_UNAVAILABLE",
+      "message": "The optional provider could not start.",
+      "receipt": null,
+      "details": { "source": "startup" }
+    },
+    {
+      "schema_version": 1,
+      "contract_version": "0.17.0",
+      "contract_digest": "e73aa8a942df5609c57e70a7e5e0ac21adf53ef63f688e8caaed2801f946470a",
+      "host": "lazytrae",
+      "capability": "filesystem_read",
+      "provider": "filesystem",
+      "status": "not-initialized",
+      "reason_code": "RECEIPT_ABSENT",
+      "message": "The owned provider has not been initialized.",
+      "receipt": null,
+      "details": { "source": "receipt" }
+    }
+  ]
+}

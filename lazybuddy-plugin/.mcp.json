@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "run-ledger": {
+      "command": "bash",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/run-ledger/server.sh"],
+      "cwd": ".",
+      "required": false
+    },
+    "verification": {
+      "command": "bash",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/verification/server.sh"],
+      "cwd": ".",
+      "required": false
+    },
+    "status-dashboard": {
+      "command": "bash",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/status-dashboard/server.sh"],
+      "cwd": ".",
+      "required": false
+    },
+    "context-graph": {
+      "command": "bash",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/context-graph/server.sh"],
+      "cwd": ".",
+      "required": false
+    },
+    "code-intel": {
+      "command": "bash",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/code-intel/server.sh"],
+      "cwd": ".",
+      "required": false
+    },
+    "docs": {
+      "command": "bash",
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/docs/server.sh"],
+      "cwd": ".",
+      "required": false
+    }
+  }
+}

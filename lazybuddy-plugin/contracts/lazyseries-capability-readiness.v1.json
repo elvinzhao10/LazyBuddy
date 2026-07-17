@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "contract_version": "0.18.0",
+  "title": "LazySeries Capability Readiness Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "contract_digest",
+    "host",
+    "capability",
+    "provider",
+    "status",
+    "reason_code",
+    "message",
+    "receipt",
+    "details"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "contract_version": { "const": "0.18.0" },
+    "contract_digest": { "const": "3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a" },
+    "host": { "type": "string", "enum": ["lazytrae", "lazybuddy"] },
+    "capability": { "type": "string", "minLength": 1 },
+    "provider": { "type": ["string", "null"] },
+    "status": {
+      "enum": [
+        "host-ready",
+        "owned-ready",
+        "missing",
+        "incompatible",
+        "disabled",
+        "failed-optional",
+        "not-initialized"
+      ]
+    },
+    "reason_code": { "type": ["string", "null"] },
+    "message": { "type": "string" },
+    "receipt": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["owner", "schema_version", "state"],
+      "properties": {
+        "owner": { "type": "string", "minLength": 1 },
+        "schema_version": { "const": 1 },
+        "state": { "type": "string", "minLength": 1 }
+      }
+    },
+    "details": { "type": "object" }
+  }
+}

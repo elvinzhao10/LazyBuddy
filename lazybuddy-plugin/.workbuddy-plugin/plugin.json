@@ -1,0 +1,10 @@
+{
+  "name": "lazybuddy",
+  "version": "1.0.0",
+  "description": "LazyBuddy workflows for CodeBuddy and WorkBuddy.",
+  "skills": ["./skills/"],
+  "commands": ["./commands/"],
+  "agents": ["./agents/"],
+  "hooks": ["./hooks/hooks.json"],
+  "mcpServers": ["./.mcp.json"]
+}

@@ -1,0 +1,59 @@
+# Optional local reference material (not part of the release package)
+dev/
+
+# WorkBuddy workspace state (managed by the WorkBuddy app)
+.workbuddy/
+
+# LazyBuddy runtime state (runs, checkpoints, context — regenerated per session)
+.lazybuddy/
+
+# Pre-rename LazyWorkBuddy state; retained so local sessions do not become
+# release artifacts after upgrading to LazyBuddy.
+.lazyworkbuddy/
+
+# Legacy runtime-state test artifacts
+.omo/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
