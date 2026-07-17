@@ -60,6 +60,7 @@ def process_records() -> dict[int, ProcessRecord]:
         text=True,
         timeout=5,
     )
+    completed.check_returncode()
     records: dict[int, ProcessRecord] = {}
     for line in completed.stdout.splitlines():
         fields = line.split(maxsplit=4)
@@ -96,7 +97,7 @@ def terminate_owned_group(process: subprocess.Popen[str]) -> dict[str, object]:
     inspection_failed = False
     try:
         descendants = descendant_records(process.pid)
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.SubprocessError):
         descendants = ()
         inspection_failed = True
     try:
@@ -117,7 +118,7 @@ def terminate_owned_group(process: subprocess.Popen[str]) -> dict[str, object]:
         pass
     try:
         current_records = process_records()
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.SubprocessError):
         current_records = {}
         inspection_failed = True
     remaining = [record.pid for record in descendants if is_same_process(record, current_records)]

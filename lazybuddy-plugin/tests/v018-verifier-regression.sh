@@ -26,6 +26,53 @@ assert json.load(open(sys.argv[1], encoding="utf-8")) == {"status": "pass", "rea
 PY
 grep -q '^PASS: fast$' "$TMP/fast.stderr" && pass "fast trusted command succeeds" || fail "fast trusted command result"
 
+# Given a trusted process inspector that executes but reports failure, cleanup
+# must treat inspection as unavailable instead of interpreting empty output as
+# proof that no descendants remain.
+python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" <<'PY'
+import importlib.util
+import subprocess
+import sys
+from unittest import mock
+
+module_path = sys.argv[1]
+spec = importlib.util.spec_from_file_location("lazybuddy_bounded_run", module_path)
+assert spec is not None and spec.loader is not None
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+
+failed_snapshot = subprocess.CompletedProcess(["/bin/ps"], 1, stdout="", stderr="inspection failed")
+with mock.patch.object(module.subprocess, "run", return_value=failed_snapshot):
+    try:
+        module.process_records()
+    except subprocess.CalledProcessError:
+        pass
+    else:
+        raise AssertionError("nonzero ps exit was treated as an empty successful snapshot")
+
+class FinishedProcess:
+    pid = 424242
+
+    @staticmethod
+    def wait(timeout):
+        return 0
+
+inspection_error = subprocess.CalledProcessError(1, ["/bin/ps"])
+with (
+    mock.patch.object(module, "descendant_records", side_effect=inspection_error),
+    mock.patch.object(module, "process_records", side_effect=inspection_error),
+    mock.patch.object(module.os, "killpg", side_effect=ProcessLookupError),
+):
+    cleanup = module.terminate_owned_group(FinishedProcess())
+assert cleanup == {
+    "process_group_terminated": True,
+    "detectable_descendants_remaining": True,
+    "detectable_descendant_pids": [],
+}
+PY
+pass "failed process inspection remains fail-closed"
+
 # Given a command whose child remains in the runner-owned process group, when
 # its deadline expires, then cleanup terminates that group.
 GROUP_CHILD_PID="$TMP/group-child.pid"
