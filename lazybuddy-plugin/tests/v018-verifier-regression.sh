@@ -83,6 +83,17 @@ printf '%s\n' "$!" > "${LAZYBUDDY_CHILD_PID:?}"
 sleep 30
 SH
 chmod +x "$FIXTURE/scripts/lazybuddy-smoke-test.sh"
+for check_script in \
+    lazybuddy-plugin-doctor.sh \
+    lazybuddy-docs-check.sh \
+    lazybuddy-security-check.sh \
+    lazybuddy-mcp-test.sh \
+    hook-pipeline-test.sh \
+    lazybuddy-load-check.sh \
+    lazybuddy-contract-check.sh; do
+    printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$FIXTURE/scripts/$check_script"
+    chmod +x "$FIXTURE/scripts/$check_script"
+done
 if CODEBUDDY_PLUGIN_ROOT="$FIXTURE" LAZYBUDDY_VERIFY_TIMEOUT_SECONDS=3 LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 LAZYBUDDY_CHILD_PID="$TMP/child.pid" bash "$FIXTURE/scripts/lazybuddy-verify.sh" >"$TMP/verify.json" 2>"$TMP/verify.stderr"; then
     fail "aggregate timeout must fail"
 else
@@ -130,6 +141,7 @@ else
 fi
 grep -Fq 'ERROR: unclassified package-local regression: unlisted-regression.sh' "$TMP/unclassified.stderr" && pass "unversioned regression rejection is identified" || fail "unversioned regression rejection detail"
 
+cp "$PLUGIN_ROOT/scripts/lazybuddy-plugin-doctor.sh" "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh"
 mkdir "$TMP/fake-bin"
 cat > "$TMP/fake-bin/codebuddy" <<'SH'
 #!/usr/bin/env bash
