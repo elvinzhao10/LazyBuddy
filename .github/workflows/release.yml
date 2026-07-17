@@ -46,7 +46,16 @@ jobs:
         run: bash lazybuddy-plugin/tests/publication-regression.sh
 
       - name: Build release archive
-        run: tar -czf "lazybuddy-${RELEASE_TAG}.tar.gz" lazybuddy-plugin LICENSE NOTICE README.md AGENTS.md
+        run: |
+          asset_name="lazybuddy-${RELEASE_TAG}.tar.gz"
+          archive_root="$(mktemp -d "$RUNNER_TEMP/lazybuddy-release.XXXXXX")"
+          git archive --format=tar.gz --output="$asset_name" "$RELEASE_TAG"
+          tar -xzf "$asset_name" -C "$archive_root"
+          if find "$archive_root" -type f \( -name '*.pyc' -o -path '*/__pycache__/*' \) -print -quit | grep -q .; then
+            echo "Release archive contains generated Python bytecode." >&2
+            exit 1
+          fi
+          bash "$archive_root/lazybuddy-plugin/tests/publication-regression.sh"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
