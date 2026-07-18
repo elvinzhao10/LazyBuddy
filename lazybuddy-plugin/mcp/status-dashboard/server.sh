@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
-CWD="${CWD:-.}"
-PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
+die() {
+  printf 'LazyBuddy MCP launcher: %s\n' "$1" >&2
+  exit 2
+}
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+case "$SOURCE_PATH" in
+  /*) ;;
+  *) SOURCE_PATH="$PWD/$SOURCE_PATH" ;;
+esac
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$SOURCE_PATH")" 2>/dev/null && pwd -P)" || die "cannot locate launcher"
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd -P -- "$SCRIPT_DIR/../.." 2>/dev/null && pwd -P)}"
+case "$PLUGIN_ROOT" in
+  /*) ;;
+  *) die "plugin root must be absolute: $PLUGIN_ROOT" ;;
+esac
+[ -d "$PLUGIN_ROOT" ] || die "plugin root not found: $PLUGIN_ROOT"
+RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-$PWD}}"
+case "$RAW_CWD" in
+  /*) ;;
+  *) RAW_CWD="$PWD/$RAW_CWD" ;;
+esac
+[ -d "$RAW_CWD" ] && [ ! -L "$RAW_CWD" ] || die "project CWD is unavailable: $RAW_CWD"
+CWD="$(cd -P -- "$RAW_CWD" 2>/dev/null && pwd -P)" || die "cannot resolve project CWD: $RAW_CWD"
+export CWD
 source "$PLUGIN_ROOT/scripts/state/state-paths.sh"
 NOTIFICATION=0
 
