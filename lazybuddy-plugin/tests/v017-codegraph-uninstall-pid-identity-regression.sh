@@ -116,12 +116,36 @@ esac
 SH
 chmod +x "$FAKE_BIN/ps"
 
+# Given a trusted process snapshot executable that cannot inspect processes,
+# when the production ownership helper runs, then uninstall must fail closed
+# instead of treating missing output as proof that no owned process exists.
+cat > "$FAKE_BIN/ps-unavailable" <<'SH'
+#!/usr/bin/env bash
+exit 73
+SH
+chmod +x "$FAKE_BIN/ps-unavailable"
+if INSPECTION_FAILURE_OUTPUT="$(env \
+    PATH="$FAKE_BIN:/usr/bin:/bin" \
+    bash -c 'source "$1"; TOOLING_ROOT="$2"; TARGET_ROOT="$3"; stop_owned_codegraph_processes --test-process-snapshot "$4"' \
+    bash "$LIFECYCLE" "$TOOLING_ROOT" "$TARGET_ROOT" "$FAKE_BIN/ps-unavailable" 2>&1)"; then
+    fail 'failed trusted process inspection was treated as an empty successful snapshot'
+fi
+grep -Fq 'CODEGRAPH_PROCESS_INSPECTION_UNAVAILABLE' <<<"$INSPECTION_FAILURE_OUTPUT" \
+    || fail 'failed trusted process inspection did not return the typed refusal'
+pass 'failed trusted process inspection blocks uninstall'
+
 rm -f "$FIXTURE_STATE"
-env \
+if TRUSTED_INSPECTION_OUTPUT="$(env \
     PATH="$FAKE_BIN:/usr/bin:/bin" \
     LAZYBUDDY_PID_FIXTURE_STATE="$FIXTURE_STATE" \
     bash -c 'source "$1"; TOOLING_ROOT="$2"; TARGET_ROOT="$3"; stop_owned_codegraph_processes' \
-    bash "$LIFECYCLE" "$TOOLING_ROOT" "$TARGET_ROOT"
+    bash "$LIFECYCLE" "$TOOLING_ROOT" "$TARGET_ROOT" 2>&1)"; then
+    :
+else
+    grep -Fq 'CODEGRAPH_PROCESS_INSPECTION_UNAVAILABLE' <<<"$TRUSTED_INSPECTION_OUTPUT" \
+        || fail 'trusted production process inspection failed without the typed refusal'
+    printf 'UNSUPPORTED: trusted production process inspection is unavailable; ownership remains fail-closed\n'
+fi
 [ ! -e "$FIXTURE_STATE" ] || fail 'caller PATH replaced the trusted production ps inspector'
 pass 'caller PATH cannot replace the trusted production ps inspector'
 

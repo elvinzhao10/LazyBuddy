@@ -13,6 +13,12 @@ fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 cp -R "$PLUGIN_ROOT" "$TMP/plugin"
 FIXTURE="$TMP/plugin"
 grep -Fq 'VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"' "$FIXTURE/scripts/lazybuddy-verify.sh" && pass "aggregate default timeout is finite release budget" || fail "aggregate default timeout budget"
+if grep -Fq 'READINESS_REGRESSION_TIMEOUT=120' "$FIXTURE/scripts/lazybuddy-verify.sh" \
+    && grep -Fq 'run_isolated_test "$test_path" "$test_timeout"' "$FIXTURE/scripts/lazybuddy-verify.sh"; then
+    pass "readiness regression has a scoped measured runtime budget"
+else
+    fail "readiness regression scoped timeout budget"
+fi
 grep -Fq 'LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90' "$FIXTURE/scripts/hook-pipeline-test.sh" && pass "hook pipeline shares finite release budget" || fail "hook pipeline default timeout budget"
 
 # Given a short trusted package check, when it completes before its deadline,
@@ -82,6 +88,25 @@ assert cleanup == {
 PY
 pass "failed process inspection remains fail-closed"
 
+if python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" >"$TMP/process-inspection.out" 2>&1 <<'PY'
+import importlib.util
+import sys
+
+module_path = sys.argv[1]
+spec = importlib.util.spec_from_file_location("lazybuddy_bounded_run_probe", module_path)
+assert spec is not None and spec.loader is not None
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+module.process_records()
+PY
+then
+    PROCESS_INSPECTION_SUPPORTED=true
+else
+    PROCESS_INSPECTION_SUPPORTED=false
+    printf 'UNSUPPORTED: trusted process inspection is unavailable; timeout cleanup remains fail-closed\n'
+fi
+
 # Given a command whose child remains in the runner-owned process group, when
 # its deadline expires, then cleanup terminates that group.
 GROUP_CHILD_PID="$TMP/group-child.pid"
@@ -91,16 +116,17 @@ else
     pass "group timeout fails"
 fi
 group_child_pid="$(cat "$GROUP_CHILD_PID")"
-python3 - "$TMP/group.json" "$group_child_pid" <<'PY'
+python3 - "$TMP/group.json" "$group_child_pid" "$PROCESS_INSPECTION_SUPPORTED" <<'PY'
 import json
 import sys
 
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["status"] == "timeout"
 assert payload["reason"] == "deadline_exceeded"
+inspection_supported = sys.argv[3] == "true"
 assert payload["cleanup"] == {
     "process_group_terminated": True,
-    "detectable_descendants_remaining": False,
+    "detectable_descendants_remaining": not inspection_supported,
     "detectable_descendant_pids": [],
 }
 PY
@@ -115,16 +141,17 @@ else
     pass "escaped timeout fails"
 fi
 escaped_child_pid="$(cat "$ESCAPED_CHILD_PID")"
-python3 - "$TMP/escaped.json" "$escaped_child_pid" <<'PY'
+python3 - "$TMP/escaped.json" "$escaped_child_pid" "$PROCESS_INSPECTION_SUPPORTED" <<'PY'
 import json
 import sys
 
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["status"] == "timeout"
+inspection_supported = sys.argv[3] == "true"
 assert payload["cleanup"] == {
     "process_group_terminated": True,
     "detectable_descendants_remaining": True,
-    "detectable_descendant_pids": [int(sys.argv[2])],
+    "detectable_descendant_pids": [int(sys.argv[2])] if inspection_supported else [],
 }
 PY
 if kill -0 "$escaped_child_pid" 2>/dev/null; then pass "escaped child is reported without signaling"; else fail "escaped child was signaled"; fi

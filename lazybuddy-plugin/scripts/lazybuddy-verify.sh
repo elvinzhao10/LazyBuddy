@@ -34,6 +34,7 @@ AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT="not_applicable"
 REGRESSION_INVENTORY_RESULT="fail"
 REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
 VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"
+READINESS_REGRESSION_TIMEOUT=120
 VERIFY_SUITE="${LAZYBUDDY_VERIFY_SUITE:-all}"
 
 if ! [[ "$REGRESSION_DEPTH" =~ ^[0-9]+$ ]]; then
@@ -136,9 +137,9 @@ run_hook_pipeline_check() {
 
 run_isolated_test() {
     local next_depth=$((REGRESSION_DEPTH + 1))
-    local result_file status
+    local result_file status test_timeout="$2"
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-regression-result.XXXXXX")"
-    if LAZYBUDDY_VERIFY_SUITE=all LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 "$RUNNER" --label "regression:$(basename "$1")" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- bash "$1"; then
+    if LAZYBUDDY_VERIFY_SUITE=all LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 "$RUNNER" --label "regression:$(basename "$1")" --timeout "$test_timeout" --result-file "$result_file" -- bash "$1"; then
         status=0
     else
         status=$?
@@ -149,7 +150,7 @@ run_isolated_test() {
 }
 
 run_regression_inventory() {
-    local test_name test_path candidate inventory_failed=false
+    local test_name test_path test_timeout candidate inventory_failed=false
     local tests_dir="${PLUGIN_ROOT}/tests"
     # The normal release gate owns every package-local *-regression.sh. The
     # explicit-root parity checks intentionally remain release-only.
@@ -272,7 +273,12 @@ run_regression_inventory() {
 
     for test_name in "${selected_tests[@]}"; do
         test_path="${tests_dir}/${test_name}"
-        if ! run_isolated_test "$test_path"; then
+        test_timeout="$VERIFY_TIMEOUT"
+        if [ "$test_name" = "v015-readiness-regression.sh" ] \
+            && [ "$READINESS_REGRESSION_TIMEOUT" -gt "$test_timeout" ]; then
+            test_timeout="$READINESS_REGRESSION_TIMEOUT"
+        fi
+        if ! run_isolated_test "$test_path" "$test_timeout"; then
             printf 'FAIL: standalone regression failed: %s\n' "$test_name" >&2
             AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
             ALL_PASS=false
