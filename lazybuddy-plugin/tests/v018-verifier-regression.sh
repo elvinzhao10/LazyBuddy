@@ -13,11 +13,124 @@ fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 cp -R "$PLUGIN_ROOT" "$TMP/plugin"
 FIXTURE="$TMP/plugin"
 grep -Fq 'VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"' "$FIXTURE/scripts/lazybuddy-verify.sh" && pass "aggregate default timeout is finite release budget" || fail "aggregate default timeout budget"
-if grep -Fq 'READINESS_REGRESSION_TIMEOUT=120' "$FIXTURE/scripts/lazybuddy-verify.sh" \
-    && grep -Fq 'run_isolated_test "$test_path" "$test_timeout"' "$FIXTURE/scripts/lazybuddy-verify.sh"; then
-    pass "readiness regression has a scoped measured runtime budget"
+
+# Given the complete standalone inventory, when the aggregate verifier assigns
+# runner budgets, then only v015 readiness may exceed the 90-second default and
+# a controlled global-120 mutation must be rejected by the same policy check.
+if python3 - "$FIXTURE" "$TMP" >"$TMP/timeout-policy.out" 2>"$TMP/timeout-policy.stderr" <<'PY'
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+fixture = Path(sys.argv[1])
+tmp = Path(sys.argv[2])
+fake_runner = '''import json
+import os
+import sys
+
+args = sys.argv[1:]
+def option(name):
+    try:
+        return args[args.index(name) + 1]
+    except (ValueError, IndexError) as error:
+        raise SystemExit(f"missing runner option: {name}") from error
+
+label = option("--label")
+timeout = option("--timeout")
+result_file = option("--result-file")
+with open(os.environ["LAZYBUDDY_TIMEOUT_CAPTURE"], "a", encoding="utf-8") as handle:
+    handle.write(f"{label}\\t{timeout}\\n")
+with open(result_file, "w", encoding="utf-8") as handle:
+    json.dump({"status": "pass", "reason": "ok", "tail": ""}, handle)
+print(f"PASS: {label}", file=sys.stderr)
+'''
+
+
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+
+
+def capture_policy(name, mutate=False):
+    root = tmp / name
+    shutil.copytree(fixture, root)
+    verify = root / "scripts" / "lazybuddy-verify.sh"
+    if mutate:
+        source = verify.read_text(encoding="utf-8")
+        old = 'test_timeout="$VERIFY_TIMEOUT"'
+        new = 'test_timeout="$READINESS_REGRESSION_TIMEOUT"'
+        require(source.count(old) == 1, "controlled timeout mutation target changed")
+        verify.write_text(source.replace(old, new, 1), encoding="utf-8")
+    (root / "scripts" / "lazybuddy-bounded-run.py").write_text(fake_runner, encoding="utf-8")
+    capture = root / "timeouts.tsv"
+    env = os.environ.copy()
+    env.pop("LAZYBUDDY_VERIFY_TIMEOUT_SECONDS", None)
+    env.update({
+        "CODEBUDDY_PLUGIN_ROOT": str(root),
+        "LAZYBUDDY_TIMEOUT_CAPTURE": str(capture),
+        "LAZYBUDDY_VERIFY_REGRESSION_DEPTH": "0",
+        "LAZYBUDDY_VERIFY_SUITE": "all",
+    })
+    completed = subprocess.run(
+        ["bash", str(verify)],
+        cwd=root.parent,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(completed.returncode == 0, f"policy verifier exited {completed.returncode}: {completed.stderr}")
+    require(json.loads(completed.stdout)["all_pass"] is True, "policy verifier summary was not all_pass")
+    return root, [line.split("\t") for line in capture.read_text(encoding="utf-8").splitlines()]
+
+
+def assert_scoped_policy(root, records):
+    prefix = "regression:"
+    expected = {
+        f"{prefix}{path.name}"
+        for path in (root / "tests").glob("*-regression.sh")
+        if path.name != "publication-regression.sh"
+    }
+    observed = [(label, timeout) for label, timeout in records if label.startswith(prefix)]
+    require(len(observed) == len(expected), "standalone regression timeout capture was incomplete or duplicated")
+    by_label = dict(observed)
+    require(set(by_label) == expected, "standalone regression timeout labels did not match the complete inventory")
+    readiness = f"{prefix}v015-readiness-regression.sh"
+    require(by_label[readiness] == "120", f"{readiness} expected 120, observed {by_label[readiness]}")
+    for label in sorted(expected - {readiness}):
+        require(by_label[label] == "90", f"{label} expected 90, observed {by_label[label]}")
+    return len(expected) - 1
+
+
+production_root, production_records = capture_policy("timeout-policy-production")
+other_count = assert_scoped_policy(production_root, production_records)
+print("READINESS_TIMEOUT=120")
+print(f"OTHER_STANDALONE_TIMEOUT=90 COUNT={other_count}")
+
+mutant_root, mutant_records = capture_policy("timeout-policy-global-120-mutant", mutate=True)
+try:
+    assert_scoped_policy(mutant_root, mutant_records)
+except RuntimeError as error:
+    print(f"GLOBAL_120_MUTANT_REJECTED={error}")
+else:
+    raise RuntimeError("global-120 timeout mutant passed the scoped policy check")
+PY
+then
+    grep -Fq 'READINESS_TIMEOUT=120' "$TMP/timeout-policy.out" \
+        && pass "readiness regression receives the scoped 120-second budget" \
+        || fail "readiness regression scoped timeout budget"
+    grep -Fq 'OTHER_STANDALONE_TIMEOUT=90 COUNT=' "$TMP/timeout-policy.out" \
+        && pass "all other standalone regressions retain the 90-second default" \
+        || fail "non-readiness standalone regression timeout budget"
+    grep -Fq 'GLOBAL_120_MUTANT_REJECTED=' "$TMP/timeout-policy.out" \
+        && pass "global-120 standalone timeout mutant is rejected" \
+        || fail "global-120 standalone timeout mutant rejection"
 else
-    fail "readiness regression scoped timeout budget"
+    cat "$TMP/timeout-policy.out" "$TMP/timeout-policy.stderr" >&2
+    fail "standalone timeout policy probe executes"
 fi
 grep -Fq 'LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90' "$FIXTURE/scripts/hook-pipeline-test.sh" && pass "hook pipeline shares finite release budget" || fail "hook pipeline default timeout budget"
 
