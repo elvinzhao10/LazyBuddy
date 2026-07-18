@@ -19,6 +19,60 @@ route_docs=(
     "$REPOSITORY_ROOT/docs/reference/host-routes.md"
 )
 
+protocol_docs=(
+    "$REPOSITORY_ROOT/AGENTS.md"
+    "$REPOSITORY_ROOT/README.md"
+    "$REPOSITORY_ROOT/lazybuddy-plugin/README.md"
+    "$REPOSITORY_ROOT/docs/03-install-and-host-verification.md"
+    "$REPOSITORY_ROOT/docs/reference/host-routes.md"
+)
+
+if python3 - "${protocol_docs[@]}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+flow = re.compile(
+    r"permanent[\s\S]{0,300}(?:open|link)[\s\S]{0,300}"
+    r"https://github\.com/elvinzhao10/LazyBuddy[\s\S]{0,180}onboard",
+    re.I,
+)
+required = (
+    re.compile(r"package\s+readiness", re.I),
+    re.compile(r"host\s+readiness", re.I),
+    re.compile(r"approval", re.I),
+    re.compile(r"(?:one|exactly)\s+.{0,30}action[\s\S]{0,100}wait", re.I),
+    re.compile(r"Computer Use", re.I),
+    re.compile(r"reload|new session", re.I),
+    re.compile(r"one\s+real\s+(?:Skill|command)|real\s+Skill/command", re.I),
+    re.compile(r"expected MCP|all six MCP|six MCP", re.I),
+    re.compile(r"pending", re.I),
+)
+
+for raw_path in sys.argv[1:]:
+    text = Path(raw_path).read_text(encoding="utf-8")
+    assert flow.search(text), raw_path
+    for pattern in required:
+        assert pattern.search(text), (raw_path, pattern.pattern)
+
+agents = Path(sys.argv[1]).read_text(encoding="utf-8")
+routes = Path(sys.argv[-1]).read_text(encoding="utf-8")
+assert re.search(r"Action 1[\s\S]*marketplace add[\s\S]*discover", agents, re.I)
+assert re.search(r"Action 2[\s\S]*install[\s\S]*lazybuddy@lazybuddy[\s\S]*fresh[\s\S]*session[\s\S]*all six MCP", agents, re.I)
+assert re.search(r"CodeBuddy[\s\S]*marketplace[\s\S]*settings\.json[\s\S]*settings\.local\.json", agents, re.I)
+assert re.search(r"settings\.local\.json[\s\S]*ignored[\s\S]*unstaged[\s\S]*secrets must never be committed", routes, re.I)
+workbuddy = re.split(r"## WorkBuddy", routes, maxsplit=1, flags=re.I)[-1]
+assert re.search(r"Skills-only|Skills/manual-MCP|Skills.*import", workbuddy, re.I)
+assert re.search(r"six individual manual local MCP", workbuddy, re.I)
+assert re.search(r"file[s]?[\s\S]*load-check", workbuddy, re.I)
+assert re.search(r"never[\s\S]*commands[\s\S]*agents[\s\S]*hooks[\s\S]*MCP", workbuddy, re.I)
+PY
+then
+    pass 'local-first protocol stages and readiness boundary are present across route docs'
+else
+    fail 'local-first protocol stages and readiness boundary are present across route docs'
+fi
+
 if python3 - "${route_docs[@]}" <<'PY'
 from pathlib import Path
 import sys

@@ -3,9 +3,10 @@
 ![LazyBuddy](lazybuddy-banner.jpg)
 
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
-**CodeBuddy CLI**, and the documented **WorkBuddy** plugin/marketplace
-surface. It provides structured workflows for planning, implementation,
-verification, review, and bounded long-running work.
+**CodeBuddy CLI**, and WorkBuddy's verified Skills/manual-MCP fallback. A full
+WorkBuddy plugin/marketplace surface is conditional on real loaded-host proof.
+It provides structured workflows for planning, implementation, verification,
+review, and bounded long-running work.
 
 It is verified on macOS only. Package checks prove the copied package and its
 local contracts; a CodeBuddy or WorkBuddy session remains the authority for
@@ -44,23 +45,34 @@ registrations, credentials, and live sessions.
 
 ## Install and onboard
 
-Start from the immutable v1.0.2 release, open the cloned folder in the host you
-want to use, and type `onboard` in the agent chat:
+Keep the pinned **v1.0.2** release in a permanent folder. Open or link that
+folder in CodeBuddy or WorkBuddy, give the agent the GitHub repository link,
+`https://github.com/elvinzhao10/LazyBuddy`, and type `onboard` in the agent
+chat. Do not use a temporary copy or treat a package file as host proof:
 
 ```bash
-git clone --branch v1.0.2 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
-cd LazyBuddy
+git clone --branch v1.0.2 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git /permanent/path/LazyBuddy
 ```
 
-The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
-and downloadable release assets and notes are on the
-[v1.0.2 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.2).
+`onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
+or **WorkBuddy**, runs only safe package checks and local setup, and reports
+**package readiness** separately from **host readiness**. Before any marketplace
+trust/add, plugin install, Skills import, Settings connector, account, or
+credential change it asks for approval. It then gives one exact host action and
+waits; after you respond it inspects the app with Computer Use. Reload/new
+session is a separate handoff. Host readiness requires one real Skill/command
+and every expected MCP connection; without observation it stays **pending**.
 
-`onboard` asks whether you use CodeBuddy IDE, CodeBuddy CLI, WorkBuddy's
-plugin/marketplace surface, or the WorkBuddy skills-only fallback. It then
-follows only that route from [AGENTS.md](AGENTS.md), stops before changing
-host-managed settings, and tells you the exact command, skill, and MCP status
-to confirm in a new session.
+For CodeBuddy, use the release-root local marketplace route in [AGENTS.md](AGENTS.md):
+first add the absolute root and observe discovery, then in a separate action
+install `lazybuddy@lazybuddy`, start a fresh session, and observe one Skill/
+command plus all six MCP connections. For WorkBuddy, the supported fallback is
+Skills import plus six individual manual local MCP connectors. A full plugin
+route is conditional on real loaded-session proof and must not be inferred from
+files or load-check output.
+
+The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
+and release notes are on the [v1.0.2 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.2).
 
 ## Verify and remove
 

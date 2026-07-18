@@ -2,6 +2,21 @@
 
 This page explains the deployment boundary in code terms. A plugin package contains files a host may load; it does not contain the host's marketplace database, session state, or connector process table.
 
+## Local-first onboarding
+
+Keep the pinned `v1.0.2` release in a permanent folder, open or link it in the
+selected host, give the agent
+`https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent asks
+which host is in use, runs safe package checks, and reports package readiness
+separately from host readiness. Before a host-managed marketplace, plugin,
+Skills, or connector change it asks for approval, then gives one exact action
+and waits. After the response it inspects the host with Computer Use; any
+reload/new-session step is separate. WorkBuddy's supported fallback is Skills
+import plus six individual manual local MCP connectors. Files or load-check
+output never imply WorkBuddy commands, agents, hooks, or MCP loaded without a
+real full-plugin session. Host proof must show one real Skill/command and every
+expected MCP connection; otherwise host readiness remains pending.
+
 ## Copyable versus observed state
 
 `lazybuddy-plugin/` can be copied and checked in isolation. `scripts/lazybuddy-load-check.sh` inspects the selected package root, manifests, inventories, declarations, executable scripts, and tooling contract. `lazybuddy-plugin-doctor.sh` adds health diagnostics. Neither script asks a host to install a plugin or open an MCP connection.

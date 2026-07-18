@@ -1,23 +1,36 @@
 # LazyBuddy Plugin
 
-> Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy.
+> Self-contained workflow harness for CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy's Skills/manual-MCP fallback.
 
 This package belongs to the LazyBuddy learning project. It is
 primarily inspired by LazyCodex, while [NOTICE](NOTICE) records LazyCodex and
 OmO upstream attribution. It is an independent implementation and does not
 require LazyCodex or OmO at runtime.
 
+## Local-first onboarding
+
+Keep the pinned `v1.0.2` release in a permanent folder, open or link it in the
+selected CodeBuddy or WorkBuddy host, give the agent
+`https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent asks
+which host is in use, runs safe package checks, and reports **package
+readiness** separately from **host readiness**. Before any host-managed
+marketplace, plugin, Skills, connector, account, or credential action it asks
+for approval, then gives one exact action and waits. After the response it
+inspects the app with Computer Use; reload/new session is a separate action.
+Without that observation, host readiness remains **pending**.
+
 ## Quick Start
 
 `.codebuddy-plugin/plugin.json` is the documented CodeBuddy host entry point.
 `.workbuddy-plugin/plugin.json` is compatibility metadata. The only verified
 copied-repository WorkBuddy path is Skills-only import/copy from the local
-`skills/` package plus manual local MCP connectors; any WorkBuddy
-plugin/marketplace route requires real host proof in a loaded session.
+`skills/` package plus six individual manual local MCP connectors; a full
+WorkBuddy plugin/marketplace route requires real host proof in a loaded
+session.
 
-1. **Onboard** — copy or clone [LazyBuddy](https://github.com/elvinzhao10/LazyBuddy), open it in the selected host, and type `onboard`.
+1. **Onboard** — open the permanent pinned release in the selected host and type `onboard` after providing the GitHub repository link.
 2. **Verify the package** — from this `lazybuddy-plugin/` directory, run `bash scripts/lazybuddy-load-check.sh`, then `bash scripts/lazybuddy-plugin-doctor.sh`. These checks report package readiness, not host loading or MCP connection.
-3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or skill and any required MCP connection. In WorkBuddy, verify a plugin/marketplace session before using its plugin capabilities, or confirm an imported skill and manually configured connector on the no-package-manager path.
+3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or Skill and all six MCP connections in a new session. In WorkBuddy, confirm an imported Skill and each manually configured local connector; do not infer commands, agents, hooks, or MCP loading from files or load-check output without full-plugin proof.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.
 
 **Verification scope:** macOS only. Repository-level public guides cover the
@@ -50,11 +63,11 @@ LazyBuddy provides a workflow harness for CodeBuddy and WorkBuddy. WorkBuddy plu
 ## Install
 
 For **CodeBuddy CLI**, use the local release-root marketplace route below. For
-**CodeBuddy IDE**, install the copied package through its plugin flow, then
-verify a real command/skill and MCP status in a new session. For **WorkBuddy**,
-the verified path is Skills-only local `skills/` import/copy with manual local
-MCP connectors; a plugin/marketplace route remains manual and needs real host
-proof.
+**CodeBuddy IDE**, install the copied package through its plugin flow only after
+approval, then verify a real Skill/command and all six MCP connections in a new
+session. For **WorkBuddy**, the verified path is Skills-only local `skills/`
+import/copy with six individual manual local MCP connectors; a full
+plugin/marketplace route remains conditional on real loaded-session proof.
 
 ### Development validation
 
@@ -83,7 +96,19 @@ the same release-root path, then install `lazybuddy@lazybuddy`. `--plugin-dir
 persistent, and does not replace this route. Do not automate CodeBuddy
 marketplace trust or host installation.
 
-For CodeBuddy IDE, use the current host plugin UI to install the copied package, run `/reload-plugins` when the host exposes it (or its equivalent reload action), then inspect a new session for a loaded `/lazybuddy:lazy-<command>` entry and MCP status. For WorkBuddy, import `skills/` locally and add compatible local MCP connectors manually unless a real loaded host session proves a plugin/marketplace route. Use the host's own uninstall/remove flow; installation locations are host-managed.
+Treat the route as two separate future user actions. First, add the absolute
+release root and wait for the agent to observe marketplace discovery; do not
+install yet. Second, after a separate approval, install
+`lazybuddy@lazybuddy`, start a fresh session, and observe one real
+Skill/command plus all six MCP connections. Package metadata alone is not host
+readiness.
+
+For CodeBuddy IDE, use the current host plugin UI only after approval, then
+inspect a new session for a loaded `/lazybuddy:lazy-<command>` entry and all six
+MCP connections. For WorkBuddy, import `skills/` locally and add each of the
+six compatible local MCP connectors manually unless a real loaded host session
+proves a full plugin route. Use the host's own uninstall/remove flow;
+installation locations are host-managed.
 
 ## CodeBuddy project-local configuration
 
