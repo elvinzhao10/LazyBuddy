@@ -183,6 +183,7 @@ run_regression_inventory() {
         "v018-coupled-work-contract-regression.sh"
         "v018-post-tool-use-injection-regression.sh"
         "v101-ci-suite-separation-regression.sh"
+        "v102-codebuddy-local-route-regression.sh"
     )
     local lifecycle_tests=(
         "v015-readiness-regression.sh"

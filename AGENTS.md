@@ -5,9 +5,9 @@
 > package's exact tooling commands, read [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
 
 LazyBuddy supports CodeBuddy IDE and CodeBuddy CLI through their plugin flows.
-WorkBuddy uses its documented plugin/marketplace UI; its copied-repository
-installer is not verified. The verified no-package-manager WorkBuddy fallback
-is local `lazybuddy-plugin/skills/` import plus manual MCP configuration.
+WorkBuddy's only verified copied-repository path is Skills-only import/copy from
+`lazybuddy-plugin/skills/` plus manual local MCP configuration; any WorkBuddy
+plugin/marketplace route remains manual until a real host proof is provided.
 LazyBuddy is a learning project primarily inspired by LazyCodex. It is an
 independent implementation for CodeBuddy and WorkBuddy and does not require
 LazyCodex or OmO at runtime; [NOTICE](NOTICE) records the upstream attribution.
@@ -62,8 +62,8 @@ When the user types `offboard`:
 | Host | Safe setup path | Required host proof |
 |---|---|---|
 | **CodeBuddy IDE** | Install the copied package with the plugin UI; reload if offered. | A `lazybuddy` command/skill and MCP status in a new session. |
-| **CodeBuddy CLI** | Use the host marketplace discovery flow, confirm the publisher and an immutable revision or release reference, then begin a new session after installation. | Plugin/MCP activation in that session. |
-| **WorkBuddy** | Use its documented plugin/marketplace UI. | Loaded session before relying on plugin hooks, agents, commands, or MCP. |
+| **CodeBuddy CLI** | Add the absolute release root through the local marketplace route below, then install `lazybuddy@lazybuddy`. | Plugin/MCP activation in a new session. |
+| **WorkBuddy** | Skills-only import/copy from `lazybuddy-plugin/skills/` plus manual local MCP connectors; a full plugin route needs real host proof. | Imported skill and each manually configured connector, or a loaded plugin session observed by the user. |
 | **WorkBuddy fallback** | Import `lazybuddy-plugin/skills/` with the Skills UI and add compatible MCP connectors manually. | Imported skill and each manual connector shown in Settings. |
 
 ## CodeBuddy CLI installation
@@ -76,13 +76,32 @@ bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh
 bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh
 ```
 
-Use CodeBuddy's current marketplace discovery flow to locate LazyBuddy. Confirm
-the publisher and review the exact immutable revision or release reference
-before running the host-generated install command. No reviewed immutable
-marketplace reference is bundled here, so this guide intentionally provides no
-marketplace-add URL or executable install command. Start a CodeBuddy session
-afterwards. The scripts validate the package only; they do not prove a
-connected MCP server or live hook execution.
+For a local release checkout, pass the absolute **release root** — the
+directory containing `.codebuddy-plugin/marketplace.json`, not the nested
+`lazybuddy-plugin/` package directory — to CodeBuddy's local marketplace:
+
+```text
+/plugin marketplace add <absolute-local-LazyBuddy-path>
+/plugin install lazybuddy@lazybuddy
+```
+
+The interactive `/plugin` menu is equivalent: choose Marketplace → Add with
+that same release-root path, then install `lazybuddy@lazybuddy`. Repeat the
+route safely; it preserves existing project configuration. `--plugin-dir
+<absolute-local-LazyBuddy-path>` is for development/testing only, never
+persistent, and is not a substitute for the marketplace route. Do not automate
+CodeBuddy marketplace trust or host installation. Start a new CodeBuddy session
+after installation and observe plugin/MCP activation yourself.
+
+Marketplace metadata and local file validation establish **package readiness**;
+they are not evidence that commands, agents, hooks, or MCP loaded in a host.
+
+## CodeBuddy project-local configuration
+
+`.codebuddy/settings.json` may hold shareable, non-secret project defaults.
+`.codebuddy/settings.local.json` is local/machine scope and must remain ignored
+and unstaged; secrets must never be committed. Onboarding and readiness checks
+preserve both files across repeated runs and do not write host configuration.
 
 ## MCP and capability boundaries
 

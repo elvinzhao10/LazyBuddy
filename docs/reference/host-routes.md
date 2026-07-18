@@ -2,31 +2,52 @@
 
 LazyBuddy supports CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy, but package
 readiness does not prove any host route is live. Verification is macOS-only.
+The only verified copied-repository WorkBuddy path is Skills-only import/copy
+from `lazybuddy-plugin/skills/` plus manual local MCP connectors; a full
+WorkBuddy plugin route requires real host proof.
 
 | Host route | Package role | Required user observation |
 | --- | --- | --- |
 | CodeBuddy IDE | Copied package, manifest, local checks, and six local MCP declarations. | Install with the host plugin flow, reload if offered, then in a new session confirm a LazyBuddy command/skill and MCP status. |
-| CodeBuddy CLI | Marketplace discovery and package validation are documented. | Use the host's current marketplace flow, verify publisher and immutable revision, start a new session, and inspect plugin/MCP activation. |
-| WorkBuddy plugin/marketplace | Compatibility metadata and package assets are present. | Use the documented UI/marketplace and confirm a loaded session before relying on plugin capabilities. |
-| WorkBuddy local fallback | `lazybuddy-plugin/skills/` is the verified no-package-manager import source. | Import through Skills UI and manually add each compatible MCP connector in Settings. |
+| CodeBuddy CLI | Local release-root marketplace metadata and package validation are documented. | Add the release root, install `lazybuddy@lazybuddy`, start a new session, and inspect plugin/MCP activation. |
+| WorkBuddy plugin/marketplace | No executable local route is claimed; compatibility metadata is package-only. | Use a documented host UI only when a loaded session provides real plugin proof. |
+| WorkBuddy local fallback | `lazybuddy-plugin/skills/` is the verified Skills-only import/copy source. | Import through Skills UI and manually add each compatible local MCP connector in Settings. |
 
 ## CodeBuddy
 
 For IDE installation, use the current plugin UI, reload if the host offers it,
 then inspect a new session for `/lazybuddy:lazy-<command>` and MCP status. For
-CLI installation, discover the current marketplace entry via host documentation
-or UI; confirm the publisher and exact immutable revision/release reference
-before executing the host-generated install command. This repository does not
-endorse a mutable marketplace URL.
+CLI installation from a local checkout, pass the absolute **release root** —
+the directory containing `.codebuddy-plugin/marketplace.json`, not the nested
+`lazybuddy-plugin/` directory — to the local marketplace:
+
+```text
+/plugin marketplace add <absolute-local-LazyBuddy-path>
+/plugin install lazybuddy@lazybuddy
+```
+
+The interactive `/plugin` menu is equivalent: choose Marketplace → Add with
+the same release-root path, then install `lazybuddy@lazybuddy`. `--plugin-dir
+<absolute-local-LazyBuddy-path>` is for development/testing only, never
+persistent, and is not a marketplace install. Do not automate CodeBuddy
+marketplace trust or host installation. Repeating this route preserves
+existing project configuration; start a new session and inspect plugin/MCP
+activation after installation.
+
+`.codebuddy/settings.json` may be shared for non-secret project defaults.
+`.codebuddy/settings.local.json` is local/machine scope and must remain ignored
+and unstaged; secrets must never be committed. Marketplace metadata and local
+file validation establish **package readiness**; they are not evidence that
+commands, agents, hooks, or MCP loaded in a host.
 
 ## WorkBuddy
 
-`.workbuddy-plugin/plugin.json` is internal, unverified compatibility metadata;
-it is not an executable copied-repository WorkBuddy installer. A plugin or
-marketplace installation must be verified in a live session. The verified
-fallback imports local skills and configures connectors manually. WorkBuddy
-does not gain CodeBuddy command behavior merely because the copied package
-contains command files.
+`.workbuddy-plugin/plugin.json` is compatibility metadata, not an executable
+copied-repository WorkBuddy installer. The verified fallback imports local
+`skills/` and configures compatible local MCP connectors manually. WorkBuddy
+does not gain CodeBuddy commands, agents, hooks, or MCP behavior merely because
+the copied package contains those declarations; a full plugin route needs a
+loaded host session.
 
 ## Shared boundary
 
