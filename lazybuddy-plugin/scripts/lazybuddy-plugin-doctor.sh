@@ -37,9 +37,12 @@ check() {
     fi
 }
 
-validator_reports_failure() {
+validator_reports_success() {
     local output="$1"
-    printf '%s\n' "$output" | grep -qiE 'validation[[:space:]]+(failed|failure)|found[[:space:]]+[1-9][0-9]*[[:space:]]+errors?|(^|[^[:alnum:]])errors?[[:space:]]*:|status code [45][0-9]{2}|HTTP(/[0-9.]+)?[[:space:]]+[45][0-9]{2}'
+    case "$output" in
+        "Validation successful: 0 errors"|"Validation passed with no errors") return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 if ! [[ "$HOST_VALIDATOR_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
@@ -202,10 +205,10 @@ import sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
 PY
 )"
-        if validator_reports_failure "$validator_output"; then
-            check "CodeBuddy manifest validator" "$validator_output"
-        else
+        if validator_reports_success "$validator_output"; then
             check "CodeBuddy manifest validator" ok
+        else
+            check "CodeBuddy manifest validator" "$validator_output"
         fi
     else
         validator_state="$(python3 - "$validator_result" <<'PY'

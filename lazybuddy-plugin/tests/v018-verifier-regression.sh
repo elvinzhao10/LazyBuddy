@@ -357,6 +357,9 @@ case "${FAKE_CODEBUDDY_MODE:-pass}" in
   pass) printf '%s\n' 'Validation successful: 0 errors' ;;
   semantic) printf '%s\n' 'Validation failed: 2 errors' ;;
   misleading) printf '%s\n' 'Validation passed with errors: 2' ;;
+  invalid-text) printf '%s\n' 'Invalid plugin manifest' ;;
+  invalid-json) printf '%s\n' '{"valid":false,"errors":["bad manifest"]}' ;;
+  invalid-symbol) printf '%s\n' '✘ plugin manifest rejected' ;;
   nonzero) printf '%s\n' 'validator rejected manifest'; exit 9 ;;
   timeout) sleep 30 ;;
 esac
@@ -389,6 +392,12 @@ run_doctor package-semantic package semantic "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails semantic validator output" || fail "package semantic validator classification"
 run_doctor package-misleading package misleading "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects misleading success output" || fail "package misleading validator classification"
+run_doctor package-invalid-text package invalid-text "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq 'Invalid plugin manifest' "$DOCTOR_OUTPUT" && pass "package doctor rejects unrecognized invalid-manifest text" || fail "package invalid-manifest text classification"
+run_doctor package-invalid-json package invalid-json "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq '{"valid":false,"errors":["bad manifest"]}' "$DOCTOR_OUTPUT" && pass "package doctor rejects structured false validator output" || fail "package structured false validator classification"
+run_doctor package-invalid-symbol package invalid-symbol "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq '✘ plugin manifest rejected' "$DOCTOR_OUTPUT" && pass "package doctor rejects symbolic manifest rejection" || fail "package symbolic rejection classification"
 run_doctor package-nonzero package nonzero "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails validator nonzero" || fail "package nonzero validator classification"
 run_doctor package-timeout package timeout "$TMP/fake-bin"
