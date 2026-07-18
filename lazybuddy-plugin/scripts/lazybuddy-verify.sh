@@ -172,6 +172,7 @@ run_regression_inventory() {
         "v016-remote-capabilities-regression.sh"
         "v016-lsp-regression.sh"
         "v016-runtime-version-regression.sh"
+        "v019-local-first-version-regression.sh"
         "v017-capability-readiness-contract-regression.sh"
         "v017-capability-readiness-regression.sh"
         "v017-mcp-params-regression.sh"

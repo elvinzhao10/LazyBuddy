@@ -4,12 +4,20 @@
 
 ## v1.0.2 — Current-message onboarding intent (2026-07-18)
 
+- Added the local-first onboarding hotfix: the copied package and local
+  CodeBuddy marketplace metadata can be checked from a permanent folder
+  without implying a live host installation.
 - Made onboarding scan the complete current message and honor the rightmost
   conflicting explicit route while preserving compatible details.
 - Routed the exact mixed InitDeep/WorkBuddy UI request to the later WorkBuddy
   UI intent without expanding host-setting or installation authority.
 - Aligned active manifests, tooling packages, MCP identities, hook/verifier
   banners, documentation clients, and public install guidance with v1.0.2.
+
+### Verification boundary
+
+- Package checks establish local package readiness only; host readiness still
+  requires a fresh CodeBuddy or WorkBuddy session and observed MCP state.
 
 ## v1.0.1 — Stable CI isolation (2026-07-17)
 
