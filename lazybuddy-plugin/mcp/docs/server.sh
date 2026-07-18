@@ -21,7 +21,8 @@ esac
 [ -d "$PLUGIN_ROOT" ] || die "plugin root not found: $PLUGIN_ROOT"
 SERVER_DIR="$PLUGIN_ROOT/mcp/docs"
 [ -f "$SERVER_DIR/server.py" ] || die "MCP server implementation not found: $SERVER_DIR/server.py"
-RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-$PWD}}"
+RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-}}"
+[ -n "$RAW_CWD" ] || die "project CWD is required: set CWD or CODEBUDDY_PROJECT_DIR"
 case "$RAW_CWD" in
   /*) ;;
   *) RAW_CWD="$PWD/$RAW_CWD" ;;

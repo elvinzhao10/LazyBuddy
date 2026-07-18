@@ -6,13 +6,14 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-mcp-cwd.XXXXXX")"
 CALLER="$TMP/caller dir"
 PROJECT="$TMP/consumer project with spaces"
 MOVED_PLUGIN="$TMP/moved release/lazybuddy-plugin"
+NO_CONTEXT_CALLER="$TMP/no project context caller"
 PASS=0
 FAIL=0
 
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
 
-mkdir -p "$CALLER" "$PROJECT/src" "$(dirname -- "$MOVED_PLUGIN")"
+mkdir -p "$CALLER" "$PROJECT/src" "$NO_CONTEXT_CALLER" "$(dirname -- "$MOVED_PLUGIN")"
 printf 'def consumer_marker():\n    return "consumer-only"\n' > "$PROJECT/src/consumer.py"
 printf 'from .consumer import consumer_marker\n' > "$PROJECT/src/main.py"
 printf 'export const consumer_marker = true;\n' > "$PROJECT/src/consumer.js"
@@ -61,6 +62,34 @@ for server in "${SERVERS[@]}"; do
     assert_jsonrpc_initialize "$server self-locates without CODEBUDDY_PLUGIN_ROOT" \
         "$PLUGIN/mcp/$server/server.sh"
 done
+
+for server in "${SERVERS[@]}"; do
+    no_context_out="$TMP/no-context-$server.out"
+    no_context_err="$TMP/no-context-$server.err"
+    if [ "$server" = run-ledger ]; then
+        no_context_request='{"jsonrpc":"2.0","id":"no-context","method":"tools/call","params":{"name":"create_run","arguments":{"run_id":"no-context","objective":"must fail"}}}'
+    else
+        no_context_request='{"jsonrpc":"2.0","id":"no-context","method":"initialize","params":{}}'
+    fi
+    if (
+        cd -- "$NO_CONTEXT_CALLER"
+        env -u CWD -u CODEBUDDY_PROJECT_DIR -u CODEBUDDY_PLUGIN_ROOT \
+            bash "$PLUGIN/mcp/$server/server.sh" <<<"$no_context_request"
+    ) >"$no_context_out" 2>"$no_context_err"; then
+        fail_case "$server fails without project context"
+    elif grep -Eiq 'project|cwd|context|required|unavailable' "$no_context_err" \
+        && ! grep -q '"result"' "$no_context_out"; then
+        pass_case "$server fails without project context"
+        printf 'TRACE: %s stderr=%s stdout_bytes=%s\n' "$server" "$(tr '\n' ' ' < "$no_context_err")" "$(wc -c < "$no_context_out" | tr -d ' ')"
+    else
+        fail_case "$server reports actionable no-context failure"
+    fi
+done
+if [ ! -e "$NO_CONTEXT_CALLER/.lazybuddy/runs/no-context" ]; then
+    pass_case 'no-context run-ledger call does not write caller state'
+else
+    fail_case 'no-context run-ledger call does not write caller state'
+fi
 
 project_dir_output="$(
     cd -- "$CALLER"

@@ -18,7 +18,8 @@ case "$PLUGIN_ROOT" in
   *) die "plugin root must be absolute: $PLUGIN_ROOT" ;;
 esac
 [ -d "$PLUGIN_ROOT" ] || die "plugin root not found: $PLUGIN_ROOT"
-RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-$PWD}}"
+RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-}}"
+[ -n "$RAW_CWD" ] || die "project CWD is required: set CWD or CODEBUDDY_PROJECT_DIR"
 case "$RAW_CWD" in
   /*) ;;
   *) RAW_CWD="$PWD/$RAW_CWD" ;;
