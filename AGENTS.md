@@ -69,7 +69,7 @@ When the user types `offboard`:
 ## CodeBuddy CLI installation
 
 ```bash
-git clone --branch v1.0.1 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
+git clone --branch v1.0.2 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
 cd LazyBuddy
 codebuddy plugin validate lazybuddy-plugin
 bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh

@@ -2,6 +2,15 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.0.2 — Current-message onboarding intent (2026-07-18)
+
+- Made onboarding scan the complete current message and honor the rightmost
+  conflicting explicit route while preserving compatible details.
+- Routed the exact mixed InitDeep/WorkBuddy UI request to the later WorkBuddy
+  UI intent without expanding host-setting or installation authority.
+- Aligned active manifests, tooling packages, MCP identities, hook/verifier
+  banners, documentation clients, and public install guidance with v1.0.2.
+
 ## v1.0.1 — Stable CI isolation (2026-07-17)
 
 - Split deterministic package and publication validation from timing-sensitive

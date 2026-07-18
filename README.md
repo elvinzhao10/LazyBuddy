@@ -44,17 +44,17 @@ registrations, credentials, and live sessions.
 
 ## Install and onboard
 
-Start from the immutable v1.0.1 release, open the cloned folder in the host you
+Start from the immutable v1.0.2 release, open the cloned folder in the host you
 want to use, and type `onboard` in the agent chat:
 
 ```bash
-git clone --branch v1.0.1 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
+git clone --branch v1.0.2 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git
 cd LazyBuddy
 ```
 
 The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
 and downloadable release assets and notes are on the
-[v1.0.1 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.1).
+[v1.0.2 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.2).
 
 `onboard` asks whether you use CodeBuddy IDE, CodeBuddy CLI, WorkBuddy's
 plugin/marketplace surface, or the WorkBuddy skills-only fallback. It then

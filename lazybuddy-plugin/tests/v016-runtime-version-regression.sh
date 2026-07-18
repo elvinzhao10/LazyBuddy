@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="1.0.1"
+EXPECTED_VERSION="1.0.2"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
@@ -27,6 +27,7 @@ fi
 python3 - "$PLUGIN_ROOT" "$EXPECTED_VERSION" <<'PY'
 import json
 import pathlib
+import re
 import sys
 
 root = pathlib.Path(sys.argv[1])
@@ -58,5 +59,10 @@ if marketplace_path.is_file():
     marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
     entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
     assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
+
+for relative in ("README.md", "AGENTS.md"):
+    text = (root.parent / relative).read_text(encoding="utf-8")
+    versions = set(re.findall(r"\bv?(\d+\.\d+\.\d+)\b", text))
+    assert versions == {expected}, f"{relative} current release references reported {sorted(versions)!r}"
 PY
 printf 'v1.0 runtime version regression: PASS\n'
