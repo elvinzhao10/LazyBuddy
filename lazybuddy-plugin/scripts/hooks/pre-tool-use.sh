@@ -79,7 +79,8 @@ PATTERNS = (
     ".aws/credentials", ".ssh/id_", ".netrc", ".npmrc",
     "secrets.yml", "secrets.yaml", "config/secrets",
 )
-CONTROL = frozenset(";&|")
+CONTROL = frozenset(";&|\n(){}`")
+REDIRECTS = frozenset((">", ">>", "<", "<<", "<<<", "&>", "&>>", "<>"))
 SHELLS = frozenset(("bash", "sh", "zsh", "fish"))
 TEXT_EMITTERS = frozenset(("echo", "printf", "print", "println", "say"))
 FILE_READERS = frozenset((
@@ -134,7 +135,8 @@ def secret_pattern(path):
     return ""
 
 def tokenize(command):
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n(){}<>`")
+    lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
     lexer.commenters = ""
     return list(lexer)
@@ -142,16 +144,93 @@ def tokenize(command):
 def split_commands(tokens):
     segments = []
     current = []
+    separator = ""
     for token in tokens:
         if token and all(char in CONTROL for char in token):
             if current:
-                segments.append(current)
+                segments.append((current, separator))
                 current = []
+            separator = token
             continue
         current.append(token)
     if current:
-        segments.append(current)
+        segments.append((current, separator))
     return segments
+
+def balanced_subcommand(command, start):
+    depth = 1
+    quote = ""
+    escaped = False
+    index = start
+    while index < len(command):
+        char = command[index]
+        if escaped:
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif quote:
+            if char == quote:
+                quote = ""
+        elif char in (chr(39), chr(34)):
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return command[start:index], index + 1
+        index += 1
+    return "", len(command)
+
+def substitution_commands(command):
+    nested = []
+    quote = ""
+    escaped = False
+    index = 0
+    while index < len(command):
+        char = command[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\":
+            escaped = True
+            index += 1
+            continue
+        if quote == chr(39):
+            if char == chr(39):
+                quote = ""
+            index += 1
+            continue
+        if quote == chr(34):
+            if char == chr(34):
+                quote = ""
+            elif char == "$" and index + 1 < len(command) and command[index + 1] == "(":
+                inner, index = balanced_subcommand(command, index + 2)
+                nested.append(inner)
+                continue
+            index += 1
+            continue
+        if char in (chr(39), chr(34)):
+            quote = char
+            index += 1
+            continue
+        if char == "$" and index + 1 < len(command) and command[index + 1] == "(":
+            inner, index = balanced_subcommand(command, index + 2)
+            nested.append(inner)
+            continue
+        if char == "`":
+            end = index + 1
+            while end < len(command):
+                if command[end] == "`" and (end == 0 or command[end - 1] != "\\"):
+                    break
+                end += 1
+            if end < len(command):
+                nested.append(command[index + 1:end])
+                index = end + 1
+                continue
+        index += 1
+    return nested
 
 def basename(token):
     return token.rsplit("/", 1)[-1].lower()
@@ -199,20 +278,34 @@ def unwrap(argv):
         return "", []
     return name, argv[index + 1:]
 
+def shell_script(args):
+    for arg_index, arg in enumerate(args[:-1]):
+        if arg == "-c" or arg == "--command" or (arg.startswith("-") and not arg.startswith("--") and "c" in arg[1:]):
+            return args[arg_index + 1]
+    return ""
+
 def command_views(command, depth=0):
     if depth > 2:
         return
+    for nested in substitution_commands(command):
+        yield from command_views(nested, depth + 1)
     tokens = tokenize(command)
-    for segment in split_commands(tokens):
+    segments = split_commands(tokens)
+    for index, (segment, separator) in enumerate(segments):
         executable, args = unwrap(segment)
         if not executable:
             continue
         yield executable, args
         if executable in SHELLS:
-            for index, arg in enumerate(args[:-1]):
-                if arg == "-c":
-                    yield from command_views(args[index + 1], depth + 1)
-                    break
+            script = shell_script(args)
+            if script:
+                yield from command_views(script, depth + 1)
+        if executable == "eval":
+            for arg in args:
+                yield from command_views(arg, depth + 1)
+        if executable in SHELLS and separator == "|" and index > 0 and not shell_script(args):
+            for arg in segments[index - 1][0]:
+                yield from command_views(arg, depth + 1)
 
 def positional_args(args, options_with_values=POSITIONAL_OPTIONS_WITH_VALUES):
     index = 0
@@ -266,6 +359,11 @@ def secret_targets(executable, args):
             if token.startswith("@"):
                 yield token[1:]
 
+def redirect_targets(args):
+    for index, token in enumerate(args[:-1]):
+        if token in REDIRECTS:
+            yield args[index + 1].lstrip("&")
+
 def dangerous_operand(token):
     home = "$" + "HOME"
     braced_home = "$" + "{HOME}"
@@ -291,6 +389,8 @@ def git_destructive(executable, args):
             or option == "--force"
             or option.startswith("--force=")
             or option == "--force-with-lease"
+            or option.startswith("--force-with-lease=")
+            or option.startswith("+")
             for option in sub_args
         )
     if subcommand == "reset":
@@ -329,6 +429,11 @@ except ValueError:
     raise SystemExit(0)
 
 for executable, args in views:
+    for target in redirect_targets(args):
+        pattern = secret_pattern(target)
+        if pattern:
+            emit("secret", pattern)
+
     if executable not in TEXT_EMITTERS:
         for target in secret_targets(executable, args):
             if isinstance(target, str):
