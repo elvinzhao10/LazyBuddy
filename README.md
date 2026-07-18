@@ -3,8 +3,10 @@
 ![LazyBuddy](lazybuddy-banner.jpg)
 
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
-**CodeBuddy CLI**, and WorkBuddy's verified Skills/manual-MCP fallback. A full
-WorkBuddy plugin/marketplace surface is conditional on real loaded-host proof.
+**CodeBuddy CLI**, and **WorkBuddy**. Supplied macOS QA dated 2026-07-18
+observed full local plugin routes in both desktop hosts for LazyBuddy `v1.0.2`,
+but did not record exact host app versions. Those routes remain build-specific,
+while Skills/manual-MCP is the supported fallback.
 It provides structured workflows for planning, implementation, verification,
 review, and bounded long-running work.
 
@@ -88,10 +90,17 @@ equivalent.
 CodeBuddy IDE's public fallback is Skills import plus manual MCP JSON; its
 plugin flow remains build-specific until observed. WorkBuddy's supported
 fallback is the same Skills-only import plus six individual manual local MCP
-connectors. The fallback excludes commands, agents, and hooks. Do not run it
-beside a full plugin route: stop the session, remove only the old LazyBuddy
-entries through the host UI, choose one route, start a new session, and verify
-it. A copied repository or load-check output never establishes host readiness.
+connectors. For either desktop host, a current GUI local-directory marketplace
+must add the release root, pause for discovery, install as a separate action,
+then fully restart and verify a fresh session. If that UI is unavailable or
+blocked, record the exact build/error with **HOST READINESS: PENDING** and use
+the fallback. The fallback excludes commands, Agents, and hooks. Its exact
+six-entry connector JSON, including absolute launchers and project context, is
+in [Host routes](docs/reference/host-routes.md#manual-connector-specification).
+Do not run it beside a full plugin route: stop the session, remove only the old
+LazyBuddy entries through the host UI, choose one route, start a new session,
+and verify it. A copied repository or load-check output never establishes host
+readiness.
 
 Use `.codebuddy/settings.json` only for shareable non-secret project defaults.
 `.codebuddy/settings.local.json` is ignored local/machine scope and must remain

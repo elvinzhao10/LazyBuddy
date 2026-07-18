@@ -28,11 +28,11 @@ supported local fallback. None is current host proof until observed.
 ## Quick Start
 
 `.codebuddy-plugin/plugin.json` is the documented CodeBuddy host entry point.
-`.workbuddy-plugin/plugin.json` is compatibility metadata. The only verified
-copied-repository WorkBuddy path is Skills-only import/copy from the local
-`skills/` package plus six individual manual local MCP connectors; a full
-WorkBuddy plugin/marketplace route requires real host proof in a loaded
-session.
+`.workbuddy-plugin/plugin.json` is compatibility metadata. Supplied macOS QA
+dated 2026-07-18 observed full local-plugin loading for LazyBuddy `v1.0.2` in
+CodeBuddy IDE and WorkBuddy, but did not record exact host app versions. Treat
+that as an observed-build route; Skills import/copy plus six individual manual
+local MCP connectors remains the supported fallback.
 
 1. **Onboard** — open the permanent pinned release in the selected host and type `onboard` after providing the GitHub repository link.
 2. **Verify the package** — from this `lazybuddy-plugin/` directory, run `bash scripts/lazybuddy-load-check.sh`, then `bash scripts/lazybuddy-plugin-doctor.sh`. These checks report package readiness, not host loading or MCP connection.
@@ -70,12 +70,13 @@ LazyBuddy provides a workflow harness for CodeBuddy and WorkBuddy. WorkBuddy plu
 
 For **CodeBuddy CLI**, use the local release-root marketplace route below. For
 **CodeBuddy IDE**, public guidance covers Skills import and MCP JSON. Use the
-plugin flow only when the current build discovers it after approval; that flow
-remains build-specific. Otherwise use the Skills/manual-MCP fallback. For
-**WorkBuddy**, the supplied prerelease build exposed a full plugin route, but
-that observed-build route is not a public compatibility promise. The supported
-fallback is Skills-only local `skills/` import/copy with six individual manual
-local MCP connectors.
+plugin flow only when the current build exposes a GUI local-directory
+marketplace; that flow remains build-specific. For **WorkBuddy**, the supplied
+prerelease build exposed the same full plugin route, but it is not a public
+compatibility promise. In either desktop host: add the release root in the GUI,
+wait for discovery, install as a separate action, fully restart, and verify a
+fresh session. If the GUI route is unavailable, record the build/error with
+**HOST READINESS: PENDING** and use the Skills/manual-MCP fallback.
 
 ### Development validation
 
@@ -114,8 +115,16 @@ Package metadata alone is not host readiness.
 For CodeBuddy IDE, use the current host plugin UI only after approval and
 observed discovery; otherwise import `skills/` and add the six compatible local
 MCP connectors manually. For WorkBuddy, use the same fallback unless the
-current loaded host proves its observed-build full-plugin route. Use the host's
-own uninstall/remove flow; installation locations are host-managed.
+current loaded host proves its observed-build full-plugin route. For the
+fallback, derive a non-mutating host-settings copy from `.mcp.json`: replace
+`${CODEBUDDY_PLUGIN_ROOT}` with the absolute plugin root and
+`${CODEBUDDY_PROJECT_DIR}` with the absolute consumer project, and set both
+`cwd` and environment `CWD` / `CODEBUDDY_PROJECT_DIR` to that project. The exact
+six server names are `run-ledger`, `verification`, `status-dashboard`,
+`context-graph`, `code-intel`, and `docs`; each uses its matching absolute
+`mcp/<server>/server.sh` path. Agents, commands, and hooks are excluded from
+this fallback. Use the host's own uninstall/remove flow; installation locations
+are host-managed.
 
 ## CodeBuddy project-local configuration
 

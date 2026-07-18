@@ -31,6 +31,12 @@ protocol_docs=(
     "$REPOSITORY_ROOT/lazybuddy-plugin/templates/AGENTS.md"
 )
 
+connector_docs=(
+    "$REPOSITORY_ROOT/AGENTS.md"
+    "$REPOSITORY_ROOT/docs/reference/host-routes.md"
+    "$REPOSITORY_ROOT/lazybuddy-plugin/templates/AGENTS.md"
+)
+
 if python3 - "${protocol_docs[@]}" <<'PY'
 from pathlib import Path
 import re
@@ -76,6 +82,56 @@ then
     pass 'local-first protocol stages and readiness boundary are present across route docs'
 else
     fail 'local-first protocol stages and readiness boundary are present across route docs'
+fi
+
+if python3 - "$REPOSITORY_ROOT/docs/reference/host-routes.md" "${connector_docs[@]}" "${protocol_docs[@]}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+host_routes = Path(sys.argv[1]).read_text(encoding="utf-8")
+connector_docs = [(path, Path(path).read_text(encoding="utf-8")) for path in sys.argv[2:5]]
+protocol_docs = [(path, Path(path).read_text(encoding="utf-8")) for path in sys.argv[5:]]
+servers = (
+    "run-ledger",
+    "verification",
+    "status-dashboard",
+    "context-graph",
+    "code-intel",
+    "docs",
+)
+
+for server in servers:
+    assert f'<release-root>/lazybuddy-plugin/mcp/{server}/server.sh' in host_routes, server
+assert '"command": "bash"' in host_routes
+assert '"cwd": "<project-root>"' in host_routes
+assert '"CWD": "<project-root>"' in host_routes
+assert '"CODEBUDDY_PROJECT_DIR": "<project-root>"' in host_routes
+assert re.search(r"add exactly one named connector[\s\S]{0,100}trust prompt[\s\S]{0,100}inspect", host_routes, re.I)
+
+for label, text in connector_docs:
+    assert "lazybuddy-plugin/.mcp.json" in text, label
+    assert "CODEBUDDY_PROJECT_DIR" in text, label
+    assert re.search(r"absolute[\s\S]{0,180}server\.sh", text, re.I), label
+    assert re.search(r"excludes?\s+(?:commands,\s+)?(?:agents|Agents)|agents[\s\S]{0,80}excluded", text, re.I), label
+
+for label, text in protocol_docs:
+    assert "2026-07-18" in text, label
+    assert re.search(
+        r"(?:did not\s+record|not\s+recorded)[^.]{0,120}(?:version|build)|"
+        r"(?:version|build)[^.]{0,120}(?:did not\s+record|not\s+recorded)",
+        text,
+        re.I,
+    ), label
+    assert re.search(r"GUI[\s\S]{0,180}local[- ]directory", text, re.I), label
+    assert re.search(r"discover[\s\S]{0,800}install[\s\S]{0,800}(?:fully quit|fully restart)", text, re.I), label
+    assert re.search(r"fresh\s+(?:project\s+)?session", text, re.I), label
+    assert re.search(r"HOST\s+READINESS:\s*PENDING", text, re.I), label
+PY
+then
+    pass 'desktop plugin and manual connector handoffs are exact and build-qualified'
+else
+    fail 'desktop plugin and manual connector handoffs are exact and build-qualified'
 fi
 
 if python3 - "${protocol_docs[@]}" <<'PY'

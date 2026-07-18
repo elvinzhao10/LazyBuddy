@@ -62,14 +62,18 @@ CLI route**. CodeBuddy IDE plugin loading and WorkBuddy full-plugin loading are
 supported local fallback. None of those labels proves the current build:
 without current observation, **HOST READINESS: PENDING**.
 
+The supplied macOS QA dated 2026-07-18 observed full local-plugin loading for
+LazyBuddy `v1.0.2` in CodeBuddy IDE and WorkBuddy, but did not record either
+host app's exact version/build. Treat that as build-specific evidence only.
+
 ## Host artifact boundary
 
 | Host | Safe package artifact | Host action and expected observation |
 | --- | --- | --- |
-| **CodeBuddy IDE** | Public guidance supports local Skills import and MCP JSON. Plugin loading seen in the supplied build is an observed-build route, not a public marketplace guarantee. | Use the plugin route only after approval and current discovery; otherwise import `lazybuddy-plugin/skills/` and configure six local MCP connectors. In a new session inspect one real Skill/command appropriate to the chosen route and all six connections. |
+| **CodeBuddy IDE** | Public guidance supports local Skills import and MCP JSON. Plugin loading seen in the supplied build is an observed-build route, not a public marketplace guarantee. | If the current build exposes a GUI local-directory marketplace, use the one-action sequence below. If it is absent or blocked, record the exact error with `HOST READINESS: PENDING`, then use the Skills/manual-MCP fallback. |
 | **CodeBuddy CLI** | The release-root `.codebuddy-plugin/marketplace.json` and package checks. Use the exact local marketplace commands below; `--plugin-dir` is development/testing only and never persistent. | Use the three separate CodeBuddy handoff actions below. After installation and a fresh session inspect one real Skill/command and all six MCP connections. |
 | **WorkBuddy fallback** | Skills import/copy from `lazybuddy-plugin/skills/` only, plus six individual manual local MCP connectors. | After approval, import Skills and add each connector manually in Settings. Observe one imported Skill and all six connector statuses. Unless a full plugin session is actually observed, do not claim that files or load-check output loaded commands, agents, hooks, or MCP. |
-| **WorkBuddy full plugin** | The supplied prerelease build exposed an observed-build route; this is not a public compatibility promise. | Use it only if the current build discovers the plugin after approval. Only a loaded session may prove commands, agents, hooks, or MCP active. |
+| **WorkBuddy full plugin** | The supplied prerelease build exposed an observed-build route; this is not a public compatibility promise. | If the current build exposes a GUI local-directory marketplace, use the one-action sequence below. Otherwise record the exact limitation and keep host readiness pending. Only a loaded session may prove commands, agents, hooks, or MCP active. |
 
 ## CodeBuddy local marketplace handoff
 
@@ -103,6 +107,27 @@ Do not combine these actions, pre-approve trust, or claim host readiness from
 the marketplace JSON alone. Repeating safe package checks preserves existing
 project configuration.
 
+## Observed-build desktop plugin UI handoff
+
+For CodeBuddy IDE or WorkBuddy, use this route only when the current app visibly
+offers a local-directory marketplace. Each numbered item is a separate action:
+
+1. After approval, use the host's **Plugins / Marketplace → Add local
+   directory** GUI to select the absolute release root containing
+   `.codebuddy-plugin/marketplace.json`; then wait for inspection.
+2. Observe `lazybuddy@lazybuddy` version `1.0.2` in that marketplace. Do not
+   install in the discovery action. If discovery is unavailable, record the
+   host version/build and exact error, keep **HOST READINESS: PENDING**, and use
+   the fallback below only after selecting it explicitly.
+3. After separate approval, click the GUI **Install** action for
+   `lazybuddy@lazybuddy`; then wait for the install result.
+4. Fully quit the host; then wait.
+5. Reopen the host; then wait.
+6. Start a fresh project session; then wait for inspection.
+7. In the fresh session, inspect one real LazyBuddy Skill or command and live
+   calls to all six MCP servers. Files, cache entries, and connector counts are
+   not substitutes for those calls.
+
 ## CodeBuddy project-local configuration
 
 `.codebuddy/settings.json` may hold shareable, non-secret project defaults.
@@ -110,15 +135,30 @@ project configuration.
 and unstaged; secrets must never be committed. Package checks and repeated safe
 setup preserve both files and do not write host configuration.
 
-## WorkBuddy Skills/manual-MCP fallback
+## CodeBuddy IDE / WorkBuddy Skills/manual-MCP fallback
 
-Import only `lazybuddy-plugin/skills/` through WorkBuddy's Skills UI or its
-documented local import. Add each compatible local MCP connector manually in
+Import only `lazybuddy-plugin/skills/` through the selected host's Skills UI or
+its documented local import. Add each compatible local MCP connector manually in
 Settings: `run-ledger`, `verification`, `status-dashboard`, `context-graph`,
 `code-intel`, and `docs`. A package file, manifest, or `load-check` result is
-not a WorkBuddy session and must never be described as loading commands,
+not a live host session and must never be described as loading commands,
 agents, hooks, or MCP. If the user supplies real full-plugin proof from a
 loaded session, record that observation before relying on any broader surface.
+This fallback explicitly excludes commands, Agents, and hooks.
+
+Before changing host settings, prepare the connector values without mutation
+from `lazybuddy-plugin/.mcp.json`: replace `${CODEBUDDY_PLUGIN_ROOT}` with the
+absolute `<release-root>/lazybuddy-plugin` and `${CODEBUDDY_PROJECT_DIR}` with
+the absolute `<project-root>`. Every entry must use `command: bash`, one
+absolute `args` path
+`<release-root>/lazybuddy-plugin/mcp/<server>/server.sh`, `cwd: <project-root>`,
+and environment values `CWD=<project-root>` and
+`CODEBUDDY_PROJECT_DIR=<project-root>`. The six `<server>` values are exactly
+`run-ledger`, `verification`, `status-dashboard`, `context-graph`,
+`code-intel`, and `docs`. Do not edit the shipped `.mcp.json`. The paste-ready
+six-entry template is in [Host routes](docs/reference/host-routes.md#manual-connector-specification).
+After approval, add one connector, handle any trust prompt as a separate
+action, wait for inspection, and only then continue to the next server.
 
 Do not run a full plugin route and the `manual-skills-mcp-fallback` together;
 coexistence is unsupported and may duplicate Skills or MCP processes. To

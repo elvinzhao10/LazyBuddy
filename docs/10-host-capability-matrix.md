@@ -27,6 +27,14 @@ supported local fallback.
 | **CodeBuddy CLI** | From the release root, enter `/plugin marketplace add <absolute-local-LazyBuddy-path>`, wait, then `/plugin install lazybuddy@lazybuddy` as a second action. | Interactive `/plugin` provides the same documented route. `--plugin-dir` is development/testing only, never persistent. | Fresh-session Skill/command and all six MCP connections. |
 | **WorkBuddy** | The supplied prerelease build exposed a full plugin route; this observed-build route is not a public compatibility promise. | Skills-only import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | One imported Skill plus every connector, or full-plugin capabilities only when the current loaded session proves them. |
 
+The supplied macOS QA dated 2026-07-18 used LazyBuddy `v1.0.2` but did not
+record exact host app versions for CodeBuddy IDE or WorkBuddy. On either current
+desktop host, add the release root through the GUI local-directory marketplace,
+wait for discovery, install as a later action, fully restart, and verify a fresh
+session. If that control is unavailable, record the exact limitation and retain
+**HOST READINESS: PENDING**. The fallback's absolute six-launcher JSON and
+explicit project context are in [Host routes](reference/host-routes.md#manual-connector-specification).
+
 `.codebuddy/settings.json` is shareable non-secret project scope.
 `.codebuddy/settings.local.json` is ignored local/machine scope and remains
 unstaged; secrets must never be committed. Package checks preserve both.

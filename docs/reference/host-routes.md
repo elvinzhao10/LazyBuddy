@@ -18,6 +18,10 @@ Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route**. CodeBuddy IDE plugin loading and WorkBuddy full-plugin loading are
 **observed-build routes** only. The `manual-skills-mcp-fallback` is the
 supported local fallback. These labels never prove the current build.
+The supplied macOS QA dated 2026-07-18 observed LazyBuddy `v1.0.2` full-plugin
+loading in both desktop hosts, but did not record either host app's exact
+version/build. A different or unsupported build remains **HOST READINESS:
+PENDING**.
 
 Public contract references: CodeBuddy documents [local plugin
 marketplaces](https://www.codebuddy.ai/docs/cli/plugin-marketplaces),
@@ -29,10 +33,33 @@ directory-marketplace compatibility.
 
 | Host route | Safe package artifact | Required host observation |
 | --- | --- | --- |
-| **CodeBuddy IDE** | Public guidance supports Skills import and MCP JSON. Plugin loading is an observed-build route, not a public marketplace guarantee. | Use the plugin route only after current discovery; otherwise import `lazybuddy-plugin/skills/` plus six manual connectors. In a new session observe one real Skill/command appropriate to the chosen route and all six MCP connections. |
+| **CodeBuddy IDE** | Public guidance supports Skills import and MCP JSON. Plugin loading is an observed-build route, not a public marketplace guarantee. | If the current build exposes a GUI local-directory marketplace, follow the desktop sequence below. If unavailable or policy-blocked, record the host version/build and exact error, keep readiness pending, and choose the fallback explicitly. |
 | **CodeBuddy CLI** | Absolute release-root marketplace metadata and package validation. The nested `lazybuddy-plugin/` path is not the marketplace root. | Use the three separate actions below. After installation and a fresh session observe one real Skill/command plus all six MCP connections. |
 | **WorkBuddy Skills fallback** | Import/copy `lazybuddy-plugin/skills/` only, then configure each of six local MCP connectors manually. | After approval, observe one imported Skill and each manual connector in Settings. Files and load-check output do not prove WorkBuddy commands, agents, hooks, or MCP. |
-| **WorkBuddy full plugin** | The supplied prerelease build exposed this observed-build route; compatibility metadata alone remains package evidence, not a public compatibility promise. | Only a real loaded WorkBuddy session can prove broader plugin behavior. Do not rely on it until that proof is observed. |
+| **WorkBuddy full plugin** | The supplied prerelease build exposed this observed-build route; compatibility metadata alone remains package evidence, not a public compatibility promise. | If the current build exposes a GUI local-directory marketplace, follow the desktop sequence below. Only a real loaded WorkBuddy session can prove broader plugin behavior. |
+
+## Observed-build desktop plugin UI sequence
+
+This route is conditional for CodeBuddy IDE and WorkBuddy. It is not the
+documented CodeBuddy CLI route and must not be inferred from the presence of a
+manifest. Perform one action, wait, and inspect before the next:
+
+1. After approval, open the host's **Plugins / Marketplace → Add local
+   directory** GUI, choose the absolute release root containing
+   `.codebuddy-plugin/marketplace.json`, and wait.
+2. Inspect discovery of `lazybuddy@lazybuddy` version `1.0.2`; do not install in
+   the discovery action. If the control or marketplace is absent, record the
+   current host version/build and exact error as `UNAVAILABLE`, leave **HOST
+   READINESS: PENDING**, and select the fallback only as a later action.
+3. After separate approval, click **Install** for `lazybuddy@lazybuddy`, then
+   wait and inspect the installation result.
+4. Fully quit the host, then wait.
+5. Reopen the host, then wait.
+6. Start a fresh session for `<project-root>`, then wait for inspection.
+7. Verify one real loaded Skill or command and make a live call through each of
+   `run-ledger`, `verification`, `status-dashboard`, `context-graph`,
+   `code-intel`, and `docs`. A marketplace row, cache, or connector-panel count
+   is not live proof.
 
 ## CodeBuddy local marketplace
 
@@ -65,14 +92,72 @@ Do not combine these actions or claim host readiness from marketplace JSON.
 and unstaged; secrets must never be committed. Repeating safe package checks
 preserves both files and does not write host configuration.
 
-## WorkBuddy Skills/manual-MCP boundary
+## Manual connector specification
+
+This is the non-mutating, paste-ready source for the CodeBuddy IDE and
+WorkBuddy Skills/manual-MCP fallback. Replace both placeholders with permanent
+absolute paths before asking to change host settings. Do not edit the shipped
+`lazybuddy-plugin/.mcp.json`.
+
+```json
+{
+  "mcpServers": {
+    "run-ledger": {
+      "command": "bash",
+      "args": ["<release-root>/lazybuddy-plugin/mcp/run-ledger/server.sh"],
+      "cwd": "<project-root>",
+      "env": {"CWD": "<project-root>", "CODEBUDDY_PROJECT_DIR": "<project-root>"}
+    },
+    "verification": {
+      "command": "bash",
+      "args": ["<release-root>/lazybuddy-plugin/mcp/verification/server.sh"],
+      "cwd": "<project-root>",
+      "env": {"CWD": "<project-root>", "CODEBUDDY_PROJECT_DIR": "<project-root>"}
+    },
+    "status-dashboard": {
+      "command": "bash",
+      "args": ["<release-root>/lazybuddy-plugin/mcp/status-dashboard/server.sh"],
+      "cwd": "<project-root>",
+      "env": {"CWD": "<project-root>", "CODEBUDDY_PROJECT_DIR": "<project-root>"}
+    },
+    "context-graph": {
+      "command": "bash",
+      "args": ["<release-root>/lazybuddy-plugin/mcp/context-graph/server.sh"],
+      "cwd": "<project-root>",
+      "env": {"CWD": "<project-root>", "CODEBUDDY_PROJECT_DIR": "<project-root>"}
+    },
+    "code-intel": {
+      "command": "bash",
+      "args": ["<release-root>/lazybuddy-plugin/mcp/code-intel/server.sh"],
+      "cwd": "<project-root>",
+      "env": {"CWD": "<project-root>", "CODEBUDDY_PROJECT_DIR": "<project-root>"}
+    },
+    "docs": {
+      "command": "bash",
+      "args": ["<release-root>/lazybuddy-plugin/mcp/docs/server.sh"],
+      "cwd": "<project-root>",
+      "env": {"CWD": "<project-root>", "CODEBUDDY_PROJECT_DIR": "<project-root>"}
+    }
+  }
+}
+```
+
+Every entry uses `bash`, its absolute release-local `server.sh`, and explicit
+consumer-project context in both `cwd` and the `CWD` /
+`CODEBUDDY_PROJECT_DIR` environment. Never fall back to the package directory
+or caller shell directory. After approval, add exactly one named connector,
+wait; handle a trust prompt as a separate action, wait; then inspect that
+connector before proceeding to the next one.
+
+## CodeBuddy IDE / WorkBuddy Skills/manual-MCP boundary
 
 The supported copied-repository route is Skills-only import/copy from
 `lazybuddy-plugin/skills/` plus six individual manual local MCP connectors in
 Settings. A package file, manifest, or `lazybuddy-load-check.sh` result must
-never be described as loading WorkBuddy commands, agents, hooks, or MCP. A full
-plugin/marketplace route may be documented only after a real loaded host
-session proves it; until then use the Skills/manual-MCP fallback.
+never be described as loading commands, Agents, hooks, or MCP. The fallback
+explicitly excludes commands, Agents, and hooks. Use the full-plugin route only
+when the current loaded host proves it; otherwise retain **HOST READINESS:
+PENDING** for unsupported capabilities.
 
 ### Route coexistence and migration
 

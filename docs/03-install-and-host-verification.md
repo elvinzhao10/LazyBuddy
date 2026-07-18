@@ -53,6 +53,15 @@ excludes commands, agents, and hooks. Full plugin/manual coexistence is
 unsupported: stop the session, remove only old LazyBuddy entries through the
 host UI, choose one route, start a new session, and verify it.
 
+For either desktop host, the observed-build full-plugin route is a GUI sequence:
+add the release root as a local directory marketplace, wait for discovery,
+install as a separate action, fully restart, then verify a fresh session. The
+supplied 2026-07-18 macOS reports did not record exact host app versions; an
+unsupported build remains **HOST READINESS: PENDING**. The fallback's exact
+non-mutating six-entry JSON—with absolute release-local `server.sh` arguments,
+`cwd`, `CWD`, and `CODEBUDDY_PROJECT_DIR` set to the consumer project—is in
+[Host routes](reference/host-routes.md#manual-connector-specification).
+
 `.codebuddy/settings.json` is shareable non-secret project scope; ignored
 `.codebuddy/settings.local.json` is local/machine scope, and secrets must never
 be committed. `--plugin-dir` is development/testing only, never persistent.
