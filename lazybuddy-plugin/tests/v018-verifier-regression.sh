@@ -346,11 +346,13 @@ else
     pass "unversioned unclassified regression fails inventory"
 fi
 grep -Fq 'ERROR: unclassified package-local regression: unlisted-regression.sh' "$TMP/unclassified.stderr" && pass "unversioned regression rejection is identified" || fail "unversioned regression rejection detail"
+rm -f "$FIXTURE/tests/unlisted-regression.sh"
 
 cp "$PLUGIN_ROOT/scripts/lazybuddy-plugin-doctor.sh" "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh"
 mkdir "$TMP/fake-bin"
 cat > "$TMP/fake-bin/codebuddy" <<'SH'
 #!/usr/bin/env bash
+[ -z "${FAKE_CODEBUDDY_MARKER:-}" ] || printf 'invoked\n' >> "$FAKE_CODEBUDDY_MARKER"
 case "${FAKE_CODEBUDDY_MODE:-pass}" in
   pass) printf '%s\n' 'Validation successful: 0 errors' ;;
   semantic) printf '%s\n' 'Validation failed: 2 errors' ;;
@@ -360,18 +362,169 @@ case "${FAKE_CODEBUDDY_MODE:-pass}" in
 esac
 SH
 chmod +x "$TMP/fake-bin/codebuddy"
-for mode in pass semantic misleading nonzero timeout; do
-    output="$TMP/doctor-$mode.out"
-    if PATH="$TMP/fake-bin:$PATH" FAKE_CODEBUDDY_MODE="$mode" LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS=1 CODEBUDDY_PLUGIN_ROOT="$FIXTURE" bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" >"$output" 2>"$output.err"; then status=0; else status=$?; fi
-    case "$mode" in
-      pass) [ "$status" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$output" && pass "doctor accepts validator pass" || fail "doctor pass classification" ;;
-      semantic) [ "$status" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$output" && pass "doctor hard-fails semantic validator output" || fail "doctor semantic classification" ;;
-      misleading) [ "$status" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$output" && pass "doctor rejects misleading success output" || fail "doctor misleading output classification" ;;
-      nonzero) [ "$status" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$output" && pass "doctor hard-fails validator nonzero" || fail "doctor nonzero classification" ;;
-      timeout) [ "$status" -eq 1 ] && grep -q 'timeout' "$output" && grep -q '^TIMEOUT: CodeBuddy manifest validator$' "$output.err" && pass "doctor classifies validator timeout" || fail "doctor timeout classification" ;;
-    esac
-done
-PATH="/usr/bin:/bin" CODEBUDDY_PLUGIN_ROOT="$FIXTURE" bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" >"$TMP/doctor-absent.out" 2>"$TMP/doctor-absent.err"
-grep -q '\[UNCHECKED\] CodeBuddy manifest validator' "$TMP/doctor-absent.out" && pass "doctor leaves absent CLI unchecked" || fail "doctor absent classification"
+
+mkdir "$TMP/launch-error-bin"
+printf '%s\n' '#!/definitely/missing/lazybuddy-interpreter' > "$TMP/launch-error-bin/codebuddy"
+chmod +x "$TMP/launch-error-bin/codebuddy"
+
+run_doctor() {
+    local label="$1" host="$2" mode="$3" bin_dir="$4"
+    DOCTOR_OUTPUT="$TMP/doctor-$label.out"
+    if PATH="$bin_dir:/usr/bin:/bin" \
+        FAKE_CODEBUDDY_MODE="$mode" \
+        FAKE_CODEBUDDY_MARKER="${DOCTOR_MARKER:-}" \
+        LAZYBUDDY_DOCTOR_HOST="$host" \
+        LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS=1 \
+        CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+        bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" >"$DOCTOR_OUTPUT" 2>"$DOCTOR_OUTPUT.err"; then
+        DOCTOR_STATUS=0
+    else
+        DOCTOR_STATUS=$?
+    fi
+}
+
+run_doctor package-pass package pass "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts validator pass" || fail "package validator pass classification"
+run_doctor package-semantic package semantic "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails semantic validator output" || fail "package semantic validator classification"
+run_doctor package-misleading package misleading "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects misleading success output" || fail "package misleading validator classification"
+run_doctor package-nonzero package nonzero "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails validator nonzero" || fail "package nonzero validator classification"
+run_doctor package-timeout package timeout "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && grep -q '^TIMEOUT: CodeBuddy manifest validator$' "$DOCTOR_OUTPUT.err" && pass "package doctor leaves validator timeout unchecked" || fail "package timeout validator classification"
+run_doctor package-launch package pass "$TMP/launch-error-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves validator launch unavailable unchecked" || fail "package launch validator classification"
+run_doctor package-absent package pass "/usr/bin:/bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves absent CLI unchecked" || fail "package absent validator classification"
+
+run_doctor cli-pass codebuddy-cli pass "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor accepts validator pass" || fail "CLI validator pass classification"
+run_doctor cli-semantic codebuddy-cli semantic "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails semantic validator output" || fail "CLI semantic validator classification"
+run_doctor cli-timeout codebuddy-cli timeout "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator timeout" || fail "CLI timeout validator classification"
+run_doctor cli-launch codebuddy-cli pass "$TMP/launch-error-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator launch unavailable" || fail "CLI launch validator classification"
+run_doctor cli-absent codebuddy-cli pass "/usr/bin:/bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails absent CLI" || fail "CLI absent validator classification"
+
+DOCTOR_MARKER="$TMP/ide-validator.marker"
+rm -f "$DOCTOR_MARKER"
+run_doctor ide-skip codebuddy-ide semantic "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[SKIP\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && [ ! -e "$DOCTOR_MARKER" ] && pass "IDE doctor skips CLI-only validator" || fail "IDE validator skip classification"
+DOCTOR_MARKER="$TMP/workbuddy-validator.marker"
+rm -f "$DOCTOR_MARKER"
+run_doctor workbuddy-skip workbuddy semantic "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[SKIP\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && [ ! -e "$DOCTOR_MARKER" ] && pass "WorkBuddy doctor skips CLI-only validator" || fail "WorkBuddy validator skip classification"
+unset DOCTOR_MARKER
+
+if LAZYBUDDY_DOCTOR_HOST=unknown CODEBUDDY_PLUGIN_ROOT="$FIXTURE" bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" >"$TMP/doctor-invalid-host.out" 2>"$TMP/doctor-invalid-host.err"; then
+    invalid_host_status=0
+else
+    invalid_host_status=$?
+fi
+[ "$invalid_host_status" -eq 2 ] && grep -q 'LAZYBUDDY_DOCTOR_HOST must be package, codebuddy-cli, codebuddy-ide, or workbuddy' "$TMP/doctor-invalid-host.err" && pass "doctor rejects an unknown host selector" || fail "doctor unknown host selector classification"
+
+cp -R "$FIXTURE" "$TMP/custom-skills-plugin"
+cp -R "$TMP/custom-skills-plugin/skills" "$TMP/custom-skills-plugin/custom-skills"
+python3 - "$TMP/custom-skills-plugin/.codebuddy-plugin/plugin.json" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    manifest = json.load(handle)
+manifest["skills"] = "./custom-skills/"
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(manifest, handle)
+PY
+if LAZYBUDDY_DOCTOR_HOST=workbuddy CODEBUDDY_PLUGIN_ROOT="$TMP/custom-skills-plugin" bash "$TMP/custom-skills-plugin/scripts/lazybuddy-plugin-doctor.sh" >"$TMP/doctor-custom-skills.out" 2>"$TMP/doctor-custom-skills.err" \
+    && grep -q '\[INFO\] CodeBuddy skills: declared: 14 skill(s)' "$TMP/doctor-custom-skills.out"; then
+    pass "doctor accepts a valid declared CodeBuddy skills directory"
+else
+    fail "doctor valid declared CodeBuddy skills classification"
+fi
+python3 - "$TMP/custom-skills-plugin/.codebuddy-plugin/plugin.json" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    manifest = json.load(handle)
+manifest["skills"] = "../"
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(manifest, handle)
+PY
+if LAZYBUDDY_DOCTOR_HOST=workbuddy CODEBUDDY_PLUGIN_ROOT="$TMP/custom-skills-plugin" bash "$TMP/custom-skills-plugin/scripts/lazybuddy-plugin-doctor.sh" >"$TMP/doctor-escaping-skills.out" 2>"$TMP/doctor-escaping-skills.err"; then
+    fail "doctor must reject an escaping CodeBuddy skills directory"
+elif grep -q '\[FAIL\] CodeBuddy skills discovery.*path escapes plugin root' "$TMP/doctor-escaping-skills.out"; then
+    pass "doctor rejects an escaping CodeBuddy skills directory"
+else
+    fail "doctor escaping CodeBuddy skills classification"
+fi
+
+cp -R "$FIXTURE" "$TMP/broken-plugin"
+rm -f "$TMP/broken-plugin/LICENSE"
+if LAZYBUDDY_DOCTOR_HOST=workbuddy CODEBUDDY_PLUGIN_ROOT="$TMP/broken-plugin" LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 bash "$TMP/broken-plugin/scripts/lazybuddy-verify.sh" >"$TMP/broken-package.json" 2>"$TMP/broken-package.stderr"; then
+    fail "aggregate verifier must fail an intentional package break"
+else
+    pass "aggregate verifier stays red for an intentional package break"
+fi
+if python3 - "$TMP/broken-package.json" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+assert payload["doctor"] == "fail"
+assert payload["checks"]["doctor"]["status"] == "fail"
+assert payload["regression_inventory"] == "pass"
+assert payload["all_pass"] is False
+PY
+then
+    pass "aggregate red summary identifies the doctor package failure"
+else
+    fail "aggregate red summary identifies the doctor package failure"
+fi
+
+STATE_RUN="$TMP/.lazybuddy/runs/legacy"
+mkdir -p "$STATE_RUN"
+printf '%s\n' '{"status":"created","tasks":[]}' > "$STATE_RUN/state.json"
+
+run_state_doctor() {
+    local label="$1"
+    STATE_OUTPUT="$TMP/state-$label.out"
+    if LAZYBUDDY_DOCTOR_HOST=workbuddy CODEBUDDY_PLUGIN_ROOT="$FIXTURE" bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" >"$STATE_OUTPUT" 2>"$STATE_OUTPUT.err"; then
+        STATE_STATUS=0
+    else
+        STATE_STATUS=$?
+    fi
+}
+
+printf '%s\n' '{"event":"created"}' > "$STATE_RUN/events.jsonl"
+run_state_doctor valid-jsonl
+[ "$STATE_STATUS" -eq 0 ] && grep -q '\[PASS\] Run state drift/evidence/boundaries' "$STATE_OUTPUT" && ! grep -q '\[WARN\].*legacy RUN_ID' "$STATE_OUTPUT" && pass "doctor accepts strict valid JSONL" || fail "valid JSONL classification"
+
+printf '%s\n' 'RUN_ID: legacy' '{"event":"created"}' > "$STATE_RUN/events.jsonl"
+cp "$STATE_RUN/events.jsonl" "$TMP/legacy-events.before"
+run_state_doctor legacy-first-line
+[ "$STATE_STATUS" -eq 0 ] && grep -q '\[WARN\].*legacy: events.jsonl line 1 legacy RUN_ID header preserved unchanged; not a JSON event; excluded from package-health failure' "$STATE_OUTPUT" && cmp -s "$TMP/legacy-events.before" "$STATE_RUN/events.jsonl" && pass "doctor warns and preserves a matching first-line legacy RUN_ID header" || fail "legacy first-line RUN_ID classification"
+
+printf '%s\n' 'RUN_ID: stale-run' '{"event":"created"}' > "$STATE_RUN/events.jsonl"
+run_state_doctor stale-legacy-header
+[ "$STATE_STATUS" -eq 1 ] && grep -q 'events.jsonl line 1 parse error' "$STATE_OUTPUT" && pass "doctor rejects a stale mismatched RUN_ID header" || fail "stale RUN_ID header classification"
+
+printf '%s\n' 'RANDOM_HEADER: legacy' '{"event":"created"}' > "$STATE_RUN/events.jsonl"
+run_state_doctor random-header
+[ "$STATE_STATUS" -eq 1 ] && grep -q 'events.jsonl line 1 parse error' "$STATE_OUTPUT" && pass "doctor rejects a random first-line header" || fail "random first-line header classification"
+
+printf '%s\n' '{"event":"created"}' 'RUN_ID: legacy' > "$STATE_RUN/events.jsonl"
+run_state_doctor legacy-second-line
+[ "$STATE_STATUS" -eq 1 ] && grep -q 'events.jsonl line 2 parse error' "$STATE_OUTPUT" && pass "doctor rejects a legacy RUN_ID header after line one" || fail "legacy subsequent-line RUN_ID classification"
+
+printf '%s\n' '{"event":' > "$STATE_RUN/events.jsonl"
+run_state_doctor malformed-json
+[ "$STATE_STATUS" -eq 1 ] && grep -q 'events.jsonl line 1 parse error' "$STATE_OUTPUT" && pass "doctor rejects malformed JSON events" || fail "malformed JSON event classification"
+
 printf 'Passed: %s\nFailed: %s\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
