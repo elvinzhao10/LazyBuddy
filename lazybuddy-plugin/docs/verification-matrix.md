@@ -28,6 +28,25 @@ live CodeBuddy or WorkBuddy host loaded the package, executed a hook, or connect
 an MCP server. A manual host observation in a new session or the applicable host UI
 is still required.
 
+## Readiness vocabulary and route boundaries
+
+Every record emitted by a package check has `readiness_scope=package-ready`.
+That scope means only that the copied package and its local contracts are
+internally consistent. The contract also names three scopes that package checks
+must never synthesize: `observed-build-route` (a route seen in a particular host
+build), `manual-skills-mcp-fallback` (Skills import plus six manually configured
+local MCP connectors), and `live-host-proof` (a fresh host session showing the
+requested Skill/command and every expected MCP connection).
+
+The manual fallback is intentionally Skills-only: it excludes agents, commands,
+and hooks. Do not run it alongside the full plugin route for the same project;
+the two routes can double-load Skills or MCP processes and their coexistence is
+unsupported. To migrate safely, stop the host session, remove the old route's
+Skills/plugin and only its six LazyBuddy connectors through the host UI, select
+one route, start a new session, and verify the selected route's exact surface.
+Package checks do not inspect host-private directories or claim that migration
+or live proof occurred.
+
 ## Intentional host differences
 
 | Difference class | LazyBuddy documentation rule |

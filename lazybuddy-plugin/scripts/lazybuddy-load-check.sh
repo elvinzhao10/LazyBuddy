@@ -105,8 +105,10 @@ work_manifest_path = os.path.join(root, ".workbuddy-plugin", "plugin.json")
 if not os.path.exists(code_manifest_path) and not os.path.exists(work_manifest_path) and skill_count:
     print(f"DEGRADED skills: {skill_count} discovered in manual skill-only fallback")
     print("UNCHECKED commands/hooks/MCP: not installed by the manual skill-only fallback")
+    print("READINESS_SCOPE=manual-skills-mcp-fallback")
+    print("Manual fallback exposes Skills and individually configured MCP only; agents, commands, and hooks remain unavailable.")
     print("PACKAGE_READINESS=degraded")
-    print("Package readiness is degraded; host registration and runtime loading are unchecked.")
+    print("Package readiness is degraded; host activation and runtime loading are unchecked.")
     sys.exit(0)
 
 for legal_name in ("LICENSE", "NOTICE"):
@@ -319,7 +321,13 @@ try:
         text=True,
     )
     records = json.loads(report.stdout).get("records")
-    if not isinstance(records, list) or len(records) != 9 or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records):
+    if (
+        not isinstance(records, list)
+        or len(records) != 9
+        or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records)
+        or any(record.get("status") == "host-ready" for record in records)
+        or any(record.get("readiness_scope") != "package-ready" for record in records)
+    ):
         raise ValueError("canonical report did not return nine integrity-valid records")
 except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
     result("FAIL", "canonical capability readiness", str(exc))
@@ -332,5 +340,6 @@ if failed:
     sys.exit(1)
 
 print("PACKAGE_READINESS=full")
-print("Package files are ready. Host registration, runtime loading, and MCP connection remain unchecked.")
+print("READINESS_SCOPE=package-ready")
+print("Package files are ready. Host activation, runtime loading, and MCP status remain unchecked.")
 PY

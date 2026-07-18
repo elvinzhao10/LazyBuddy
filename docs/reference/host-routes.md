@@ -59,6 +59,28 @@ never be described as loading WorkBuddy commands, agents, hooks, or MCP. A full
 plugin/marketplace route may be documented only after a real loaded host
 session proves it; until then use the Skills/manual-MCP fallback.
 
+### Route coexistence and migration
+
+The full plugin route and the Skills/manual-MCP fallback are mutually exclusive
+and unsupported together for a project. Do not import the fallback Skills or add its six manual MCP
+connectors while a full LazyBuddy plugin session is active; the routes can
+double-load Skills or MCP processes, and package checks cannot declare that
+both routes are live.
+
+To switch routes safely:
+
+1. Stop the current host session.
+2. Remove only LazyBuddy's old plugin/Skills entry and its six connectors using
+   the host's own UI. Do not scan or edit host-private files.
+3. Choose exactly one route: full plugin installation, or Skills import plus
+   manual MCP connectors.
+4. Start a fresh session and verify the selected route's required Skill or
+   command and all six expected MCP connections.
+
+The package result remains `readiness_scope=package-ready`; the fallback is the
+`manual-skills-mcp-fallback` scope, while an observed build route or live host
+proof must be recorded separately.
+
 ## Package boundary and removal
 
 `lazybuddy-load-check.sh`, `lazybuddy-plugin-doctor.sh`, and local metadata

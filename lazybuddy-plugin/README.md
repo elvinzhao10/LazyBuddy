@@ -121,6 +121,14 @@ configuration.
 Marketplace metadata and local file validation establish **package readiness**;
 they are not evidence that commands, agents, hooks, or MCP loaded in a host.
 
+The package readiness contract labels these reports `readiness_scope=package-ready`.
+`observed-build-route`, `manual-skills-mcp-fallback`, and `live-host-proof` are
+separate host-observation scopes. The fallback is Skills-only plus six manual
+MCP connectors; agents, commands, and hooks are excluded. Do not combine the
+fallback with a full plugin route for the same project. Stop the session,
+remove the old LazyBuddy route through the host UI, select one route, restart,
+and verify it in a fresh session.
+
 ## Uninstall
 
 Use CodeBuddy's plugin removal flow for a CodeBuddy IDE or CLI installation,

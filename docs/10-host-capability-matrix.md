@@ -32,6 +32,21 @@ The host adapter differs, but the safety model does not:
 
 The complete dependency classification is in [Dependency and host boundary reference](reference/dependency-and-host-boundaries.md).
 
+## Readiness and fallback claims
+
+The package contract uses four explicit evidence scopes: `package-ready`,
+`observed-build-route`, `manual-skills-mcp-fallback`, and `live-host-proof`.
+Load-check, doctor, and capability reports emit only `package-ready`; they do
+not claim that a host loaded a plugin or connected an MCP process. A route seen
+in one build is an `observed-build-route`, not universal host support.
+
+The WorkBuddy fallback is Skills plus six manually configured local MCP
+connectors. It explicitly excludes agents, commands, and hooks. It must not be
+run alongside a full plugin route for the same project: coexistence is
+unsupported and may duplicate Skills or MCP processes. Stop the session,
+remove only the old LazyBuddy entries in the host UI, choose one route, restart,
+and verify that route before making a live-host-proof claim.
+
 ## macOS-only scope
 
 The package evidence is verified on macOS only. It does not claim equivalent host loading, marketplace behavior, hook execution, or MCP connection on other operating systems. Those are observed per host session.

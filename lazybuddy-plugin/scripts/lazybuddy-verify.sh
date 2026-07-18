@@ -186,6 +186,7 @@ run_regression_inventory() {
         "v101-ci-suite-separation-regression.sh"
         "v102-codebuddy-local-route-regression.sh"
         "v102-mcp-cwd-regression.sh"
+        "v102-readiness-claims-regression.sh"
     )
     local lifecycle_tests=(
         "v015-readiness-regression.sh"

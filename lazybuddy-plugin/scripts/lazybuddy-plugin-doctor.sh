@@ -326,7 +326,12 @@ try:
 except subprocess.CalledProcessError as error:
     raise SystemExit(error.stderr.strip() or "canonical readiness report failed")
 records = json.loads(completed.stdout).get("records")
-if not isinstance(records, list) or len(records) != 9:
+if (
+    not isinstance(records, list)
+    or len(records) != 9
+    or any(record.get("status") == "host-ready" for record in records)
+    or any(record.get("readiness_scope") != "package-ready" for record in records)
+):
     raise SystemExit("canonical readiness report did not return nine records")
 print("ok")
 PY

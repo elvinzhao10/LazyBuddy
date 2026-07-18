@@ -20,7 +20,7 @@ contract_path = pathlib.Path(sys.argv[1])
 fixture_path = pathlib.Path(sys.argv[2])
 policy_digest = sys.argv[3]
 statuses = [
-    "host-ready",
+    "package-ready",
     "owned-ready",
     "missing",
     "incompatible",
@@ -50,6 +50,8 @@ for record in records:
     assert isinstance(record["capability"], str) and record["capability"]
     assert record["provider"] is None or isinstance(record["provider"], str)
     assert record["status"] in properties["status"]["enum"]
+    assert record["readiness_scope"] in properties["readiness_scope"]["enum"]
+    assert record["readiness_scope"] == "package-ready"
     assert record["reason_code"] is None or isinstance(record["reason_code"], str)
     assert isinstance(record["message"], str)
     assert isinstance(record["details"], dict)
@@ -64,6 +66,9 @@ assert {record["status"] for record in records} == set(statuses), "fixture must 
 invalid = dict(records[0])
 invalid["status"] = "ready"
 assert invalid["status"] not in properties["status"]["enum"], "temporary ready status copy must fail validation"
+invalid = dict(records[0])
+invalid["readiness_scope"] = "live-host-proof"
+assert invalid["readiness_scope"] in properties["readiness_scope"]["enum"], "live host proof remains a host-observed scope"
 PY
 
 printf 'v0.18 capability readiness contract regression: PASS\n'

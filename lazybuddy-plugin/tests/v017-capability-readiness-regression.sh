@@ -56,10 +56,12 @@ for record in records:
     assert set(record) == required
     assert record["host"] == "lazybuddy"
     assert record["status"] in schema["properties"]["status"]["enum"]
+    assert record["readiness_scope"] == "package-ready"
     assert isinstance(record["details"], dict)
-assert by_capability["local_search"]["status"] == "host-ready"
-assert by_capability["structural_search"]["status"] == "host-ready"
-assert by_capability["code_navigation"]["status"] == "host-ready"
+assert by_capability["local_search"]["status"] == "package-ready"
+assert by_capability["structural_search"]["status"] == "package-ready"
+assert by_capability["code_navigation"]["status"] == "package-ready"
+assert all(record["status"] != "host-ready" for record in records)
 assert by_capability["architecture_search"]["status"] == "not-initialized"
 assert by_capability["documentation_search"]["status"] == "disabled"
 PY

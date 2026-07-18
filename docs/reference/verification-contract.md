@@ -18,6 +18,20 @@ prove that CodeBuddy or WorkBuddy loaded the package, executed a hook, or
 connected MCP. A new-session or host-UI observation remains required; see
 [host routes](host-routes.md).
 
+The readiness contract requires `readiness_scope`. Package reports use only
+`package-ready`; the other declared scopes are `observed-build-route`,
+`manual-skills-mcp-fallback`, and `live-host-proof`. The latter three are
+host-observation vocabulary, not package outcomes. In particular, package
+checks never emit `host-ready` and never upgrade a local declaration into a
+live or connected claim.
+
+The Skills/manual-MCP fallback exposes Skills plus six manually configured
+local connectors only. It excludes agents, commands, and hooks. Running the
+fallback and a full plugin route together is unsupported because duplicate
+Skills or MCP processes can collide. Migrate by stopping the host session,
+removing only the old route's LazyBuddy entries through the host UI, choosing
+one route, starting a fresh session, and observing that route's capabilities.
+
 Timeouts cover trusted package-owned checks only. The runner starts each check
 in its own process group, terminates that group on deadline, and reports any
 still-detectable descendants. This is best-effort cleanup, not a security sandbox or a guarantee of descendant cleanup. Use a VM or container-backed runner for genuinely untrusted commands; no no-fork sandbox is enabled by default.

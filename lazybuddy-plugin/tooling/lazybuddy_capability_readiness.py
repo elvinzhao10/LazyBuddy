@@ -15,9 +15,10 @@ from lazybuddy_capability_contract import BrokerError, PLUGIN_ROOT, contract_dig
 
 READINESS_CONTRACT: Final = PLUGIN_ROOT / "contracts" / "lazyseries-capability-readiness.v1.json"; READINESS_VERSION: Final = "0.18.0"
 READINESS_CHECKSUM: Final = READINESS_CONTRACT.with_suffix(READINESS_CONTRACT.suffix + ".sha256")
-READINESS_SCHEMA_SHA256: Final = "517890bd5bfb22de7cf1a6dec02bd1001fdbe7d7ffed8e0e74bdc1f8a427b78f"
-READINESS_STATUSES: Final = frozenset({"host-ready", "owned-ready", "missing", "incompatible", "disabled", "failed-optional", "not-initialized"})
-READINESS_REQUIRED_FIELDS: Final = frozenset({"schema_version", "contract_version", "contract_digest", "host", "capability", "provider", "status", "reason_code", "message", "receipt", "details"})
+READINESS_SCHEMA_SHA256: Final = "ef78955b26f77769b3717f8ec8699781972a47f9514ce4955ee7dcbd6738c219"
+READINESS_STATUSES: Final = frozenset({"package-ready", "owned-ready", "missing", "incompatible", "disabled", "failed-optional", "not-initialized"})
+READINESS_SCOPES: Final = frozenset({"package-ready", "observed-build-route", "manual-skills-mcp-fallback", "live-host-proof"})
+READINESS_REQUIRED_FIELDS: Final = frozenset({"schema_version", "contract_version", "contract_digest", "host", "capability", "provider", "status", "readiness_scope", "reason_code", "message", "receipt", "details"})
 READINESS_CAPABILITIES: Final = (
     ("local_search", "ripgrep"), ("structural_search", "ast-grep"), ("code_navigation", "lsp"),
     ("architecture_search", "codegraph"), ("documentation_search", "context7"), ("web_search", "web"),
@@ -186,7 +187,7 @@ def lsp_owned_provider(root: Path, language: str) -> Path | None:
     return provider if digest is not None and receipt == expected and receipt_path.read_bytes() == canonical_json(expected) else None
 
 
-def record(capability: str, provider: str | None, status: str, message: str, reason_code: str | None, receipt: dict[str, object] | None, details: dict[str, object]) -> dict[str, object]:
+def record(capability: str, provider: str | None, status: str, message: str, reason_code: str | None, receipt: dict[str, object] | None, details: dict[str, object], readiness_scope: str = "package-ready") -> dict[str, object]:
     return {
         "schema_version": 1,
         "contract_version": READINESS_VERSION,
@@ -195,6 +196,7 @@ def record(capability: str, provider: str | None, status: str, message: str, rea
         "capability": capability,
         "provider": provider,
         "status": status,
+        "readiness_scope": readiness_scope,
         "reason_code": reason_code,
         "message": message,
         "receipt": receipt,
@@ -212,7 +214,7 @@ def contract_failure_records() -> list[dict[str, object]]:
 def local_record(capability: str, command: str, owned: Path, state: str) -> dict[str, object]:
     host = host_executable(command)
     if host:
-        return record(capability, command, "host-ready", "A compatible host provider is available.", None, None, {"source": "host", "path": host})
+        return record(capability, command, "package-ready", "A compatible package or system provider is available.", None, None, {"source": "host", "path": host})
     if state == "owned" and executable(owned):
         return record(capability, command, "owned-ready", "A receipt-owned provider is ready.", None, {"owner": "lazybuddy-tooling", "schema_version": 1, "state": "ready"}, {"source": "receipt", "path": str(owned)})
     if state in {"invalid", "unsafe"}:
@@ -230,7 +232,7 @@ def navigation_record(target: Path | None, root: Path, state: str) -> dict[str, 
     project = target / "node_modules" / ".bin" / command if target else None
     provider = project if executable(project) else Path(host_executable(command) or "")
     if executable(provider):
-        return record("code_navigation", "lsp", "host-ready", "A project or host LSP provider is available.", None, None, {"source": "project" if provider == project else "host", "language": language, "path": str(provider)})
+        return record("code_navigation", "lsp", "package-ready", "A project or system LSP provider is available.", None, None, {"source": "project" if provider == project else "host", "language": language, "path": str(provider)})
     owned = lsp_owned_provider(root, language)
     if owned is not None:
         return record("code_navigation", "lsp", "owned-ready", "A receipt-owned LSP provider is ready.", None, {"owner": "lazybuddy-lsp-tooling", "schema_version": 1, "state": "ready"}, {"source": "receipt", "language": language, "path": str(owned)})
@@ -289,10 +291,16 @@ def records(tooling_root: Path, target: Path | None, contract_paths: tuple[Path,
 
 def validate(value: list[dict[str, object]]) -> None:
     if not value: raise ValueError("readiness records are empty")
-    if any(set(item) != READINESS_REQUIRED_FIELDS or item["schema_version"] != 1 or item["contract_version"] != READINESS_VERSION or item["contract_digest"] != contract_digest() or item["host"] != "lazybuddy" or not isinstance(item["capability"], str) or not item["capability"] or item["provider"] is not None and not isinstance(item["provider"], str) or item["status"] not in READINESS_STATUSES or item["reason_code"] is not None and not isinstance(item["reason_code"], str) or not isinstance(item["message"], str) or not isinstance(item["details"], dict) for item in value):
+    if any(set(item) != READINESS_REQUIRED_FIELDS or item["schema_version"] != 1 or item["contract_version"] != READINESS_VERSION or item["contract_digest"] != contract_digest() or item["host"] != "lazybuddy" or not isinstance(item["capability"], str) or not item["capability"] or item["provider"] is not None and not isinstance(item["provider"], str) or item["status"] not in READINESS_STATUSES or item["readiness_scope"] not in READINESS_SCOPES or item["reason_code"] is not None and not isinstance(item["reason_code"], str) or not isinstance(item["message"], str) or not isinstance(item["details"], dict) for item in value):
         raise ValueError("readiness records do not satisfy the public contract")
     if any(item["receipt"] is not None and (not isinstance(item["receipt"], dict) or set(item["receipt"]) != {"owner", "schema_version", "state"} or not isinstance(item["receipt"]["owner"], str) or not item["receipt"]["owner"] or item["receipt"]["schema_version"] != 1 or not isinstance(item["receipt"]["state"], str) or not item["receipt"]["state"]) for item in value):
         raise ValueError("readiness records do not satisfy the public contract")
+
+
+def validate_package_records(value: list[dict[str, object]]) -> None:
+    validate(value)
+    if any(item["readiness_scope"] != "package-ready" for item in value):
+        raise ValueError("package checks may emit only package-ready evidence")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -310,7 +318,7 @@ def main() -> int:
     if args.target is not None and (not args.target.is_absolute() or ".." in args.target.parts): parser().error("--target must be an absolute traversal-free path")
     try:
         value = records(args.tooling_root, args.target)
-        validate(value)
+        validate_package_records(value)
     except (BrokerError, ValueError) as error:
         print(f"readiness report error: {error}", file=sys.stderr)
         return 2
