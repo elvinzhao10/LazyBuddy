@@ -63,13 +63,39 @@ waits; after you respond it inspects the app with Computer Use. Reload/new
 session is a separate handoff. Host readiness requires one real Skill/command
 and every expected MCP connection; without observation it stays **pending**.
 
-For CodeBuddy, use the release-root local marketplace route in [AGENTS.md](AGENTS.md):
-first add the absolute root and observe discovery, then in a separate action
-install `lazybuddy@lazybuddy`, start a fresh session, and observe one Skill/
-command plus all six MCP connections. For WorkBuddy, the supported fallback is
-Skills import plus six individual manual local MCP connectors. A full plugin
-route is conditional on real loaded-session proof and must not be inferred from
-files or load-check output.
+Route status is explicit: the local marketplace is the **documented CodeBuddy
+CLI route**. CodeBuddy IDE plugin loading and WorkBuddy full-plugin loading are
+**observed-build routes** only. The `manual-skills-mcp-fallback` is the
+supported local fallback. If Computer Use is unavailable, a user-pasted
+verbatim status or screenshot can provide observation; otherwise **HOST
+READINESS: PENDING**.
+
+For CodeBuddy CLI, use the release root containing
+`.codebuddy-plugin/marketplace.json` and enter these in order, one approved
+action at a time:
+
+```text
+/plugin marketplace add <absolute-local-LazyBuddy-path>
+/plugin install lazybuddy@lazybuddy
+```
+
+Wait after discovery, wait again after installation, then start a fresh
+session as a third action and observe one Skill/command plus all six MCP
+connections. `--plugin-dir <absolute-local-LazyBuddy-path>` is for
+development/testing only, never persistent. The interactive `/plugin` menu is
+equivalent.
+
+CodeBuddy IDE's public fallback is Skills import plus manual MCP JSON; its
+plugin flow remains build-specific until observed. WorkBuddy's supported
+fallback is the same Skills-only import plus six individual manual local MCP
+connectors. The fallback excludes commands, agents, and hooks. Do not run it
+beside a full plugin route: stop the session, remove only the old LazyBuddy
+entries through the host UI, choose one route, start a new session, and verify
+it. A copied repository or load-check output never establishes host readiness.
+
+Use `.codebuddy/settings.json` only for shareable non-secret project defaults.
+`.codebuddy/settings.local.json` is ignored local/machine scope and must remain
+unstaged; secrets must never be committed. Package checks preserve both files.
 
 The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
 and release notes are on the [v1.0.2 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.2).

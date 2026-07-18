@@ -13,11 +13,22 @@
   UI intent without expanding host-setting or installation authority.
 - Aligned active manifests, tooling packages, MCP identities, hook/verifier
   banners, documentation clients, and public install guidance with v1.0.2.
+- Made the release-root local marketplace the documented CodeBuddy CLI route:
+  add the absolute local root, install `lazybuddy@lazybuddy`, then start a fresh
+  session as three separate actions. `--plugin-dir` remains development-only.
+- Qualified CodeBuddy IDE and WorkBuddy plugin behavior as observed-build
+  routes, retained Skills plus six manual MCP connectors as the supported
+  fallback, and documented collision-free migration between the two.
+- Clarified `.codebuddy/settings.json` versus ignored
+  `.codebuddy/settings.local.json` scope and kept secrets out of committed
+  configuration.
 
 ### Verification boundary
 
 - Package checks establish local package readiness only; host readiness still
-  requires a fresh CodeBuddy or WorkBuddy session and observed MCP state.
+  requires a fresh CodeBuddy or WorkBuddy session, one real Skill/command, and
+  observed state for all six MCP connections. Otherwise host readiness remains
+  pending.
 
 ## v1.0.1 — Stable CI isolation (2026-07-17)
 

@@ -15,8 +15,10 @@ fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 
 route_docs=(
     "$REPOSITORY_ROOT/AGENTS.md"
+    "$REPOSITORY_ROOT/README.md"
     "$REPOSITORY_ROOT/lazybuddy-plugin/README.md"
     "$REPOSITORY_ROOT/docs/reference/host-routes.md"
+    "$REPOSITORY_ROOT/lazybuddy-plugin/templates/AGENTS.md"
 )
 
 protocol_docs=(
@@ -24,7 +26,9 @@ protocol_docs=(
     "$REPOSITORY_ROOT/README.md"
     "$REPOSITORY_ROOT/lazybuddy-plugin/README.md"
     "$REPOSITORY_ROOT/docs/03-install-and-host-verification.md"
+    "$REPOSITORY_ROOT/docs/10-host-capability-matrix.md"
     "$REPOSITORY_ROOT/docs/reference/host-routes.md"
+    "$REPOSITORY_ROOT/lazybuddy-plugin/templates/AGENTS.md"
 )
 
 if python3 - "${protocol_docs[@]}" <<'PY'
@@ -45,7 +49,7 @@ required = (
     re.compile(r"Computer Use", re.I),
     re.compile(r"reload|new session", re.I),
     re.compile(r"one\s+real\s+(?:Skill|command)|real\s+Skill/command", re.I),
-    re.compile(r"expected MCP|all six MCP|six MCP", re.I),
+    re.compile(r"expected\s+MCP|all\s+six\s+MCP|six\s+MCP", re.I),
     re.compile(r"pending", re.I),
 )
 
@@ -56,9 +60,10 @@ for raw_path in sys.argv[1:]:
         assert pattern.search(text), (raw_path, pattern.pattern)
 
 agents = Path(sys.argv[1]).read_text(encoding="utf-8")
-routes = Path(sys.argv[-1]).read_text(encoding="utf-8")
+routes = Path(sys.argv[-2]).read_text(encoding="utf-8")
 assert re.search(r"Action 1[\s\S]*marketplace add[\s\S]*discover", agents, re.I)
-assert re.search(r"Action 2[\s\S]*install[\s\S]*lazybuddy@lazybuddy[\s\S]*fresh[\s\S]*session[\s\S]*all six MCP", agents, re.I)
+assert re.search(r"Action 2[\s\S]*install[\s\S]*lazybuddy@lazybuddy[\s\S]*wait", agents, re.I)
+assert re.search(r"Action 3[\s\S]*fresh[\s\S]*session[\s\S]*all\s+six\s+MCP", agents, re.I)
 assert re.search(r"CodeBuddy[\s\S]*marketplace[\s\S]*settings\.json[\s\S]*settings\.local\.json", agents, re.I)
 assert re.search(r"settings\.local\.json[\s\S]*ignored[\s\S]*unstaged[\s\S]*secrets must never be committed", routes, re.I)
 workbuddy = re.split(r"## WorkBuddy", routes, maxsplit=1, flags=re.I)[-1]
@@ -71,6 +76,53 @@ then
     pass 'local-first protocol stages and readiness boundary are present across route docs'
 else
     fail 'local-first protocol stages and readiness boundary are present across route docs'
+fi
+
+if python3 - "${protocol_docs[@]}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+def assert_safe_onboarding(text, label):
+    assert not re.search(r"/Users/(?:[^/< >]+)/", text), f"{label}: developer-specific path"
+    assert not re.search(r"^\s*(?:\$\s+)?lazybuddy\s+(?:onboard|install|doctor|verify)\b", text, re.I | re.M), f"{label}: bare PATH launcher"
+    assert not re.search(r"\bcodebuddy\s+plugin\s+marketplace\s+add\b", text, re.I), f"{label}: unsupported marketplace command form"
+    assert not re.search(r"--plugin-dir[^.\n]{0,100}(?:is|provides|creates)\s+(?:a\s+)?persistent", text, re.I), f"{label}: persistent plugin-dir claim"
+    assert not re.search(
+        r"(?:copied|cloned|linked|manifest|load-check|package files?)[^.]{0,180}"
+        r"(?:host[- ]ready|host readiness\s*(?::|is)?\s*(?:ready|pass|full))",
+        text,
+        re.I,
+    ), f"{label}: copied package claimed host readiness"
+
+for raw_path in sys.argv[1:]:
+    text = Path(raw_path).read_text(encoding="utf-8")
+    assert_safe_onboarding(text, raw_path)
+    assert re.search(r"documented\s+CodeBuddy\s+CLI\s+route", text, re.I), raw_path
+    assert re.search(r"CodeBuddy\s+IDE[^.]{0,240}observed-build\s+routes?|observed-build\s+routes?[^.]{0,240}CodeBuddy\s+IDE", text, re.I), raw_path
+    assert re.search(r"WorkBuddy[^.]{0,240}observed-build\s+routes?|observed-build\s+routes?[^.]{0,240}WorkBuddy", text, re.I), raw_path
+    assert "manual-skills-mcp-fallback" in text, raw_path
+    assert re.search(r"HOST\s+READINESS:\s*PENDING", text, re.I), raw_path
+
+invalid = (
+    ("bare launcher", "lazybuddy onboard"),
+    ("developer path", "bash /Users/alice/Desktop/LazyBuddy/lazybuddy-plugin/scripts/lazybuddy-verify.sh"),
+    ("unsupported marketplace form", "codebuddy plugin marketplace add /tmp/LazyBuddy"),
+    ("persistent plugin-dir", "--plugin-dir provides a persistent install"),
+    ("copied package host claim", "Copied package files mean host readiness: ready."),
+)
+for label, text in invalid:
+    try:
+        assert_safe_onboarding(text, label)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError(f"unsafe copied onboarding fixture was accepted: {label}")
+PY
+then
+    pass 'host-route qualification and unsafe-claim rejection are enforced'
+else
+    fail 'host-route qualification and unsafe-claim rejection are enforced'
 fi
 
 if python3 - "${route_docs[@]}" <<'PY'

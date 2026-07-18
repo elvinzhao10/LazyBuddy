@@ -2,15 +2,34 @@
 
 LazyBuddy deliberately aligns policy and package safety across hosts while keeping host adapters distinct. The same package may be present on two surfaces without both hosts exposing the same loading or registration behavior.
 
+## Onboarding baseline
+
+Keep the pinned `v1.0.2` release in a permanent folder. Open or link it in the
+selected host, give the agent
+`https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
+detects or asks for CodeBuddy IDE, CodeBuddy CLI, or WorkBuddy, runs safe
+package checks, and reports package readiness separately from host readiness.
+Before a host-managed change it asks for approval, gives one exact action, and
+waits. It then uses Computer Use or a user-pasted status/screenshot; reload or
+new session is a later action. Verify one real Skill/command and all six MCP
+connections. Without observation, **HOST READINESS: PENDING**.
+
+Route status is explicit: the local marketplace is the **documented CodeBuddy
+CLI route**. CodeBuddy IDE plugin loading and WorkBuddy full-plugin loading are
+**observed-build routes** only. The `manual-skills-mcp-fallback` is the
+supported local fallback.
+
 ## What each host needs
 
-| Capability | CodeBuddy IDE / CLI | WorkBuddy | Package assertion |
+| Host | Local route | Supported fallback | Required host proof |
 | --- | --- | --- | --- |
-| Skills and commands | Host plugin discovery | Plugin/marketplace or local skills import | Files and metadata are present. |
-| Agents and hooks | Host plugin lifecycle | Only if the host loads the plugin surface | Package declares adapters; host must execute them. |
-| MCP | Host consumes `.mcp.json` declaration | Manual compatible connector configuration for local fallback | Launchers and protocol tests are present. |
-| Package readiness | Local scripts | Local scripts | Checks copied assets and contracts, not sessions. |
-| Removal | Host plugin flow | Host UI/manual connectors | Package never guesses host locations. |
+| **CodeBuddy IDE** | Plugin loading is build-specific and may be used only after current discovery. | Public Skills import plus manual MCP JSON. It excludes commands, agents, and hooks. | New-session Skill/command appropriate to the chosen route and all six MCP connections. |
+| **CodeBuddy CLI** | From the release root, enter `/plugin marketplace add <absolute-local-LazyBuddy-path>`, wait, then `/plugin install lazybuddy@lazybuddy` as a second action. | Interactive `/plugin` provides the same documented route. `--plugin-dir` is development/testing only, never persistent. | Fresh-session Skill/command and all six MCP connections. |
+| **WorkBuddy** | The supplied prerelease build exposed a full plugin route; this observed-build route is not a public compatibility promise. | Skills-only import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | One imported Skill plus every connector, or full-plugin capabilities only when the current loaded session proves them. |
+
+`.codebuddy/settings.json` is shareable non-secret project scope.
+`.codebuddy/settings.local.json` is ignored local/machine scope and remains
+unstaged; secrets must never be committed. Package checks preserve both.
 
 ## Structural differences
 

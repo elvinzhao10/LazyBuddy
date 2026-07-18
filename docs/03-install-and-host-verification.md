@@ -15,7 +15,14 @@ reload/new-session step is separate. WorkBuddy's supported fallback is Skills
 import plus six individual manual local MCP connectors. Files or load-check
 output never imply WorkBuddy commands, agents, hooks, or MCP loaded without a
 real full-plugin session. Host proof must show one real Skill/command and every
-expected MCP connection; otherwise host readiness remains pending.
+expected MCP connection. If Computer Use is unavailable, a user-pasted verbatim
+status or screenshot is observed evidence; otherwise **HOST READINESS:
+PENDING**.
+
+Route status is explicit: the local marketplace is the **documented CodeBuddy
+CLI route**. CodeBuddy IDE plugin loading and WorkBuddy full-plugin loading are
+**observed-build routes** only. The `manual-skills-mcp-fallback` is the
+supported local fallback. Package checks never upgrade any route to host proof.
 
 ## Copyable versus observed state
 
@@ -36,4 +43,18 @@ The first channel supports claims about package contents. The second supports cl
 
 ## Delivery surfaces
 
-CodeBuddy IDE and CLI use host plugin discovery. WorkBuddy may use a documented plugin/marketplace surface or a narrower local-skills import path. The latter imports skills only; it is intentionally not represented as automatic agent, hook, command, or MCP loading. The detailed host adapters are in [Host capability matrix](10-host-capability-matrix.md) and [Host routes](reference/host-routes.md).
+CodeBuddy CLI uses the documented release-root marketplace commands
+`/plugin marketplace add <absolute-local-LazyBuddy-path>` and, as a later
+action, `/plugin install lazybuddy@lazybuddy`. CodeBuddy IDE's public fallback
+is Skills import plus MCP JSON; plugin loading is build-specific. WorkBuddy's
+supplied prerelease build exposed a full plugin route, but the supported local
+fallback remains Skills-only import plus six manual connectors. The fallback
+excludes commands, agents, and hooks. Full plugin/manual coexistence is
+unsupported: stop the session, remove only old LazyBuddy entries through the
+host UI, choose one route, start a new session, and verify it.
+
+`.codebuddy/settings.json` is shareable non-secret project scope; ignored
+`.codebuddy/settings.local.json` is local/machine scope, and secrets must never
+be committed. `--plugin-dir` is development/testing only, never persistent.
+The detailed host adapters are in [Host capability matrix](10-host-capability-matrix.md)
+and [Host routes](reference/host-routes.md).
