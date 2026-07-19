@@ -44,6 +44,7 @@ build/
 *.swp
 *.swo
 *~
+.codebuddy/settings.local.json
 .vscode/
 .idea/
 *.sublime-project

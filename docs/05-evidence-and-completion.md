@@ -4,6 +4,14 @@ Completion is a claim backed by evidence, not a green-looking status message.
 LazyBuddy separates package readiness from live-host behavior; that distinction
 is the most important rule for interpreting results.
 
+The capability contract names four evidence scopes: `package-ready`,
+`observed-build-route`, `manual-skills-mcp-fallback`, and `live-host-proof`.
+Package checks emit only `package-ready`. The Skills/manual-MCP fallback is
+Skills-only plus six manually configured local connectors; it excludes agents,
+commands, and hooks. Do not run it together with a full plugin route. Stop the
+session, remove only the old LazyBuddy host entries through the host UI, choose
+one route, restart, and collect fresh proof for that route.
+
 ## Two kinds of evidence
 
 | Evidence | What it can establish | What it cannot establish |

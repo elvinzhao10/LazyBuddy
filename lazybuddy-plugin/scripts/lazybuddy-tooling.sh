@@ -964,8 +964,12 @@ def read_processes():
         output = subprocess.check_output(
             [process_snapshot, "-axo", "pid=,ppid=,pgid=,lstart=,command="], text=True
         )
-    except (OSError, subprocess.CalledProcessError):
-        return {}
+    except OSError as error:
+        raise SystemExit(f"CODEGRAPH_PROCESS_INSPECTION_UNAVAILABLE: {error}") from error
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(
+            f"CODEGRAPH_PROCESS_INSPECTION_UNAVAILABLE: trusted process snapshot exited {error.returncode}"
+        ) from error
     processes = {}
     for line in output.splitlines():
         # pid ppid pgid weekday month day HH:MM:SS year command

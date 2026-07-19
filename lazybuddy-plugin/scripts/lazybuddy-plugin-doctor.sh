@@ -18,6 +18,7 @@ fi
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 RUNNER="${PLUGIN_ROOT}/scripts/lazybuddy-bounded-run.py"
 HOST_VALIDATOR_TIMEOUT="${LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS:-15}"
+DOCTOR_HOST="${LAZYBUDDY_DOCTOR_HOST:-package}"
 
 PASS=0
 FAIL=0
@@ -36,15 +37,25 @@ check() {
     fi
 }
 
-validator_reports_failure() {
+validator_reports_success() {
     local output="$1"
-    printf '%s\n' "$output" | grep -qiE 'validation[[:space:]]+(failed|failure)|found[[:space:]]+[1-9][0-9]*[[:space:]]+errors?|(^|[^[:alnum:]])errors?[[:space:]]*:|status code [45][0-9]{2}|HTTP(/[0-9.]+)?[[:space:]]+[45][0-9]{2}'
+    case "$output" in
+        "Validation successful: 0 errors"|"Validation passed with no errors") return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 if ! [[ "$HOST_VALIDATOR_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
     printf 'ERROR: LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS must be a positive integer\n' >&2
     exit 2
 fi
+case "$DOCTOR_HOST" in
+    package|codebuddy-cli|codebuddy-ide|workbuddy) ;;
+    *)
+        printf 'ERROR: LAZYBUDDY_DOCTOR_HOST must be package, codebuddy-cli, codebuddy-ide, or workbuddy\n' >&2
+        exit 2
+        ;;
+esac
 
 echo "=== LazyBuddy Plugin Doctor ==="
 echo "Plugin root: ${PLUGIN_ROOT}"
@@ -80,7 +91,11 @@ PY
     else
         check "$HOST manifest is valid JSON" "parse error"
     fi
-    for field in name version skills commands agents hooks mcpServers; do
+    FIELDS="name version commands agents hooks mcpServers"
+    if [ "$HOST" = "WorkBuddy" ]; then
+        FIELDS="${FIELDS} skills"
+    fi
+    for field in $FIELDS; do
         if python3 - "$MANIFEST" "$field" <<'PY' 2>/dev/null
 import json
 import sys
@@ -95,6 +110,60 @@ PY
         fi
     done
 done
+
+if codebuddy_skills=$(python3 - "$CODEBUDDY_MANIFEST" "$PLUGIN_ROOT" <<'PY' 2>&1
+import json
+import os
+import sys
+
+manifest_path, root = sys.argv[1:]
+root = os.path.realpath(root)
+with open(manifest_path, encoding="utf-8") as handle:
+    manifest = json.load(handle)
+raw = manifest.get("skills")
+mode = "declared"
+if raw is None:
+    values = ["./skills/"]
+    mode = "default discovery"
+elif isinstance(raw, str):
+    values = [raw]
+else:
+    values = raw
+if not isinstance(values, list) or not values or any(not isinstance(value, str) or not value for value in values):
+    raise SystemExit("must be a non-empty relative directory or array of directories")
+count = 0
+for value in values:
+    if os.path.isabs(value):
+        raise SystemExit(f"path must stay inside plugin root: {value}")
+    directory = os.path.realpath(os.path.join(root, value))
+    try:
+        inside_root = os.path.commonpath([root, directory]) == root
+    except ValueError:
+        inside_root = False
+    if not inside_root:
+        raise SystemExit(f"path escapes plugin root: {value}")
+    if not os.path.isdir(directory):
+        raise SystemExit(f"directory missing: {value}")
+    children = sorted(
+        (entry for entry in os.scandir(directory) if entry.is_dir(follow_symlinks=False)),
+        key=lambda entry: entry.name,
+    )
+    if not children:
+        raise SystemExit(f"no skill directories under {value}")
+    for child in children:
+        if not os.path.isfile(os.path.join(child.path, "SKILL.md")):
+            raise SystemExit(f"missing {child.name}/SKILL.md")
+        count += 1
+if mode == "default discovery" and count != 14:
+    raise SystemExit(f"expected 14 default skills, found {count}")
+print(f"{mode}: {count} skill(s)")
+PY
+); then
+    check "CodeBuddy skills discovery" ok
+    echo "  [INFO] CodeBuddy skills: $codebuddy_skills"
+else
+    check "CodeBuddy skills discovery" "$codebuddy_skills"
+fi
 
 if agreement=$(python3 - "$CODEBUDDY_MANIFEST" "$WORKBUDDY_MANIFEST" "${PROJECT_ROOT}/.codebuddy-plugin/marketplace.json" <<'PY' 2>&1
 import json
@@ -125,7 +194,9 @@ else
     check "Host/marketplace version agreement" "$agreement"
 fi
 
-if command -v codebuddy >/dev/null 2>&1; then
+if [ "$DOCTOR_HOST" = "codebuddy-ide" ] || [ "$DOCTOR_HOST" = "workbuddy" ]; then
+    echo "  [SKIP] CodeBuddy manifest validator — CLI-only validator not applicable to ${DOCTOR_HOST}"
+elif command -v codebuddy >/dev/null 2>&1; then
     validator_result="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-host-validator.XXXXXX")"
     if python3 "$RUNNER" --label "CodeBuddy manifest validator" --timeout "$HOST_VALIDATOR_TIMEOUT" --result-file "$validator_result" -- codebuddy plugin validate "$PLUGIN_ROOT"; then
         validator_output="$(python3 - "$validator_result" <<'PY'
@@ -134,10 +205,10 @@ import sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
 PY
 )"
-        if validator_reports_failure "$validator_output"; then
-            check "CodeBuddy manifest validator" "$validator_output"
-        else
+        if validator_reports_success "$validator_output"; then
             check "CodeBuddy manifest validator" ok
+        else
+            check "CodeBuddy manifest validator" "$validator_output"
         fi
     else
         validator_state="$(python3 - "$validator_result" <<'PY'
@@ -148,16 +219,28 @@ print(f'{result["status"]} {result["reason"]}')
 PY
 )"
         if [ "$validator_state" = "timeout deadline_exceeded" ]; then
-            check "CodeBuddy manifest validator" "timeout"
+            if [ "$DOCTOR_HOST" = "package" ]; then
+                echo "  [UNCHECKED] CodeBuddy manifest validator — timeout; package validation remains unverified"
+            else
+                check "CodeBuddy manifest validator" "timeout"
+            fi
         elif [ "$validator_state" = "unavailable launch_error" ]; then
-            check "CodeBuddy manifest validator" "unavailable"
+            if [ "$DOCTOR_HOST" = "package" ]; then
+                echo "  [UNCHECKED] CodeBuddy manifest validator — unavailable; package validation remains unverified"
+            else
+                check "CodeBuddy manifest validator" "unavailable"
+            fi
         else
             check "CodeBuddy manifest validator" "validation command failed"
         fi
     fi
     rm -f "$validator_result"
 else
-    echo "  [UNCHECKED] CodeBuddy manifest validator — codebuddy CLI unavailable"
+    if [ "$DOCTOR_HOST" = "package" ]; then
+        echo "  [UNCHECKED] CodeBuddy manifest validator — codebuddy CLI unavailable"
+    else
+        check "CodeBuddy manifest validator" "codebuddy CLI unavailable"
+    fi
 fi
 
 # 4. Component directories exist
@@ -243,7 +326,12 @@ try:
 except subprocess.CalledProcessError as error:
     raise SystemExit(error.stderr.strip() or "canonical readiness report failed")
 records = json.loads(completed.stdout).get("records")
-if not isinstance(records, list) or len(records) != 9:
+if (
+    not isinstance(records, list)
+    or len(records) != 9
+    or any(record.get("status") == "host-ready" for record in records)
+    or any(record.get("readiness_scope") != "package-ready" for record in records)
+):
     raise SystemExit("canonical readiness report did not return nine records")
 print("ok")
 PY
@@ -480,6 +568,7 @@ active_or_complete = {"active", "created", "executing", "blocked", "complete", "
 completed_task_statuses = {"complete", "completed", "done"}
 errors = []
 notes = []
+warnings = []
 checked_runs = 0
 
 def under_repo(path):
@@ -651,6 +740,13 @@ for run_dir in run_dirs:
                     stripped = line.strip()
                     if not stripped:
                         continue
+                    legacy_header = re.fullmatch(r"RUN_ID:\s*([A-Za-z0-9._-]+)", stripped)
+                    if line_number == 1 and legacy_header and legacy_header.group(1) == run_id:
+                        warnings.append(
+                            f"{run_id}: events.jsonl line 1 legacy RUN_ID header preserved unchanged; "
+                            "not a JSON event; excluded from package-health failure"
+                        )
+                        continue
                     try:
                         event = json.loads(stripped)
                     except Exception as exc:
@@ -661,6 +757,8 @@ for run_dir in run_dirs:
         else:
             notes.append(f"{run_id}: no events.jsonl")
 
+for warning in warnings:
+    print(f"WARN: {warning}")
 if errors:
     print("; ".join(errors))
     sys.exit(1)
@@ -670,9 +768,12 @@ else:
     print("ok: checked %d run(s)" % checked_runs)
 PY
 ); then
+    printf '%s\n' "$state_result" | sed -n 's/^WARN: /  [WARN] /p'
     check "Run state drift/evidence/boundaries" ok
 else
-    check "Run state drift/evidence/boundaries" "${state_result}"
+    printf '%s\n' "$state_result" | sed -n 's/^WARN: /  [WARN] /p'
+    state_error="$(printf '%s\n' "$state_result" | sed '/^WARN: /d')"
+    check "Run state drift/evidence/boundaries" "$state_error"
 fi
 
 echo ""

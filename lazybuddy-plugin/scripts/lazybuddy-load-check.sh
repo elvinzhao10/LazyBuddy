@@ -105,8 +105,10 @@ work_manifest_path = os.path.join(root, ".workbuddy-plugin", "plugin.json")
 if not os.path.exists(code_manifest_path) and not os.path.exists(work_manifest_path) and skill_count:
     print(f"DEGRADED skills: {skill_count} discovered in manual skill-only fallback")
     print("UNCHECKED commands/hooks/MCP: not installed by the manual skill-only fallback")
+    print("READINESS_SCOPE=manual-skills-mcp-fallback")
+    print("Manual fallback exposes Skills and individually configured MCP only; agents, commands, and hooks remain unavailable.")
     print("PACKAGE_READINESS=degraded")
-    print("Package readiness is degraded; host registration and runtime loading are unchecked.")
+    print("Package readiness is degraded; host activation and runtime loading are unchecked.")
     sys.exit(0)
 
 for legal_name in ("LICENSE", "NOTICE"):
@@ -117,12 +119,75 @@ for legal_name in ("LICENSE", "NOTICE"):
         result("FAIL", f"package {legal_name}", "missing from plugin root")
 
 expected_components = {
-    "skills": ["./skills/"],
     "commands": ["./commands/"],
     "agents": ["./agents/"],
     "hooks": ["./hooks/hooks.json"],
     "mcpServers": ["./.mcp.json"],
 }
+
+def resolve_skill_directories(manifest, host):
+    """Return manifest-declared skill roots, or the host's default root."""
+    if "skills" not in manifest:
+        if host == "CodeBuddy manifest":
+            result("PASS", f"{host} skills", "default discovery")
+            return [skills_dir], "default"
+        result("FAIL", f"{host} skills", "expected ['./skills/'], got missing")
+        return [], "invalid"
+
+    raw = manifest.get("skills")
+    values = [raw] if isinstance(raw, str) else raw
+    if not isinstance(values, list) or not values or any(not isinstance(value, str) or not value for value in values):
+        result("FAIL", f"{host} skills", "must be a non-empty relative directory or array of directories")
+        return [], "invalid"
+    if host == "WorkBuddy manifest" and values != ["./skills/"]:
+        result("FAIL", f"{host} skills", f"expected ['./skills/'], got {raw!r}")
+        return [], "invalid"
+
+    resolved = []
+    for value in values:
+        if os.path.isabs(value):
+            result("FAIL", f"{host} skills", f"path must stay inside plugin root, got {value!r}")
+            continue
+        candidate = os.path.realpath(os.path.join(root, value))
+        try:
+            inside_root = os.path.commonpath((root, candidate)) == root
+        except ValueError:
+            inside_root = False
+        if not inside_root:
+            result("FAIL", f"{host} skills", f"path escapes plugin root, got {value!r}")
+        elif not os.path.isdir(candidate):
+            result("FAIL", f"{host} skills", f"directory missing: {value!r}")
+        else:
+            resolved.append(candidate)
+    if resolved and len(resolved) == len(values):
+        result("PASS", f"{host} skills", "declared")
+        return resolved, "declared"
+    return [], "invalid"
+
+def inspect_skill_tree(directories, expected_count=None):
+    actual = 0
+    problems = []
+    for directory in directories:
+        if not os.path.isdir(directory):
+            problems.append(f"directory missing: {directory}")
+            continue
+        children = sorted(
+            (entry for entry in os.scandir(directory) if entry.is_dir(follow_symlinks=False)),
+            key=lambda entry: entry.name,
+        )
+        if not children:
+            problems.append(f"no skill directories under {directory}")
+            continue
+        for child in children:
+            skill_path = os.path.join(child.path, "SKILL.md")
+            if os.path.isfile(skill_path):
+                actual += 1
+            else:
+                problems.append(f"missing {child.name}/SKILL.md")
+    if expected_count is not None and actual != expected_count:
+        problems.append(f"expected {expected_count} skills, found {actual}")
+    return actual, problems
+
 manifests = {}
 for host, path in (("CodeBuddy manifest", code_manifest_path), ("WorkBuddy manifest", work_manifest_path)):
     manifest = load_json(path, host)
@@ -145,6 +210,12 @@ for host, path in (("CodeBuddy manifest", code_manifest_path), ("WorkBuddy manif
         else:
             result("FAIL", f"{host} {key}", f"expected {expected!r}, got {actual!r}")
 
+skill_directories = {}
+skill_modes = {}
+for host, manifest in manifests.items():
+    if manifest is not None:
+        skill_directories[host], skill_modes[host] = resolve_skill_directories(manifest, host)
+
 code_manifest = manifests["CodeBuddy manifest"]
 work_manifest = manifests["WorkBuddy manifest"]
 if code_manifest is not None and work_manifest is not None:
@@ -162,6 +233,10 @@ if not marketplace_path:
     marketplace_path = next((path for path in candidates if os.path.isfile(path)), "")
 if marketplace_path:
     marketplace = load_json(marketplace_path, "marketplace metadata")
+    if marketplace is not None and marketplace.get("name") != "lazybuddy":
+        result("FAIL", "marketplace name", f"expected 'lazybuddy', got {marketplace.get('name')!r}")
+    elif marketplace is not None:
+        result("PASS", "marketplace name", "lazybuddy")
     entries = marketplace.get("plugins", []) if marketplace else []
     entry = next((item for item in entries if isinstance(item, dict) and item.get("name") == "lazybuddy"), None)
     if entry is None:
@@ -173,7 +248,29 @@ if marketplace_path:
 else:
     print("UNCHECKED marketplace metadata: not packaged with this installed plugin root")
 
-count_files("skills", skills_dir, 14, lambda base, name: name == "SKILL.md" and os.path.basename(base).startswith("lazy-"))
+skill_inventory_emitted = False
+for host in ("CodeBuddy manifest", "WorkBuddy manifest"):
+    directories = skill_directories.get(host, [])
+    if not directories:
+        continue
+    is_default = skill_modes.get(host) == "default"
+    expected_count = 14 if is_default or host == "WorkBuddy manifest" else None
+    actual, problems = inspect_skill_tree(directories, expected_count)
+    if is_default:
+        label = "CodeBuddy default skills"
+    elif host == "WorkBuddy manifest":
+        label = "WorkBuddy skills"
+    else:
+        label = "CodeBuddy declared skills"
+    if problems:
+        result("FAIL", label, f"{actual} discovered; " + "; ".join(problems))
+    else:
+        result("PASS", label, f"{actual} discovered")
+    if not skill_inventory_emitted:
+        denominator = expected_count if expected_count is not None else actual
+        result("PASS" if not problems else "FAIL", "skills", f"{actual}/{denominator}")
+        skill_inventory_emitted = True
+
 count_files("commands", os.path.join(root, "commands"), 14, lambda _base, name: name.endswith(".md"))
 count_files("agents", os.path.join(root, "agents"), 13, lambda _base, name: name.endswith(".md"))
 
@@ -224,7 +321,13 @@ try:
         text=True,
     )
     records = json.loads(report.stdout).get("records")
-    if not isinstance(records, list) or len(records) != 9 or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records):
+    if (
+        not isinstance(records, list)
+        or len(records) != 9
+        or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records)
+        or any(record.get("status") == "host-ready" for record in records)
+        or any(record.get("readiness_scope") != "package-ready" for record in records)
+    ):
         raise ValueError("canonical report did not return nine integrity-valid records")
 except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
     result("FAIL", "canonical capability readiness", str(exc))
@@ -237,5 +340,6 @@ if failed:
     sys.exit(1)
 
 print("PACKAGE_READINESS=full")
-print("Package files are ready. Host registration, runtime loading, and MCP connection remain unchecked.")
+print("READINESS_SCOPE=package-ready")
+print("Package files are ready. Host activation, runtime loading, and MCP status remain unchecked.")
 PY

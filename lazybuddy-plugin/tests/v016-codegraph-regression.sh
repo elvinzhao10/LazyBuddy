@@ -252,6 +252,26 @@ expect 'CodeGraph enable is repeat-safe' 0 bash "$LIFECYCLE" codegraph-enable --
 expect 'CodeGraph exports a package-owned MCP configuration' 0 bash "$LIFECYCLE" codegraph-export-mcp --target "$TARGET" --tooling-root "$TOOLING_ROOT"
 grep -q 'mcp/codegraph/server.sh' "$TMP/CodeGraph exports a package-owned MCP configuration.out" || fail 'exported launcher path'
 
+# Given a platform that denies the trusted process snapshot, when uninstall is
+# requested, then the lifecycle must refuse explicitly and preserve every
+# ownership artifact instead of claiming that an empty snapshot is safe.
+if ! INSPECTION_OUTPUT="$(bash -c 'source "$1"; TOOLING_ROOT="$2"; TARGET_ROOT="$3"; stop_owned_codegraph_processes' \
+    bash "$LIFECYCLE" "$TOOLING_ROOT" "$TARGET" 2>&1)"; then
+    grep -Fq 'CODEGRAPH_PROCESS_INSPECTION_UNAVAILABLE' <<<"$INSPECTION_OUTPUT" \
+        || fail 'trusted process inspection failed without the typed refusal'
+    expect 'CodeGraph uninstall fails closed when process inspection is unavailable' 1 \
+        bash "$LIFECYCLE" codegraph-uninstall --target "$TARGET" --tooling-root "$TOOLING_ROOT"
+    grep -Fq 'CODEGRAPH_PROCESS_INSPECTION_UNAVAILABLE' \
+        "$TMP/CodeGraph uninstall fails closed when process inspection is unavailable.out" \
+        || fail 'CodeGraph uninstall omitted the typed process-inspection refusal'
+    [ -d "$TARGET/.codegraph" ] || fail 'failed-closed uninstall removed the owned index'
+    [ -f "$TOOLING_ROOT/.lazybuddy-codegraph-receipt.json" ] || fail 'failed-closed uninstall removed the ownership receipt'
+    [ -d "$TOOLING_ROOT/.lazybuddy-codegraph-runtime" ] || fail 'failed-closed uninstall removed the runtime root'
+    printf 'UNSUPPORTED: trusted process inspection is unavailable; live ownership teardown remains fail-closed\n'
+    printf 'PASS CodeGraph lifecycle, MCP, and ownership boundaries\n'
+    exit 0
+fi
+
 LIVE_READY="$TMP/live-mcp-ready"
 python3 - "$PLUGIN_ROOT/mcp/codegraph/server.sh" "$TARGET" "$TOOLING_ROOT" "$TMP/launcher-pid" "$LIVE_READY" <<'PY' &
 import json

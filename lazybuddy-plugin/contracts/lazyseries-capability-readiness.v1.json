@@ -3,6 +3,7 @@
   "schema_version": 1,
   "contract_version": "0.18.0",
   "title": "LazySeries Capability Readiness Record",
+  "$comment": "Package checks emit only package-ready evidence. observed-build-route, manual-skills-mcp-fallback, and live-host-proof require an explicit host observation and are never inferred from this package.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,6 +14,7 @@
     "capability",
     "provider",
     "status",
+    "readiness_scope",
     "reason_code",
     "message",
     "receipt",
@@ -27,7 +29,7 @@
     "provider": { "type": ["string", "null"] },
     "status": {
       "enum": [
-        "host-ready",
+        "package-ready",
         "owned-ready",
         "missing",
         "incompatible",
@@ -35,6 +37,16 @@
         "failed-optional",
         "not-initialized"
       ]
+    },
+    "readiness_scope": {
+      "type": "string",
+      "enum": [
+        "package-ready",
+        "observed-build-route",
+        "manual-skills-mcp-fallback",
+        "live-host-proof"
+      ],
+      "description": "The evidence boundary for this record. Package checks must emit package-ready only; the other scopes require a separately recorded host observation."
     },
     "reason_code": { "type": ["string", "null"] },
     "message": { "type": "string" },

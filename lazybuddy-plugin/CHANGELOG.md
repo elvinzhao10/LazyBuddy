@@ -2,6 +2,52 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.0.2 — Current-message onboarding intent (2026-07-18)
+
+- Added the local-first onboarding hotfix: the copied package and local
+  CodeBuddy marketplace metadata can be checked from a permanent folder
+  without implying a live host installation.
+- Made onboarding scan the complete current message and honor the rightmost
+  conflicting explicit route while preserving compatible details.
+- Routed the exact mixed InitDeep/WorkBuddy UI request to the later WorkBuddy
+  UI intent without expanding host-setting or installation authority.
+- Aligned active manifests, tooling packages, MCP identities, hook/verifier
+  banners, documentation clients, and public install guidance with v1.0.2.
+- Made the release-root local marketplace the documented CodeBuddy CLI route:
+  add the absolute local root, install `lazybuddy@lazybuddy`, then start a fresh
+  session as three separate actions. `--plugin-dir` remains development-only.
+- Qualified CodeBuddy IDE and WorkBuddy plugin behavior as observed-build
+  routes, retained Skills plus six manual MCP connectors as the supported
+  fallback, and documented collision-free migration between the two.
+- Clarified `.codebuddy/settings.json` versus ignored
+  `.codebuddy/settings.local.json` scope and kept secrets out of committed
+  configuration.
+
+### Post-prerelease host-route correction (2026-07-19)
+
+- Made the release-root CodeBuddy marketplace commands the preferred full-plugin
+  route for CodeBuddy IDE whenever its CLI is available; the supplied IDE GUI
+  Add local directory flow failed, so the UI path is now explicitly
+  observed-build-only.
+- Recorded the supplied WorkBuddy v5.2.6 macOS build's durable route: after
+  explicit user approval, current host-schema inspection, and a validated
+  additive merge plan preserving existing registry entries, prepare the cache
+  with absolute MCP launchers and explicit project context, then perform one
+  GUI **Skills → Plugins → lazybuddy → +** binding. If that schema/merge plan
+  cannot be established, use the Skills plus six-MCP fallback. The GUI Install
+  action hangs in an orphaned `plugin validate` and is no longer presented as
+  an install step; hand-edited `known_marketplaces.json` is documented as
+  non-durable.
+- Kept Skills plus six manual MCP connectors as the fallback, with commands,
+  agents, and hooks excluded unless a fresh host session proves them.
+
+### Verification boundary
+
+- Package checks establish local package readiness only; host readiness still
+  requires a fresh CodeBuddy or WorkBuddy session, one real Skill/command, and
+  observed state for all six MCP connections. Otherwise host readiness remains
+  pending.
+
 ## v1.0.1 — Stable CI isolation (2026-07-17)
 
 - Split deterministic package and publication validation from timing-sensitive
