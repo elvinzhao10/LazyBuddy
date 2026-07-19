@@ -20,7 +20,8 @@ status or screenshot is observed evidence; otherwise **HOST READINESS:
 PENDING**.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
-CLI route**. CodeBuddy IDE plugin loading and WorkBuddy full-plugin loading are
+CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
+available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
 **observed-build routes** only. The `manual-skills-mcp-fallback` is the
 supported local fallback. Package checks never upgrade any route to host proof.
 
@@ -43,21 +44,71 @@ The first channel supports claims about package contents. The second supports cl
 
 ## Delivery surfaces
 
-CodeBuddy CLI uses the documented release-root marketplace commands
-`/plugin marketplace add <absolute-local-LazyBuddy-path>` and, as a later
-action, `/plugin install lazybuddy@lazybuddy`. CodeBuddy IDE's public fallback
-is Skills import plus MCP JSON; plugin loading is build-specific. WorkBuddy's
-supplied prerelease build exposed a full plugin route, but the supported local
-fallback remains Skills-only import plus six manual connectors. The fallback
-excludes commands, agents, and hooks. Full plugin/manual coexistence is
-unsupported: stop the session, remove only old LazyBuddy entries through the
-host UI, choose one route, start a new session, and verify it.
+CodeBuddy CLI uses these documented terminal commands against the absolute
+release root (not the nested `lazybuddy-plugin/` directory):
 
-For either desktop host, the observed-build full-plugin route is a GUI sequence:
-add the release root as a local directory marketplace, wait for discovery,
-install as a separate action, fully restart, then verify a fresh session. The
-supplied 2026-07-18 macOS reports did not record exact host app versions; an
-unsupported build remains **HOST READINESS: PENDING**. The fallback's exact
+```text
+codebuddy plugin marketplace add <absolute-release-root>
+codebuddy plugin install lazybuddy@lazybuddy
+```
+
+Inside a CodeBuddy session, the interactive `/plugin` menu is equivalent; do
+not use the slash forms as terminal commands. CodeBuddy IDE uses that same
+user-scope CLI marketplace route whenever the CLI is available; its supplied
+GUI Add local directory flow failed. If the CLI is unavailable, use the public
+Skills import plus manual MCP JSON fallback. WorkBuddy's supplied build
+exposed a full plugin route only after the observed cache preparation and GUI
+`+` binding described below. The supported local fallback remains Skills-only
+import plus six manual connectors. The fallback excludes commands, agents, and
+hooks. Full plugin/manual coexistence is unsupported: stop the session, remove
+only old LazyBuddy entries through the host UI, choose one route, start a new
+session, and verify it.
+
+For CodeBuddy IDE, the GUI full-plugin sequence is an observed-build
+alternative only: add the release root as a local directory marketplace, wait
+for discovery, install as a separate action, fully restart, then verify a fresh
+session. The supplied GUI flow failed, so prefer the CLI route and retain
+**HOST READINESS: PENDING** until observed.
+
+### WorkBuddy observed-build route
+
+The supplied WorkBuddy GUI Install action hung in an orphaned `plugin
+validate`. Do not click the GUI Install action or direct users to it. Do not
+hand-edit
+`known_marketplaces.json`, because those entries were dropped on restart. Before
+asking for approval, run this read-only preflight from the
+release root:
+
+```bash
+bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
+  --project-dir <absolute-project-root>
+```
+
+It renders/checks package inputs and the six absolute MCP launchers, prints
+`HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
+`HOST_READINESS=pending`, and does not prepare the cache, register
+`installed_plugins.json`, or prove host readiness. `--apply` refuses with no
+host mutation because the WorkBuddy registry schema is private and unverified.
+The supplied WorkBuddy v5.2.6 macOS QA observed the successful full-plugin route only after an agent
+prepared a cache with the absolute MCP render and a registry update, followed
+by the user's GUI `+` binding. Those artifacts are build-specific evidence, not
+a generic installer recipe. Before any host-managed cache or registry
+mutation, require both explicit user approval and current host-specific schema
+inspection with a validated merge plan that preserves all existing user entries
+and unknown fields. If that plan cannot be established, stop and use the
+Skills/manual-MCP fallback. If it can be established and the user approves,
+perform only that validated additive plan; never overwrite an unrecognized
+registry or claim host readiness from the mutation. Then give exactly one GUI
+action: open **Skills →
+Plugins**, find `lazybuddy`, and click **+**; wait. Ask for a fully restarted
+fresh session as a later action and inspect one real Skill/command, 14 commands,
+13 agents, 12 hooks, and all six MCP connections. If `+` is unavailable, use
+the fallback; it supplies Skills plus six MCP connectors only and never
+commands, agents, or hooks.
+
+The supplied 2026-07-18 macOS reports inspected WorkBuddy v5.2.6 on macOS; the
+CodeBuddy exact host version/build was not recorded, and an unsupported build
+remains **HOST READINESS: PENDING**. The fallback's exact
 non-mutating six-entry JSON—with absolute release-local `server.sh` arguments,
 `cwd`, `CWD`, and `CODEBUDDY_PROJECT_DIR` set to the consumer project—is in
 [Host routes](reference/host-routes.md#manual-connector-specification).

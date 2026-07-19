@@ -62,7 +62,13 @@ if marketplace_path.is_file():
 
 for relative in ("README.md", "AGENTS.md"):
     text = (root.parent / relative).read_text(encoding="utf-8")
-    versions = set(re.findall(r"\bv?(\d+\.\d+\.\d+)\b", text))
-    assert versions == {expected}, f"{relative} current release references reported {sorted(versions)!r}"
+    product_text = re.sub(
+        r"\bWorkBuddy\s+v?\d+\.\d+\.\d+\b", "", text, flags=re.IGNORECASE
+    )
+    product_versions = set(re.findall(r"\bv?(\d+\.\d+\.\d+)\b", product_text))
+    assert product_versions == {expected}, (
+        f"{relative} current LazyBuddy release references reported "
+        f"{sorted(product_versions)!r}"
+    )
 PY
 printf 'v1.0 runtime version regression: PASS\n'

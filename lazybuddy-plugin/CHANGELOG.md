@@ -23,6 +23,24 @@
   `.codebuddy/settings.local.json` scope and kept secrets out of committed
   configuration.
 
+### Post-prerelease host-route correction (2026-07-19)
+
+- Made the release-root CodeBuddy marketplace commands the preferred full-plugin
+  route for CodeBuddy IDE whenever its CLI is available; the supplied IDE GUI
+  Add local directory flow failed, so the UI path is now explicitly
+  observed-build-only.
+- Recorded the supplied WorkBuddy v5.2.6 macOS build's durable route: after
+  explicit user approval, current host-schema inspection, and a validated
+  additive merge plan preserving existing registry entries, prepare the cache
+  with absolute MCP launchers and explicit project context, then perform one
+  GUI **Skills → Plugins → lazybuddy → +** binding. If that schema/merge plan
+  cannot be established, use the Skills plus six-MCP fallback. The GUI Install
+  action hangs in an orphaned `plugin validate` and is no longer presented as
+  an install step; hand-edited `known_marketplaces.json` is documented as
+  non-durable.
+- Kept Skills plus six manual MCP connectors as the fallback, with commands,
+  agents, and hooks excluded unless a fresh host session proves them.
+
 ### Verification boundary
 
 - Package checks establish local package readiness only; host readiness still
