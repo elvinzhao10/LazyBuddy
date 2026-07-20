@@ -1,0 +1,158 @@
+{
+  "adversarial_checks": [
+    "must add a debugging stage after the first verification failure",
+    "must not exceed max_auto_escalations=2",
+    "must produce a blocked-state record with all required fields after the bound is reached",
+    "must not loop indefinitely",
+    "must escalate at most one mode level per scope-revealing failure",
+    "blocked-state record must contain: reproduced failure, attempted approaches, current evidence, unresolved decision, exact next user decision"
+  ],
+  "context": {
+    "escalation_sequence": [
+      {
+        "mode_after": "direct",
+        "stage_added": null,
+        "trigger": "initial",
+        "verification_result": "fail"
+      },
+      {
+        "mode_after": "direct",
+        "stage_added": "debug",
+        "trigger": "verification_failure",
+        "verification_result": "fail"
+      },
+      {
+        "mode_after": "assisted",
+        "stage_added": null,
+        "trigger": "broader_scope_revealed",
+        "verification_result": "fail"
+      },
+      {
+        "blocked": true,
+        "mode_after": "assisted",
+        "trigger": "max_auto_escalations_reached",
+        "verification_result": "fail"
+      }
+    ],
+    "initial_mode": "direct",
+    "max_auto_escalations": 2,
+    "scope_revealed_broader": true,
+    "signals": {
+      "verification_failure": true
+    },
+    "verification_scope": "standard"
+  },
+  "description": "Direct task that fails verification and reveals broader scope, escalating once and then producing a bounded blocked state at max_auto_escalations=2.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "no durable continuation required for a bounded debugging task",
+        "architecture graph unnecessary at assisted depth"
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "reasons": [
+      "verification failure added a debugging stage",
+      "broader scope revealed — escalated one level from direct to assisted",
+      "second escalation did not occur because max_auto_escalations=2 was reached",
+      "blocked-state record produced with all required fields"
+    ],
+    "responsibilities": [
+      "debugging",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "implement",
+      "verify",
+      "debug",
+      "verify"
+    ],
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": {
+        "attempted_approaches": [
+          "direct-mode fix to date.test.js",
+          "added debugging stage after first verification failure",
+          "escalated one mode level after broader scope revealed"
+        ],
+        "current_evidence": "two automatic escalations consumed; verification still fails; scope now spans three modules",
+        "exact_next_user_decision": "confirm whether to broaden scope to a planned change or accept the bounded blocked state",
+        "reproduced_failure": "date.test.js:148 — formatDate returns ISO string instead of locale string",
+        "unresolved_decision": "whether to broaden scope to a planned change spanning date, locale, and timezone modules"
+      },
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "outcome-verification"
+      ],
+      "currentStage": "verify",
+      "decisionId": "fixture-09-escalation-bound",
+      "escalationCount": 2,
+      "mode": "assisted",
+      "nextAction": "halt automatic escalation; produce blocked-state record and request user decision",
+      "reasons": [
+        "verification failure added debugging stage",
+        "broader scope revealed — escalated one level (direct to assisted)",
+        "max_auto_escalations=2 reached — blocked state produced"
+      ],
+      "requestDigest": "sha256:fix-failing-unit-test-date-test-js",
+      "responsibilities": [
+        "implementation",
+        "verification",
+        "debugging"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "implement",
+        "verify",
+        "debug",
+        "verify"
+      ],
+      "version": 1
+    }
+  },
+  "id": "09-escalation-bound",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "broader_scope_revealed"
+    ]
+  },
+  "request": "Fix the failing unit test in src/utils/date.test.js. The test expects a locale-formatted date but the implementation returns an ISO string."
+}

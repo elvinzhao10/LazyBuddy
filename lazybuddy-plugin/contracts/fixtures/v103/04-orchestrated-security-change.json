@@ -1,0 +1,136 @@
+{
+  "adversarial_checks": [
+    "must require approval because the security-review responsibility is approval-required per the authority matrix",
+    "must not skip independent verification for a security-sensitive change",
+    "must include the security-review responsibility",
+    "must not downgrade to planned mode simply because the change is bounded",
+    "must produce independent verification evidence, not only targeted verification"
+  ],
+  "context": {
+    "risk_signals": [
+      "security-sensitive",
+      "authorization-change",
+      "user-visible-integration"
+    ],
+    "scope": "cross-file",
+    "scope_signals": [
+      "touches authorization middleware",
+      "changes a route guard",
+      "user-visible admin surface"
+    ],
+    "verification_scope": "independent"
+  },
+  "description": "Security-sensitive authorization change selecting orchestrated mode with implementation, security review, and independent verification.",
+  "expected_decision": {
+    "approval_required": true,
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "orchestrated",
+    "not_selected": {
+      "capabilities": [
+        "documentation"
+      ],
+      "reasons": [
+        "documentation not material to a code-only authorization change"
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "release-review"
+      ],
+      "stages": [
+        "continue",
+        "debug"
+      ]
+    },
+    "reasons": [
+      "security-sensitive authorization behavior triggers orchestrated selection",
+      "independent review is required for material-risk changes",
+      "user-visible integration where failure would be materially costly",
+      "authority matrix marks security-review as approval-required"
+    ],
+    "responsibilities": [
+      "exploration",
+      "implementation",
+      "planning",
+      "quality-review",
+      "security-review",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "review"
+    ],
+    "verification_level": "independent"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "architecture-context",
+        "execution",
+        "task-state",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-04-orchestrated-security-change",
+      "escalationCount": 0,
+      "mode": "orchestrated",
+      "nextAction": "await approval for security-review responsibility before editing the route guard",
+      "reasons": [
+        "security-sensitive authorization change",
+        "independent review required",
+        "authority matrix marks security-review as approval-required"
+      ],
+      "requestDigest": "sha256:restrict-admin-billing-endpoint-to-admins-only",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "security-review",
+        "quality-review"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "architecture-context": "package-codegraph",
+        "execution": "package-cli",
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "task-state": "package-loop-store",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "version": 1
+    }
+  },
+  "id": "04-orchestrated-security-change",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "new_risk_finding"
+    ]
+  },
+  "request": "Change the authorization logic so that only admins can access the /admin/billing endpoint. Update the route guard, the middleware, and the audit log entry."
+}

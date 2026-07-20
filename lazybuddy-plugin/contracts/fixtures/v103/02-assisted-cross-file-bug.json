@@ -1,0 +1,126 @@
+{
+  "adversarial_checks": [
+    "must not skip the debugging stage when the request is primarily diagnostic",
+    "must not invoke an orchestrator for bounded cross-file work",
+    "must not select planned mode when scope is bounded and design choices are not unresolved",
+    "must include the exploration responsibility when the subsystem is unfamiliar",
+    "single specialist is sufficient; must not create a multi-agent team"
+  ],
+  "context": {
+    "cross_file_signals": [
+      "caller chain spans four files",
+      "symbol defined in module A and consumed in modules B and C"
+    ],
+    "file_count": 4,
+    "repository_familiarity": "unfamiliar",
+    "scope": "bounded",
+    "signals": {
+      "primarily_debugging": true
+    },
+    "verification_scope": "standard"
+  },
+  "description": "Unfamiliar cross-file bug selecting assisted mode with focused exploration and debugging before implementation.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "architecture graph not required for bounded cross-file trace",
+        "no durable continuation state needed for bounded work"
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "reasons": [
+      "repository subsystem is unfamiliar to the current session",
+      "cross-file symbol tracing is required to localize the defect",
+      "request is primarily diagnostic, so exploration and debugging must precede implementation",
+      "implementation is bounded, so orchestrated mode is not justified"
+    ],
+    "responsibilities": [
+      "debugging",
+      "exploration",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "debug",
+      "implement",
+      "verify"
+    ],
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-02-assisted-cross-file-bug",
+      "escalationCount": 0,
+      "mode": "assisted",
+      "nextAction": "trace the stale-data call chain across the four files",
+      "reasons": [
+        "unfamiliar subsystem with cross-file symbol tracing required",
+        "primarily diagnostic work"
+      ],
+      "requestDigest": "sha256:diagnose-stale-profile-data-after-refactor",
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "version": 1
+    }
+  },
+  "id": "02-assisted-cross-file-bug",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "broader_scope_revealed"
+    ]
+  },
+  "request": "Diagnose why the user profile page shows stale data after the recent refactor. The cache invalidation in profile/service.js is suspected but the call chain crosses the controller, the cache module, and the React hook."
+}

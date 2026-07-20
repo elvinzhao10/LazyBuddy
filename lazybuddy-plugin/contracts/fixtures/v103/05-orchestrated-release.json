@@ -1,0 +1,138 @@
+{
+  "adversarial_checks": [
+    "must require approval because the release context triggers the release-review authority checkpoint (approval-required per the authority matrix)",
+    "must produce publication evidence, not only targeted verification",
+    "must not select planned mode for a release or publication change",
+    "must not skip independent verification",
+    "must not list release-review as a mode responsibility (it is an authority checkpoint, not a mode responsibility)"
+  ],
+  "context": {
+    "risk_signals": [
+      "release-or-publication",
+      "user-visible-integration",
+      "irreversible-once-published"
+    ],
+    "scope": "multiple-system",
+    "scope_signals": [
+      "version surfaces across packages",
+      "changelog and release notes",
+      "build artifact publication"
+    ],
+    "verification_scope": "independent"
+  },
+  "description": "Release or publication change selecting orchestrated mode with approval required via the release-review authority checkpoint and publication evidence.",
+  "expected_decision": {
+    "approval_required": true,
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "orchestrated",
+    "not_selected": {
+      "capabilities": [
+        "documentation"
+      ],
+      "reasons": [
+        "documentation capability not material; release notes are produced through the release-review authority checkpoint, not a mode responsibility",
+        "release-review is an authority checkpoint (approval-required) that is not a mode responsibility in any mode; it is exercised through approval_required=true, not through the responsibilities list"
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug"
+      ]
+    },
+    "reasons": [
+      "release or publication behavior triggers orchestrated selection",
+      "orchestrated mode mandates approval_required=true",
+      "release context triggers the release-review authority checkpoint (approval-required per the authority matrix, separate from mode responsibilities)",
+      "publication evidence is required before completion",
+      "user-visible integration where failure would be materially costly"
+    ],
+    "responsibilities": [
+      "exploration",
+      "implementation",
+      "planning",
+      "quality-review",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "review"
+    ],
+    "verification_level": "independent"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "architecture-context",
+        "execution",
+        "task-state",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-05-orchestrated-release",
+      "escalationCount": 0,
+      "mode": "orchestrated",
+      "nextAction": "await approval for release-review responsibility before bumping versions and building artifacts",
+      "reasons": [
+        "release or publication behavior",
+        "orchestrated mode mandates approval_required=true",
+        "release-review authority checkpoint is approval-required",
+        "publication evidence required"
+      ],
+      "requestDigest": "sha256:cut-v2-1-0-release-bump-changelog-build-artifacts",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "quality-review"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "architecture-context": "package-codegraph",
+        "execution": "package-cli",
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "task-state": "package-loop-store",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "version": 1
+    }
+  },
+  "id": "05-orchestrated-release",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "new_risk_finding"
+    ]
+  },
+  "request": "Cut the v2.1.0 release: bump the package version, update the changelog, regenerate the lockfile, and build the release artifacts. Do not push or publish yet."
+}

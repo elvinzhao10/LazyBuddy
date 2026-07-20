@@ -1,0 +1,134 @@
+{
+  "adversarial_checks": [
+    "only the adaptive orchestrator writes the adaptive block (single-writer rule)",
+    "one owner per implementation stage (no duplicate work from parallel agents)",
+    "parallel agents only for genuinely independent work",
+    "stale snapshot must not establish completion — preserved for diagnosis, reclassified, prior completion evidence not accepted",
+    "reviewers must not be the sole authors of the work they approve"
+  ],
+  "context": {
+    "independent_workstreams": [
+      "csv-export stream",
+      "json-export stream"
+    ],
+    "scope": "cross-module",
+    "scope_signals": [
+      "two genuinely independent implementation workstreams",
+      "shared pipeline interface consumed by both"
+    ],
+    "single_writer_rule": true,
+    "verification_scope": "independent"
+  },
+  "description": "Orchestrated scenario with two independent workstreams validating the single-writer adaptive snapshot rule and one-owner-per-stage responsibility ownership.",
+  "expected_decision": {
+    "approval_required": true,
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "orchestrated",
+    "not_selected": {
+      "capabilities": [
+        "documentation"
+      ],
+      "reasons": [
+        "documentation capability not material to a code-only pipeline change"
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug"
+      ]
+    },
+    "reasons": [
+      "two genuinely independent implementation workstreams (CSV and JSON) justify orchestrated mode",
+      "single owner assigned to each implementation stage to avoid duplicate work",
+      "adaptive snapshot written only by the orchestrator per the single-writer rule",
+      "independent verification required because reviewers must not be sole authors"
+    ],
+    "responsibilities": [
+      "exploration",
+      "implementation",
+      "planning",
+      "quality-review",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "review"
+    ],
+    "verification_level": "independent"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "architecture-context",
+        "execution",
+        "task-state",
+        "outcome-verification"
+      ],
+      "currentStage": "plan",
+      "decisionId": "fixture-10-responsibility-ownership",
+      "escalationCount": 0,
+      "mode": "orchestrated",
+      "nextAction": "assign one owner per stage; preserve single-writer rule for the adaptive block",
+      "reasons": [
+        "two independent workstreams require orchestrated coordination",
+        "single-writer rule for the adaptive snapshot",
+        "one owner per stage to avoid duplicate work"
+      ],
+      "requestDigest": "sha256:implement-export-pipeline-parallel-csv-json-streams",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "quality-review"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "architecture-context": "package-codegraph",
+        "execution": "package-cli",
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "task-state": "package-loop-store",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "version": 1
+    }
+  },
+  "id": "10-responsibility-ownership",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "broader_scope_revealed"
+    ]
+  },
+  "request": "Implement a new data export pipeline with parallel CSV and JSON streams sharing one pipeline interface. The two streams are genuinely independent."
+}
