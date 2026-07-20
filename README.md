@@ -37,6 +37,90 @@ In a CodeBuddy plugin session, commands are namespaced as
 `/lazybuddy:lazy-<command>`. If the host does not expose slash commands, make
 the same request in plain language.
 
+## Adaptive harness (v1.0.3)
+
+LazyBuddy v1.0.3 introduces an **adaptive harness** that selects the smallest
+sufficient workflow for an outcome-based request, composes existing Skills,
+agents, commands, MCPs, tools, hooks, and verifiers, persists an additive
+single-writer snapshot, and explains material choices. Named workflows
+(`lazy-ulw-plan`, `lazy-start-work`, `lazy-review-work`, `lazy-ulw-loop`,
+`lazy-init-deep`, `lazy-verifier`, `lazy-ultrawork`) remain authoritative; an
+explicit user request is never silently downgraded. In a CodeBuddy plugin
+session, commands are namespaced as `/lazybuddy:lazy-<command>`; in WorkBuddy,
+use the equivalent natural-language workflow or imported skill.
+
+### Five modes
+
+The harness selects the lowest mode that satisfies all identified risk,
+uncertainty, continuation, and verification requirements.
+
+| Mode | When selected |
+| --- | --- |
+| `direct` | Localized change, clear acceptance criteria, targeted verification sufficient. |
+| `assisted` | Unfamiliar subsystem, cross-file tracing, primarily debugging, bounded implementation. |
+| `planned` | Acceptance criteria incomplete, multi-system change, decisions must precede edits. |
+| `orchestrated` | Security-sensitive, release/publication, destructive migration, or independent review required. Approval-gated. |
+| `long-horizon` | Multi-session work, durable checkpoints, bounded continuation loop. |
+
+### Automatic selection and explicit override
+
+For an ordinary outcome request the classifier evaluates an ordered
+seven-step policy (explicit user workflow → compatible continuation →
+long-horizon → high-risk or multi-system → broad or ambiguous → unfamiliar or
+diagnostic → small and clear) and selects the first match. An explicit named
+workflow always wins; the classifier may only add required verification or
+approval boundaries.
+
+### Bounded escalation and capability fallback
+
+Verification failure adds a debugging stage. A broader-scope failure may
+escalate the mode by one level. No more than two automatic depth escalations
+are permitted per decision; further failure produces a blocked-state record
+with reproduced failure, attempted approaches, current evidence, and the exact
+next user decision required. When a preferred capability is unavailable, the
+harness selects a safe fallback in the same capability class, reports the
+substitution, and weakens verification claims when the fallback is weaker — it
+never claims equivalent evidence.
+
+### Adaptive snapshot
+
+The harness writes an additive, optional `adaptive` block inside existing
+run/loop state (managed by `lazybuddy-plugin/scripts/state/`). The block
+carries `decisionId`, `requestDigest`, `mode`, `stages`, `currentStage`,
+`responsibilities`, `capabilityClasses`, `runtimeResolution`, `reasons`,
+`escalationCount`, `revisionMarker`, `blocker`, and `nextAction`. Only the
+adaptive orchestrator writes the block; existing v1.0.2 state without it
+continues to load.
+
+### Authority
+
+Read-only and package-owned capabilities activate automatically. Installing a
+dependency, persisting a provider beyond the task, modifying host or marketplace
+settings, changing MCP registrations, using credentials, using a paid service,
+sending repository data to a remote provider, or controlling a browser surface
+all require approval. The two approval-required responsibilities
+(`release-review` and `security-review`) gate the `orchestrated` mode.
+
+### Full-plugin host mapping
+
+CodeBuddy and WorkBuddy are treated as first-class full-plugin hosts. The
+adapter maps each mode onto the existing Skills, agents, commands, hooks, and
+all six declared MCP servers (`run-ledger`, `verification`, `status-dashboard`,
+`context-graph`, `code-intel`, `docs`). The Skills/manual-MCP fallback is a
+clearly degraded route that excludes commands, agents, and hooks; it is not
+the adaptive architecture or default product target.
+
+### Contract reference
+
+The behavior-only contract is shared byte-identically with LazyTrae at
+[`lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json`](lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json),
+paired with its JSON Schema and sha256 digest. Fixtures live under
+`lazybuddy-plugin/contracts/fixtures/v103/`. The implementation lives in
+`lazybuddy-plugin/tooling/lazybuddy_adaptive_*.py`. The full contract
+semantics, authority levels, fallback rules, evidence labels, and known v1.0.3
+gaps are documented in
+[`docs/v1.0.3-adaptive-harness-contract.md`](docs/v1.0.3-adaptive-harness-contract.md).
+
 ## Design mindset
 
 LazyBuddy treats a task as an evidence problem: define the observable outcome,

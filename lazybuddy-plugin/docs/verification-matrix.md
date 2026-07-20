@@ -62,3 +62,59 @@ sibling repository. Release-only paired parity may receive explicitly supplied
 sibling roots to compare documentation or contracts; it is not a runtime,
 installation, or normal-CI dependency. The repository-level evaluation is
 additional public evidence; this package matrix remains self-contained.
+
+## Adaptive harness (v1.0.3)
+
+The v1.0.3 adaptive harness adds behavior-only tests on top of the package
+checks above. They prove the harness selects the smallest sufficient workflow
+mode, composes existing surfaces, persists an additive snapshot, falls back
+safely, escalates within bounds, and explains material choices. They are
+still `package evidence` — they do not prove a live host loaded the plugin or
+connected an MCP server.
+
+### Adaptive package checks
+
+| Verification Step | Command | Expected | Artifact |
+| --- | --- | --- | --- |
+| Contract byte-identical with LazyTrae | `diff -r lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json <lazytrae>/lazytrae-plugin/packages/cli/contracts/adaptive-harness-contract.v1.json` | empty diff | command output |
+| Contract schema validation | `python3 -c "import json, jsonschema; ..."` (or `ajv validate`) | exit 0 | command output |
+| Contract + fixture digest | `shasum -a 256 -c lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json.sha256` and `shasum -a 256 -c lazybuddy-plugin/contracts/fixtures/v103/sha256sums.txt` | `OK` for every line | command output |
+| Adaptive detector behavior | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_detector.py` | all tests pass | pytest output |
+| Adaptive mapping per mode | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_mapping.py` | all tests pass | pytest output |
+| Adaptive snapshot extension | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_snapshot.py` | all tests pass; v1.0.2 state without `adaptive` continues to load | pytest output |
+| Adaptive explanation | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_explanation.py` | all tests pass | pytest output |
+| Full-plugin host mapping | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_hosts.py` | CodeBuddy and WorkBuddy mappings pass; Skills/MCP fallback explicitly marked degraded | pytest output |
+| Adaptive integration (detector → mapping → snapshot → explanation) | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_integration.py` | all tests pass | pytest output |
+| W4.1 explicit override remains authoritative | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_1_explicit_override.py` | all tests pass; classifier does not silently downgrade explicit requests | pytest output |
+| W4.2 bounded escalation | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_2_bounded_escalation.py` | all tests pass; max-two-escalation bound enforced; blocked-state record produced | pytest output |
+| W4.3 capability fallback | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_3_capability_fallback.py` | all tests pass; no approval-required authority activated without approval | pytest output |
+| W4.4 responsibility ownership | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_4_responsibility_ownership.py` | all tests pass; one owner per stage; no duplicate work | pytest output |
+| W4.5 continuation (gap recorded) | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_5_continuation.py` | incompatible-revision tests pass; compatible-resume tests are `xfail` (gap, deferred to v1.0.4) | pytest output |
+| W4.6 evidence freshness (gap recorded) | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_6_evidence_freshness.py` | revisionMarker presence passes; stale detection and re-verification signalling are `xfail` (gap, deferred to v1.0.4) | pytest output |
+| Aggregate verification | `bash scripts/lazybuddy-verify.sh` | JSON with `"all_pass":true` (xfail cases excluded) | command output |
+
+### Adaptive evidence boundary
+
+The adaptive package checks above are `package evidence`. They prove:
+
+- the contract is byte-identical with LazyTrae (`parity evidence` only at the
+  contract layer);
+- the classifier, mapping, snapshot, and explanation modules behave per the
+  contract against the shared fixture set;
+- v1.0.2 state without the `adaptive` block continues to load;
+- the single-writer rule is enforced;
+- authority-safe fallback and bounded escalation behave per the contract.
+
+They do **not** prove:
+
+- a live CodeBuddy or WorkBuddy host loaded the plugin, executed a hook, or
+  connected any of the six MCP servers;
+- the adaptive explanation surfaced through a real host session;
+- failure escalation or continuation was observed through the current host
+  surface;
+- any host route is OBSERVED rather than PENDING.
+
+Live-host observation for W5.3 (WorkBuddy full-plugin) and W5.4 (CodeBuddy
+and other hosts) is **PENDING**. See the host-route evidence in
+[host routes](../../docs/reference/host-routes.md) and the known gaps in
+[docs/v1.0.3-adaptive-harness-contract.md](../../docs/v1.0.3-adaptive-harness-contract.md).
