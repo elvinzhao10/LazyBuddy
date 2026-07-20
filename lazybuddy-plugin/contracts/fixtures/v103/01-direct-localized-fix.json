@@ -1,0 +1,116 @@
+{
+  "adversarial_checks": [
+    "must not add planning stage for a localized one-file change",
+    "must not invoke an orchestrator team for bounded low-risk work",
+    "must not require approval for a non-security, non-release text correction",
+    "must not silently escalate to assisted mode when acceptance criteria are clear"
+  ],
+  "context": {
+    "acceptance_criteria": "clear",
+    "file_count": 1,
+    "localization_signals": [
+      "single file",
+      "single line"
+    ],
+    "risk_signals": [],
+    "scope": "localized",
+    "verification_scope": "targeted"
+  },
+  "description": "Localized one-file behavior correction selecting direct mode with targeted verification only.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "outcome-verification",
+      "text-search"
+    ],
+    "mode": "direct",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "semantic-navigation",
+        "structural-search",
+        "task-state"
+      ],
+      "reasons": [
+        "architecture graph unnecessary for single-file change",
+        "no external example required",
+        "no task-state needed for non-resumable work",
+        "semantic navigation unnecessary for known file path"
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "exploration",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug",
+        "plan",
+        "review",
+        "understand"
+      ]
+    },
+    "reasons": [
+      "localized one-file change with clear acceptance criteria",
+      "targeted verification is sufficient",
+      "no security, release, or migration risk signals present",
+      "lowest-sufficient-mode rule selects direct over assisted"
+    ],
+    "responsibilities": [
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "implement",
+      "verify"
+    ],
+    "verification_level": "targeted"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "outcome-verification"
+      ],
+      "currentStage": "implement",
+      "decisionId": "fixture-01-direct-localized-fix",
+      "escalationCount": 0,
+      "mode": "direct",
+      "nextAction": "apply the one-line correction and run targeted verification",
+      "reasons": [
+        "localized one-file change with clear acceptance criteria",
+        "targeted verification is sufficient"
+      ],
+      "requestDigest": "sha256:fix-typo-recieved-received-errors-js-42",
+      "responsibilities": [
+        "implementation",
+        "verification"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "outcome-verification": "package-verification",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "implement",
+        "verify"
+      ],
+      "version": 1
+    }
+  },
+  "id": "01-direct-localized-fix",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure"
+    ]
+  },
+  "request": "Fix the typo in the error message at src/errors.js:42 — it says 'recieved' instead of 'received'."
+}

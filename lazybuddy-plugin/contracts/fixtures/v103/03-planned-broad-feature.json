@@ -1,0 +1,134 @@
+{
+  "adversarial_checks": [
+    "must not begin implementation before the plan stage when acceptance criteria are incomplete",
+    "must not select direct mode when important implementation decisions are unresolved",
+    "must not escalate to orchestrated mode when only one implementation workstream is present",
+    "must resolve design choices before product edits",
+    "planning stage must be selected and must precede implement"
+  ],
+  "context": {
+    "acceptance_criteria": "incomplete",
+    "decisions_to_resolve": [
+      "which PDF rendering library to depend on",
+      "how to handle asynchronous page rendering without blocking the UI",
+      "error UX when a report exceeds the page limit",
+      "whether to add report-level pagination metadata"
+    ],
+    "file_count_estimate": 12,
+    "scope": "broad",
+    "scope_signals": [
+      "spans multiple modules",
+      "crosses an architectural boundary between reports and rendering"
+    ],
+    "verification_scope": "standard"
+  },
+  "description": "Broad feature with unresolved design choices selecting planned mode so planning precedes product edits.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "planned",
+    "not_selected": {
+      "capabilities": [
+        "documentation",
+        "task-state"
+      ],
+      "reasons": [
+        "no durable multi-session continuation required",
+        "documentation not material to current scope"
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug",
+        "review"
+      ]
+    },
+    "reasons": [
+      "acceptance criteria are incomplete and must be resolved before editing",
+      "change spans multiple systems and an architectural boundary",
+      "important implementation decisions must be resolved before editing",
+      "scope is broad but does not require a multi-agent team"
+    ],
+    "responsibilities": [
+      "exploration",
+      "implementation",
+      "planning",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify"
+    ],
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "architecture-context",
+        "execution",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-03-planned-broad-feature",
+      "escalationCount": 0,
+      "mode": "planned",
+      "nextAction": "resolve the four open design choices and produce an implementation plan",
+      "reasons": [
+        "acceptance criteria incomplete",
+        "spans multiple systems and an architectural boundary"
+      ],
+      "requestDigest": "sha256:add-export-to-pdf-feature-reports-module",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "architecture-context": "package-codegraph",
+        "execution": "package-cli",
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify"
+      ],
+      "version": 1
+    }
+  },
+  "id": "03-planned-broad-feature",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "broader_scope_revealed",
+      "new_risk_finding"
+    ]
+  },
+  "request": "Add a new export-to-PDF feature to the reports module. The report layout, the rendering library choice, the async behavior, and the error UX still need to be decided before any product edits."
+}

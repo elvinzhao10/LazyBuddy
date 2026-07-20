@@ -1,0 +1,116 @@
+{
+  "adversarial_checks": [
+    "must not silently downgrade or replace the explicit user request",
+    "must not include the implementation stage when the user said 'plan only'",
+    "must respect the named workflow selection (lazy-ulw-plan)",
+    "must allow the classifier to add required verification or approval boundaries but not replace the explicit mode",
+    "an explicit plan-only request must not produce implementation artifacts"
+  ],
+  "context": {
+    "authoritative_instruction": true,
+    "named_workflow": "lazy-ulw-plan",
+    "signals": {
+      "explicit_user_workflow": true
+    },
+    "verification_scope": "targeted"
+  },
+  "description": "Explicit named workflow request selecting planned mode with planning only and no implementation, proving the user workflow remains authoritative.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "architecture-context",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "planned",
+    "not_selected": {
+      "capabilities": [
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "explicit plan-only request does not require execution or task-state",
+        "documentation not material to a plan-only artifact"
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "implementation",
+        "quality-review",
+        "release-review",
+        "security-review",
+        "verification"
+      ],
+      "stages": [
+        "continue",
+        "debug",
+        "implement",
+        "review",
+        "verify"
+      ]
+    },
+    "reasons": [
+      "explicit user request is authoritative per decision policy step 1",
+      "named workflow 'lazy-ulw-plan' selected by the user",
+      "classifier must not silently downgrade or replace the explicit request",
+      "planning stage selected; implementation explicitly forbidden by user"
+    ],
+    "responsibilities": [
+      "exploration",
+      "planning"
+    ],
+    "stages": [
+      "understand",
+      "plan"
+    ],
+    "verification_level": "targeted"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "architecture-context",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-07-explicit-workflow-override",
+      "escalationCount": 0,
+      "mode": "planned",
+      "nextAction": "produce the plan artifact only; do not begin implementation",
+      "reasons": [
+        "explicit user request is authoritative",
+        "named workflow 'lazy-ulw-plan' selected"
+      ],
+      "requestDigest": "sha256:create-a-plan-only-do-not-implement-yet",
+      "responsibilities": [
+        "exploration",
+        "planning"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "architecture-context": "package-codegraph",
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "plan"
+      ],
+      "version": 1
+    }
+  },
+  "id": "07-explicit-workflow-override",
+  "permitted_escalation": {
+    "max_auto_escalations": 0,
+    "triggers_allowed": []
+  },
+  "request": "Create a plan only — do not implement yet. Use the lazy-ulw-plan workflow and stop after planning."
+}

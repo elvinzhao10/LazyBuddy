@@ -1,0 +1,316 @@
+{
+  "$id": "adaptive-harness-contract.v1.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Behavior-only shared contract for the v1.0.3 adaptive harness. Defines modes, decision policy, snapshot shape, authority matrix, escalation bounds, and transparency rules. Host-internal names (Skill/MCP/agent/hook) are intentionally excluded; each runtime resolves them independently.",
+  "properties": {
+    "$schema": {
+      "const": "adaptive-harness-contract.v1.schema.json",
+      "type": "string"
+    },
+    "authority_matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "continuity": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "debugging": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "exploration": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "implementation": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "planning": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "quality-review": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "release-review": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "security-review": {
+          "$ref": "#/definitions/authority_level"
+        },
+        "verification": {
+          "$ref": "#/definitions/authority_level"
+        }
+      },
+      "required": [
+        "continuity",
+        "debugging",
+        "exploration",
+        "implementation",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review",
+        "verification"
+      ],
+      "type": "object"
+    },
+    "contract_version": {
+      "const": "v1",
+      "type": "string"
+    },
+    "decision_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "items": {
+            "$ref": "#/definitions/decision_step"
+          },
+          "maxItems": 7,
+          "minItems": 7,
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "type": "object"
+    },
+    "escalation_bounds": {
+      "additionalProperties": false,
+      "properties": {
+        "escalation_triggers": {
+          "items": {
+            "$ref": "#/definitions/escalation_trigger"
+          },
+          "minItems": 5,
+          "type": "array"
+        },
+        "max_auto_escalations": {
+          "const": 2,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "escalation_triggers",
+        "max_auto_escalations"
+      ],
+      "type": "object"
+    },
+    "modes": {
+      "additionalProperties": false,
+      "properties": {
+        "assisted": {
+          "$ref": "#/definitions/mode"
+        },
+        "direct": {
+          "$ref": "#/definitions/mode"
+        },
+        "long-horizon": {
+          "$ref": "#/definitions/mode"
+        },
+        "orchestrated": {
+          "$ref": "#/definitions/mode"
+        },
+        "planned": {
+          "$ref": "#/definitions/mode"
+        }
+      },
+      "required": [
+        "assisted",
+        "direct",
+        "long-horizon",
+        "orchestrated",
+        "planned"
+      ],
+      "type": "object"
+    },
+    "snapshot_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "items": {
+            "$ref": "#/definitions/snapshot_field"
+          },
+          "minItems": 14,
+          "type": "array"
+        },
+        "single_writer": {
+          "const": "orchestrator",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fields",
+        "single_writer"
+      ],
+      "type": "object"
+    },
+    "transparency": {
+      "additionalProperties": false,
+      "properties": {
+        "not_selected_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "selected_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "not_selected_fields",
+        "selected_fields"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "$schema",
+    "authority_matrix",
+    "contract_version",
+    "decision_policy",
+    "escalation_bounds",
+    "modes",
+    "snapshot_schema",
+    "transparency"
+  ],
+  "title": "Adaptive Harness Contract v1",
+  "type": "object",
+  "definitions": {
+    "authority_level": {
+      "enum": [
+        "approval-required",
+        "automatic"
+      ],
+      "type": "string"
+    },
+    "decision_step": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "outputs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "description",
+        "inputs",
+        "name",
+        "outputs"
+      ],
+      "type": "object"
+    },
+    "escalation_trigger": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "trigger": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "trigger"
+      ],
+      "type": "object"
+    },
+    "mode": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_required": {
+          "type": "boolean"
+        },
+        "capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "responsibilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workflow_surfaces": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "approval_required",
+        "capabilities",
+        "description",
+        "responsibilities",
+        "workflow_surfaces"
+      ],
+      "type": "object"
+    },
+    "snapshot_field": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "type": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "description",
+        "name",
+        "required",
+        "type"
+      ],
+      "type": "object"
+    }
+  }
+}

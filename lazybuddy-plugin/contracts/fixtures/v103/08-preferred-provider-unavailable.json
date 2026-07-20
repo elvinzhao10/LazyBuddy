@@ -1,0 +1,129 @@
+{
+  "adversarial_checks": [
+    "must preserve the selected mode when a fallback is available",
+    "must not silently enable a remote provider or install dependencies without approval",
+    "must report the substitution concisely through an existing status surface",
+    "must adjust verification expectations when the fallback is weaker",
+    "must never claim equivalent evidence when the fallback cannot provide it"
+  ],
+  "context": {
+    "fallback_available": true,
+    "preferred_capability": "semantic-navigation",
+    "preferred_provider_unavailable": true,
+    "scope": "cross-file",
+    "signals": {
+      "capability_unavailable": true
+    },
+    "substitution": {
+      "fallback_capability_class": "structural-search + text-search",
+      "preferred_provider": "lsp-bridge",
+      "verification_adjustment": "references verified through search plus tests instead of semantic navigation"
+    },
+    "verification_scope": "standard"
+  },
+  "description": "Preferred provider unavailable case preserving the assisted mode and selecting an allowed safe fallback with weaker verification expectations.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "outcome-verification",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "semantic-navigation",
+        "task-state"
+      ],
+      "reasons": [
+        "semantic-navigation preferred provider unavailable and not silently enabled",
+        "no remote provider activated without approval",
+        "architecture graph unnecessary for bounded cross-file work"
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "reasons": [
+      "preferred semantic-navigation provider unavailable; safe fallback selected preserving the capability class where possible",
+      "verification expectations adjusted because the fallback is weaker than semantic navigation",
+      "substitution reported; no equivalent-evidence claim made",
+      "mode preserved at assisted because capability fallback was available"
+    ],
+    "responsibilities": [
+      "debugging",
+      "exploration",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "debug",
+      "implement",
+      "verify"
+    ],
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-08-preferred-provider-unavailable",
+      "escalationCount": 0,
+      "mode": "assisted",
+      "nextAction": "use structural-search plus text-search fallback and adjust reference verification",
+      "reasons": [
+        "preferred semantic-navigation provider unavailable",
+        "safe fallback selected preserving capability class where possible",
+        "verification expectations adjusted because fallback is weaker"
+      ],
+      "requestDigest": "sha256:refactor-search-service-fuzzy-matching",
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "unavailable:fallback-to-structural-search+text-search",
+        "structural-search": "host-native",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "version": 1
+    }
+  },
+  "id": "08-preferred-provider-unavailable",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "capability_unavailable",
+      "verification_failure"
+    ]
+  },
+  "request": "Refactor the search service to support fuzzy matching. The preferred semantic-navigation provider is unavailable for this session."
+}

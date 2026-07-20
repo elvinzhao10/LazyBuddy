@@ -1,0 +1,138 @@
+{
+  "adversarial_checks": [
+    "must select long-horizon over orchestrated when multi-session scope is the explicit reason",
+    "must preserve continuation state across sessions using existing loop/run-state machinery",
+    "must not select orchestrated mode when no security or release risk is present",
+    "must include the continuity responsibility",
+    "must not require approval for automatic-authority responsibilities"
+  ],
+  "context": {
+    "checkpoint_requirement": "durable",
+    "scope": "large",
+    "scope_signals": [
+      "spans authentication, session, and API surface",
+      "touches existing user-facing flows"
+    ],
+    "session_scope": "multi-session",
+    "signals": {
+      "durable_checkpoints": true,
+      "repeated_cycles": true,
+      "resumable_snapshot_required": true
+    },
+    "verification_scope": "standard"
+  },
+  "description": "Multi-session migration selecting long-horizon mode with the existing continuation loop and a resumable adaptive snapshot.",
+  "expected_decision": {
+    "approval_required": false,
+    "capabilities": [
+      "architecture-context",
+      "documentation",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "long-horizon",
+    "not_selected": {
+      "capabilities": [],
+      "reasons": [
+        "long-horizon mode engages the full capability set because multi-session work touches every surface"
+      ],
+      "responsibilities": [
+        "debugging",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "debug",
+        "review"
+      ]
+    },
+    "reasons": [
+      "request explicitly requires multi-session work",
+      "durable checkpoints and repeated cycles are required",
+      "existing continuation loop and run-state machinery must be used",
+      "single resumable adaptive snapshot must be preserved across sessions"
+    ],
+    "responsibilities": [
+      "continuity",
+      "exploration",
+      "implementation",
+      "planning",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "continue"
+    ],
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "blocker": null,
+      "capabilityClasses": [
+        "text-search",
+        "structural-search",
+        "semantic-navigation",
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state",
+        "outcome-verification"
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-06-long-horizon-migration",
+      "escalationCount": 0,
+      "mode": "long-horizon",
+      "nextAction": "establish durable checkpoints and begin session 1 of the migration",
+      "reasons": [
+        "multi-session work explicitly required",
+        "durable checkpoints required",
+        "existing continuation loop must be used"
+      ],
+      "requestDigest": "sha256:migrate-session-auth-to-jwt-over-3-sessions",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "continuity"
+      ],
+      "revisionMarker": "git:HEAD",
+      "runtimeResolution": {
+        "architecture-context": "package-codegraph",
+        "documentation": "package-docs",
+        "execution": "package-cli",
+        "outcome-verification": "package-verification",
+        "semantic-navigation": "package-lsp",
+        "structural-search": "host-native",
+        "task-state": "package-loop-store",
+        "text-search": "host-native"
+      },
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "continue"
+      ],
+      "version": 1
+    }
+  },
+  "id": "06-long-horizon-migration",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification_failure",
+      "broader_scope_revealed",
+      "new_risk_finding"
+    ]
+  },
+  "request": "Migrate the user authentication system from session-based to JWT over the next three sessions. Preserve compatibility with existing sessions during the migration and keep a durable checkpoint so each session can resume."
+}
