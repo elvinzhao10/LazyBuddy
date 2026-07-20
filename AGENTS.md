@@ -6,7 +6,7 @@ and live sessions remain separate authorities.
 
 ## Local-first onboarding (start here)
 
-Keep the pinned `v1.0.2` release in a permanent folder. Open or link that
+Keep the pinned `v1.0.3` release in a permanent folder. Open or link that
 folder in the selected host, give the agent the GitHub repository link,
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. Do not use a
 temporary copy or treat a package file as proof that a host loaded it.
@@ -30,7 +30,7 @@ When the user types `onboard`:
 
 1. Detect the selected host from the open app or ask the one focused host
    question above. Do not run a host route while the answer is ambiguous.
-2. Resolve the permanent release root and confirm the pinned `v1.0.2` package.
+2. Resolve the permanent release root and confirm the pinned `v1.0.3` package.
    Give the user the GitHub link if it was not supplied. Never infer host
    readiness from a PATH entry, `--plugin-dir`, file existence, or a load-check.
 3. Run only safe package checks and local filesystem/command setup. From the
@@ -124,7 +124,7 @@ numbered item is a separate action:
 1. After approval, use the host's **Plugins / Marketplace → Add local
    directory** GUI to select the absolute release root containing
    `.codebuddy-plugin/marketplace.json`; then wait for inspection.
-2. Observe `lazybuddy@lazybuddy` version `1.0.2` in that marketplace. Do not
+2. Observe `lazybuddy@lazybuddy` version `1.0.3` in that marketplace. Do not
    install in the discovery action. If discovery is unavailable, record the
    host version/build and exact error, keep **HOST READINESS: PENDING**, and use
    the fallback below only after selecting it explicitly.

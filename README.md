@@ -51,13 +51,13 @@ registrations, credentials, and live sessions.
 
 ## Install and onboard
 
-Keep the pinned **v1.0.2** release in a permanent folder. Open or link that
+Keep the pinned **v1.0.3** release in a permanent folder. Open or link that
 folder in CodeBuddy or WorkBuddy, give the agent the GitHub repository link,
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard` in the agent
 chat. Do not use a temporary copy or treat a package file as host proof:
 
 ```bash
-git clone --branch v1.0.2 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git /permanent/path/LazyBuddy
+git clone --branch v1.0.3 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git /permanent/path/LazyBuddy
 ```
 
 `onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
@@ -155,7 +155,7 @@ Use `.codebuddy/settings.json` only for shareable non-secret project defaults.
 unstaged; secrets must never be committed. Package checks preserve both files.
 
 The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
-and release notes are on the [v1.0.2 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.2).
+and release notes are on the [v1.0.3 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.3).
 
 ## Verify and remove
 

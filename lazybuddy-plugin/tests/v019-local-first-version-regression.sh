@@ -4,7 +4,7 @@ set -euo pipefail
 PLUGIN_ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 PLUGIN_ROOT="$(cd "$PLUGIN_ROOT" && pwd)"
 REPOSITORY_ROOT="$(cd "$PLUGIN_ROOT/.." && pwd)"
-EXPECTED_VERSION="1.0.2"
+EXPECTED_VERSION="1.0.3"
 
 python3 - "$REPOSITORY_ROOT" "$PLUGIN_ROOT" "$EXPECTED_VERSION" <<'PY'
 import json
@@ -69,31 +69,31 @@ def assert_static_versions(root, package_root, value):
         assert_version(path, root, keys, value)
 
     text_versions = [
-        (root / "AGENTS.md", r"\bv?1\.0\.2\b"),
-        (root / "README.md", r"\bv?1\.0\.2\b"),
-        (package_root / "templates/AGENTS.md", r"\bv?1\.0\.2\b"),
-        (package_root / "mcp/code-intel/server.py", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/context-graph/server.py", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/docs/server.py", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/docs/server.py", r"lazybuddy-docs/1\.0\.2"),
-        (package_root / "mcp/lsp/server.py", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/run-ledger/server.sh", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/status-dashboard/server.sh", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/verification/server.sh", r'"version"\s*:\s*"1\.0\.2"'),
-        (package_root / "mcp/status-dashboard/dashboard.html", r"LazyBuddy v1\.0\.2"),
-        (package_root / "scripts/hooks/session-start.sh", r"LazyBuddy v1\.0\.2"),
-        (package_root / "scripts/lazybuddy-verify.sh", r"v1\.0\.2"),
-        (package_root / "tests/v016-runtime-version-regression.sh", r'EXPECTED_VERSION="1\.0\.2"'),
+        (root / "AGENTS.md", r"\bv?1\.0\.3\b"),
+        (root / "README.md", r"\bv?1\.0\.3\b"),
+        (package_root / "templates/AGENTS.md", r"\bv?1\.0\.3\b"),
+        (package_root / "mcp/code-intel/server.py", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/context-graph/server.py", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/docs/server.py", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/docs/server.py", r"lazybuddy-docs/1\.0\.3"),
+        (package_root / "mcp/lsp/server.py", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/run-ledger/server.sh", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/status-dashboard/server.sh", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/verification/server.sh", r'"version"\s*:\s*"1\.0\.3"'),
+        (package_root / "mcp/status-dashboard/dashboard.html", r"LazyBuddy v1\.0\.3"),
+        (package_root / "scripts/hooks/session-start.sh", r"LazyBuddy v1\.0\.3"),
+        (package_root / "scripts/lazybuddy-verify.sh", r"v1\.0\.3"),
+        (package_root / "tests/v016-runtime-version-regression.sh", r'EXPECTED_VERSION="1\.0\.3"'),
     ]
     for path, pattern in text_versions:
         assert_contains(path, root, pattern)
 
     changelog = (package_root / "CHANGELOG.md").read_text(encoding="utf-8")
-    current = re.search(r"## v1\.0\.2\b[\s\S]*?(?=\n## v|\Z)", changelog)
+    current = re.search(r"## v1\.0\.3\b[\s\S]*?(?=\n## v|\Z)", changelog)
     if not current or not re.search(r"local-first onboarding", current.group(0), re.IGNORECASE):
-        raise AssertionError("lazybuddy-plugin/CHANGELOG.md v1.0.2 notes omit local-first onboarding")
+        raise AssertionError("lazybuddy-plugin/CHANGELOG.md v1.0.3 notes omit local-first onboarding")
     if not re.search(r"host readiness", current.group(0), re.IGNORECASE):
-        raise AssertionError("lazybuddy-plugin/CHANGELOG.md v1.0.2 notes omit honest host readiness")
+        raise AssertionError("lazybuddy-plugin/CHANGELOG.md v1.0.3 notes omit honest host readiness")
 
 def assert_release_integrity(root, package_root, value):
     assert_static_versions(root, package_root, value)
@@ -120,7 +120,7 @@ with tempfile.TemporaryDirectory(prefix="lazybuddy v102 version fixture ") as te
         message = str(error)
         if "lazybuddy-plugin/.codebuddy-plugin/plugin.json#version" not in message:
             raise AssertionError(f"mutation failure omitted the exact manifest path: {message}") from error
-        if "expected '1.0.2', got '1.0.1'" not in message:
+        if "expected '1.0.3', got '1.0.1'" not in message:
             raise AssertionError(f"mutation failure omitted the expected values: {message}") from error
     else:
         raise AssertionError("a copied product manifest mismatch was accepted")
@@ -136,7 +136,7 @@ with tempfile.TemporaryDirectory(prefix="lazybuddy v102 template fixture ") as t
     assert_release_integrity(fixture_root, fixture_package, expected)
     fixture_template = fixture_package / "templates/AGENTS.md"
     contents = fixture_template.read_text(encoding="utf-8")
-    mutated = re.sub(r"v?1\.0\.2", "v1.0.1", contents)
+    mutated = re.sub(r"v?1\.0\.3", "v1.0.1", contents)
     if mutated == contents:
         raise AssertionError("template mutation fixture did not change its release identity")
     fixture_template.write_text(mutated, encoding="utf-8")
@@ -182,4 +182,4 @@ for server_name in run-ledger verification status-dashboard context-graph code-i
     fi
 done
 
-printf 'v1.0.2 local-first version regression: PASS\n'
+printf 'v1.0.3 local-first version regression: PASS\n'

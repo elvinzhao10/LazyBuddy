@@ -1,9 +1,17 @@
 {
   "name": "lazybuddy",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "LazyBuddy workflows for CodeBuddy and WorkBuddy.",
-  "commands": ["./commands/"],
-  "agents": ["./agents/"],
-  "hooks": ["./hooks/hooks.json"],
-  "mcpServers": ["./.mcp.json"]
+  "commands": [
+    "./commands/"
+  ],
+  "agents": [
+    "./agents/"
+  ],
+  "hooks": [
+    "./hooks/hooks.json"
+  ],
+  "mcpServers": [
+    "./.mcp.json"
+  ]
 }
