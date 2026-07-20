@@ -4,7 +4,7 @@ LazyBuddy deliberately aligns policy and package safety across hosts while keepi
 
 ## Onboarding baseline
 
-Keep the pinned `v1.0.2` release in a permanent folder. Open or link it in the
+Keep the pinned `v1.0.3` release in a permanent folder. Open or link it in the
 selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
 detects or asks for CodeBuddy IDE, CodeBuddy CLI, or WorkBuddy, runs safe
@@ -29,7 +29,7 @@ supported local fallback.
 | **WorkBuddy** | The supplied build required user-approved cache preparation with absolute MCP launchers, then one GUI `+` binding. This observed-build route is not a public compatibility promise. | Skills-only import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | One imported Skill plus every connector, or full-plugin capabilities only when the current loaded session proves them. The GUI Install action is broken in the supplied build. |
 
 The supplied macOS QA dated 2026-07-18 inspected WorkBuddy v5.2.6 on macOS
-with LazyBuddy `v1.0.2`; the CodeBuddy exact host version/build was not recorded.
+with LazyBuddy `v1.0.3`; the CodeBuddy exact host version/build was not recorded.
 Do not hand-edit
 `known_marketplaces.json`; entries added there are not durable across restart.
 For CodeBuddy IDE,

@@ -86,4 +86,4 @@ for doc in \
 done
 pass 'readiness and route docs define the collision boundary'
 
-printf 'v1.0.2 readiness-claims regression: PASS\n'
+printf 'v1.0.3 readiness-claims regression: PASS\n'

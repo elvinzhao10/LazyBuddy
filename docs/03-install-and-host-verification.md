@@ -4,7 +4,7 @@ This page explains the deployment boundary in code terms. A plugin package conta
 
 ## Local-first onboarding
 
-Keep the pinned `v1.0.2` release in a permanent folder, open or link it in the
+Keep the pinned `v1.0.3` release in a permanent folder, open or link it in the
 selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent asks
 which host is in use, runs safe package checks, and reports package readiness

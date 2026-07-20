@@ -22,12 +22,12 @@ if [ ! -f "$PACKAGE_SOURCE_ROOT/.codebuddy-plugin/marketplace.json" ]; then
         '{' \
         '  "name": "lazybuddy",' \
         '  "plugins": [' \
-        '    {"name": "lazybuddy", "source": "./lazybuddy-plugin", "version": "1.0.2"}' \
+        '    {"name": "lazybuddy", "source": "./lazybuddy-plugin", "version": "1.0.3"}' \
         '  ]' \
         '}' > "$PACKAGE_SOURCE_ROOT/.codebuddy-plugin/marketplace.json"
 fi
 
-SPACE_RELEASE="$TMP/package copies/Lazy Buddy v1.0.2"
+SPACE_RELEASE="$TMP/package copies/Lazy Buddy v1.0.3"
 PROJECT_ROOT="$TMP/consumer projects/Project With Spaces"$'\nHOST_READINESS=ready'
 FIXTURE_HOME="$TMP/Home With Spaces"
 mkdir -p "$(dirname -- "$SPACE_RELEASE")" "$PROJECT_ROOT" "$FIXTURE_HOME/.workbuddy/plugins"

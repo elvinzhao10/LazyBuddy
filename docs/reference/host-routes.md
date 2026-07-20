@@ -1,6 +1,6 @@
 # Host routes
 
-Start with the pinned `v1.0.2` release in a permanent folder. Open or link it
+Start with the pinned `v1.0.3` release in a permanent folder. Open or link it
 in the selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
 detects or asks for the host, runs package checks and safe local setup, then
@@ -54,7 +54,7 @@ inspect before the next:
 1. After approval, open the host's **Plugins / Marketplace → Add local
    directory** GUI, choose the absolute release root containing
    `.codebuddy-plugin/marketplace.json`, and wait.
-2. Inspect discovery of `lazybuddy@lazybuddy` version `1.0.2`; do not install in
+2. Inspect discovery of `lazybuddy@lazybuddy` version `1.0.3`; do not install in
    the discovery action. If the control or marketplace is absent, record the
    current host version/build and exact error as `UNAVAILABLE`, leave **HOST
    READINESS: PENDING**, and select the fallback only as a later action.

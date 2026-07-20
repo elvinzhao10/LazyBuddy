@@ -189,7 +189,7 @@ while IFS= read -r INPUT || [ -n "$INPUT" ]; do
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"run-ledger","version":"1.0.2"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"run-ledger","version":"1.0.3"}}'
     ;;
   tools/list)
     reply "$TOOL_LIST"

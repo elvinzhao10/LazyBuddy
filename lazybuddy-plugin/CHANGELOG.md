@@ -2,6 +2,29 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.0.3 — Adaptive harness alignment (2026-07-20)
+
+- Aligned LazyBuddy with the v1.0.3 adaptive harness shared contract:
+  byte-identical vendoring of the LazyTrae adaptive snapshot/explanation
+  modules and a thin adapter that exposes them through LazyBuddy's
+  package-owned tooling foundation.
+- Kept the explicit named workflows (`lazy-init-deep`, `lazy-ulw-plan`,
+  `lazy-start-work`, `lazy-ulw-loop`, `lazy-review-work`) authoritative;
+  the adaptive harness only adds evidence freshness and bounded
+  escalation hooks behind those workflows.
+- Introduced no new MCP server, provider, or state-store replacement.
+  The six existing MCP servers (run-ledger, verification, status-dashboard,
+  context-graph, code-intel, docs) plus the lsp server keep their
+  identities; only their serverInfo.version and the docs User-Agent
+  moved to v1.0.3.
+- Updated plugin manifests, marketplace metadata, tooling packages,
+  hook/verifier banners, documentation clients, and public install
+  guidance to v1.0.3.
+- Preserved the local-first onboarding intent and honest host readiness
+  boundary: package checks never prove host discovery, hooks, or MCP
+  connection. Host readiness remains pending until observed in a fresh
+  CodeBuddy or WorkBuddy session.
+
 ## v1.0.2 — Current-message onboarding intent (2026-07-18)
 
 - Added the local-first onboarding hotfix: the copied package and local

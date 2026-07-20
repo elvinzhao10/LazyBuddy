@@ -1,6 +1,6 @@
 # AGENTS.md — LazyBuddy local onboarding
 
-This is the reusable `v1.0.2` consumer template, not a claim that a host loaded
+This is the reusable `v1.0.3` consumer template, not a claim that a host loaded
 the plugin. Explicit user instructions and nearer project instructions take
 precedence.
 
