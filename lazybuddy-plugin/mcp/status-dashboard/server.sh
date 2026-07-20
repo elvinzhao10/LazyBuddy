@@ -118,11 +118,25 @@ case "$METHOD" in
     ;;
   show_run_status)
     SF=$(resolve_run "$(param_raw "run_id")") || { err "invalid or unsafe run_id"; continue; }
-    RESULT=$(python3 - "$SF" <<'PYEOF'
-import json,sys
+    RESULT=$(PLUGIN_ROOT="$PLUGIN_ROOT" python3 - "$SF" <<'PYEOF'
+import json,sys,os
 with open(sys.argv[1]) as f: s=json.load(f); t=s.get('tasks',[]); d=sum(1 for x in t if x.get('status')=='done')
 g=s.get('verification_gates',[]); gd=sum(1 for x in g if x.get('status')=='passed')
-r={'status':s.get('status',''),'objective':s.get('objective',''),'tasks_done':d,'tasks_total':len(t),'verification_gates':f'{gd}/{len(g)}','review_status':s.get('review_status',''),'iteration_count':s.get('iteration_count',0),'last_checkpoint':s.get('last_checkpoint',''),'run_id':s.get('run_id','')}; print(json.dumps(r))
+r={'status':s.get('status',''),'objective':s.get('objective',''),'tasks_done':d,'tasks_total':len(t),'verification_gates':f'{gd}/{len(g)}','review_status':s.get('review_status',''),'iteration_count':s.get('iteration_count',0),'last_checkpoint':s.get('last_checkpoint',''),'run_id':s.get('run_id','')}
+# v1.0.3 W3.5: append adaptive explanation when an adaptive block is present.
+adaptive = s.get('adaptive')
+if isinstance(adaptive, dict):
+    tooling_dir = os.path.join(os.environ.get('PLUGIN_ROOT',''), 'tooling')
+    if tooling_dir not in sys.path:
+        sys.path.insert(0, tooling_dir)
+    try:
+        from lazybuddy_adaptive_explanation import format_adaptive_explanation
+        r['adaptive_explanation'] = format_adaptive_explanation(s)
+        r['adaptive_mode'] = adaptive.get('mode','')
+        r['adaptive_escalation_count'] = adaptive.get('escalationCount', 0)
+    except Exception as e:
+        r['adaptive_explanation_error'] = str(e)
+print(json.dumps(r))
 PYEOF
 )
     reply "$RESULT"

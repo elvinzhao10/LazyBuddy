@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lazybuddy/active-run.schema.json",
+  "title": "LazyBuddy active run state (schema_version 2)",
+  "description": "Procedurally validated by scripts/state/validate-state.sh. JSON Schema is documentary; v1.0.2 state without the adaptive block remains valid.",
+  "type": "object",
+  "required": [
+    "schema_version", "run_id", "created_at", "updated_at", "objective",
+    "status", "plan_reference", "tasks", "progress", "verification_gates",
+    "review_status", "iteration", "last_checkpoint", "budget", "session_ids"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["2"] },
+    "run_id": { "type": "string" },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "objective": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["created", "planning", "executing", "blocked", "verifying", "reviewing", "complete", "failed", "cancelled"]
+    },
+    "plan_reference": { "type": "string" },
+    "tasks": { "type": "array" },
+    "progress": { "type": "object" },
+    "verification_gates": { "type": "array" },
+    "review_status": {
+      "type": "string",
+      "enum": ["not_started", "accepted", "revise", "rejected"]
+    },
+    "iteration": { "type": "object" },
+    "last_checkpoint": { "type": ["string", "null"] },
+    "budget": { "type": "object" },
+    "session_ids": { "type": "array" },
+    "adaptive": {
+      "type": ["object", "null"],
+      "description": "Optional additive block written only by the adaptive orchestrator (single-writer rule, plan Section 11).",
+      "required": [
+        "version", "decisionId", "requestDigest", "mode", "stages",
+        "currentStage", "responsibilities", "capabilityClasses",
+        "runtimeResolution", "reasons", "escalationCount",
+        "revisionMarker", "blocker", "nextAction"
+      ],
+      "properties": {
+        "version": { "type": "integer", "enum": [1] },
+        "decisionId": { "type": "string" },
+        "requestDigest": { "type": "string" },
+        "mode": {
+          "type": "string",
+          "enum": ["direct", "assisted", "planned", "orchestrated", "long-horizon"]
+        },
+        "stages": { "type": "array", "items": { "type": "string" } },
+        "currentStage": { "type": "string" },
+        "responsibilities": { "type": "array", "items": { "type": "string" } },
+        "capabilityClasses": { "type": "array", "items": { "type": "string" } },
+        "runtimeResolution": { "type": "object" },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "escalationCount": { "type": "integer", "minimum": 0 },
+        "revisionMarker": { "type": "string" },
+        "blocker": { "type": ["object", "string", "null"] },
+        "nextAction": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

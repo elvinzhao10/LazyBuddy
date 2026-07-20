@@ -101,6 +101,34 @@ b = d.get('budget', {})
 if not isinstance(b, dict):
     errors.append('budget must be an object')
 
+# Adaptive block (optional, v1.0.3). When null/absent, skip (v1.0.2 backward compat).
+# Validates the Section 11 snapshot shape (14 fields). Single-writer is the orchestrator.
+adaptive = d.get('adaptive')
+if adaptive is not None:
+    if not isinstance(adaptive, dict):
+        errors.append('adaptive must be an object or null')
+    else:
+        ADAPTIVE_REQUIRED = ['version','decisionId','requestDigest','mode','stages',
+            'currentStage','responsibilities','capabilityClasses','runtimeResolution',
+            'reasons','escalationCount','revisionMarker','blocker','nextAction']
+        for field in ADAPTIVE_REQUIRED:
+            if field not in adaptive:
+                errors.append(f'adaptive missing field: {field}')
+        if adaptive.get('mode') not in [None,'direct','assisted','planned','orchestrated','long-horizon']:
+            errors.append(f"adaptive invalid mode: {adaptive.get('mode')}")
+        if not isinstance(adaptive.get('stages', []), list):
+            errors.append('adaptive stages must be a list')
+        if not isinstance(adaptive.get('responsibilities', []), list):
+            errors.append('adaptive responsibilities must be a list')
+        if not isinstance(adaptive.get('capabilityClasses', []), list):
+            errors.append('adaptive capabilityClasses must be a list')
+        if not isinstance(adaptive.get('runtimeResolution', {}), dict):
+            errors.append('adaptive runtimeResolution must be an object')
+        if not isinstance(adaptive.get('reasons', []), list):
+            errors.append('adaptive reasons must be a list')
+        if not isinstance(adaptive.get('escalationCount', 0), int):
+            errors.append('adaptive escalationCount must be an integer')
+
 if errors:
     print('FAIL')
     for e in errors:
