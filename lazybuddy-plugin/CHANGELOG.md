@@ -2,28 +2,75 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
-## v1.0.3 — Adaptive harness alignment (2026-07-20)
+## v1.0.3 — Adaptive harness (2026-07-20)
 
-- Aligned LazyBuddy with the v1.0.3 adaptive harness shared contract:
-  byte-identical vendoring of the LazyTrae adaptive snapshot/explanation
-  modules and a thin adapter that exposes them through LazyBuddy's
-  package-owned tooling foundation.
-- Kept the explicit named workflows (`lazy-init-deep`, `lazy-ulw-plan`,
-  `lazy-start-work`, `lazy-ulw-loop`, `lazy-review-work`) authoritative;
-  the adaptive harness only adds evidence freshness and bounded
-  escalation hooks behind those workflows.
-- Introduced no new MCP server, provider, or state-store replacement.
-  The six existing MCP servers (run-ledger, verification, status-dashboard,
-  context-graph, code-intel, docs) plus the lsp server keep their
-  identities; only their serverInfo.version and the docs User-Agent
-  moved to v1.0.3.
-- Updated plugin manifests, marketplace metadata, tooling packages,
-  hook/verifier banners, documentation clients, and public install
-  guidance to v1.0.3.
-- Preserved the local-first onboarding intent and honest host readiness
-  boundary: package checks never prove host discovery, hooks, or MCP
-  connection. Host readiness remains pending until observed in a fresh
-  CodeBuddy or WorkBuddy session.
+### Added
+
+- Adaptive harness contract (`adaptive-harness-contract.v1.json`) shared
+  byte-identical across LazyTrae and LazyBuddy, with paired sha256 digest
+  parity and no runtime coupling between repositories.
+- Ten behavioral fixtures under `contracts/fixtures/v103/` covering direct,
+  assisted, planned, orchestrated, long-horizon, provider-fallback,
+  explicit-override, escalation-bound, and responsibility-ownership
+  scenarios.
+- Thin adaptive adapter for LazyBuddy (`lazybuddy_adaptive_detector.py`,
+  `lazybuddy_adaptive_mapping.py`, `lazybuddy_adaptive_snapshot.py`,
+  `lazybuddy_adaptive_explanation.py`, `lazybuddy_adaptive_hosts.py`) that
+  extends the existing detector, policy, capability, and state seams without
+  duplicating execution logic.
+- Optional additive `adaptive` snapshot block in run/loop state
+  (single-writer, backward-compatible); existing v1.0.2 state without the
+  block continues to load.
+- Deterministic seven-step decision policy: explicit override then compatible
+  continuation then long-horizon then orchestrated then planned then
+  assisted then direct, selecting the lowest sufficient mode.
+- Bounded escalation: at most two automatic depth escalations per decision,
+  after which a blocked-state record is produced.
+- Authority-safe capability fallback with substitution reporting through
+  existing status surfaces.
+- Full-plugin CodeBuddy and WorkBuddy adaptive mappings; the Skills/MCP-only
+  route remains an explicitly degraded fallback, not the product target.
+- Adaptive explanation through existing status/capability surfaces (mode,
+  selected stages, responsibilities, capabilities, not-selected, approval
+  required).
+
+### Changed
+
+- Plugin manifests, marketplace metadata, tooling packages, hook/verifier
+  banners, documentation clients, and public install guidance updated to
+  v1.0.3.
+- Existing status/capability surface extended with adaptive explanation when
+  an `adaptive` block is present in state.
+
+### Known Gaps (deferred to v1.0.4)
+
+- Continuation resume: the classifier does not yet resume from compatible
+  snapshots (plan Section 6 step 2). Every request produces a fresh
+  decision. Pinned by xfail tests.
+- Evidence freshness: `revisionMarker` is constant; stale snapshot detection
+  and the re-verification trigger signal are not implemented. Pinned by xfail
+  tests.
+- Live-host QA: WorkBuddy and CodeBuddy live-host verification PENDING (no
+  live host available in the release session). Package evidence and
+  fixture-based parity verified; live-host evidence not captured.
+
+### Unchanged
+
+- Authority boundaries: read-only and package-owned capabilities activate
+  automatically; installations, persistence, host settings, credentials, and
+  remote access require approval.
+- Host-readiness boundaries: package evidence is not live-host evidence.
+- No new MCP servers, remote providers, host settings, or production
+  dependencies. The six existing MCP servers (run-ledger, verification,
+  status-dashboard, context-graph, code-intel, docs) plus the lsp server keep
+  their identities.
+- No cross-repository runtime dependencies.
+- No state-store replacement or memory migration.
+- No dynamic command or hook registration.
+- Explicit named workflows (`lazy-init-deep`, `lazy-ulw-plan`,
+  `lazy-start-work`, `lazy-ulw-loop`, `lazy-review-work`) remain
+  authoritative.
+
 
 ## v1.0.2 — Current-message onboarding intent (2026-07-18)
 
