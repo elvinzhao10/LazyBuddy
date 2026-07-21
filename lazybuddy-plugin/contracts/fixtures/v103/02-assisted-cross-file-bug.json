@@ -91,7 +91,7 @@
         "unfamiliar subsystem with cross-file symbol tracing required",
         "primarily diagnostic work"
       ],
-      "requestSlug": "diagnose-stale-profile-data-after-refactor",
+      "requestDigest": "sha256:diagnose-stale-profile-data-after-refactor",
       "responsibilities": [
         "exploration",
         "debugging",

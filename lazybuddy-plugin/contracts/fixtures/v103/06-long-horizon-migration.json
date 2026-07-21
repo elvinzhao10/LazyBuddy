@@ -96,7 +96,7 @@
         "durable checkpoints required",
         "existing continuation loop must be used"
       ],
-      "requestSlug": "migrate-session-auth-to-jwt-over-3-sessions",
+      "requestDigest": "sha256:migrate-session-auth-to-jwt-over-3-sessions",
       "responsibilities": [
         "exploration",
         "planning",

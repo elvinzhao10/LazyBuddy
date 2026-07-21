@@ -55,7 +55,7 @@ def _context_snapshot(current_stage="implement", escalation_count=1, mode="long-
     return {
         "version": 1,
         "decisionId": "prior-session-decision",
-        "requestSlug": "placeholder",
+        "requestDigest": "sha256:placeholder",
         "mode": mode,
         "stages": ["understand", "plan", "implement", "verify", "continue"],
         "currentStage": current_stage,
@@ -85,7 +85,7 @@ def _context_snapshot(current_stage="implement", escalation_count=1, mode="long-
 def test_compatible_resume_current_stage_resumed_from_snapshot():
     fresh = classify_adaptive_decision(FIXTURE["request"], FIXTURE["context"])
     snapshot = _context_snapshot(current_stage="implement", escalation_count=1, mode="long-horizon")
-    snapshot["requestSlug"] = fresh["snapshot"]["requestSlug"]
+    snapshot["requestDigest"] = fresh["snapshot"]["requestDigest"]
     snapshot["revisionMarker"] = fresh["snapshot"]["revisionMarker"]
     decision = classify_adaptive_decision(
         FIXTURE["request"], {**FIXTURE["context"], "snapshot": snapshot}
@@ -102,7 +102,7 @@ def test_compatible_resume_mode_preserved_from_snapshot():
     request = "Fix typo in README.md"
     fresh = classify_adaptive_decision(request, {})
     snapshot = _context_snapshot(current_stage="implement", escalation_count=1, mode="long-horizon")
-    snapshot["requestSlug"] = fresh["snapshot"]["requestSlug"]
+    snapshot["requestDigest"] = fresh["snapshot"]["requestDigest"]
     snapshot["revisionMarker"] = fresh["snapshot"]["revisionMarker"]
     decision = classify_adaptive_decision(request, {"snapshot": snapshot})
     assert decision["mode"] == "long-horizon", \
@@ -117,7 +117,7 @@ def test_compatible_resume_escalation_count_carried_over():
     request = "Fix typo in README.md"
     fresh = classify_adaptive_decision(request, {})
     snapshot = _context_snapshot(current_stage="implement", escalation_count=1, mode="long-horizon")
-    snapshot["requestSlug"] = fresh["snapshot"]["requestSlug"]
+    snapshot["requestDigest"] = fresh["snapshot"]["requestDigest"]
     snapshot["revisionMarker"] = fresh["snapshot"]["revisionMarker"]
     decision = classify_adaptive_decision(request, {"snapshot": snapshot})
     assert decision["snapshot"]["escalationCount"] == 1, \
@@ -155,11 +155,11 @@ def test_incompatible_revision_original_snapshot_preserved():
 def test_incompatible_request_fresh_decision_resets_escalation_count():
     request = "Fix typo in README.md"
     snapshot = _context_snapshot()
-    snapshot["requestSlug"] = "completely-different-prior-request"
+    snapshot["requestDigest"] = "sha256:completely-different-prior-request"
     snapshot["revisionMarker"] = "git:HEAD"
     decision = classify_adaptive_decision(request, {"snapshot": snapshot})
-    assert decision["snapshot"]["requestSlug"] != snapshot["requestSlug"], \
-        "fresh decision must have a new requestSlug"
+    assert decision["snapshot"]["requestDigest"] != snapshot["requestDigest"], \
+        "fresh decision must have a new requestDigest"
     assert decision["snapshot"]["escalationCount"] == 0, \
         "fresh decision must reset escalationCount (no carryover from stale snapshot)"
 

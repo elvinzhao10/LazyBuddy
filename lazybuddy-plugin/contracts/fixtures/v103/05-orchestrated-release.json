@@ -98,7 +98,7 @@
         "release-review authority checkpoint is approval-required",
         "publication evidence required"
       ],
-      "requestSlug": "cut-v2-1-0-release-bump-changelog-build-artifacts",
+      "requestDigest": "sha256:cut-v2-1-0-release-bump-changelog-build-artifacts",
       "responsibilities": [
         "exploration",
         "planning",

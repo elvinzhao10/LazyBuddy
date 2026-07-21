@@ -12,11 +12,8 @@ Internal names are NOT required to be identical between the two hosts.
 """
 from __future__ import annotations
 from typing import Any
-from lazybuddy_adaptive_mapping import (
-    KNOWN_MODES,
-    MODE_SURFACES,
-    map_adaptive_decision_to_surfaces,
-)
+from lazybuddy_adaptive_mapping import (KNOWN_MODES, MODE_SURFACES,
+                                        map_adaptive_decision_to_surfaces)
 
 # Agent invoked only when the mode requires orchestration or long-horizon
 # continuation (single-writer rule for the adaptive snapshot).
@@ -24,14 +21,8 @@ ORCHESTRATOR_AGENT = "lazybuddy-orchestrator"
 ORCHESTRATION_MODES = ("orchestrated", "long-horizon")
 
 # All six declared MCP services in .mcp.json (loaded for full-plugin routes).
-ALL_MCP_SERVERS = (
-    "run-ledger",
-    "verification",
-    "status-dashboard",
-    "context-graph",
-    "code-intel",
-    "docs",
-)
+ALL_MCP_SERVERS = ("run-ledger", "verification", "status-dashboard",
+                   "context-graph", "code-intel", "docs")
 HOOKS_FILE = "hooks/hooks.json"
 
 # CodeBuddy does NOT load skills (plugin.json lacks the "skills" field).
@@ -126,7 +117,7 @@ def _build_fallback_mapping(decision: dict) -> dict:
         "route": "fallback-degraded",
         "degraded": True,
         "degraded_reason": "Skills/MCP-only fallback; no commands, agents, or hooks loaded; "
-        "suitable for host environments that cannot load the full plugin manifest",
+                            "suitable for host environments that cannot load the full plugin manifest",
         "skills": list(workflows),
         "commands": [],
         "agents": [],
@@ -152,19 +143,15 @@ def map_adaptive_decision_to_hosts(decision: dict) -> dict:
     is null, missing a mode, or carries an unknown mode.
     """
     if not _is_valid_decision(decision):
-        mode = (
-            decision.get("mode") if isinstance(decision, dict) else None
-        ) or "missing"
+        mode = (decision.get("mode") if isinstance(decision, dict) else None) or "missing"
         raise ValueError(f"ADAPTIVE_HOSTS_INVALID_DECISION: {mode}")
     # Reference the surface mapping for parity validation; result is not
     # returned directly but is used to ensure the decision is mappable.
     map_adaptive_decision_to_surfaces(decision)
     return {
         "codebuddy_full_plugin": _build_full_plugin_mapping(
-            decision, host="codebuddy", loads_skills=CODEBUDDY_LOADS_SKILLS
-        ),
+            decision, host="codebuddy", loads_skills=CODEBUDDY_LOADS_SKILLS),
         "workbuddy_full_plugin": _build_full_plugin_mapping(
-            decision, host="workbuddy", loads_skills=WORKBUDDY_LOADS_SKILLS
-        ),
+            decision, host="workbuddy", loads_skills=WORKBUDDY_LOADS_SKILLS),
         "skills_mcp_only_fallback": _build_fallback_mapping(decision),
     }
