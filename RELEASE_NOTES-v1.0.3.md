@@ -112,13 +112,26 @@ same adaptive decision contract at the user level.
   identities. No cross-repository runtime dependencies. No state-store
   replacement or memory migration.
 
+## Continuation and Evidence Freshness (W4.5 + W4.6)
+
+- **Compatible continuation resume:** when a Section 11 snapshot is supplied
+  via `context["snapshot"]` and both `requestDigest` and `revisionMarker`
+  match the fresh values, the classifier resumes the saved `currentStage`,
+  preserves the snapshot's `mode`, and carries over `escalationCount` per
+  plan Section 6 step 2. Incompatible revision markers or request digests
+  force a fresh decision; the original snapshot is preserved in-place for
+  diagnosis.
+- **Evidence freshness:** when `context["prior_snapshot"]["revisionMarker"]`
+  differs from `context["current_revision_marker"]`, the classifier restarts
+  from the `understand` stage in assisted mode and emits stale /
+  re-verification reasons (plan Section 18). No new lineage database is
+  introduced; the existing `lazy-verifier` surface is reused.
+- `revisionMarker` is now accepted via `_compose_decision` /
+  `_build_snapshot` options so the orchestrator can supply a content-derived
+  marker; the default remains `git:HEAD` for backward compatibility.
+
 ## Known gaps (deferred to v1.0.4)
 
-- **Continuation resume:** the classifier does not yet resume from compatible
-  snapshots. Every request produces a fresh decision. Pinned by xfail tests.
-- **Evidence freshness:** `revisionMarker` is constant; stale snapshot
-  detection and the re-verification trigger signal are not implemented.
-  Pinned by xfail tests.
 - **Live-host QA:** WorkBuddy and CodeBuddy live-host verification is PENDING
   — no live host was available in the release session. Package evidence and
   fixture-based parity are verified; live-host evidence was not captured.

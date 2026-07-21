@@ -221,13 +221,13 @@ def _build_snapshot(options: dict) -> dict:
         "requestDigest": f"sha256:{slug}",
         "mode": options["mode"],
         "stages": list(stages),
-        "currentStage": stages[0] if stages else "",
+        "currentStage": options.get("current_stage") or (stages[0] if stages else ""),
         "responsibilities": list(options.get("responsibilities", [])),
         "capabilityClasses": list(options.get("capabilities", [])),
         "runtimeResolution": dict(options.get("runtime_resolution", {})),
         "reasons": list(options.get("reasons", [])),
         "escalationCount": int(options.get("escalation_count", 0)),
-        "revisionMarker": "git:HEAD",
+        "revisionMarker": options.get("revision_marker") or "git:HEAD",
         "blocker": options.get("blocker"),
         "nextAction": options.get("next_action", ""),
     }
@@ -256,6 +256,8 @@ def _compose_decision(options: dict) -> dict:
             "next_action": options.get("next_action"),
             "request": options.get("request"),
             "decision_id": options.get("decision_id"),
+            "current_stage": options.get("current_stage"),
+            "revision_marker": options.get("revision_marker"),
         }
     )
     return {
@@ -424,6 +426,80 @@ def classify_adaptive_decision(request: str, context: Optional[dict] = None) -> 
                     "next_action": pattern["next_action"],
                 }
             )
+    # Step 2: compatible continuation — resume when requestDigest and revisionMarker match.
+    ps = ctx.get("snapshot") if isinstance(ctx.get("snapshot"), dict) else None
+    cur_marker = ctx.get("current_revision_marker") or "git:HEAD"
+    fresh_digest = _build_snapshot(
+        {
+            "request": text,
+            "mode": "direct",
+            "stages": [],
+            "responsibilities": [],
+            "capabilities": [],
+            "runtime_resolution": {},
+            "reasons": [],
+        }
+    )["requestDigest"]
+    if (
+        ps
+        and ps.get("requestDigest")
+        and ps.get("revisionMarker") == cur_marker
+        and ps.get("requestDigest") == fresh_digest
+    ):
+        cfg = MODE_CONFIG.get(ps.get("mode"), MODE_CONFIG["direct"])
+        return _compose_decision(
+            {
+                "mode": ps.get("mode"),
+                "stages": ps.get("stages") or list(cfg["stages"]),
+                "responsibilities": ps.get("responsibilities")
+                or list(cfg["responsibilities"]),
+                "capabilities": ps.get("capabilityClasses")
+                or list(cfg["capabilities"]),
+                "reasons": [
+                    "compatible adaptive snapshot resume per decision policy step 2",
+                    "request digest and revision marker unchanged; resuming current stage",
+                    "mode preserved from snapshot per Section 11 state rules",
+                ],
+                "request": request,
+                "decision_id": ps.get("decisionId"),
+                "escalation_count": ps.get("escalationCount") or 0,
+                "next_action": f"resume from {ps.get('currentStage')} stage",
+                "current_stage": ps.get("currentStage"),
+                "revision_marker": ps.get("revisionMarker"),
+            }
+        )
+    # W4.6: stale prior snapshot — restart from understand when revision differs.
+    pp = (
+        ctx.get("prior_snapshot")
+        if isinstance(ctx.get("prior_snapshot"), dict)
+        else None
+    )
+    if (
+        pp
+        and pp.get("revisionMarker")
+        and ctx.get("current_revision_marker")
+        and pp.get("revisionMarker") != ctx.get("current_revision_marker")
+    ):
+        return _compose_decision(
+            {
+                "mode": "assisted",
+                "stages": ["understand", "debug", "implement", "verify"],
+                "responsibilities": [
+                    "exploration",
+                    "debugging",
+                    "implementation",
+                    "verification",
+                ],
+                "reasons": [
+                    "prior adaptive snapshot is stale per Section 11 — revision marker changed",
+                    "re-verification required after implementation changes (Section 18)",
+                    "reclassify from understand to ensure fresh completion evidence",
+                ],
+                "request": request,
+                "revision_marker": ctx.get("current_revision_marker"),
+                "next_action": "restart verification after implementation change",
+            }
+        )
     # Step 6 (early): prior escalation context with verification_failure.
     signals = ctx.get("signals") if isinstance(ctx.get("signals"), dict) else {}
     if signals.get("verification_failure") is True and ctx.get("initial_mode"):
