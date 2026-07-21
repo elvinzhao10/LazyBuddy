@@ -124,7 +124,7 @@
         "broader scope revealed — escalated one level (direct to assisted)",
         "max_auto_escalations=2 reached — blocked state produced"
       ],
-      "requestSlug": "fix-failing-unit-test-date-test-js",
+      "requestDigest": "sha256:fix-failing-unit-test-date-test-js",
       "responsibilities": [
         "implementation",
         "verification",

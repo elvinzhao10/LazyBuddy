@@ -94,7 +94,7 @@
         "safe fallback selected preserving capability class where possible",
         "verification expectations adjusted because fallback is weaker"
       ],
-      "requestSlug": "refactor-search-service-fuzzy-matching",
+      "requestDigest": "sha256:refactor-search-service-fuzzy-matching",
       "responsibilities": [
         "exploration",
         "debugging",

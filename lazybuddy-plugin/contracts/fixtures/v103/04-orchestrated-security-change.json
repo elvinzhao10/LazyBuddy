@@ -95,7 +95,7 @@
         "independent review required",
         "authority matrix marks security-review as approval-required"
       ],
-      "requestSlug": "restrict-admin-billing-endpoint-to-admins-only",
+      "requestDigest": "sha256:restrict-admin-billing-endpoint-to-admins-only",
       "responsibilities": [
         "exploration",
         "planning",

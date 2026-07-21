@@ -6,7 +6,6 @@ writes follow the LazyBuddy state-scripts convention: mktemp + mv (no
 fcntl.flock — see W0.3 change-map). v1.0.2 state without the block continues
 to load (backward compatibility).
 """
-
 from __future__ import annotations
 
 import json
@@ -18,7 +17,7 @@ from typing import Optional
 SNAPSHOT_REQUIRED_FIELDS = (
     "version",
     "decisionId",
-    "requestSlug",
+    "requestDigest",
     "mode",
     "stages",
     "currentStage",
@@ -62,9 +61,7 @@ def validate_adaptive_snapshot(snapshot: object) -> bool:
         return False
     if not isinstance(snapshot.get("escalationCount"), int):
         return False
-    if snapshot.get("blocker") is not None and not isinstance(
-        snapshot.get("blocker"), (dict, str)
-    ):
+    if snapshot.get("blocker") is not None and not isinstance(snapshot.get("blocker"), (dict, str)):
         return False
     return True
 
@@ -90,9 +87,7 @@ def write_adaptive_snapshot(run_state: dict, snapshot: dict) -> None:
     if not isinstance(run_state, dict):
         raise TypeError("run_state must be a dict")
     if not validate_adaptive_snapshot(snapshot):
-        raise ValueError(
-            "adaptive snapshot is missing required fields or has invalid types"
-        )
+        raise ValueError("adaptive snapshot is missing required fields or has invalid types")
     snapshot = dict(snapshot)
     snapshot["updated_at"] = _iso_now()
     run_state["adaptive"] = snapshot

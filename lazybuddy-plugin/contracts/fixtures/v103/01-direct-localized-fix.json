@@ -88,7 +88,7 @@
         "localized one-file change with clear acceptance criteria",
         "targeted verification is sufficient"
       ],
-      "requestSlug": "fix-typo-recieved-received-errors-js-42",
+      "requestDigest": "sha256:fix-typo-recieved-received-errors-js-42",
       "responsibilities": [
         "implementation",
         "verification"
