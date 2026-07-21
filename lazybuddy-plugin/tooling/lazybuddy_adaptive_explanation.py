@@ -4,15 +4,29 @@ Reads the ``adaptive`` snapshot block from a run state and produces a terse,
 telegraphic, multi-line explanation per plan Section 13. Mirrors the LazyTrae
 W2.4 ``adaptive-explanation.js`` shape. No external dependencies.
 """
+
 from __future__ import annotations
 
 from typing import Optional
 
-ALL_STAGES = ("understand", "plan", "implement", "debug", "verify", "review", "continue")
+ALL_STAGES = (
+    "understand",
+    "plan",
+    "implement",
+    "debug",
+    "verify",
+    "review",
+    "continue",
+)
 ALL_CAPS = (
-    "text-search", "structural-search", "semantic-navigation",
-    "architecture-context", "documentation", "execution",
-    "task-state", "outcome-verification",
+    "text-search",
+    "structural-search",
+    "semantic-navigation",
+    "architecture-context",
+    "documentation",
+    "execution",
+    "task-state",
+    "outcome-verification",
 )
 DEFAULT_RUNTIME = "host-native"
 BLOCKED_LABEL = "blocked-state record present"
@@ -45,11 +59,17 @@ def format_adaptive_explanation(run_state: dict) -> Optional[str]:
     next_action = snap.get("nextAction", "")
     not_selected_caps = sorted(c for c in ALL_CAPS if c not in caps)
     not_selected_stages = sorted(s for s in ALL_STAGES if s not in stages)
-    cap_lines = [f"- {c} ({runtime.get(c, DEFAULT_RUNTIME)})" for c in caps] or ["- none"]
-    not_sel_lines = [f"- {c}: not required for current scope" for c in not_selected_caps] or ["- none"]
+    cap_lines = [f"- {c} ({runtime.get(c, DEFAULT_RUNTIME)})" for c in caps] or [
+        "- none"
+    ]
+    not_sel_lines = [
+        f"- {c}: not required for current scope" for c in not_selected_caps
+    ] or ["- none"]
     if not_selected_stages:
         not_sel_lines += [f"- {s} stage: skipped" for s in not_selected_stages]
-    approval = "approval required (orchestrated mode)" if mode == "orchestrated" else "none"
+    approval = (
+        "approval required (orchestrated mode)" if mode == "orchestrated" else "none"
+    )
     lines = [
         f"Mode: {_title(mode)}",
         "Selected stages:",

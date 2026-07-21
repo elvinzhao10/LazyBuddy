@@ -14,7 +14,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-CONTRACT_PATH = Path(__file__).resolve().parent.parent / "contracts" / "adaptive-harness-contract.v1.json"
+CONTRACT_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "contracts"
+    / "adaptive-harness-contract.v1.json"
+)
 
 # LazyBuddy always uses lazy-verifier for verification and the lazy-status
 # command for status reporting, regardless of mode.
@@ -30,9 +34,18 @@ STATUS_SURFACE = "lazy-status"
 MODE_SURFACES = {
     "direct": {"workflows": (), "orchestration": "none"},
     "assisted": {"workflows": ("lazy-start-work",), "orchestration": "start-work"},
-    "planned": {"workflows": ("lazy-ulw-plan", "lazy-start-work"), "orchestration": "start-work"},
-    "orchestrated": {"workflows": ("lazy-ulw-plan", "lazy-start-work", "lazy-reviewer"), "orchestration": "start-work"},
-    "long-horizon": {"workflows": ("lazy-ulw-plan", "lazy-start-work", "lazy-ulw-loop"), "orchestration": "loop-runtime"},
+    "planned": {
+        "workflows": ("lazy-ulw-plan", "lazy-start-work"),
+        "orchestration": "start-work",
+    },
+    "orchestrated": {
+        "workflows": ("lazy-ulw-plan", "lazy-start-work", "lazy-reviewer"),
+        "orchestration": "start-work",
+    },
+    "long-horizon": {
+        "workflows": ("lazy-ulw-plan", "lazy-start-work", "lazy-ulw-loop"),
+        "orchestration": "loop-runtime",
+    },
 }
 KNOWN_MODES = tuple(MODE_SURFACES.keys())
 
@@ -77,7 +90,9 @@ def map_adaptive_decision_to_surfaces(decision: dict) -> dict:
     input is null, missing a mode, or carries an unknown mode.
     """
     if not _is_valid_decision(decision):
-        mode = (decision.get("mode") if isinstance(decision, dict) else None) or "missing"
+        mode = (
+            decision.get("mode") if isinstance(decision, dict) else None
+        ) or "missing"
         raise ValueError(f"ADAPTIVE_MAPPING_INVALID_DECISION: {mode}")
     contract = load_adaptive_contract()
     authority_matrix = contract.get("authority_matrix", {})
