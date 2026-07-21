@@ -87,7 +87,7 @@
         "explicit user request is authoritative",
         "named workflow 'lazy-ulw-plan' selected"
       ],
-      "requestDigest": "sha256:create-a-plan-only-do-not-implement-yet",
+      "requestSlug": "create-a-plan-only-do-not-implement-yet",
       "responsibilities": [
         "exploration",
         "planning"
