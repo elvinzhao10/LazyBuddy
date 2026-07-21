@@ -21,7 +21,7 @@ def _snapshot(**overrides):
     base = {
         "version": 1,
         "decisionId": "dec-001",
-        "requestDigest": "sha256:abc",
+        "requestSlug": "abc",
         "mode": "planned",
         "stages": ["understand", "plan", "implement", "verify"],
         "currentStage": "implement",

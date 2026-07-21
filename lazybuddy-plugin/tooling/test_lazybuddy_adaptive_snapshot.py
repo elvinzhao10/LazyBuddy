@@ -31,7 +31,7 @@ def _valid_snapshot():
     return {
         "version": 1,
         "decisionId": "dec-001",
-        "requestDigest": "sha256:abc",
+        "requestSlug": "abc",
         "mode": "planned",
         "stages": ["understand", "plan", "implement", "verify"],
         "currentStage": "implement",
@@ -175,7 +175,7 @@ def test_atomic_write_no_tempfile_leak_on_error(tmp_path):
 def test_schema_has_all_14_required_fields():
     assert len(SNAPSHOT_REQUIRED_FIELDS) == 14
     expected = {
-        "version", "decisionId", "requestDigest", "mode", "stages",
+        "version", "decisionId", "requestSlug", "mode", "stages",
         "currentStage", "responsibilities", "capabilityClasses",
         "runtimeResolution", "reasons", "escalationCount",
         "revisionMarker", "blocker", "nextAction",

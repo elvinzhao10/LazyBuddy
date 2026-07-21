@@ -96,7 +96,7 @@
         "acceptance criteria incomplete",
         "spans multiple systems and an architectural boundary"
       ],
-      "requestDigest": "sha256:add-export-to-pdf-feature-reports-module",
+      "requestSlug": "add-export-to-pdf-feature-reports-module",
       "responsibilities": [
         "exploration",
         "planning",

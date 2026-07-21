@@ -19,7 +19,7 @@ sys.path.insert(0, str(TOOLING_DIR))
 from lazybuddy_adaptive_detector import classify_adaptive_decision  # noqa: E402
 
 SNAPSHOT_REQUIRED_FIELDS = [
-    "version", "decisionId", "requestDigest", "mode", "stages", "currentStage",
+    "version", "decisionId", "requestSlug", "mode", "stages", "currentStage",
     "responsibilities", "capabilityClasses", "runtimeResolution", "reasons",
     "escalationCount", "revisionMarker", "blocker", "nextAction",
 ]
@@ -146,7 +146,7 @@ def test_snapshot_has_all_section_11_fields():
         assert field in snapshot, f"snapshot missing field: {field}"
     assert snapshot["version"] == 1
     assert snapshot["decisionId"].startswith("adaptive-")
-    assert snapshot["requestDigest"].startswith("sha256:")
+    assert isinstance(snapshot["requestSlug"], str)
     assert snapshot["revisionMarker"] == "git:HEAD"
     assert snapshot["blocker"] is None  # default state has no blocker
     assert snapshot["escalationCount"] == 0
@@ -154,9 +154,7 @@ def test_snapshot_has_all_section_11_fields():
 
 def test_request_digest_is_slugified_lowercase():
     decision = classify_adaptive_decision("Fix the typo in errors.js:42", {})
-    digest = decision["snapshot"]["requestDigest"]
-    assert digest.startswith("sha256:")
-    slug = digest[len("sha256:"):]
+    slug = decision["snapshot"]["requestSlug"]
     assert slug == slug.lower()
     assert re.match(r"^[a-z0-9-]*$", slug)
 

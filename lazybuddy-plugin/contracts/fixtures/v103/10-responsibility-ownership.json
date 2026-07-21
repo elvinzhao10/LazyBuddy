@@ -94,7 +94,7 @@
         "single-writer rule for the adaptive snapshot",
         "one owner per stage to avoid duplicate work"
       ],
-      "requestDigest": "sha256:implement-export-pipeline-parallel-csv-json-streams",
+      "requestSlug": "implement-export-pipeline-parallel-csv-json-streams",
       "responsibilities": [
         "exploration",
         "planning",
