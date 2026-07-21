@@ -9,8 +9,8 @@ Mirrors the LazyTrae W4.6 test file. Scenarios:
   2. revisionMarker changes when implementation changes (mock file-hash derivation)
   3. No new lineage/evidence-db/transaction files introduced in W2/W3/W4 waves
   4. Existing verification mechanism reused (lazy-verifier) — no parallel verifier
-  5. Stale snapshot triggers reclassification (xfail — classifier gap)
-  6. Re-verification trigger when revisionMarker changes (xfail — classifier gap)
+  5. Stale prior snapshot triggers reclassification (Section 18)
+  6. Re-verification trigger when revisionMarker changes (Section 18)
 
 Note: validateEvidencePaths is LazyTrae-specific (path-boundary). LazyBuddy
 verifies evidence through lazy-verifier / lazybuddy-verify.sh; scenario 4
@@ -121,10 +121,8 @@ def test_lazybuddy_verify_script_exists():
     ), "lazybuddy-verify.sh must remain executable (existing verifier reused)"
 
 
-# Known gap: the classifier does not currently accept a prior snapshot via
-# context and therefore cannot detect that the recorded revisionMarker is
-# stale. Plan Section 18 calls for stale detection (reclassify instead of
-# resume). Marked xfail per W4.6 instructions; documented in evidence file.
+# Section 18: when the prior snapshot's revisionMarker differs from the
+# current one, the classifier must reclassify starting from `understand`.
 def test_stale_prior_snapshot_triggers_reclassification():
     """When prior snapshot's revisionMarker differs, classifier must reclassify."""
     prior_snapshot = {
@@ -153,9 +151,8 @@ def test_stale_prior_snapshot_triggers_reclassification():
     ), "classifier reasons must mention stale/re-verify/reclassify"
 
 
-# Known gap: when the revisionMarker changes, the classifier's output does
-# not currently indicate that re-verification is needed. Plan Section 18
-# requires re-verification after relevant changes. Marked xfail.
+# Section 18: when the revisionMarker changes, the classifier must signal
+# that re-verification is required after a revision change.
 def test_re_verification_trigger_when_revision_marker_changes():
     """reasons must signal re-verification after a revision change."""
     old_marker = _mock_revision_marker("old implementation")

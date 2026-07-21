@@ -10,11 +10,6 @@ Proves plan Section 11 (State rules) behavior:
 
 Mirrors the LazyTrae W4.5 test file. Uses fixture
 ``06-long-horizon-migration.json``.
-
-Implementation gap: ``classify_adaptive_decision`` does not yet read
-``context['snapshot']`` to implement Section 6 step 2 (compatible
-continuation). The three compatible-resume scenarios are marked
-``@pytest.mark.xfail`` per W4.5 task instructions; documented in evidence.
 """
 
 from __future__ import annotations
@@ -103,8 +98,8 @@ def _context_snapshot(
     }
 
 
-# --- Compatible resume scenarios (implementation gap: classifier does not
-#     read context['snapshot'] — marked xfail per W4.5 task instructions). ---
+# --- Compatible resume scenarios (Section 6 step 2: classifier reads
+#     context['snapshot'] and resumes when requestDigest + revisionMarker match). ---
 
 
 def test_compatible_resume_current_stage_resumed_from_snapshot():
