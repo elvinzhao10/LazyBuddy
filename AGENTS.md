@@ -30,28 +30,31 @@ When the user types `onboard`:
 
 1. Detect the selected host from the open app or ask the one focused host
    question above. Do not run a host route while the answer is ambiguous.
-2. Resolve the permanent release root and confirm the pinned `v1.0.3` package.
+2. When upgrading from v1.0.2, inventory receipt-owned versus modified/unknown
+   assets first. Keep v1.0.3 in a separate permanent folder and preserve user
+   changes, old receipts, and host settings until the new session is observed.
+3. Resolve the permanent release root and confirm the pinned `v1.0.3` package.
    Give the user the GitHub link if it was not supplied. Never infer host
    readiness from a PATH entry, `--plugin-dir`, file existence, or a load-check.
-3. Run only safe package checks and local filesystem/command setup. From the
+4. Run only safe package checks and local filesystem/command setup. From the
    release root, use `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh`
    and `bash lazybuddy-plugin/scripts/lazybuddy-plugin-doctor.sh`; these validate
    package manifests, Skills, declarations, and local contracts without
    installing a host plugin, changing host settings, or contacting providers.
-4. Report **package readiness** separately. Package checks do not prove plugin
+5. Report **package readiness** separately. Package checks do not prove plugin
    discovery, command/Skill loading, hooks, agents, SessionStart, or an MCP
    connection.
-5. Before any host-managed mutation (marketplace trust/add, plugin install,
+6. Before any host-managed mutation (marketplace trust/add, plugin install,
    Settings connector, account, credential, or remote provider), ask for
    explicit approval naming the exact action. Never automate trust or install.
-6. After approval, give exactly one concrete GUI/host action and wait. Do not
+7. After approval, give exactly one concrete GUI/host action and wait. Do not
    bundle discovery, installation, reload, and verification in one handoff.
-7. After the user responds, inspect the corresponding app with Computer Use and
+8. After the user responds, inspect the corresponding app with Computer Use and
    record only what is visibly observed. If Computer Use is unavailable, a
    user-pasted verbatim status or screenshot counts as observed evidence. If a
    reload or new session is needed, issue the next single action, wait, and
    inspect again.
-8. Verify one real Skill or command and every expected MCP connection for the
+9. Verify one real Skill or command and every expected MCP connection for the
    selected route. Report the observed host result separately from package
    readiness; without observation, **HOST READINESS: PENDING** remains the only
    honest result.
@@ -249,4 +252,6 @@ assets, and preserve unknown, modified, linked, caller-owned, project, and
 host-managed paths. Use the host's own plugin/Skills removal flow for host
 state. Report package result separately from the user-observed host result in a
 new session; never scan or guess host directories and never remove another
-host's settings.
+host's settings. An upgrade rollback must likewise remove only v1.0.3
+receipt-owned assets after approval; never overwrite user-modified v1.0.2
+assets.
