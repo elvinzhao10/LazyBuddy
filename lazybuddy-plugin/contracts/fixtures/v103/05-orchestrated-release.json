@@ -1,28 +1,35 @@
 {
   "adversarial_checks": [
-    "must require approval because the release context triggers the release-review authority checkpoint (approval-required per the authority matrix)",
-    "must produce publication evidence, not only targeted verification",
-    "must not select planned mode for a release or publication change",
-    "must not skip independent verification",
-    "must not list release-review as a mode responsibility (it is an authority checkpoint, not a mode responsibility)"
+    "Release work must receive independent release review and artifact evidence.",
+    "Release review responsibility alone must not require approval.",
+    "Publishing remains excluded and separately approval-gated."
   ],
+  "category": "release-or-publication-change",
   "context": {
+    "publish_requested": false,
     "risk_signals": [
-      "release-or-publication",
-      "user-visible-integration",
-      "irreversible-once-published"
+      "release-change",
+      "material-user-impact"
     ],
-    "scope": "multiple-system",
-    "scope_signals": [
-      "version surfaces across packages",
-      "changelog and release notes",
-      "build artifact publication"
-    ],
+    "scope": "multi-surface",
     "verification_scope": "independent"
   },
-  "description": "Release or publication change selecting orchestrated mode with approval required via the release-review authority checkpoint and publication evidence.",
+  "description": "Release preparation selects orchestration, independent release review, and artifact evidence while keeping publication outside scope.",
   "expected_decision": {
-    "approval_required": true,
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [
+        "account-marketplace-or-publish-mutation"
+      ],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
     "capabilities": [
       "architecture-context",
       "execution",
@@ -38,13 +45,12 @@
         "documentation"
       ],
       "reasons": [
-        "documentation capability not material; release notes are produced through the release-review authority checkpoint, not a mode responsibility",
-        "release-review is an authority checkpoint (approval-required) that is not a mode responsibility in any mode; it is exercised through approval_required=true, not through the responsibilities list"
+        "No separate documentation capability is necessary for the bounded release metadata edits.",
+        "Publication mutation is explicitly excluded from the request."
       ],
       "responsibilities": [
         "continuity",
         "debugging",
-        "release-review",
         "security-review"
       ],
       "stages": [
@@ -52,19 +58,50 @@
         "debug"
       ]
     },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "verification",
+        "stage": "verify"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "quality-review",
+        "stage": "review"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "release-review",
+        "stage": "review"
+      }
+    ],
     "reasons": [
-      "release or publication behavior triggers orchestrated selection",
-      "orchestrated mode mandates approval_required=true",
-      "release context triggers the release-review authority checkpoint (approval-required per the authority matrix, separate from mode responsibilities)",
-      "publication evidence is required before completion",
-      "user-visible integration where failure would be materially costly"
+      "Release preparation is materially risky and needs independent evidence.",
+      "Release review is a responsibility rather than an approval action class.",
+      "Publication mutation remains outside the selected actions."
     ],
     "responsibilities": [
       "exploration",
-      "implementation",
       "planning",
+      "implementation",
+      "verification",
       "quality-review",
-      "verification"
+      "release-review"
     ],
     "stages": [
       "understand",
@@ -73,49 +110,57 @@
       "verify",
       "review"
     ],
+    "user_explanation": {
+      "approval": "No approval is required until an excluded publish mutation is requested.",
+      "evidence": "Independent release review and artifact verification are required.",
+      "not_selected": "Publishing and account mutation are not selected.",
+      "selected": "Release preparation is orchestrated with independent evidence."
+    },
     "verification_level": "independent"
   },
   "expected_snapshot": {
     "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
       "blocker": null,
       "capabilityClasses": [
-        "text-search",
-        "structural-search",
-        "semantic-navigation",
         "architecture-context",
         "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
         "task-state",
-        "outcome-verification"
+        "text-search"
       ],
+      "capabilitySubstitutions": [],
       "currentStage": "understand",
       "decisionId": "fixture-05-orchestrated-release",
       "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:6509c479baeed5af739287139d2231dd83c5aebb7014379a823381ccf6a88c8d",
       "mode": "orchestrated",
-      "nextAction": "await approval for release-review responsibility before bumping versions and building artifacts",
+      "nextAction": "Prepare release artifacts and capture independent verification without publishing.",
       "reasons": [
-        "release or publication behavior",
-        "orchestrated mode mandates approval_required=true",
-        "release-review authority checkpoint is approval-required",
-        "publication evidence required"
+        "Release preparation is materially risky.",
+        "Independent artifact evidence is required."
       ],
-      "requestDigest": "sha256:cut-v2-1-0-release-bump-changelog-build-artifacts",
+      "requestDigest": "sha256:8f9fc4a0c4ab5a7f7dc508285994c01ef4d42e348eacdfd62bd5008bf18e20d0",
       "responsibilities": [
         "exploration",
         "planning",
         "implementation",
         "verification",
-        "quality-review"
+        "quality-review",
+        "release-review"
       ],
-      "revisionMarker": "git:HEAD",
-      "runtimeResolution": {
-        "architecture-context": "package-codegraph",
-        "execution": "package-cli",
-        "outcome-verification": "package-verification",
-        "semantic-navigation": "package-lsp",
-        "structural-search": "host-native",
-        "task-state": "package-loop-store",
-        "text-search": "host-native"
+      "revisionFingerprint": {
+        "digest": "sha256:c683564c87e4185f0847976d2271ad9ab75a89562f9bdbb38cca68f6fb8d9180",
+        "status": "available"
       },
+      "risk": "material",
+      "scopeFingerprint": "sha256:b1d434f1b345e2ddb4a4ce1fa8f42aae68f518cfeb323692799c5f95a70ea5ef",
       "stages": [
         "understand",
         "plan",
@@ -123,6 +168,7 @@
         "verify",
         "review"
       ],
+      "verificationLevel": "independent",
       "version": 1
     }
   },
@@ -130,9 +176,9 @@
   "permitted_escalation": {
     "max_auto_escalations": 2,
     "triggers_allowed": [
-      "verification_failure",
-      "new_risk_finding"
+      "new-risk-finding",
+      "verification-failure"
     ]
   },
-  "request": "Cut the v2.1.0 release: bump the package version, update the changelog, regenerate the lockfile, and build the release artifacts. Do not push or publish yet."
+  "request": "Prepare release 2.1.0 metadata and artifacts, but do not publish or mutate any account."
 }

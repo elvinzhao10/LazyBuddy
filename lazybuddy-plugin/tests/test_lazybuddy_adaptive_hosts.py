@@ -115,8 +115,10 @@ def test_full_plugin_routes_are_not_degraded(mode):
     hosts = map_adaptive_decision_to_hosts(decision)
     assert hosts["codebuddy_full_plugin"]["degraded"] is False
     assert hosts["codebuddy_full_plugin"]["route"] == "full-plugin"
+    assert hosts["codebuddy_full_plugin"]["host_readiness"] == "pending"
     assert hosts["workbuddy_full_plugin"]["degraded"] is False
     assert hosts["workbuddy_full_plugin"]["route"] == "full-plugin"
+    assert hosts["workbuddy_full_plugin"]["host_readiness"] == "pending"
 
 
 @pytest.mark.parametrize("mode", ALL_MODES)
@@ -135,6 +137,7 @@ def test_fallback_is_explicitly_degraded(mode):
     assert fb["degraded"] is True
     assert fb["route"] == "fallback-degraded"
     assert fb["host"] == "skills-mcp-only"
+    assert fb["host_readiness"] == "pending"
     assert "degraded_reason" in fb
     assert isinstance(fb["degraded_reason"], str)
     assert len(fb["degraded_reason"]) > 0

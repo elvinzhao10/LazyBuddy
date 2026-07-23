@@ -1,29 +1,35 @@
 {
   "adversarial_checks": [
-    "must select long-horizon over orchestrated when multi-session scope is the explicit reason",
-    "must preserve continuation state across sessions using existing loop/run-state machinery",
-    "must not select orchestrated mode when no security or release risk is present",
-    "must include the continuity responsibility",
-    "must not require approval for automatic-authority responsibilities"
+    "Multi-session work must use the existing continuation state rather than create a new state system.",
+    "The adaptive snapshot must remain optional and additive.",
+    "Package-owned local checkpoints do not require persistent-capability approval."
   ],
+  "category": "multi-session-migration",
   "context": {
     "checkpoint_requirement": "durable",
-    "scope": "large",
-    "scope_signals": [
-      "spans authentication, session, and API surface",
-      "touches existing user-facing flows"
-    ],
-    "session_scope": "multi-session",
+    "scope": "multi-session",
+    "session_count": 3,
     "signals": {
-      "durable_checkpoints": true,
-      "repeated_cycles": true,
-      "resumable_snapshot_required": true
+      "continuation_requested": true,
+      "repeated_cycles": true
     },
     "verification_scope": "standard"
   },
-  "description": "Multi-session migration selecting long-horizon mode with the existing continuation loop and a resumable adaptive snapshot.",
+  "description": "An explicit multi-session migration selects long-horizon work and resumable package-owned checkpoints.",
   "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
     "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "package-owned-local-state",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
     "capabilities": [
       "architecture-context",
       "documentation",
@@ -38,7 +44,8 @@
     "not_selected": {
       "capabilities": [],
       "reasons": [
-        "long-horizon mode engages the full capability set because multi-session work touches every surface"
+        "The multi-session migration requires the complete portable capability class set.",
+        "Independent review is not selected solely because work spans sessions."
       ],
       "responsibilities": [
         "debugging",
@@ -51,18 +58,44 @@
         "review"
       ]
     },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      },
+      {
+        "ownerClass": "continuity-owner",
+        "responsibility": "continuity",
+        "stage": "continue"
+      }
+    ],
     "reasons": [
-      "request explicitly requires multi-session work",
-      "durable checkpoints and repeated cycles are required",
-      "existing continuation loop and run-state machinery must be used",
-      "single resumable adaptive snapshot must be preserved across sessions"
+      "The request explicitly spans multiple sessions.",
+      "Durable checkpoints and repeated cycles are required.",
+      "Existing package-owned continuation state is sufficient."
     ],
     "responsibilities": [
-      "continuity",
       "exploration",
-      "implementation",
       "planning",
-      "verification"
+      "implementation",
+      "verification",
+      "continuity"
     ],
     "stages": [
       "understand",
@@ -71,32 +104,44 @@
       "verify",
       "continue"
     ],
+    "user_explanation": {
+      "approval": "Package-owned local checkpoints are automatic for this task.",
+      "evidence": "Each checkpoint retains standard verification evidence.",
+      "not_selected": "A replacement state system and independent review are unnecessary.",
+      "selected": "Long-horizon continuation preserves progress across multiple sessions."
+    },
     "verification_level": "standard"
   },
   "expected_snapshot": {
     "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
       "blocker": null,
       "capabilityClasses": [
-        "text-search",
-        "structural-search",
-        "semantic-navigation",
         "architecture-context",
         "documentation",
         "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
         "task-state",
-        "outcome-verification"
+        "text-search"
       ],
+      "capabilitySubstitutions": [],
       "currentStage": "understand",
       "decisionId": "fixture-06-long-horizon-migration",
       "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:05081d680529990d1e45fc8d1b1ff51cef43f668fbb551aab562b125875760b1",
       "mode": "long-horizon",
-      "nextAction": "establish durable checkpoints and begin session 1 of the migration",
+      "nextAction": "Establish the first checkpoint and begin the bounded migration plan.",
       "reasons": [
-        "multi-session work explicitly required",
-        "durable checkpoints required",
-        "existing continuation loop must be used"
+        "The request explicitly spans multiple sessions.",
+        "Durable checkpoints are required."
       ],
-      "requestDigest": "sha256:migrate-session-auth-to-jwt-over-3-sessions",
+      "requestDigest": "sha256:5405bb746da27bc6ff081c05fec63e5a74695665237a638624c2b1145cc0e409",
       "responsibilities": [
         "exploration",
         "planning",
@@ -104,17 +149,12 @@
         "verification",
         "continuity"
       ],
-      "revisionMarker": "git:HEAD",
-      "runtimeResolution": {
-        "architecture-context": "package-codegraph",
-        "documentation": "package-docs",
-        "execution": "package-cli",
-        "outcome-verification": "package-verification",
-        "semantic-navigation": "package-lsp",
-        "structural-search": "host-native",
-        "task-state": "package-loop-store",
-        "text-search": "host-native"
+      "revisionFingerprint": {
+        "digest": "sha256:9d166888ad6f4da419cf538c3c020a06003ef34feb64dd8221f9b4269c73dd49",
+        "status": "available"
       },
+      "risk": "material",
+      "scopeFingerprint": "sha256:03dc843bd7ad3a555c5688541d5060c6b7cb1a54ce96fec128059bccf26d5efd",
       "stages": [
         "understand",
         "plan",
@@ -122,6 +162,7 @@
         "verify",
         "continue"
       ],
+      "verificationLevel": "standard",
       "version": 1
     }
   },
@@ -129,10 +170,10 @@
   "permitted_escalation": {
     "max_auto_escalations": 2,
     "triggers_allowed": [
-      "verification_failure",
-      "broader_scope_revealed",
-      "new_risk_finding"
+      "new-risk-finding",
+      "user-goal-changed",
+      "verification-failure"
     ]
   },
-  "request": "Migrate the user authentication system from session-based to JWT over the next three sessions. Preserve compatibility with existing sessions during the migration and keep a durable checkpoint so each session can resume."
+  "request": "Migrate session authentication over three sessions while preserving compatibility and durable checkpoints."
 }

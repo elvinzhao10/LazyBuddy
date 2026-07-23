@@ -1,15 +1,11 @@
-"""Adaptive explanation formatter for v1.0.3 LazyBuddy (W3.5).
-
-Reads the ``adaptive`` snapshot block from a run state and produces a terse,
-telegraphic, multi-line explanation per plan Section 13. Mirrors the LazyTrae
-W2.4 ``adaptive-explanation.js`` shape. No external dependencies.
-"""
-
 from __future__ import annotations
 
-from typing import Optional
+from typing import Final
 
-ALL_STAGES = (
+from lazybuddy_adaptive_snapshot import validate_adaptive_snapshot
+
+
+ALL_STAGES: Final = {
     "understand",
     "plan",
     "implement",
@@ -17,8 +13,19 @@ ALL_STAGES = (
     "verify",
     "review",
     "continue",
-)
-ALL_CAPS = (
+}
+ALL_RESPONSIBILITIES: Final = {
+    "exploration",
+    "planning",
+    "implementation",
+    "debugging",
+    "verification",
+    "quality-review",
+    "security-review",
+    "release-review",
+    "continuity",
+}
+ALL_CAPABILITIES: Final = {
     "text-search",
     "structural-search",
     "semantic-navigation",
@@ -27,69 +34,92 @@ ALL_CAPS = (
     "execution",
     "task-state",
     "outcome-verification",
-)
-DEFAULT_RUNTIME = "host-native"
-BLOCKED_LABEL = "blocked-state record present"
+}
 
 
-def _title(word: str) -> str:
-    return str(word or "").replace("-", " ").title()
+def adaptive_explanation_fields(snapshot: dict) -> dict:
+    if not validate_adaptive_snapshot(snapshot):
+        return {
+            "reclassificationRequired": True,
+            "status": "invalid-state",
+        }
+    stages = list(snapshot.get("stages", []))
+    capabilities = list(snapshot.get("capabilityClasses", []))
+    responsibilities = list(snapshot.get("responsibilities", []))
+    substitutions = list(snapshot.get("capabilitySubstitutions", []))
+    return {
+        "approval": dict(snapshot.get("approval", {})),
+        "capabilityClasses": capabilities,
+        "evidenceImpact": {
+            "substitutions": substitutions,
+            "verificationLevel": snapshot.get("verificationLevel", ""),
+        },
+        "mode": snapshot.get("mode", ""),
+        "notSelected": {
+            "capabilityClasses": sorted(ALL_CAPABILITIES - set(capabilities)),
+            "responsibilities": sorted(
+                ALL_RESPONSIBILITIES - set(responsibilities)
+            ),
+            "stages": sorted(ALL_STAGES - set(stages)),
+        },
+        "responsibilities": responsibilities,
+        "stages": stages,
+    }
 
 
-def _bullets(items) -> str:
-    joiner = chr(10)
-    return joiner.join(f"- {item}" for item in items) if items else "- none"
+def _append_items(lines: list[str], heading: str, items: list[object]) -> None:
+    lines.append(heading)
+    if not items:
+        lines.append("- none")
+        return
+    lines.extend(f"- {item}" for item in items)
 
 
-def format_adaptive_explanation(run_state: dict) -> Optional[str]:
-    """Return the Section 13 explanation string, or None if no adaptive block is present."""
-    if not isinstance(run_state, dict):
+def _substitution_lines(substitutions: list[dict]) -> list[str]:
+    lines: list[str] = []
+    for substitution in substitutions:
+        required = substitution.get("requiredClass", "unknown")
+        allowed = substitution.get("allowedSubstitutionClasses", [])
+        downgrade = substitution.get("evidenceDowngrade", "unspecified")
+        lines.append(
+            f"{required} -> {', '.join(allowed)}; evidence: {downgrade}"
+        )
+    return lines
+
+
+def format_adaptive_explanation(run_state: dict) -> str | None:
+    snapshot = run_state.get("adaptive") if isinstance(run_state, dict) else None
+    if not isinstance(snapshot, dict):
         return None
-    snap = run_state.get("adaptive")
-    if not isinstance(snap, dict):
-        return None
-    mode = snap.get("mode", "")
-    stages = snap.get("stages", []) or []
-    responsibilities = snap.get("responsibilities", []) or []
-    caps = snap.get("capabilityClasses", []) or []
-    runtime = snap.get("runtimeResolution", {}) or {}
-    reasons = snap.get("reasons", []) or []
-    escalation = snap.get("escalationCount", 0)
-    blocker = snap.get("blocker")
-    next_action = snap.get("nextAction", "")
-    not_selected_caps = sorted(c for c in ALL_CAPS if c not in caps)
-    not_selected_stages = sorted(s for s in ALL_STAGES if s not in stages)
-    cap_lines = [f"- {c} ({runtime.get(c, DEFAULT_RUNTIME)})" for c in caps] or [
-        "- none"
+    fields = adaptive_explanation_fields(snapshot)
+    if fields.get("status") == "invalid-state":
+        return "Adaptive state: invalid-state\nReclassification required: yes"
+    approval = fields["approval"]
+    required = approval.get("requiredClasses", [])
+    evidence = fields["evidenceImpact"]
+    not_selected = fields["notSelected"]
+    lines = [f"Mode: {str(fields['mode']).replace('-', ' ').title()}"]
+    _append_items(lines, "Selected stages:", fields["stages"])
+    _append_items(lines, "Responsibilities:", fields["responsibilities"])
+    _append_items(lines, "Capabilities:", fields["capabilityClasses"])
+    not_selected_lines = [
+        f"capabilities: {', '.join(not_selected['capabilityClasses']) or 'none'}",
+        f"responsibilities: {', '.join(not_selected['responsibilities']) or 'none'}",
+        f"stages: {', '.join(not_selected['stages']) or 'none'}",
     ]
-    not_sel_lines = [
-        f"- {c}: not required for current scope" for c in not_selected_caps
-    ] or ["- none"]
-    if not_selected_stages:
-        not_sel_lines += [f"- {s} stage: skipped" for s in not_selected_stages]
-    approval = (
-        "approval required (orchestrated mode)" if mode == "orchestrated" else "none"
-    )
-    lines = [
-        f"Mode: {_title(mode)}",
-        "Selected stages:",
-        _bullets(stages),
-        "Responsibilities:",
-        _bullets(responsibilities),
-        "Capabilities:",
-        *cap_lines,
-        "Not selected:",
-        *not_sel_lines,
-        f"Approval required: {approval}",
-        f"Escalation count: {escalation}",
-        "Single-writer: orchestrator",
-    ]
-    if blocker:
-        blocker_label = blocker if isinstance(blocker, str) else BLOCKED_LABEL
-        lines.append(f"Blocker: {blocker_label}")
-    if next_action:
-        lines.append(f"Next action: {next_action}")
-    if reasons:
-        lines.append("Reasons:")
-        lines += [f"- {r}" for r in reasons]
-    return chr(10).join(lines)
+    _append_items(lines, "Not selected:", not_selected_lines)
+    _append_items(lines, "Approval required:", list(required))
+    lines.append(f"Verification: {evidence['verificationLevel']}")
+    substitutions = _substitution_lines(evidence["substitutions"])
+    if substitutions:
+        _append_items(lines, "Evidence impact:", substitutions)
+    lines.append(f"Escalation count: {snapshot.get('escalationCount', 0)}")
+    lines.append("Single-writer: orchestrator")
+    lines.append(f"Next action: {snapshot.get('nextAction', '')}")
+    _append_items(lines, "Reasons:", list(snapshot.get("reasons", [])))
+    blocker = snapshot.get("blocker")
+    if isinstance(blocker, dict):
+        lines.append("Blocker: blocked-state record present")
+    elif isinstance(blocker, str) and blocker:
+        lines.append(f"Blocker: {blocker}")
+    return "\n".join(lines)

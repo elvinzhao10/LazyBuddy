@@ -14,7 +14,7 @@ Scenarios:
   7. mapping surfaces stay non-empty for assisted mode
   8. snapshot round-trip preserves fallback resolution
   9. explanation mentions substitution (LazyBuddy explanation surfaces reasons)
-  10. explanation mentions weaker/adjusted verification expectations
+  10. explanation fields preserve the weaker-evidence downgrade
 
 Task description referenced "07-preferred-provider-unavailable.json" — that is a
 typo; the canonical filename in both repos is "08-preferred-provider-unavailable.json".
@@ -31,7 +31,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lazybuddy_adaptive_detector import classify_adaptive_decision  # noqa: E402
-from lazybuddy_adaptive_explanation import format_adaptive_explanation  # noqa: E402
+from lazybuddy_adaptive_explanation import (  # noqa: E402
+    adaptive_explanation_fields,
+    format_adaptive_explanation,
+)
 from lazybuddy_adaptive_mapping import map_adaptive_decision_to_surfaces  # noqa: E402
 from lazybuddy_adaptive_snapshot import (  # noqa: E402
     read_adaptive_snapshot,
@@ -150,14 +153,17 @@ def test_mapping_surfaces_stay_non_empty_for_assisted_mode():
 
 
 def test_snapshot_round_trip_preserves_fallback_resolution():
-    """write -> read preserves the fallback resolution for semantic-navigation."""
     decision = _classify()
     run_state = _base_run_state()
     write_adaptive_snapshot(run_state, decision["snapshot"])
     read = read_adaptive_snapshot(run_state)
     assert read["mode"] == "assisted"
-    assert read["runtimeResolution"]["semantic-navigation"] \
-        == "unavailable:fallback-to-structural-search+text-search"
+    substitution = read["capabilitySubstitutions"][0]
+    assert substitution["requiredClass"] == "semantic-navigation"
+    assert substitution["allowedSubstitutionClasses"] == [
+        "structural-search",
+        "text-search",
+    ]
 
 
 def test_explanation_mentions_substitution():
@@ -171,14 +177,12 @@ def test_explanation_mentions_substitution():
         f"explanation must mention substitution; got: {explanation}"
 
 
-def test_explanation_mentions_weaker_verification_expectations():
-    """LazyBuddy explanation surfaces reasons/next_action with weaker-evidence note."""
+def test_explanation_fields_preserve_weaker_evidence_downgrade():
     decision = _classify()
-    run_state = _base_run_state()
-    write_adaptive_snapshot(run_state, decision["snapshot"])
-    explanation = format_adaptive_explanation(run_state)
-    assert explanation is not None
-    assert re.search(
-        r"verification expectations adjusted|weaker|adjust reference verification",
-        explanation, re.I,
-    ), f"explanation must mention weaker/adjusted verification; got: {explanation}"
+    fields = adaptive_explanation_fields(decision["snapshot"])
+    evidence = fields["evidenceImpact"]
+    substitution = evidence["substitutions"][0]
+    assert substitution["evidenceDowngrade"] == (
+        "additional-verification-required"
+    )
+    assert evidence["verificationLevel"] == "standard"

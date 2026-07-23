@@ -7,135 +7,95 @@
     "implementation": "automatic",
     "planning": "automatic",
     "quality-review": "automatic",
-    "release-review": "approval-required",
-    "security-review": "approval-required",
+    "release-review": "automatic",
+    "security-review": "automatic",
     "verification": "automatic"
+  },
+  "approval_policy": {
+    "automatic_action_classes": [
+      "existing-capability-use",
+      "package-owned-local-state",
+      "read-only-local-inspection",
+      "repository-edit",
+      "targeted-local-execution"
+    ],
+    "approval_required_action_classes": [
+      "account-marketplace-or-publish-mutation",
+      "browser-or-desktop-control",
+      "credentials-auth-or-paid-service",
+      "host-mcp-settings-mutation",
+      "install-or-download",
+      "persistent-capability",
+      "remote-data-egress"
+    ],
+    "review_responsibilities_require_approval": false
+  },
+  "behavior_scope": {
+    "implementation_resolution": "excluded",
+    "portable": true,
+    "state_extension": "optional-additive-existing-state"
+  },
+  "continuation_policy": {
+    "material_change_requires_reclassification": [
+      "hostFingerprint",
+      "requestDigest",
+      "revisionFingerprint",
+      "scopeFingerprint"
+    ],
+    "re_evaluate_before_reuse": [
+      "approval",
+      "risk"
+    ],
+    "required_matches": [
+      "hostFingerprint",
+      "requestDigest",
+      "revisionFingerprint",
+      "scopeFingerprint"
+    ],
+    "stale_evidence_policy": [
+      "preserve-diagnostic-evidence",
+      "reject-prior-completion",
+      "reclassify-current-decision"
+    ]
   },
   "contract_version": "v1",
   "decision_policy": {
-    "steps": [
-      {
-        "description": "A named workflow or explicit instruction is authoritative. The classifier may add required verification or approval boundaries but must not silently downgrade or replace the explicit request.",
-        "inputs": [
-          "named_workflow",
-          "user_request"
-        ],
-        "name": "explicit_user_workflow",
-        "outputs": [
-          "approval_boundaries",
-          "authoritative_mode",
-          "required_stages"
-        ]
-      },
-      {
-        "description": "When a compatible adaptive snapshot exists, resume the existing mode and current stage; do not re-plan from the beginning; reclassify only when the repository revision, request, scope, or host capability changed materially.",
-        "inputs": [
-          "adaptive_snapshot",
-          "host_capability",
-          "repository_revision",
-          "user_request"
-        ],
-        "name": "compatible_continuation",
-        "outputs": [
-          "current_stage",
-          "reclassification_required",
-          "resumed_mode"
-        ]
-      },
-      {
-        "description": "Select long-horizon when the request explicitly requires multi-session work, durable checkpoints, repeated cycles, or a bounded continuation loop. Use the existing loop/run-state machinery.",
-        "inputs": [
-          "checkpoint_requirement",
-          "session_scope",
-          "user_request"
-        ],
-        "name": "long_horizon_work",
-        "outputs": [
-          "continuation_loop",
-          "mode:long-horizon"
-        ]
-      },
-      {
-        "description": "Select orchestrated when one or more of these apply: security-sensitive behavior; release or publication behavior; installation or configuration ownership; destructive migration; two or more genuinely independent implementation workstreams; explicit independent review requirement; user-visible integration where failure would be materially costly.",
-        "inputs": [
-          "risk_signals",
-          "scope_signals",
-          "user_request"
-        ],
-        "name": "high_risk_or_multi_system_work",
-        "outputs": [
-          "independent_review_required",
-          "mode:orchestrated",
-          "required_responsibilities"
-        ]
-      },
-      {
-        "description": "Select planned when: acceptance criteria are incomplete; the change spans multiple systems or architectural boundaries; important implementation decisions must be resolved before editing; scope is broad but does not require a multi-agent team.",
-        "inputs": [
-          "acceptance_criteria",
-          "scope_signals",
-          "user_request"
-        ],
-        "name": "broad_or_ambiguous_work",
-        "outputs": [
-          "decisions_to_resolve",
-          "mode:planned",
-          "planning_required"
-        ]
-      },
-      {
-        "description": "Select assisted when: the repository or subsystem is unfamiliar; cross-file symbol tracing is required; the request is primarily debugging; implementation is bounded but needs exploration or specialist verification.",
-        "inputs": [
-          "cross_file_signals",
-          "repository_familiarity",
-          "user_request"
-        ],
-        "name": "unfamiliar_cross_file_or_diagnostic_work",
-        "outputs": [
-          "exploration_required",
-          "mode:assisted",
-          "specialist_responsibility"
-        ]
-      },
-      {
-        "description": "Select direct when the change is localized, acceptance criteria are clear, and targeted verification is sufficient.",
-        "inputs": [
-          "localization_signals",
-          "user_request",
-          "verification_scope"
-        ],
-        "name": "small_clear_low_risk_work",
-        "outputs": [
-          "mode:direct",
-          "targeted_verification"
-        ]
-      }
-    ]
+    "explicit_workflow": "authoritative",
+    "resolution_order": [
+      "explicit-user-workflow",
+      "compatible-continuation",
+      "long-horizon-work",
+      "high-risk-or-multi-system-work",
+      "broad-or-ambiguous-work",
+      "unfamiliar-cross-file-or-diagnostic-work",
+      "small-clear-low-risk-work"
+    ],
+    "tie_breaker": "lowest-sufficient-mode"
   },
   "escalation_bounds": {
+    "blocked_after_bound": true,
     "escalation_triggers": [
-      {
-        "description": "A targeted verification failure adds a debugging stage.",
-        "trigger": "verification_failure"
-      },
-      {
-        "description": "A failure that reveals broader scope may increase the mode by one level.",
-        "trigger": "broader_scope_revealed"
-      },
-      {
-        "description": "A new security, release, migration, or destructive-risk finding requires independent review.",
-        "trigger": "new_risk_finding"
-      },
-      {
-        "description": "An unavailable capability uses a fallback before increasing workflow depth.",
-        "trigger": "capability_unavailable"
-      },
-      {
-        "description": "A changed user goal produces a new decision rather than mutating the old goal invisibly.",
-        "trigger": "user_goal_changed"
-      }
+      "broader-scope-revealed",
+      "capability-unavailable",
+      "new-risk-finding",
+      "user-goal-changed",
+      "verification-failure"
     ],
-    "max_auto_escalations": 2
+    "max_auto_escalations": 2,
+    "mode_increase": "at-most-one-level-per-trigger"
+  },
+  "fingerprint_policy": {
+    "algorithm": "sha256",
+    "format": "sha256:<64-lowercase-hex>",
+    "host_material": "capability-and-authority-boundary",
+    "revision_material": [
+      "committed-base",
+      "nonignored-untracked-content",
+      "staged-content",
+      "tracked-working-content"
+    ],
+    "revision_unavailable": "fail-closed",
+    "scope_material": "canonical-task-boundary"
   },
   "modes": {
     "assisted": {
@@ -146,14 +106,19 @@
         "structural-search",
         "text-search"
       ],
-      "description": "Add focused repository understanding or debugging before implementation. Use one specialist responsibility when useful.",
       "responsibilities": [
         "debugging",
         "exploration",
         "implementation",
         "verification"
       ],
-      "workflow_surfaces": []
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "verification_level": "standard"
     },
     "direct": {
       "approval_required": false,
@@ -161,12 +126,15 @@
         "outcome-verification",
         "text-search"
       ],
-      "description": "Implement the localized change and run targeted verification. No plan artifact or subagent by default.",
       "responsibilities": [
         "implementation",
         "verification"
       ],
-      "workflow_surfaces": []
+      "stages": [
+        "implement",
+        "verify"
+      ],
+      "verification_level": "targeted"
     },
     "long-horizon": {
       "approval_required": false,
@@ -180,7 +148,6 @@
         "task-state",
         "text-search"
       ],
-      "description": "Use the existing loop/checkpoint mechanism around a planned or orchestrated workflow and preserve continuation state.",
       "responsibilities": [
         "continuity",
         "exploration",
@@ -188,14 +155,17 @@
         "planning",
         "verification"
       ],
-      "workflow_surfaces": [
-        "lazy-start-work",
-        "lazy-ulw-loop",
-        "lazy-ulw-plan"
-      ]
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "continue"
+      ],
+      "verification_level": "standard"
     },
     "orchestrated": {
-      "approval_required": true,
+      "approval_required": false,
       "capabilities": [
         "architecture-context",
         "execution",
@@ -205,20 +175,21 @@
         "task-state",
         "text-search"
       ],
-      "description": "Divide genuinely independent responsibilities, coordinate outputs, and require independent verification or review.",
       "responsibilities": [
         "exploration",
         "implementation",
         "planning",
         "quality-review",
-        "security-review",
         "verification"
       ],
-      "workflow_surfaces": [
-        "lazy-review-work",
-        "lazy-start-work",
-        "lazy-ulw-plan"
-      ]
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "verification_level": "independent"
     },
     "planned": {
       "approval_required": false,
@@ -230,123 +201,37 @@
         "structural-search",
         "text-search"
       ],
-      "description": "Resolve decisions and acceptance criteria before implementation. Execute the approved plan and verify it.",
       "responsibilities": [
         "exploration",
         "implementation",
         "planning",
         "verification"
       ],
-      "workflow_surfaces": [
-        "lazy-start-work",
-        "lazy-ulw-plan"
-      ]
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify"
+      ],
+      "verification_level": "standard"
     }
   },
-  "snapshot_schema": {
-    "fields": [
-      {
-        "description": "Adaptive snapshot schema version (currently 1).",
-        "name": "version",
-        "required": true,
-        "type": "integer"
-      },
-      {
-        "description": "Unique identifier for the adaptive decision.",
-        "name": "decisionId",
-        "required": true,
-        "type": "string"
-      },
-      {
-        "description": "Digest of the original user request for compatibility checking.",
-        "name": "requestDigest",
-        "required": true,
-        "type": "string"
-      },
-      {
-        "description": "Selected workflow mode (direct, assisted, planned, orchestrated, long-horizon).",
-        "name": "mode",
-        "required": true,
-        "type": "string"
-      },
-      {
-        "description": "Ordered list of stages selected for this decision.",
-        "name": "stages",
-        "required": true,
-        "type": "array"
-      },
-      {
-        "description": "Current active stage.",
-        "name": "currentStage",
-        "required": true,
-        "type": "string"
-      },
-      {
-        "description": "Named responsibilities engaged for this decision.",
-        "name": "responsibilities",
-        "required": true,
-        "type": "array"
-      },
-      {
-        "description": "Capability classes required for this decision.",
-        "name": "capabilityClasses",
-        "required": true,
-        "type": "array"
-      },
-      {
-        "description": "Mapping of capability class to resolved provider.",
-        "name": "runtimeResolution",
-        "required": true,
-        "type": "object"
-      },
-      {
-        "description": "Material reasons for the selected mode and omissions.",
-        "name": "reasons",
-        "required": true,
-        "type": "array"
-      },
-      {
-        "description": "Number of automatic depth escalations applied (bounded by max_auto_escalations).",
-        "name": "escalationCount",
-        "required": true,
-        "type": "integer"
-      },
-      {
-        "description": "Repository revision marker for compatibility checking on resume.",
-        "name": "revisionMarker",
-        "required": true,
-        "type": "string"
-      },
-      {
-        "description": "Current blocker, or null when not blocked.",
-        "name": "blocker",
-        "required": true,
-        "type": [
-          "null",
-          "string"
-        ]
-      },
-      {
-        "description": "Next action to take in the current stage.",
-        "name": "nextAction",
-        "required": true,
-        "type": "string"
-      }
-    ],
-    "single_writer": "orchestrator"
+  "request_digest": {
+    "algorithm": "sha256",
+    "encoding": "utf-8",
+    "format": "sha256:<64-lowercase-hex>",
+    "input": "exact-prompt-bytes"
   },
   "transparency": {
-    "not_selected_fields": [
-      "architecture-context",
-      "external-code-search",
-      "independent-review"
-    ],
-    "selected_fields": [
-      "approval_required",
-      "capabilities",
+    "required_explanation_fields": [
+      "approval",
+      "capability-classes",
+      "evidence-impact",
       "mode",
+      "not-selected",
       "responsibilities",
       "stages"
-    ]
+    ],
+    "substitution_explanation_required": true
   }
 }

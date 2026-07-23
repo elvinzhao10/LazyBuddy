@@ -1,28 +1,33 @@
 {
   "adversarial_checks": [
-    "must require approval because the security-review responsibility is approval-required per the authority matrix",
-    "must not skip independent verification for a security-sensitive change",
-    "must include the security-review responsibility",
-    "must not downgrade to planned mode simply because the change is bounded",
-    "must produce independent verification evidence, not only targeted verification"
+    "A security-sensitive authorization change must receive independent review.",
+    "Security review responsibility alone must not create an approval request.",
+    "Implementation and independent review must have distinct owner classes."
   ],
+  "category": "security-sensitive-authorization-change",
   "context": {
     "risk_signals": [
       "security-sensitive",
       "authorization-change",
-      "user-visible-integration"
+      "material-user-impact"
     ],
     "scope": "cross-file",
-    "scope_signals": [
-      "touches authorization middleware",
-      "changes a route guard",
-      "user-visible admin surface"
-    ],
     "verification_scope": "independent"
   },
-  "description": "Security-sensitive authorization change selecting orchestrated mode with implementation, security review, and independent verification.",
+  "description": "A security-sensitive authorization change selects orchestration and independent security review without conflating review with action approval.",
   "expected_decision": {
-    "approval_required": true,
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
     "capabilities": [
       "architecture-context",
       "execution",
@@ -38,7 +43,8 @@
         "documentation"
       ],
       "reasons": [
-        "documentation not material to a code-only authorization change"
+        "No documentation change is required by this authorization correction.",
+        "Release review is outside the selected responsibility set."
       ],
       "responsibilities": [
         "continuity",
@@ -50,19 +56,50 @@
         "debug"
       ]
     },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "verification",
+        "stage": "verify"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "quality-review",
+        "stage": "review"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "security-review",
+        "stage": "review"
+      }
+    ],
     "reasons": [
-      "security-sensitive authorization behavior triggers orchestrated selection",
-      "independent review is required for material-risk changes",
-      "user-visible integration where failure would be materially costly",
-      "authority matrix marks security-review as approval-required"
+      "Authorization behavior is security-sensitive.",
+      "Material risk requires independent verification and security review.",
+      "Review responsibility is automatic and selects no approval action class."
     ],
     "responsibilities": [
       "exploration",
-      "implementation",
       "planning",
+      "implementation",
+      "verification",
       "quality-review",
-      "security-review",
-      "verification"
+      "security-review"
     ],
     "stages": [
       "understand",
@@ -71,49 +108,57 @@
       "verify",
       "review"
     ],
+    "user_explanation": {
+      "approval": "No approval action class is selected by security review itself.",
+      "evidence": "Independent verification and security review are required.",
+      "not_selected": "Release and continuation responsibilities are outside this bounded change.",
+      "selected": "Orchestration separates implementation from independent review."
+    },
     "verification_level": "independent"
   },
   "expected_snapshot": {
     "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
       "blocker": null,
       "capabilityClasses": [
-        "text-search",
-        "structural-search",
-        "semantic-navigation",
         "architecture-context",
         "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
         "task-state",
-        "outcome-verification"
+        "text-search"
       ],
+      "capabilitySubstitutions": [],
       "currentStage": "understand",
       "decisionId": "fixture-04-orchestrated-security-change",
       "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:80c6a1dae259621acca5cb7bb8c65dc9b3f4e5217786d1fb8929b63ba0c6ce8e",
       "mode": "orchestrated",
-      "nextAction": "await approval for security-review responsibility before editing the route guard",
+      "nextAction": "Assign implementation and independent review to distinct owners.",
       "reasons": [
-        "security-sensitive authorization change",
-        "independent review required",
-        "authority matrix marks security-review as approval-required"
+        "Authorization behavior is security-sensitive.",
+        "Material risk requires independent verification."
       ],
-      "requestDigest": "sha256:restrict-admin-billing-endpoint-to-admins-only",
+      "requestDigest": "sha256:b3ca35dde53d55f100b798e529e1ee0d9085aa8f6ed1c91a6b915b07771b27bc",
       "responsibilities": [
         "exploration",
         "planning",
         "implementation",
         "verification",
-        "security-review",
-        "quality-review"
+        "quality-review",
+        "security-review"
       ],
-      "revisionMarker": "git:HEAD",
-      "runtimeResolution": {
-        "architecture-context": "package-codegraph",
-        "execution": "package-cli",
-        "outcome-verification": "package-verification",
-        "semantic-navigation": "package-lsp",
-        "structural-search": "host-native",
-        "task-state": "package-loop-store",
-        "text-search": "host-native"
+      "revisionFingerprint": {
+        "digest": "sha256:ab8153001ef26d94ddf2f1ebedd0ed4464578ab2f568d3eaa701be844285c088",
+        "status": "available"
       },
+      "risk": "high",
+      "scopeFingerprint": "sha256:3a1746303a7e7c5b73f090653dc5d03e1f19e9b0afaf236c8e35435506d40c18",
       "stages": [
         "understand",
         "plan",
@@ -121,6 +166,7 @@
         "verify",
         "review"
       ],
+      "verificationLevel": "independent",
       "version": 1
     }
   },
@@ -128,9 +174,9 @@
   "permitted_escalation": {
     "max_auto_escalations": 2,
     "triggers_allowed": [
-      "verification_failure",
-      "new_risk_finding"
+      "new-risk-finding",
+      "verification-failure"
     ]
   },
-  "request": "Change the authorization logic so that only admins can access the /admin/billing endpoint. Update the route guard, the middleware, and the audit log entry."
+  "request": "Restrict billing administration access to authorized administrators and independently review the authorization change."
 }

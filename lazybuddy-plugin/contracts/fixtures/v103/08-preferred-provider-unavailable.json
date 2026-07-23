@@ -1,31 +1,50 @@
 {
   "adversarial_checks": [
-    "must preserve the selected mode when a fallback is available",
-    "must not silently enable a remote provider or install dependencies without approval",
-    "must report the substitution concisely through an existing status surface",
-    "must adjust verification expectations when the fallback is weaker",
-    "must never claim equivalent evidence when the fallback cannot provide it"
+    "Unavailable semantic navigation must not silently activate a new implementation.",
+    "The assisted mode must remain unchanged when a safe class-level substitution exists.",
+    "Weaker evidence must be explained and compensated with additional verification."
   ],
+  "category": "preferred-capability-unavailable",
   "context": {
-    "fallback_available": true,
     "preferred_capability": "semantic-navigation",
-    "preferred_provider_unavailable": true,
+    "preferred_capability_available": false,
     "scope": "cross-file",
     "signals": {
       "capability_unavailable": true
     },
-    "substitution": {
-      "fallback_capability_class": "structural-search + text-search",
-      "preferred_provider": "lsp-bridge",
-      "verification_adjustment": "references verified through search plus tests instead of semantic navigation"
-    },
+    "substitution_classes": [
+      "structural-search",
+      "text-search"
+    ],
     "verification_scope": "standard"
   },
-  "description": "Preferred provider unavailable case preserving the assisted mode and selecting an allowed safe fallback with weaker verification expectations.",
+  "description": "An unavailable preferred capability preserves assisted mode through a safe class-level substitution and explicit evidence downgrade.",
   "expected_decision": {
+    "allowed_substitutions": [
+      {
+        "allowedSubstitutionClasses": [
+          "structural-search",
+          "text-search"
+        ],
+        "evidenceDowngrade": "additional-verification-required",
+        "explanation": "Structural and text search preserve discovery coverage but require additional verification.",
+        "requiredClass": "semantic-navigation"
+      }
+    ],
+    "approval_classes": [],
     "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
     "capabilities": [
       "outcome-verification",
+      "semantic-navigation",
       "structural-search",
       "text-search"
     ],
@@ -35,13 +54,11 @@
         "architecture-context",
         "documentation",
         "execution",
-        "semantic-navigation",
         "task-state"
       ],
       "reasons": [
-        "semantic-navigation preferred provider unavailable and not silently enabled",
-        "no remote provider activated without approval",
-        "architecture graph unnecessary for bounded cross-file work"
+        "A bounded class-level substitution avoids deeper workflow selection.",
+        "No durable continuation is required."
       ],
       "responsibilities": [
         "continuity",
@@ -56,15 +73,36 @@
         "review"
       ]
     },
+    "ownership": [
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "debugging",
+        "stage": "debug"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
     "reasons": [
-      "preferred semantic-navigation provider unavailable; safe fallback selected preserving the capability class where possible",
-      "verification expectations adjusted because the fallback is weaker than semantic navigation",
-      "substitution reported; no equivalent-evidence claim made",
-      "mode preserved at assisted because capability fallback was available"
+      "The preferred capability class is unavailable.",
+      "A safe substitution preserves assisted mode.",
+      "Additional verification compensates for weaker navigation evidence."
     ],
     "responsibilities": [
-      "debugging",
       "exploration",
+      "debugging",
       "implementation",
       "verification"
     ],
@@ -74,56 +112,79 @@
       "implement",
       "verify"
     ],
+    "user_explanation": {
+      "approval": "No install or activation approval is requested because existing classes provide the fallback.",
+      "evidence": "Additional verification compensates for the weaker substitution.",
+      "not_selected": "A deeper mode and new capability activation are unnecessary.",
+      "selected": "Assisted mode uses structural and text search as allowed substitution classes."
+    },
     "verification_level": "standard"
   },
   "expected_snapshot": {
     "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
       "blocker": null,
       "capabilityClasses": [
-        "text-search",
+        "outcome-verification",
+        "semantic-navigation",
         "structural-search",
-        "outcome-verification"
+        "text-search"
+      ],
+      "capabilitySubstitutions": [
+        {
+          "allowedSubstitutionClasses": [
+            "structural-search",
+            "text-search"
+          ],
+          "evidenceDowngrade": "additional-verification-required",
+          "explanation": "Structural and text search preserve discovery coverage but require additional verification.",
+          "requiredClass": "semantic-navigation"
+        }
       ],
       "currentStage": "understand",
-      "decisionId": "fixture-08-preferred-provider-unavailable",
+      "decisionId": "fixture-08-preferred-capability-unavailable",
       "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:8dfbfc43bf39c1d399a453701f58d3ea4628a3841b3fa83fe9e6c07756c00efb",
       "mode": "assisted",
-      "nextAction": "use structural-search plus text-search fallback and adjust reference verification",
+      "nextAction": "Use the allowed substitution classes and add the compensating verification.",
       "reasons": [
-        "preferred semantic-navigation provider unavailable",
-        "safe fallback selected preserving capability class where possible",
-        "verification expectations adjusted because fallback is weaker"
+        "The preferred capability class is unavailable.",
+        "A safe substitution preserves assisted mode."
       ],
-      "requestDigest": "sha256:refactor-search-service-fuzzy-matching",
+      "requestDigest": "sha256:0b9fee6c60fc2a2c853b8cc4fc91b1f29deda9df4af1dd0af62e065fd4ccfc54",
       "responsibilities": [
         "exploration",
         "debugging",
         "implementation",
         "verification"
       ],
-      "revisionMarker": "git:HEAD",
-      "runtimeResolution": {
-        "outcome-verification": "package-verification",
-        "semantic-navigation": "unavailable:fallback-to-structural-search+text-search",
-        "structural-search": "host-native",
-        "text-search": "host-native"
+      "revisionFingerprint": {
+        "digest": "sha256:a81cb0c9df2044b5a355952d2d596f81370a53f48a1c3fdccba3ed563e6cec8f",
+        "status": "available"
       },
+      "risk": "standard",
+      "scopeFingerprint": "sha256:8a0175f8cdb20011ef31b2b126034dfd4ca97c495578de52c14981b510c943e0",
       "stages": [
         "understand",
         "debug",
         "implement",
         "verify"
       ],
+      "verificationLevel": "standard",
       "version": 1
     }
   },
-  "id": "08-preferred-provider-unavailable",
+  "id": "08-preferred-capability-unavailable",
   "permitted_escalation": {
     "max_auto_escalations": 2,
     "triggers_allowed": [
-      "capability_unavailable",
-      "verification_failure"
+      "capability-unavailable",
+      "verification-failure"
     ]
   },
-  "request": "Refactor the search service to support fuzzy matching. The preferred semantic-navigation provider is unavailable for this session."
+  "request": "Refactor search to support fuzzy matching when semantic navigation is unavailable for this task."
 }

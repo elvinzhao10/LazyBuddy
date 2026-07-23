@@ -6,6 +6,9 @@
 
 ### Added
 
+- Local-first onboarding guidance keeps package readiness separate from host
+  readiness; host readiness remains **PENDING** until a fresh host session is
+  observed.
 - Adaptive harness contract (`adaptive-harness-contract.v1.json`) shared
   byte-identical across LazyTrae and LazyBuddy, with paired sha256 digest
   parity and no runtime coupling between repositories.
@@ -42,17 +45,26 @@
 - Existing status/capability surface extended with adaptive explanation when
   an `adaptive` block is present in state.
 
-### Known Gaps (deferred to v1.0.4)
+### Verified behavior
 
-- Continuation resume: the classifier does not yet resume from compatible
-  snapshots (plan Section 6 step 2). Every request produces a fresh
-  decision. Pinned by xfail tests.
-- Evidence freshness: `revisionMarker` is constant; stale snapshot detection
-  and the re-verification trigger signal are not implemented. Pinned by xfail
-  tests.
+- Continuation resume: compatible snapshots resume the saved stage, mode, and
+  escalation state. Incompatible request or revision snapshots reclassify from
+  `understand` without mutating prior state. The W4.5 continuation suite passes.
+- Evidence freshness: revision fingerprints are carried in adaptive snapshots;
+  a changed fingerprint triggers stale reclassification and re-verification
+  signalling. The existing `lazy-verifier` surface is reused without a
+  parallel lineage store. The W4.6 evidence-freshness suite passes.
+- Shared fixture parity: the LazyBuddy runtime matches all ten complete v1.0.3
+  snapshots when fixture identity inputs (`decisionId`, `hostFingerprint`,
+  `revisionFingerprint`, and `scopeFingerprint`) are supplied separately. The
+  all-ten detector regression validates each full decision and snapshot.
+- Combined W4.5/W4.6 verification passes 12/12 tests.
+
+### Known Gap (host-only)
+
 - Live-host QA: WorkBuddy and CodeBuddy live-host verification PENDING (no
-  live host available in the release session). Package evidence and
-  fixture-based parity verified; live-host evidence not captured.
+  live host available in the release session). Package evidence and full
+  fixture parity do not substitute for live-host evidence.
 
 ### Unchanged
 

@@ -59,7 +59,7 @@ uncertainty, continuation, and verification requirements.
 | `direct` | Localized change, clear acceptance criteria, targeted verification sufficient. |
 | `assisted` | Unfamiliar subsystem, cross-file tracing, primarily debugging, bounded implementation. |
 | `planned` | Acceptance criteria incomplete, multi-system change, decisions must precede edits. |
-| `orchestrated` | Security-sensitive, release/publication, destructive migration, or independent review required. Approval-gated. |
+| `orchestrated` | Security-sensitive, release/publication, destructive migration, or independent review required. Review responsibilities run automatically; only gated actions require approval. |
 | `long-horizon` | Multi-session work, durable checkpoints, bounded continuation loop. |
 
 ### Automatic selection and explicit override
@@ -86,20 +86,22 @@ never claims equivalent evidence.
 
 The harness writes an additive, optional `adaptive` block inside existing
 run/loop state (managed by `lazybuddy-plugin/scripts/state/`). The block
-carries `decisionId`, `requestDigest`, `mode`, `stages`, `currentStage`,
-`responsibilities`, `capabilityClasses`, `runtimeResolution`, `reasons`,
-`escalationCount`, `revisionMarker`, `blocker`, and `nextAction`. Only the
-adaptive orchestrator writes the block; existing v1.0.2 state without it
-continues to load.
+carries `version`, `decisionId`, `requestDigest`, `mode`, `stages`, `currentStage`,
+`responsibilities`, `capabilityClasses`, `capabilitySubstitutions`, `approval`,
+`escalationCount`, `escalationHistory`, `revisionFingerprint`,
+`scopeFingerprint`, `hostFingerprint`, `risk`, `reasons`, `blocker`,
+`nextAction`, and `verificationLevel`. Only the adaptive orchestrator writes
+the block; existing pre-adaptive state without it continues to load.
 
 ### Authority
 
-Read-only and package-owned capabilities activate automatically. Installing a
-dependency, persisting a provider beyond the task, modifying host or marketplace
-settings, changing MCP registrations, using credentials, using a paid service,
-sending repository data to a remote provider, or controlling a browser surface
-all require approval. The two approval-required responsibilities
-(`release-review` and `security-review`) gate the `orchestrated` mode.
+Read-only and package-owned capabilities, including selected review
+responsibilities, activate automatically. Installing a dependency, persisting
+a provider beyond the task, modifying host or marketplace settings, changing
+MCP registrations, using credentials, using a paid service, sending repository
+data to a remote provider, or controlling a browser surface all require
+approval. `release-review` and `security-review` do not themselves require
+approval; the requested concrete action determines the approval boundary.
 
 ### Full-plugin host mapping
 

@@ -96,7 +96,7 @@ case "$HOME" in
         ;;
 esac
 
-python3 - "$PLUGIN_ROOT" "$RELEASE_ROOT" "$PROJECT_ROOT" "$HOME" <<'PY'
+python3 -B - "$PLUGIN_ROOT" "$RELEASE_ROOT" "$PROJECT_ROOT" "$HOME" <<'PY'
 import json
 import os
 from pathlib import Path

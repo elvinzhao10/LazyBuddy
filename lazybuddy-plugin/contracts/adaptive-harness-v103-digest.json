@@ -1,91 +1,78 @@
 {
   "digest_version": "v1",
   "release": "v1.0.3",
-  "generated_at": "2026-07-20T03:23:04Z",
   "artifacts": [
     {
       "name": "adaptive-harness-contract.v1.json",
-      "sha256": "bdf5028135488f4ba7fe1619f7bfe82bf3e2d1c433920dc194035db1b1fc0ce3",
-      "size_bytes": 11031,
-      "lazytrae_path": "lazytrae-plugin/packages/cli/contracts/adaptive-harness-contract.v1.json",
-      "lazybuddy_path": "lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json"
+      "sha256": "a7091f3a195b8abd1afd5cbe1c40fa0fab844150b41a39bbd689c76be8358d66",
+      "size_bytes": 5822
     },
     {
       "name": "adaptive-harness-contract.v1.schema.json",
-      "sha256": "e482bdc579a714e0a690b856e460c70a78237cb1a3932640b786aceaaf2a0b15",
-      "size_bytes": 7178,
-      "lazytrae_path": "lazytrae-plugin/packages/cli/contracts/adaptive-harness-contract.v1.schema.json",
-      "lazybuddy_path": "lazybuddy-plugin/contracts/adaptive-harness-contract.v1.schema.json"
+      "sha256": "ccbf88b35bcc762234f078505356a7bb879247818dc4cf9c0a7230b11a521b92",
+      "size_bytes": 28941
     },
     {
       "name": "adaptive-harness-contract.v1.json.sha256",
-      "sha256": "828df471be333f51629cd2ae7615f93ce5909d6741abe8d88b5a2738840553c9",
-      "size_bytes": 100,
-      "lazytrae_path": "lazytrae-plugin/packages/cli/contracts/adaptive-harness-contract.v1.json.sha256",
-      "lazybuddy_path": "lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json.sha256"
+      "sha256": "3f9871bc63ff52b0807ce383aa5affbb58ff9cd55eb46452ec27106e0208dbbc",
+      "size_bytes": 100
     }
   ],
   "fixtures": [
     {
       "name": "01-direct-localized-fix.json",
-      "sha256": "afbdf5f95d7883df398c147c3c4280e43a19bf4dadd452bd8d7a6aba4339e399",
-      "size_bytes": 3305
+      "sha256": "8a6ece6442b25086ac5196b6bed2ff43f45b680ecc0f2ec5757f4f052260dd08",
+      "size_bytes": 4352
     },
     {
       "name": "02-assisted-cross-file-bug.json",
-      "sha256": "4111e87c398890a20aa91a2b32391453ff78a358d1f02e16a42534f5b5550c19",
-      "size_bytes": 3881
+      "sha256": "962ad4ee6f2859c4bff9dd1e14860a641a2a5bc2d04196591b0ea5f1c3d53d6c",
+      "size_bytes": 5104
     },
     {
       "name": "03-planned-broad-feature.json",
-      "sha256": "fdd11494d95a903d9746aee564af71dc4c68e810b3a5f70712311f4b8e06e48c",
-      "size_bytes": 4188
+      "sha256": "9c0b4155ec3d0febd84028e1830137411024a27ee2858788d00ecfdcbd4d80f2",
+      "size_bytes": 5116
     },
     {
       "name": "04-orchestrated-security-change.json",
-      "sha256": "b2e6e5b3cbe51efb2d34c9d80d6eed3e226fb3e26c0dfc955af2ed5717b093de",
-      "size_bytes": 4137
+      "sha256": "c4b0a92f882b33c3decd5a1f0b01ee298565ffbe684a8f1e6d37a5fa1f38e8e3",
+      "size_bytes": 5499
     },
     {
       "name": "05-orchestrated-release.json",
-      "sha256": "bde2ff9be91f09bbc6c825d5c53706a1c3277839e7c631d3b86df3b515f4fc89",
-      "size_bytes": 4665
+      "sha256": "6e73f7f6216ac07e127dc215da31b587fcdadd040f1f7ef07a9d0e098f226cd0",
+      "size_bytes": 5506
     },
     {
       "name": "06-long-horizon-migration.json",
-      "sha256": "95179995ea04a4c5f62f460787f6512b833a66839961261de2c91d568e2302e2",
-      "size_bytes": 4273
+      "sha256": "5e3bb6a30ee97415a716ebb2572b8b6bd3bd0fa8117bed4d5b61518e7368f69c",
+      "size_bytes": 5363
     },
     {
       "name": "07-explicit-workflow-override.json",
-      "sha256": "fc018bef2c8ecb7e6764dd0e8d18b1c89ef94543d0bfef4109a6723df26aef74",
-      "size_bytes": 3581
+      "sha256": "de4832f3cd407a561881b30d94588ab7aa5be29878b884099c0d88a2c1219c86",
+      "size_bytes": 4432
     },
     {
       "name": "08-preferred-provider-unavailable.json",
-      "sha256": "f4c4fc198d31d17858a4663beec662fe7d0e0e03fd661299ad8f556a54f21553",
-      "size_bytes": 4290
+      "sha256": "5af5ff299a81b23a2fc28ce461b7b2d266ad7c4805c09c6f0fdf73eeed42a321",
+      "size_bytes": 5939
     },
     {
       "name": "09-escalation-bound.json",
-      "sha256": "6ce854384d2cb5632b6225d7b29e29a4f3fd6b1d7beccee1b3a05dc41aa68a9b",
-      "size_bytes": 5163
+      "sha256": "7ba4ac28dcf1ec28e33e09760b746c96bf674b42496c1f8996ba4652f255fa84",
+      "size_bytes": 5385
     },
     {
       "name": "10-responsibility-ownership.json",
-      "sha256": "ee82e107f6710aa1b24aaa31546edfba844b49f0065db8cf7ef8b3b286f12408",
-      "size_bytes": 4244
+      "sha256": "a47701b73a2a080db54a5baeb33ab6ac98c087e1effce7477904a1e9cb6aa00e",
+      "size_bytes": 11001
     }
   ],
   "fixture_directory": {
-    "name": "fixtures/v103",
-    "manifest_sha256": "ceb96d9215f3297fc930f37d8bb4996dc10e2596f6f966a3681850fb86b488f6",
-    "sha256sums_sha256": "e9c93854ef26145709fe0ad1395302fbd7043c18e6a1ca7a9460be718c06eaa6",
-    "lazytrae_path": "lazytrae-plugin/packages/cli/contracts/fixtures/v103",
-    "lazybuddy_path": "lazybuddy-plugin/contracts/fixtures/v103"
+    "manifest_sha256": "06c3179903dfa69f3a7a0f91b5e067b600b6cf8b9ad111f8f08cb4d7975fbfb7",
+    "sha256sums_sha256": "232718fd1b32a3cfb60ac9e3ec618800ab35614e0e7e11e19b50b4b7e595c7d7"
   },
-  "byte_identical_verification": "PASSED",
-  "verification_method": "shasum -a 256 comparison across both worktrees; all artifact and fixture hashes match byte-for-byte",
-  "source_worktree": "/Users/Admin/Desktop/lazytrae-v103-lazytrae-agent",
-  "target_worktree": "/Users/Admin/Desktop/lazybuddy-v103-lazytrae-agent"
+  "verification_policy": "Compare current bytes, sizes, manifest relationships, schema validation, and checksum sidecars independently in each repository."
 }
