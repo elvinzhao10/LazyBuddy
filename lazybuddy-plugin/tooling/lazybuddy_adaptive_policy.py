@@ -66,14 +66,15 @@ APPROVAL_PATTERNS: Final = (
     ),
     ("browser-or-desktop-control", re.compile(
         r"\b(?:control|click|open|automate)\s+(?:the\s+)?(?:browser|desktop)\b|\buse\s+playwright\b", re.I)),
-    ("credentials-auth-or-paid-service", re.compile(r"\b(?:credential|api key|access token|log in|paid service)\b", re.I)),
+    ("credentials-auth-or-paid-service", re.compile(r"\b(?:credential|api key|access token|deploy token|secret|log in|paid service)\b", re.I)),
     ("host-mcp-settings-mutation", re.compile(
         r"\b(?:add|change|edit|modify|configure)\s+(?:(?:an?|the)\s+)?(?:host|mcp|connector|settings?)\b", re.I)),
     ("install-or-download", re.compile(r"\b(?:install|download)\b", re.I)),
     ("persistent-capability", re.compile(r"\b(?:persist|enable permanently|keep installed)\b", re.I)),
     ("remote-data-egress", re.compile(
         r"\b(?:upload|send|export)\s+(?:(?:an?|the|this|that|our|my)\s+)?"
-        r"(?:repo(?:sitory)?(?:\s+data)?|source|code|data)\s+(?:to|outside)\b", re.I)),
+        r"(?:repo(?:sitory)?(?:\s+data)?|source|code|data)\s+(?:to|outside)\b|"
+        r"\b(?:git\s+)?push\b.*\b(?:origin|remote|main|master|production)\b", re.I)),
 )
 NEGATION_PATTERN: Final = re.compile(
     r"\b(?:do not|don't|never|without)\s+(?:\w+\s+){0,4}$",
@@ -256,7 +257,7 @@ def _selected_mode(text: str, context: dict) -> tuple[str, str | None]:
     if (
         context.get("session_scope") == "multi-session"
         or context.get("checkpoint_requirement") == "durable"
-        or re.search(r"multi-session|multiple sessions|durable checkpoint|long-horizon", text, re.I)
+        or re.search(r"multi-session|multiple sessions|durable checkpoint|long-horizon|across (?:the )?next (?:week|month)|over (?:the )?next (?:week|month)", text, re.I)
     ):
         return "long-horizon", None
     security, release, multiple = _risk_signals(text, context)
@@ -264,12 +265,17 @@ def _selected_mode(text: str, context: dict) -> tuple[str, str | None]:
         return "orchestrated", None
     if context.get("preferred_provider_unavailable") is True:
         return "assisted", None
-    if context.get("scope") == "broad" or context.get("acceptance_criteria") == "incomplete":
+    if (
+        context.get("scope") == "broad"
+        or context.get("acceptance_criteria") == "incomplete"
+        or re.search(r"\brefactor\b.*\b(?:all|public|validation)\b", text, re.I)
+    ):
         return "planned", None
     file_count = context.get("file_count", context.get("file_count_estimate", 0))
     if (
         context.get("scope") in ("bounded", "cross-file")
         or context.get("repository_familiarity") == "unfamiliar"
+        or re.search(r"\binvestigate why\b", text, re.I)
         or isinstance(file_count, int) and 2 <= file_count <= 5
     ):
         return "assisted", None
