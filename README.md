@@ -103,6 +103,15 @@ data to a remote provider, or controlling a browser surface all require
 approval. `release-review` and `security-review` do not themselves require
 approval; the requested concrete action determines the approval boundary.
 
+### Observed v1.0.3 live behavior
+
+The package-level live trial confirms the same policy boundaries as LazyTrae:
+credential/token rotation and a push to a named remote branch require approval;
+`investigate why` selects `assisted`; broad validation refactors select
+`planned`; and work spanning the next week selects `long-horizon`. A current
+WorkBuddy session still requires direct observation before **HOST READINESS**
+can be reported as anything other than **PENDING**.
+
 ### Full-plugin host mapping
 
 CodeBuddy and WorkBuddy are treated as first-class full-plugin hosts. The
@@ -145,6 +154,14 @@ chat. Do not use a temporary copy or treat a package file as host proof:
 ```bash
 git clone --branch v1.0.3 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git /permanent/path/LazyBuddy
 ```
+
+### Upgrade from v1.0.2
+
+Inventory managed versus modified/unknown assets before upgrading. Keep v1.0.3
+in a separate permanent folder, run the package checks first, then replace only
+receipt-owned plugin or Skills assets after the required host approval. Preserve
+user changes, old receipts, and host settings until the fresh v1.0.3 session is
+observed.
 
 `onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
 or **WorkBuddy**, runs only safe package checks and local setup, and reports
