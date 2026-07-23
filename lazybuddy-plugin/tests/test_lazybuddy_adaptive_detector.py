@@ -305,6 +305,8 @@ def test_decision_id_can_be_overridden():
         ("Use Playwright to automate the browser.", "browser-or-desktop-control"),
         ("Add an MCP connector to the host settings.", "host-mcp-settings-mutation"),
         ("Configure the MCP settings.", "host-mcp-settings-mutation"),
+        ("Rotate the CI deploy token before the release.", "credentials-auth-or-paid-service"),
+        ("Push the repository changes to origin main.", "remote-data-egress"),
     ),
 )
 def test_concrete_host_control_action_requires_approval(
@@ -317,3 +319,18 @@ def test_concrete_host_control_action_requires_approval(
     # Then
     assert decision["approval_classes"] == [expected_class]
     assert decision["approval_required"] is True
+
+
+@pytest.mark.parametrize(
+    ("prompt_text", "expected_mode"),
+    (
+        ("Investigate why test_format_result is failing in the calculator module.", "assisted"),
+        ("Refactor the calculator module to add input validation for all public functions.", "planned"),
+        ("Migrate the test suite to pytest-bdd across the next week.", "long-horizon"),
+    ),
+)
+def test_real_world_scope_language_selects_the_lowest_sufficient_mode(
+    prompt_text: str,
+    expected_mode: str,
+) -> None:
+    assert classify_adaptive_decision(prompt_text)["mode"] == expected_mode
