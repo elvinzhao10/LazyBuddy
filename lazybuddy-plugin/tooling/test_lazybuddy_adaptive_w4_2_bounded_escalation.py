@@ -73,9 +73,8 @@ def test_scenario_3_max_two_escalations_bound_no_third_escalation():
         f"escalationCount must be {MAX_AUTO_ESCALATIONS} after the bound is reached"
     assert decision["snapshot"]["escalationCount"] <= MAX_AUTO_ESCALATIONS, \
         "classifier must never exceed the max-auto-escalations bound"
-    # Bound produces a blocked state - non-null blocker with required fields.
-    assert decision["snapshot"]["blocker"] is not None, \
-        "post-bound state must produce a non-null blocker record"
+    assert decision["snapshot"]["blocker"] is None, \
+        "two justified transitions reach the bound without fabricating another failure"
 
 
 def test_scenario_4_negative_escalation_count_never_exceeds_bound():
@@ -95,57 +94,60 @@ def test_scenario_4_negative_escalation_count_never_exceeds_bound():
 
 
 def test_scenario_5_blocked_state_record_contains_all_required_fields():
-    decision = classify_adaptive_decision(ESCALATION_REQUEST, ESCALATION_CONTEXT)
+    context = dict(ESCALATION_CONTEXT)
+    context["signals"] = {
+        "repeated_failure_after_bound": True,
+        "verification_failure": True,
+    }
+    decision = classify_adaptive_decision(ESCALATION_REQUEST, context)
     blocker = decision["snapshot"]["blocker"]
     assert isinstance(blocker, dict), "blocker must be an object record"
     assert blocker is not None, "blocker must not be null at the bound"
     # Section 12: blocked state must carry reproduced failure, attempted
     # approaches, current evidence, unresolved decision, exact next user decision.
     required_fields = [
-        "reproduced_failure",
-        "attempted_approaches",
-        "current_evidence",
-        "unresolved_decision",
-        "exact_next_user_decision",
+        "reproducedFailure",
+        "attemptedApproaches",
+        "currentEvidence",
+        "unresolvedDecision",
+        "nextRequiredDecision",
     ]
     for field in required_fields:
         assert field in blocker, f"blocker must contain '{field}' (Section 12)"
-    assert isinstance(blocker["attempted_approaches"], list) and blocker["attempted_approaches"], \
-        "attempted_approaches must be a non-empty list"
-    for field in ("reproduced_failure", "current_evidence",
-                  "unresolved_decision", "exact_next_user_decision"):
+    assert isinstance(blocker["attemptedApproaches"], list) and blocker["attemptedApproaches"], \
+        "attemptedApproaches must be a non-empty list"
+    for field in ("reproducedFailure", "currentEvidence",
+                  "unresolvedDecision", "nextRequiredDecision"):
         assert isinstance(blocker[field], str) and blocker[field], \
             f"{field} must be a non-empty string"
 
 
-def test_scenario_6a_security_finding_requires_independent_review():
+def test_scenario_6a_security_finding_adds_automatic_independent_review():
     decision = classify_adaptive_decision(
         "Change authorization logic for /admin/billing endpoint",
         {"risk_signals": ["security-sensitive", "authorization-change"]},
     )
     assert decision["mode"] == "orchestrated", \
         "security-sensitive finding must escalate to orchestrated mode"
-    assert decision["approval_required"] is True, \
-        "orchestrated mode must require approval (independent review authority gate)"
+    assert decision["approval_required"] is False, \
+        "security review is automatic unless the requested action crosses an approval boundary"
     assert "security-review" in decision["responsibilities"], \
         "orchestrated mode must assign security-review responsibility (no silent skip)"
 
 
-def test_scenario_6b_release_finding_requires_approval_gate():
+def test_scenario_6b_release_finding_adds_automatic_release_review():
     decision = classify_adaptive_decision(
         "Cut v2.1.0 release: bump version, update changelog, build artifacts",
         {"risk_signals": ["release-or-publication"]},
     )
     assert decision["mode"] == "orchestrated", \
         "release finding must escalate to orchestrated mode"
-    assert decision["approval_required"] is True, \
-        "release context must require approval (release-review authority checkpoint)"
-    # Release-only scenarios route review through the release-review authority
-    # checkpoint (approval_required=True) rather than the security-review mode
-    # responsibility. This is intentional in _compose_orchestrated() - review
-    # is NOT silently skipped; it is enforced via the approval gate.
+    assert decision["approval_required"] is False, \
+        "release review alone is not an external publication mutation"
     assert "security-review" not in decision["responsibilities"], \
-        "release-only scenarios route review through release-review checkpoint, not security-review"
+        "release-only scenarios do not add security review"
+    assert "release-review" in decision["responsibilities"], \
+        "release preparation assigns release review automatically"
 
 
 def test_scenario_6c_migration_finding_escalates_to_long_horizon():

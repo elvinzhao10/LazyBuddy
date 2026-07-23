@@ -1,40 +1,17 @@
-"""W4.4 Responsibility Ownership integration tests for v1.0.3 Adaptive Harness (LazyBuddy).
-
-Proves plan Section 8 (Smallest-useful-team policy):
-  - direct mode has no delegated specialist by default
-  - assisted mode uses focused specialist(s); no review team
-  - planned mode assigns exactly one owner per stage (no orphans, no dups)
-  - orchestrated mode with independent workstreams still has one owner per stage
-  - long-horizon mode includes the continuity responsibility
-  - responsibilities array has no duplicates
-  - reviewers are not sole authors (implementation present when review present)
-  - negative: dependent work (debug-then-fix) does NOT spawn parallel implementers
-
-Fixture: contracts/fixtures/v103/10-responsibility-ownership.json
-Mirrors the LazyTrae adaptive-w4-4-responsibility-ownership.test.js for parity.
-"""
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lazybuddy_adaptive_detector import classify_adaptive_decision  # noqa: E402
 
-FIXTURE_PATH = (Path(__file__).resolve().parent.parent / "contracts" / "fixtures"
-                / "v103" / "10-responsibility-ownership.json")
-
-
-def _load_fixture() -> dict:
-    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-FIXTURE = _load_fixture()
+ORCHESTRATED_REQUEST = "Implement independent CSV and JSON export workstreams."
+ORCHESTRATED_CONTEXT = {
+    "independent_workstreams": ["csv-export", "json-export"],
+    "scope": "cross-file",
+}
 
 # Map each workflow stage to its canonical owning responsibility.
 # Per Section 8: "Assign one owner to each implementation stage."
@@ -79,7 +56,7 @@ def test_scenario_1_direct_mode_has_no_delegated_specialist():
 
 def test_scenario_2_assisted_mode_uses_focused_specialist_no_review_team():
     """Assisted mode may add focused specialists but must not assemble a review team."""
-    request = FIXTURE["request"].replace("parallel CSV and JSON", "single CSV")
+    request = "Implement a single CSV export after tracing the existing path."
     decision = classify_adaptive_decision(
         request,
         {"scope": "bounded", "file_count": 4, "repository_familiarity": "unfamiliar",
@@ -112,9 +89,9 @@ def test_scenario_3_planned_mode_assigns_exactly_one_owner_per_stage():
 
 def test_scenario_4_orchestrated_mode_with_independent_workstreams_one_owner_per_stage():
     """Orchestrated mode with independent workstreams: one owner per stage, no dups."""
-    decision = classify_adaptive_decision(FIXTURE["request"], FIXTURE["context"])
+    decision = classify_adaptive_decision(ORCHESTRATED_REQUEST, ORCHESTRATED_CONTEXT)
     assert decision["mode"] == "orchestrated"
-    workstreams = FIXTURE["context"].get("independent_workstreams") or []
+    workstreams = ORCHESTRATED_CONTEXT["independent_workstreams"]
     assert isinstance(workstreams, list) and len(workstreams) >= 2, \
         "fixture context must declare genuinely independent workstreams"
     for stage in decision["stages"]:
@@ -145,7 +122,7 @@ def test_scenario_6_no_duplicate_responsibilities_across_every_mode():
          {"scope": "bounded", "file_count": 4, "repository_familiarity": "unfamiliar"}),
         ("planned", "Add export-to-PDF feature with unresolved design.",
          {"scope": "broad", "acceptance_criteria": "incomplete", "decisions_to_resolve": ["lib"]}),
-        ("orchestrated", FIXTURE["request"], FIXTURE["context"]),
+        ("orchestrated", ORCHESTRATED_REQUEST, ORCHESTRATED_CONTEXT),
         ("long-horizon", "Migrate auth to JWT over multiple sessions.",
          {"session_scope": "multi-session", "checkpoint_requirement": "durable"}),
     ]
@@ -163,7 +140,7 @@ def test_scenario_7_reviewers_are_not_sole_authors():
         ("security-orchestrated",
          "Change authorization logic for /admin/billing endpoint.",
          {"risk_signals": ["security-sensitive", "authorization-change"]}),
-        ("fixture-10", FIXTURE["request"], FIXTURE["context"]),
+        ("independent-workstreams", ORCHESTRATED_REQUEST, ORCHESTRATED_CONTEXT),
     ]
     for name, request, ctx in review_cases:
         decision = classify_adaptive_decision(request, ctx)
@@ -186,17 +163,13 @@ def test_scenario_8_negative_dependent_work_does_not_spawn_parallel_implementers
     assert debug_count == 1, f"dependent debug-then-fix work must have exactly one debugger; got {debug_count}"
 
 
-def test_scenario_9_fixture_regression_responsibility_ownership_matches_expected():
-    """Fixture 10 must produce the expected decision shape with one owner per stage."""
-    decision = classify_adaptive_decision(FIXTURE["request"], FIXTURE["context"])
-    expected = FIXTURE["expected_decision"]
-    assert decision["mode"] == expected["mode"]
-    assert decision["stages"] == expected["stages"]
-    assert sorted(decision["responsibilities"]) == sorted(expected["responsibilities"])
-    assert decision["verification_level"] == expected["verification_level"]
-    assert decision["approval_required"] == expected["approval_required"]
+def test_scenario_9_orchestrated_ownership_has_one_implementation_owner():
+    decision = classify_adaptive_decision(ORCHESTRATED_REQUEST, ORCHESTRATED_CONTEXT)
+    assert decision["mode"] == "orchestrated"
+    assert decision["verification_level"] == "independent"
+    assert decision["approval_required"] is False
     for stage in decision["stages"]:
         owners = _owners_for_stage(stage, decision["responsibilities"])
-        assert len(owners) >= 1, f"fixture-10 stage '{stage}' must have at least one owner"
+        assert len(owners) >= 1, f"stage '{stage}' must have at least one owner"
     impl_count = decision["responsibilities"].count("implementation")
-    assert impl_count == 1, f"fixture-10 has one implementation owner across two independent workstreams; got {impl_count}"
+    assert impl_count == 1, f"independent workstreams must share one implementation responsibility; got {impl_count}"

@@ -41,7 +41,7 @@ WORKBUDDY_LOADS_SKILLS = True
 
 # Capability class -> MCP server (host-native capabilities have no MCP).
 CAPABILITY_TO_MCP = {
-    "semantic-navigation": ("lsp",),
+    "semantic-navigation": ("code-intel",),
     "architecture-context": ("context-graph", "code-intel"),
     "documentation": ("docs",),
     "task-state": ("run-ledger",),
@@ -103,6 +103,7 @@ def _build_full_plugin_mapping(decision: dict, host: str, loads_skills: bool) ->
         "host": host,
         "route": "full-plugin",
         "degraded": False,
+        "host_readiness": "pending",
         "skills": skills,
         "commands": commands,
         "agents": agents,
@@ -125,6 +126,7 @@ def _build_fallback_mapping(decision: dict) -> dict:
         "host": "skills-mcp-only",
         "route": "fallback-degraded",
         "degraded": True,
+        "host_readiness": "pending",
         "degraded_reason": "Skills/MCP-only fallback; no commands, agents, or hooks loaded; "
         "suitable for host environments that cannot load the full plugin manifest",
         "skills": list(workflows),

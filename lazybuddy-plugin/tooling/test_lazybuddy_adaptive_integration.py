@@ -103,7 +103,7 @@ def test_full_pipeline_classify_to_explanation(label, request_text, context):
 
 @pytest.mark.parametrize("label,request_text,context", FIXTURES,
                          ids=[f[0] for f in FIXTURES])
-def test_each_fixture_snapshot_has_all_14_fields(label, request_text, context):
+def test_each_fixture_snapshot_has_all_portable_fields(label, request_text, context):
     decision = classify_adaptive_decision(request_text, context)
     snapshot = decision["snapshot"]
     for field in SNAPSHOT_REQUIRED_FIELDS:
@@ -124,8 +124,7 @@ def test_atomic_write_roundtrip_preserves_adaptive(label, request_text, context,
     assert "adaptive" in loaded
     assert loaded["adaptive"]["mode"] == snapshot["mode"]
     assert loaded["adaptive"]["decisionId"] == snapshot["decisionId"]
-    assert loaded["adaptive"]["updated_at"]  # stamped by write_adaptive_snapshot
-    # All 14 fields survive the round-trip
+    assert loaded["updated_at"]
     for field in SNAPSHOT_REQUIRED_FIELDS:
         assert field in loaded["adaptive"], f"{label}: lost {field} after round-trip"
 

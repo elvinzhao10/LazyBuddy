@@ -355,6 +355,23 @@ cat > "$TMP/fake-bin/codebuddy" <<'SH'
 [ -z "${FAKE_CODEBUDDY_MARKER:-}" ] || printf 'invoked\n' >> "$FAKE_CODEBUDDY_MARKER"
 case "${FAKE_CODEBUDDY_MODE:-pass}" in
   pass) printf '%s\n' 'Validation successful: 0 errors' ;;
+  structured-pass) printf '%s\n' 'Validation passed' '{"valid":true}' ;;
+  structured-leading-failure) printf '%s\n' 'Validation failed: leading validator output' '{"valid":true}' ;;
+  structured-leading-invalid) printf '%s\n' 'Invalid plugin manifest' '{"valid":true}' ;;
+  structured-leading-rejected) printf '%s\n' 'Rejected plugin manifest' '{"valid":true}' ;;
+  structured-leading-error) printf '%s\n' 'Error: plugin manifest could not be checked' '{"valid":true}' ;;
+  structured-pass-trailing-failure)
+    printf '%s\n' '{"valid":true}' 'Validation failed: trailing validator output'
+    ;;
+  structured-errors) printf '%s\n' 'Validation passed' '{"valid":true,"errors":["bad"]}' ;;
+  structured-error-object) printf '%s\n' 'Validation passed' '{"valid":true}' '{"error":"bad"}' ;;
+  pretty-embedded)
+    printf '%s\n' 'Validation passed with details:' '{' '  "valid": true,' '  "errors": []' '}'
+    ;;
+  contradictory)
+    printf '%s\n' 'Validation passed with details:' '{"valid":true}' '{"valid":false,"errors":["bad manifest"]}'
+    ;;
+  structured-nonzero) printf '%s\n' 'Validation passed' '{"valid":true}'; exit 9 ;;
   semantic) printf '%s\n' 'Validation failed: 2 errors' ;;
   misleading) printf '%s\n' 'Validation passed with errors: 2' ;;
   invalid-text) printf '%s\n' 'Invalid plugin manifest' ;;
@@ -388,6 +405,28 @@ run_doctor() {
 
 run_doctor package-pass package pass "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts validator pass" || fail "package validator pass classification"
+run_doctor package-structured-pass package structured-pass "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts structured validator pass" || fail "package structured validator pass classification"
+run_doctor package-structured-leading-failure package structured-leading-failure "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading validator failure text before valid JSON" || fail "package leading validator failure classification"
+run_doctor package-structured-leading-invalid package structured-leading-invalid "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading invalid text before valid JSON" || fail "package leading invalid text classification"
+run_doctor package-structured-leading-rejected package structured-leading-rejected "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading rejected text before valid JSON" || fail "package leading rejected text classification"
+run_doctor package-structured-leading-error package structured-leading-error "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading error text before valid JSON" || fail "package leading error text classification"
+run_doctor package-structured-pass-trailing-failure package structured-pass-trailing-failure "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects trailing validator failure text" || fail "package trailing validator failure classification"
+run_doctor package-structured-errors package structured-errors "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects valid structured output with errors" || fail "package structured output with errors classification"
+run_doctor package-structured-error-object package structured-error-object "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects adjacent structured error object" || fail "package adjacent structured error object classification"
+run_doctor package-pretty-embedded package pretty-embedded "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts pretty embedded validator JSON" || fail "package pretty embedded validator JSON classification"
+run_doctor package-contradictory package contradictory "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects contradictory validator JSON" || fail "package contradictory validator JSON classification"
+run_doctor package-structured-nonzero package structured-nonzero "$TMP/fake-bin"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects structured validator nonzero" || fail "package structured validator nonzero classification"
 run_doctor package-semantic package semantic "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails semantic validator output" || fail "package semantic validator classification"
 run_doctor package-misleading package misleading "$TMP/fake-bin"

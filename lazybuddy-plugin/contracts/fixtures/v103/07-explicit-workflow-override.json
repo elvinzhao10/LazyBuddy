@@ -1,22 +1,30 @@
 {
   "adversarial_checks": [
-    "must not silently downgrade or replace the explicit user request",
-    "must not include the implementation stage when the user said 'plan only'",
-    "must respect the named workflow selection (lazy-ulw-plan)",
-    "must allow the classifier to add required verification or approval boundaries but not replace the explicit mode",
-    "an explicit plan-only request must not produce implementation artifacts"
+    "The explicit named workflow must remain authoritative.",
+    "Implementation must remain forbidden by the plan-only instruction.",
+    "The fixture must not depend on a product-specific workflow identifier."
   ],
+  "category": "explicit-named-workflow",
   "context": {
     "authoritative_instruction": true,
-    "named_workflow": "lazy-ulw-plan",
+    "named_workflow_class": "plan-only",
     "signals": {
       "explicit_user_workflow": true
     },
     "verification_scope": "targeted"
   },
-  "description": "Explicit named workflow request selecting planned mode with planning only and no implementation, proving the user workflow remains authoritative.",
+  "description": "An explicit plan-only workflow remains authoritative and stops before implementation.",
   "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
     "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection"
+      ]
+    },
     "capabilities": [
       "architecture-context",
       "outcome-verification",
@@ -32,8 +40,8 @@
         "task-state"
       ],
       "reasons": [
-        "explicit plan-only request does not require execution or task-state",
-        "documentation not material to a plan-only artifact"
+        "The explicit instruction stops before execution.",
+        "No durable continuation is required for a plan-only result."
       ],
       "responsibilities": [
         "continuity",
@@ -52,11 +60,22 @@
         "verify"
       ]
     },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      }
+    ],
     "reasons": [
-      "explicit user request is authoritative per decision policy step 1",
-      "named workflow 'lazy-ulw-plan' selected by the user",
-      "classifier must not silently downgrade or replace the explicit request",
-      "planning stage selected; implementation explicitly forbidden by user"
+      "The user explicitly selected a named plan-only workflow.",
+      "The classifier must not replace or deepen the explicit request.",
+      "Implementation is excluded by the instruction."
     ],
     "responsibilities": [
       "exploration",
@@ -66,51 +85,66 @@
       "understand",
       "plan"
     ],
+    "user_explanation": {
+      "approval": "No approval action class is selected.",
+      "evidence": "The plan artifact receives a targeted structural check.",
+      "not_selected": "Implementation and continuation are excluded by the user.",
+      "selected": "The named plan-only workflow is authoritative."
+    },
     "verification_level": "targeted"
   },
   "expected_snapshot": {
     "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
       "blocker": null,
       "capabilityClasses": [
-        "text-search",
-        "structural-search",
-        "semantic-navigation",
         "architecture-context",
-        "outcome-verification"
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
       ],
+      "capabilitySubstitutions": [],
       "currentStage": "understand",
       "decisionId": "fixture-07-explicit-workflow-override",
       "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:79001d1570922ae2fcf9718fbf090006763a5e9152f2fd9ad80e9905d2212775",
       "mode": "planned",
-      "nextAction": "produce the plan artifact only; do not begin implementation",
+      "nextAction": "Produce the approved plan and stop before implementation.",
       "reasons": [
-        "explicit user request is authoritative",
-        "named workflow 'lazy-ulw-plan' selected"
+        "The explicit named workflow is authoritative.",
+        "Implementation is excluded by the instruction."
       ],
-      "requestDigest": "sha256:create-a-plan-only-do-not-implement-yet",
+      "requestDigest": "sha256:e6dc62b71812de455f7508c24ce0a2384bef5152fb70a31d6e09d294316227d6",
       "responsibilities": [
         "exploration",
         "planning"
       ],
-      "revisionMarker": "git:HEAD",
-      "runtimeResolution": {
-        "architecture-context": "package-codegraph",
-        "outcome-verification": "package-verification",
-        "semantic-navigation": "package-lsp",
-        "structural-search": "host-native",
-        "text-search": "host-native"
+      "revisionFingerprint": {
+        "digest": "sha256:b48621a38486ff2bad63669ee202eca41bcb65790daf67a2714a06b133051d2c",
+        "status": "available"
       },
+      "risk": "low",
+      "scopeFingerprint": "sha256:815ad5a30ce4017eea221def37cedd80980a58edb9d917fd212cc1d2e2415dae",
       "stages": [
         "understand",
         "plan"
       ],
+      "verificationLevel": "targeted",
       "version": 1
     }
   },
   "id": "07-explicit-workflow-override",
   "permitted_escalation": {
-    "max_auto_escalations": 0,
-    "triggers_allowed": []
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "new-risk-finding",
+      "user-goal-changed"
+    ]
   },
-  "request": "Create a plan only — do not implement yet. Use the lazy-ulw-plan workflow and stop after planning."
+  "request": "Use the named plan-only workflow and stop after producing the approved plan."
 }

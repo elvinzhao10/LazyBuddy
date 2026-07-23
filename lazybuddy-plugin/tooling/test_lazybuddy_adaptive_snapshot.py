@@ -29,20 +29,26 @@ from lazybuddy_adaptive_snapshot import SINGLE_WRITER  # noqa: E402
 
 def _valid_snapshot():
     return {
-        "version": 1,
-        "decisionId": "dec-001",
-        "requestDigest": "sha256:abc",
-        "mode": "planned",
-        "stages": ["understand", "plan", "implement", "verify"],
-        "currentStage": "implement",
-        "responsibilities": ["exploration", "planning", "implementation", "verification"],
-        "capabilityClasses": ["text-search", "semantic-navigation"],
-        "runtimeResolution": {"text-search": "host-native", "semantic-navigation": "package-lsp"},
-        "reasons": ["cross-file change", "unfamiliar subsystem"],
-        "escalationCount": 0,
-        "revisionMarker": "git:HEAD",
+        "approval": {"requiredClasses": [], "status": "not-required"},
         "blocker": None,
+        "capabilityClasses": ["text-search", "semantic-navigation"],
+        "capabilitySubstitutions": [],
+        "currentStage": "implement",
+        "decisionId": "dec-001",
+        "escalationCount": 0,
+        "escalationHistory": [],
+        "hostFingerprint": "sha256:" + "1" * 64,
+        "mode": "planned",
         "nextAction": "implement approved stage 2",
+        "reasons": ["cross-file change", "unfamiliar subsystem"],
+        "requestDigest": "sha256:" + "2" * 64,
+        "responsibilities": ["exploration", "planning", "implementation", "verification"],
+        "revisionFingerprint": {"digest": "sha256:" + "3" * 64, "status": "available"},
+        "risk": "standard",
+        "scopeFingerprint": "sha256:" + "4" * 64,
+        "stages": ["understand", "plan", "implement", "verify"],
+        "verificationLevel": "standard",
+        "version": 1,
     }
 
 
@@ -71,7 +77,7 @@ def test_validate_rejects_bad_types():
     snap["stages"] = "implement"
     assert validate_adaptive_snapshot(snap) is False
     snap = _valid_snapshot()
-    snap["runtimeResolution"] = []
+    snap["capabilitySubstitutions"] = {}
     assert validate_adaptive_snapshot(snap) is False
     snap = _valid_snapshot()
     snap["escalationCount"] = "0"
@@ -102,8 +108,8 @@ def test_write_sets_updated_at_and_block():
     write_adaptive_snapshot(state, snap)
     assert state["adaptive"] is not None
     assert state["adaptive"]["mode"] == "planned"
-    assert "updated_at" in state["adaptive"]
-    assert state["adaptive"]["updated_at"] != ""
+    assert "updated_at" in state
+    assert state["updated_at"] != ""
 
 
 def test_write_rejects_invalid_snapshot():
@@ -172,22 +178,149 @@ def test_atomic_write_no_tempfile_leak_on_error(tmp_path):
         write_state_file_atomic(str(state_path), state)
 
 
-def test_schema_has_all_14_required_fields():
-    assert len(SNAPSHOT_REQUIRED_FIELDS) == 14
+def test_schema_has_all_portable_required_fields():
+    assert len(SNAPSHOT_REQUIRED_FIELDS) == 20
     expected = {
-        "version", "decisionId", "requestDigest", "mode", "stages",
-        "currentStage", "responsibilities", "capabilityClasses",
-        "runtimeResolution", "reasons", "escalationCount",
-        "revisionMarker", "blocker", "nextAction",
+        "approval", "blocker", "capabilityClasses", "capabilitySubstitutions",
+        "currentStage", "decisionId", "escalationCount", "escalationHistory",
+        "hostFingerprint", "mode", "nextAction", "reasons", "requestDigest",
+        "responsibilities", "revisionFingerprint", "risk", "scopeFingerprint",
+        "stages", "verificationLevel", "version",
     }
     assert set(SNAPSHOT_REQUIRED_FIELDS) == expected
 
 
-def test_adversarial_blocker_can_be_dict_or_string_or_null():
-    for blocker in (None, "blocked: scope too broad", {"reproduced_failure": "x"}):
+def test_validate_accepts_only_null_or_canonical_blocker_record():
+    blocker_record = {
+        "attemptedApproaches": ["debugged"],
+        "currentEvidence": "still failing",
+        "nextRequiredDecision": "choose an approach",
+        "reproducedFailure": "failure reproduced",
+        "unresolvedDecision": "external input required",
+    }
+    for blocker in (None, blocker_record):
         snap = _valid_snapshot()
         snap["blocker"] = blocker
         assert validate_adaptive_snapshot(snap) is True
+
+    for blocker in (
+        "blocked: scope too broad",
+        {
+            "attempted_approaches": ["debugged"],
+            "current_evidence": "still failing",
+            "exact_next_user_decision": "choose an approach",
+            "reproduced_failure": "failure reproduced",
+            "unresolved_decision": "external input required",
+        },
+    ):
+        snap = _valid_snapshot()
+        snap["blocker"] = blocker
+        assert validate_adaptive_snapshot(snap) is False
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("capabilityClasses", ["bogus-capability"]),
+        ("responsibilities", ["bogus-responsibility"]),
+    ],
+)
+def test_validate_rejects_noncanonical_capability_and_responsibility(field, value):
+    snap = _valid_snapshot()
+    snap[field] = value
+    assert validate_adaptive_snapshot(snap) is False
+
+
+def test_validate_rejects_noncanonical_stage_even_when_current_stage_matches():
+    snap = _valid_snapshot()
+    snap["stages"] = ["bogus-stage"]
+    snap["currentStage"] = "bogus-stage"
+    assert validate_adaptive_snapshot(snap) is False
+
+
+def test_validate_rejects_unknown_snapshot_and_nested_properties():
+    cases = []
+    top_level = _valid_snapshot()
+    top_level["extra"] = True
+    cases.append(top_level)
+    approval = _valid_snapshot()
+    approval["approval"]["extra"] = True
+    cases.append(approval)
+    revision = _valid_snapshot()
+    revision["revisionFingerprint"]["extra"] = True
+    cases.append(revision)
+    for snap in cases:
+        assert validate_adaptive_snapshot(snap) is False
+
+
+def test_validate_rejects_noncanonical_nested_enums_and_properties():
+    substitution = _valid_snapshot()
+    substitution["capabilitySubstitutions"] = [
+        {
+            "allowedSubstitutionClasses": ["text-search"],
+            "evidenceDowngrade": "bogus-downgrade",
+            "explanation": "Use text search with compensating verification.",
+            "requiredClass": "semantic-navigation",
+        }
+    ]
+    transition = _valid_snapshot()
+    transition["escalationCount"] = 1
+    transition["escalationHistory"] = [
+        {
+            "fromMode": "direct",
+            "sequence": 1,
+            "stageAdded": "bogus-stage",
+            "toMode": "assisted",
+            "trigger": "bogus-trigger",
+        }
+    ]
+    blocker = _valid_snapshot()
+    blocker["blocker"] = {
+        "attemptedApproaches": ["debugged"],
+        "currentEvidence": "still failing",
+        "extra": True,
+        "nextRequiredDecision": "choose an approach",
+        "reproducedFailure": "failure reproduced",
+        "unresolvedDecision": "external input required",
+    }
+    for snap in (substitution, transition, blocker):
+        assert validate_adaptive_snapshot(snap) is False
+
+
+def test_validate_accepts_null_stage_added_in_canonical_transition():
+    snap = _valid_snapshot()
+    snap["escalationCount"] = 1
+    snap["escalationHistory"] = [
+        {
+            "fromMode": "direct",
+            "sequence": 1,
+            "stageAdded": None,
+            "toMode": "assisted",
+            "trigger": "broader-scope-revealed",
+        }
+    ]
+    assert validate_adaptive_snapshot(snap) is True
+
+
+def test_validate_rejects_nonportable_text_and_decision_identifier():
+    nonportable = _valid_snapshot()
+    nonportable["reasons"] = [".lazytrae/state should be reused"]
+    bad_identifier = _valid_snapshot()
+    bad_identifier["decisionId"] = "INVALID_ID"
+    assert validate_adaptive_snapshot(nonportable) is False
+    assert validate_adaptive_snapshot(bad_identifier) is False
+
+
+def test_write_replaces_adaptive_block_but_preserves_unknown_top_level_state():
+    state = {
+        "adaptive": {**_valid_snapshot(), "legacyAdaptiveField": True},
+        "futureTopLevelField": {"keep": True},
+        "run_id": "r1",
+    }
+    snapshot = _valid_snapshot()
+    write_adaptive_snapshot(state, snapshot)
+    assert state["adaptive"] == snapshot
+    assert state["futureTopLevelField"] == {"keep": True}
 
 
 def test_adversarial_write_does_not_mutate_caller_snapshot():
@@ -199,7 +332,7 @@ def test_adversarial_write_does_not_mutate_caller_snapshot():
     assert "updated_at" not in snap
 
 
-def test_adversarial_escalation_bound_not_enforced_by_helper():
+def test_adversarial_escalation_bound_is_enforced_by_helper():
     snap = _valid_snapshot()
     snap["escalationCount"] = 99
-    assert validate_adaptive_snapshot(snap) is True
+    assert validate_adaptive_snapshot(snap) is False

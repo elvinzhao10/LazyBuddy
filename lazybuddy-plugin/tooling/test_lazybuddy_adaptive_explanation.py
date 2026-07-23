@@ -10,29 +10,36 @@ sandbox blocked new-file creation in tests/ during this session.
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lazybuddy_adaptive_explanation import format_adaptive_explanation  # noqa: E402
+from lazybuddy_adaptive_explanation import (  # noqa: E402
+    adaptive_explanation_fields,
+    format_adaptive_explanation,
+)
 
 
 def _snapshot(**overrides):
     base = {
-        "version": 1,
-        "decisionId": "dec-001",
-        "requestDigest": "sha256:abc",
-        "mode": "planned",
-        "stages": ["understand", "plan", "implement", "verify"],
-        "currentStage": "implement",
-        "responsibilities": ["exploration", "planning", "implementation", "verification"],
-        "capabilityClasses": ["text-search", "semantic-navigation"],
-        "runtimeResolution": {"text-search": "host-native", "semantic-navigation": "package-lsp"},
-        "reasons": ["cross-file change", "unfamiliar subsystem"],
-        "escalationCount": 0,
-        "revisionMarker": "git:HEAD",
+        "approval": {"requiredClasses": [], "status": "not-required"},
         "blocker": None,
+        "capabilityClasses": ["text-search", "semantic-navigation"],
+        "capabilitySubstitutions": [],
+        "currentStage": "implement",
+        "decisionId": "dec-001",
+        "escalationCount": 0,
+        "escalationHistory": [],
+        "hostFingerprint": "sha256:" + "1" * 64,
+        "mode": "planned",
         "nextAction": "implement approved stage 2",
+        "reasons": ["cross-file change", "unfamiliar subsystem"],
+        "requestDigest": "sha256:" + "2" * 64,
+        "responsibilities": ["exploration", "planning", "implementation", "verification"],
+        "revisionFingerprint": {"digest": "sha256:" + "3" * 64, "status": "available"},
+        "risk": "standard",
+        "scopeFingerprint": "sha256:" + "4" * 64,
+        "stages": ["understand", "plan", "implement", "verify"],
+        "verificationLevel": "standard",
+        "version": 1,
     }
     base.update(overrides)
     return base
@@ -77,11 +84,11 @@ def test_explanation_includes_responsibilities():
     assert "- implementation" in out
 
 
-def test_explanation_includes_capabilities_with_runtime():
+def test_explanation_includes_capability_classes():
     out = format_adaptive_explanation({"adaptive": _snapshot()})
     assert "Capabilities:" in out
-    assert "- text-search (host-native)" in out
-    assert "- semantic-navigation (package-lsp)" in out
+    assert "- text-search" in out
+    assert "- semantic-navigation" in out
 
 
 def test_explanation_includes_not_selected():
@@ -91,14 +98,47 @@ def test_explanation_includes_not_selected():
 
 
 def test_explanation_includes_approval_required():
-    out = format_adaptive_explanation({"adaptive": _snapshot(mode="orchestrated")})
-    assert "Approval required: approval required (orchestrated mode)" in out
+    out = format_adaptive_explanation(
+        {
+            "adaptive": _snapshot(
+                approval={
+                    "requiredClasses": ["install-or-download"],
+                    "status": "pending",
+                }
+            )
+        }
+    )
+    assert "Approval required:" in out
+    assert "- install-or-download" in out
     out2 = format_adaptive_explanation({"adaptive": _snapshot(mode="direct")})
-    assert "Approval required: none" in out2
+    assert "Approval required:\n- none" in out2
 
 
 def test_explanation_includes_escalation_count():
-    out = format_adaptive_explanation({"adaptive": _snapshot(escalationCount=2)})
+    history = [
+        {
+            "fromMode": "direct",
+            "sequence": 1,
+            "stageAdded": "debug",
+            "toMode": "assisted",
+            "trigger": "verification-failure",
+        },
+        {
+            "fromMode": "assisted",
+            "sequence": 2,
+            "stageAdded": "understand",
+            "toMode": "planned",
+            "trigger": "broader-scope-revealed",
+        },
+    ]
+    out = format_adaptive_explanation(
+        {
+            "adaptive": _snapshot(
+                escalationCount=2,
+                escalationHistory=history,
+            )
+        }
+    )
     assert "Escalation count: 2" in out
 
 
@@ -119,8 +159,15 @@ def test_explanation_includes_reasons():
 
 
 def test_explanation_includes_blocker_when_present():
-    out = format_adaptive_explanation({"adaptive": _snapshot(blocker="scope too broad")})
-    assert "Blocker: scope too broad" in out
+    blocker = {
+        "attemptedApproaches": ["bounded retry"],
+        "currentEvidence": "the failure is reproducible",
+        "nextRequiredDecision": "select the safe alternative",
+        "reproducedFailure": "verification remains blocked",
+        "unresolvedDecision": "external input is required",
+    }
+    out = format_adaptive_explanation({"adaptive": _snapshot(blocker=blocker)})
+    assert "Blocker: blocked-state record present" in out
 
 
 def test_explanation_omits_blocker_when_null():
@@ -136,20 +183,41 @@ def test_v102_backward_compat():
     assert format_adaptive_explanation(v102_state) is None
 
 
-def test_adversarial_empty_stages():
-    out = format_adaptive_explanation({"adaptive": _snapshot(stages=[])})
-    assert "Selected stages:" in out
-    assert "- none" in out
+def test_invalid_snapshot_fields_require_reclassification_without_exposing_values():
+    # Given
+    snapshot = _snapshot(
+        currentStage="bogus-stage",
+        mode="corrupted",
+        stages=["bogus-stage"],
+    )
+
+    # When
+    fields = adaptive_explanation_fields(snapshot)
+
+    # Then
+    assert fields == {
+        "reclassificationRequired": True,
+        "status": "invalid-state",
+    }
 
 
-def test_adversarial_empty_capabilities():
-    out = format_adaptive_explanation({"adaptive": _snapshot(capabilityClasses=[])})
-    assert "Capabilities:" in out
+def test_invalid_snapshot_format_never_renders_corrupt_mode_or_stage():
+    # Given
+    state = {
+        "adaptive": _snapshot(
+            currentStage="bogus-stage",
+            mode="corrupted",
+            stages=["bogus-stage"],
+        )
+    }
 
+    # When
+    out = format_adaptive_explanation(state)
 
-def test_adversarial_blocker_as_dict():
-    out = format_adaptive_explanation({"adaptive": _snapshot(blocker={"reproduced_failure": "x"})})
-    assert "Blocker: blocked-state record present" in out
+    # Then
+    assert out is not None
+    assert "corrupted" not in out.lower()
+    assert "bogus-stage" not in out
 
 
 def test_adversarial_all_modes_render():

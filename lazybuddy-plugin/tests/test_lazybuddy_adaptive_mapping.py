@@ -97,8 +97,8 @@ def test_responsibility_owners_come_from_authority_matrix():
     assert surfaces["responsibility_owners"] == authority_matrix
     # Spot-check specific authority entries.
     assert surfaces["responsibility_owners"]["continuity"] == "automatic"
-    assert surfaces["responsibility_owners"]["security-review"] == "approval-required"
-    assert surfaces["responsibility_owners"]["release-review"] == "approval-required"
+    assert surfaces["responsibility_owners"]["security-review"] == "automatic"
+    assert surfaces["responsibility_owners"]["release-review"] == "automatic"
     assert surfaces["responsibility_owners"]["implementation"] == "automatic"
 
 

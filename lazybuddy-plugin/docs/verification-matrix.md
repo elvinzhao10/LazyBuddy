@@ -89,9 +89,9 @@ connected an MCP server.
 | W4.2 bounded escalation | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_2_bounded_escalation.py` | all tests pass; max-two-escalation bound enforced; blocked-state record produced | pytest output |
 | W4.3 capability fallback | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_3_capability_fallback.py` | all tests pass; no approval-required authority activated without approval | pytest output |
 | W4.4 responsibility ownership | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_4_responsibility_ownership.py` | all tests pass; one owner per stage; no duplicate work | pytest output |
-| W4.5 continuation (gap recorded) | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_5_continuation.py` | incompatible-revision tests pass; compatible-resume tests are `xfail` (gap, deferred to v1.0.4) | pytest output |
-| W4.6 evidence freshness (gap recorded) | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_6_evidence_freshness.py` | revisionMarker presence passes; stale detection and re-verification signalling are `xfail` (gap, deferred to v1.0.4) | pytest output |
-| Aggregate verification | `bash scripts/lazybuddy-verify.sh` | JSON with `"all_pass":true` (xfail cases excluded) | command output |
+| W4.5 continuation | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_5_continuation.py` | all tests pass; compatible snapshots resume the saved stage/mode and escalation state, while incompatible request/revision snapshots reclassify from `understand` without mutating prior state | pytest output |
+| W4.6 evidence freshness | `python3 -m pytest lazybuddy-plugin/tooling/test_lazybuddy_adaptive_w4_6_evidence_freshness.py` | all tests pass; revision-fingerprint changes trigger stale reclassification and re-verification signalling, while the existing `lazy-verifier` surface is reused without a parallel lineage store | pytest output |
+| Aggregate verification | `bash scripts/lazybuddy-verify.sh` | JSON with `"all_pass":true` | command output |
 
 ### Adaptive evidence boundary
 
@@ -115,6 +115,7 @@ They do **not** prove:
 - any host route is OBSERVED rather than PENDING.
 
 Live-host observation for W5.3 (WorkBuddy full-plugin) and W5.4 (CodeBuddy
-and other hosts) is **PENDING**. See the host-route evidence in
-[host routes](../../docs/reference/host-routes.md) and the known gaps in
-[docs/v1.0.3-adaptive-harness-contract.md](../../docs/v1.0.3-adaptive-harness-contract.md).
+and other hosts) is **PENDING**. Host-route procedures and the repository-level
+adaptive-harness narrative are intentionally outside this copied package; a
+package check must not turn those documents into package evidence or infer a
+live host result.

@@ -5,29 +5,98 @@ the 7-step decision policy ordering, the Section 5 decision shape, the
 Section 11 snapshot schema, explicit-override authoritativeness, bounded
 escalation, and preferred-provider fallback.
 """
-import os
-import sys
+import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
 
-# Add the tooling directory to sys.path so the module can be imported.
 TOOLING_DIR = Path(__file__).resolve().parent.parent / "tooling"
+FIXTURE_DIR = TOOLING_DIR.parent / "contracts" / "fixtures" / "v103"
 sys.path.insert(0, str(TOOLING_DIR))
 
 from lazybuddy_adaptive_detector import classify_adaptive_decision  # noqa: E402
-
-SNAPSHOT_REQUIRED_FIELDS = [
-    "version", "decisionId", "requestDigest", "mode", "stages", "currentStage",
-    "responsibilities", "capabilityClasses", "runtimeResolution", "reasons",
-    "escalationCount", "revisionMarker", "blocker", "nextAction",
-]
+from lazybuddy_adaptive_snapshot import SNAPSHOT_REQUIRED_FIELDS  # noqa: E402
 DECISION_REQUIRED_FIELDS = [
     "mode", "stages", "responsibilities", "capabilities", "approval_required",
     "verification_level", "not_selected", "reasons", "runtime_resolution",
     "snapshot",
 ]
+SNAPSHOT_IDENTITY_INPUTS = {
+    "decisionId": "decision_id",
+    "hostFingerprint": "host_fingerprint",
+    "revisionFingerprint": "revision_fingerprint",
+    "scopeFingerprint": "scope_fingerprint",
+}
+MACHINE_DECISION_FIELDS = (
+    "allowed_substitutions",
+    "approval_classes",
+    "approval_required",
+    "authority_boundary",
+    "capabilities",
+    "mode",
+    "not_selected",
+    "ownership",
+    "responsibilities",
+    "stages",
+    "verification_level",
+)
+MACHINE_SNAPSHOT_FIELDS = (
+    "approval",
+    "blocker",
+    "capabilityClasses",
+    "capabilitySubstitutions",
+    "currentStage",
+    "decisionId",
+    "escalationCount",
+    "escalationHistory",
+    "hostFingerprint",
+    "mode",
+    "requestDigest",
+    "responsibilities",
+    "revisionFingerprint",
+    "risk",
+    "scopeFingerprint",
+    "stages",
+    "verificationLevel",
+    "version",
+)
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted(FIXTURE_DIR.glob("[0-9][0-9]-*.json")),
+    ids=lambda path: path.stem,
+)
+def test_shared_fixtures_match_full_decisions_and_snapshots(path: Path):
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    expected_snapshot = fixture["expected_snapshot"]["adaptive"]
+    context = dict(fixture["context"])
+    context.update({
+        context_field: expected_snapshot[snapshot_field]
+        for snapshot_field, context_field in SNAPSHOT_IDENTITY_INPUTS.items()
+    })
+    decision = classify_adaptive_decision(fixture["request"], context)
+    expected_decision = fixture["expected_decision"]
+    for field in MACHINE_DECISION_FIELDS:
+        assert decision[field] == expected_decision[field], f"{path.name}: {field}"
+    assert set(decision["user_explanation"]) == set(expected_decision["user_explanation"])
+    assert all(
+        isinstance(value, str) and value
+        for value in decision["user_explanation"].values()
+    )
+    assert decision["reasons"]
+    assert all(isinstance(reason, str) and reason for reason in decision["reasons"])
+    assert isinstance(decision["runtime_resolution"], dict)
+    snapshot = decision["snapshot"]
+    for snapshot_field in MACHINE_SNAPSHOT_FIELDS:
+        assert snapshot[snapshot_field] == expected_snapshot[snapshot_field], (
+            f"{path.name}: {snapshot_field}"
+        )
+    assert isinstance(snapshot["nextAction"], str) and snapshot["nextAction"]
+    assert snapshot["reasons"]
+    assert all(isinstance(reason, str) and reason for reason in snapshot["reasons"])
 
 
 def test_direct_mode_for_localized_clear_work():
@@ -69,7 +138,7 @@ def test_orchestrated_mode_for_security_sensitive_change():
         {"risk_signals": ["security-sensitive", "authorization-change"],
          "scope_signals": ["touches authorization middleware"]})
     assert decision["mode"] == "orchestrated"
-    assert decision["approval_required"] is True
+    assert decision["approval_required"] is False
     assert decision["verification_level"] == "independent"
     assert "security-review" in decision["responsibilities"]
     assert "review" in decision["stages"]
@@ -80,9 +149,9 @@ def test_orchestrated_mode_for_release_publication():
         "Cut v2.1.0 release: bump version, update changelog, build artifacts",
         {"risk_signals": ["release-or-publication"]})
     assert decision["mode"] == "orchestrated"
-    assert decision["approval_required"] is True
-    # Release scenario drops security-review from mode responsibilities.
+    assert decision["approval_required"] is False
     assert "security-review" not in decision["responsibilities"]
+    assert "release-review" in decision["responsibilities"]
     assert "quality-review" in decision["responsibilities"]
 
 
@@ -97,26 +166,38 @@ def test_long_horizon_mode_for_multi_session_migration():
 
 
 def test_explicit_workflow_override_is_authoritative():
-    """A plan-only request must not produce implementation stages."""
     decision = classify_adaptive_decision(
         "Create a plan only — do not implement yet. Use lazy-ulw-plan", {})
+    assert decision["explicitWorkflow"] == "lazy-ulw-plan"
     assert decision["mode"] == "planned"
     assert "implement" not in decision["stages"]
     assert "plan" in decision["stages"]
     assert "implementation" not in decision["responsibilities"]
-    assert any("authoritative" in r for r in decision["reasons"])
+    assert decision["approval"] == {
+        "requiredClasses": [],
+        "status": "not-required",
+    }
+    assert isinstance(decision["snapshot"]["nextAction"], str)
+    assert decision["snapshot"]["nextAction"]
 
 
 def test_escalation_bound_when_verification_failure_with_initial_mode():
     """Step 6 early: prior escalation context produces blocked-state record."""
     decision = classify_adaptive_decision(
         "Fix failing unit test",
-        {"signals": {"verification_failure": True}, "initial_mode": "direct"})
+        {
+            "initial_mode": "direct",
+            "scope_revealed_broader": True,
+            "signals": {
+                "repeated_failure_after_bound": True,
+                "verification_failure": True,
+            },
+        })
     assert decision["mode"] == "assisted"
     assert decision["snapshot"]["escalationCount"] == 2
     assert decision["snapshot"]["blocker"] is not None
-    assert "attempted_approaches" in decision["snapshot"]["blocker"]
-    assert "exact_next_user_decision" in decision["snapshot"]["blocker"]
+    assert "attemptedApproaches" in decision["snapshot"]["blocker"]
+    assert "nextRequiredDecision" in decision["snapshot"]["blocker"]
 
 
 def test_preferred_provider_unavailable_preserves_assisted():
@@ -147,18 +228,22 @@ def test_snapshot_has_all_section_11_fields():
     assert snapshot["version"] == 1
     assert snapshot["decisionId"].startswith("adaptive-")
     assert snapshot["requestDigest"].startswith("sha256:")
-    assert snapshot["revisionMarker"] == "git:HEAD"
+    for field in ("hostFingerprint", "scopeFingerprint"):
+        assert re.fullmatch(r"sha256:[0-9a-f]{64}", snapshot[field])
+    assert snapshot["revisionFingerprint"] == {
+        "digest": None,
+        "status": "unavailable",
+    }
     assert snapshot["blocker"] is None  # default state has no blocker
     assert snapshot["escalationCount"] == 0
 
 
-def test_request_digest_is_slugified_lowercase():
+def test_request_digest_is_exact_sha256():
     decision = classify_adaptive_decision("Fix the typo in errors.js:42", {})
     digest = decision["snapshot"]["requestDigest"]
     assert digest.startswith("sha256:")
-    slug = digest[len("sha256:"):]
-    assert slug == slug.lower()
-    assert re.match(r"^[a-z0-9-]*$", slug)
+    raw_digest = digest[len("sha256:"):]
+    assert re.fullmatch(r"[0-9a-f]{64}", raw_digest)
 
 
 def test_no_provider_activation_during_classification():
@@ -200,19 +285,35 @@ def test_not_selected_computed_correctly():
 
 
 def test_decision_id_unique_across_calls():
-    """Each call produces a unique decisionId (time-based)."""
     d1 = classify_adaptive_decision("Fix typo", {})
     d2 = classify_adaptive_decision("Fix typo", {})
-    # Time-based IDs may collide on very fast calls; verify they are at least well-formed.
     assert d1["snapshot"]["decisionId"].startswith("adaptive-")
     assert d2["snapshot"]["decisionId"].startswith("adaptive-")
+    assert d1["snapshot"]["decisionId"] != d2["snapshot"]["decisionId"]
 
 
 def test_decision_id_can_be_overridden():
     """A caller may supply a decision_id via context for fixture parity."""
     decision = classify_adaptive_decision(
         "Fix typo", {"decision_id": "fixture-01-direct-localized-fix"})
-    # The detector does not currently read decision_id from context; that's a W3.4 concern.
-    # For W3.1, the decisionId must just be present and well-formed.
-    assert decision["snapshot"]["decisionId"].startswith("adaptive-") or \
-           decision["snapshot"]["decisionId"] == "fixture-01-direct-localized-fix"
+    assert decision["snapshot"]["decisionId"] == "fixture-01-direct-localized-fix"
+
+
+@pytest.mark.parametrize(
+    ("prompt_text", "expected_class"),
+    (
+        ("Use Playwright to automate the browser.", "browser-or-desktop-control"),
+        ("Add an MCP connector to the host settings.", "host-mcp-settings-mutation"),
+        ("Configure the MCP settings.", "host-mcp-settings-mutation"),
+    ),
+)
+def test_concrete_host_control_action_requires_approval(
+    prompt_text: str,
+    expected_class: str,
+) -> None:
+    # Given/When
+    decision = classify_adaptive_decision(prompt_text)
+
+    # Then
+    assert decision["approval_classes"] == [expected_class]
+    assert decision["approval_required"] is True

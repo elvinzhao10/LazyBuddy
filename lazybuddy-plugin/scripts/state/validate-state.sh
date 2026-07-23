@@ -5,6 +5,7 @@ set -euo pipefail
 
 RUN_ID="${1:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd -P -- "$SCRIPT_DIR/../.." && pwd -P)}"
 source "$SCRIPT_DIR/state-paths.sh"
 
 if ! state_require_safe_run_id "$RUN_ID"; then
@@ -26,8 +27,11 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 1
 fi
 
-python3 - "$STATE_FILE" <<'PY'
-import json, sys
+python3 - "$STATE_FILE" "$PLUGIN_ROOT" <<'PY'
+import json, os, sys
+
+sys.path.insert(0, os.path.join(sys.argv[2], 'tooling'))
+from lazybuddy_adaptive_snapshot import validate_adaptive_snapshot
 
 with open(sys.argv[1]) as f:
     d = json.load(f)
@@ -101,33 +105,9 @@ b = d.get('budget', {})
 if not isinstance(b, dict):
     errors.append('budget must be an object')
 
-# Adaptive block (optional, v1.0.3). When null/absent, skip (v1.0.2 backward compat).
-# Validates the Section 11 snapshot shape (14 fields). Single-writer is the orchestrator.
 adaptive = d.get('adaptive')
-if adaptive is not None:
-    if not isinstance(adaptive, dict):
-        errors.append('adaptive must be an object or null')
-    else:
-        ADAPTIVE_REQUIRED = ['version','decisionId','requestDigest','mode','stages',
-            'currentStage','responsibilities','capabilityClasses','runtimeResolution',
-            'reasons','escalationCount','revisionMarker','blocker','nextAction']
-        for field in ADAPTIVE_REQUIRED:
-            if field not in adaptive:
-                errors.append(f'adaptive missing field: {field}')
-        if adaptive.get('mode') not in [None,'direct','assisted','planned','orchestrated','long-horizon']:
-            errors.append(f"adaptive invalid mode: {adaptive.get('mode')}")
-        if not isinstance(adaptive.get('stages', []), list):
-            errors.append('adaptive stages must be a list')
-        if not isinstance(adaptive.get('responsibilities', []), list):
-            errors.append('adaptive responsibilities must be a list')
-        if not isinstance(adaptive.get('capabilityClasses', []), list):
-            errors.append('adaptive capabilityClasses must be a list')
-        if not isinstance(adaptive.get('runtimeResolution', {}), dict):
-            errors.append('adaptive runtimeResolution must be an object')
-        if not isinstance(adaptive.get('reasons', []), list):
-            errors.append('adaptive reasons must be a list')
-        if not isinstance(adaptive.get('escalationCount', 0), int):
-            errors.append('adaptive escalationCount must be an integer')
+if adaptive is not None and not validate_adaptive_snapshot(adaptive):
+    errors.append('adaptive snapshot does not satisfy the v1.0.3 portable schema')
 
 if errors:
     print('FAIL')

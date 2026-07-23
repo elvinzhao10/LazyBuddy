@@ -36,28 +36,29 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TOOLING_DIR = Path(__file__).resolve().parent
 
 
-def _mock_revision_marker(content: str) -> str:
-    """Mock revision-marker derivation: file-content hash simulates a git SHA."""
-    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
-    return f"sha256:{digest}"
+def _mock_revision_fingerprint(content: str) -> dict:
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return {"digest": f"sha256:{digest}", "status": "available"}
 
 
-def test_adaptive_snapshot_carries_non_empty_revision_marker():
-    """snapshot.revisionMarker must be a non-empty string (Section 11)."""
-    decision = classify_adaptive_decision("fix the typo in README", {})
+def test_adaptive_snapshot_carries_available_revision_fingerprint():
+    revision = _mock_revision_fingerprint("current implementation")
+    decision = classify_adaptive_decision(
+        "fix the typo in README",
+        {"revision_fingerprint": revision},
+    )
     snapshot = decision["snapshot"]
-    assert isinstance(snapshot.get("revisionMarker"), str)
-    assert snapshot["revisionMarker"], "revisionMarker must be non-empty"
+    assert snapshot["revisionFingerprint"] == revision
 
 
 def test_revision_marker_changes_when_implementation_changes():
     """Mock file-hash revision marker must differ when content changes."""
     before_content = "def old_impl():\n    return 1\n"
     after_content = "def new_impl():\n    return 2\n"
-    before = _mock_revision_marker(before_content)
-    after = _mock_revision_marker(after_content)
+    before = _mock_revision_fingerprint(before_content)
+    after = _mock_revision_fingerprint(after_content)
     assert before != after, "revision marker must differ when implementation changes"
-    assert before == _mock_revision_marker(
+    assert before == _mock_revision_fingerprint(
         before_content
     ), "revision marker must be deterministic for unchanged content"
 
@@ -124,25 +125,33 @@ def test_lazybuddy_verify_script_exists():
 # Section 18: when the prior snapshot's revisionMarker differs from the
 # current one, the classifier must reclassify starting from `understand`.
 def test_stale_prior_snapshot_triggers_reclassification():
-    """When prior snapshot's revisionMarker differs, classifier must reclassify."""
-    prior_snapshot = {
-        "mode": "direct",
-        "stages": ["implement", "verify"],
-        "revisionMarker": "sha256:old-implementation",
-        "currentStage": "verify",
-    }
-    decision = classify_adaptive_decision(
-        "fix the typo in README",
+    request = "fix the typo in README"
+    old_revision = _mock_revision_fingerprint("old implementation")
+    new_revision = _mock_revision_fingerprint("new implementation")
+    host = "sha256:" + "1" * 64
+    scope = "sha256:" + "2" * 64
+    prior_snapshot = classify_adaptive_decision(
+        request,
         {
-            "prior_snapshot": prior_snapshot,
-            "current_revision_marker": _mock_revision_marker(
-                "def new_impl():\n    return 2\n"
-            ),
+            "host_fingerprint": host,
+            "revision_fingerprint": old_revision,
+            "scope_fingerprint": scope,
+        },
+    )["snapshot"]
+    prior_snapshot["currentStage"] = "verify"
+    decision = classify_adaptive_decision(
+        request,
+        {
+            "host_fingerprint": host,
+            "revision_fingerprint": new_revision,
+            "scope_fingerprint": scope,
+            "snapshot": prior_snapshot,
         },
     )
     assert (
-        decision["snapshot"]["revisionMarker"] != prior_snapshot["revisionMarker"]
-    ), "classifier must produce a fresh revisionMarker when the implementation changed"
+        decision["snapshot"]["revisionFingerprint"]
+        != prior_snapshot["revisionFingerprint"]
+    ), "classifier must produce a fresh revision fingerprint when implementation changed"
     assert (
         "understand" in decision["stages"]
     ), "classifier must restart from understand when prior snapshot is stale"
@@ -155,14 +164,27 @@ def test_stale_prior_snapshot_triggers_reclassification():
 # that re-verification is required after a revision change.
 def test_re_verification_trigger_when_revision_marker_changes():
     """reasons must signal re-verification after a revision change."""
-    old_marker = _mock_revision_marker("old implementation")
-    new_marker = _mock_revision_marker("new implementation")
-    assert old_marker != new_marker, "precondition: markers differ"
-    decision = classify_adaptive_decision(
-        "fix the typo in README",
+    old_revision = _mock_revision_fingerprint("old implementation")
+    new_revision = _mock_revision_fingerprint("new implementation")
+    assert old_revision != new_revision, "precondition: fingerprints differ"
+    request = "fix the typo in README"
+    host = "sha256:" + "1" * 64
+    scope = "sha256:" + "2" * 64
+    prior_snapshot = classify_adaptive_decision(
+        request,
         {
-            "prior_snapshot": {"revisionMarker": old_marker, "mode": "direct"},
-            "current_revision_marker": new_marker,
+            "host_fingerprint": host,
+            "revision_fingerprint": old_revision,
+            "scope_fingerprint": scope,
+        },
+    )["snapshot"]
+    decision = classify_adaptive_decision(
+        request,
+        {
+            "host_fingerprint": host,
+            "revision_fingerprint": new_revision,
+            "scope_fingerprint": scope,
+            "snapshot": prior_snapshot,
         },
     )
     joined = "\n".join(decision["reasons"])
