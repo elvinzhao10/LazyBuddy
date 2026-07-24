@@ -332,6 +332,21 @@ def test_credential_discussion_without_a_concrete_action_does_not_require_approv
 
 
 @pytest.mark.parametrize(
+    ("prompt_text", "expected_classes"),
+    (
+        ("Never push changes to origin main.", []),
+        ("Do not push changes to origin main.", []),
+        ("Push changes to origin main. Do not send logs.", ["remote-data-egress"]),
+    ),
+)
+def test_approval_negation_is_local_to_the_requested_action(
+    prompt_text: str,
+    expected_classes: list[str],
+) -> None:
+    assert classify_adaptive_decision(prompt_text)["approval_classes"] == expected_classes
+
+
+@pytest.mark.parametrize(
     ("prompt_text", "expected_mode"),
     (
         ("Investigate why test_format_result is failing in the calculator module.", "assisted"),
