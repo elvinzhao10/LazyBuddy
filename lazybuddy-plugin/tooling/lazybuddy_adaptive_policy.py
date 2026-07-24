@@ -67,7 +67,8 @@ APPROVAL_PATTERNS: Final = (
     ("browser-or-desktop-control", re.compile(
         r"\b(?:control|click|open|automate)\s+(?:the\s+)?(?:browser|desktop)\b|\buse\s+playwright\b", re.I)),
     ("credentials-auth-or-paid-service", re.compile(
-        r"\b(?:use|enter|change|rotate|renew|revoke|delete|update|set)\b.*\b"
+        r"\b(?:use|enter|change|rotate|renew|revoke|delete|update|set)\b"
+        r"(?:(?!\b(?:use|enter|change|rotate|renew|revoke|delete|update|set)\b)[^.?!;\n])*\b"
         r"(?:credentials?|password|paid service|api key|access token|deploy token|secret)\b|\blog in\b", re.I)),
     ("host-mcp-settings-mutation", re.compile(
         r"\b(?:add|change|edit|modify|configure)\s+(?:(?:an?|the)\s+)?(?:host|mcp|connector|settings?)\b", re.I)),
@@ -76,10 +77,14 @@ APPROVAL_PATTERNS: Final = (
     ("remote-data-egress", re.compile(
         r"\b(?:upload|send|export)\s+(?:(?:an?|the|this|that|our|my)\s+)?"
         r"(?:repo(?:sitory)?(?:\s+data)?|source|code|data)\s+(?:to|outside)\b|"
-        r"\b(?:git\s+)?push\b.*\b(?:to|branch|origin|remote|github|main|master|production)\b", re.I)),
+        r"\bgit\s+push\b|\bpush\b(?:\s+(?:the\s+)?(?:changes?|branch|repository|repo|code|source|release)\b|\s+[\w.-]+/[\w./-]+)", re.I)),
 )
 NEGATION_PATTERN: Final = re.compile(
-    r"\b(?:do not|don't|never|without)\s+(?:\w+\s+){0,4}$",
+    r"\b(?:do not|don't|never|without)\s+(?:git\s+)?$",
+    re.I,
+)
+DISCUSSION_PATTERN: Final = re.compile(
+    r"\b(?:discuss|document|describe|explain|mention|reference|review)\b[^.?!;\n]*$",
     re.I,
 )
 WORKFLOW_NEGATION_PATTERN: Final = re.compile(
@@ -151,7 +156,7 @@ def approval_classes(text: str) -> list[str]:
     for name, pattern in APPROVAL_PATTERNS:
         for match in pattern.finditer(text):
             prefix = text[max(0, match.start() - 64) : match.start()]
-            if NEGATION_PATTERN.search(prefix) is None:
+            if NEGATION_PATTERN.search(prefix) is None and DISCUSSION_PATTERN.search(prefix) is None:
                 selected.append(name)
                 break
     return selected
