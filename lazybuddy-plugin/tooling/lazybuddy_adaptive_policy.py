@@ -66,7 +66,9 @@ APPROVAL_PATTERNS: Final = (
     ),
     ("browser-or-desktop-control", re.compile(
         r"\b(?:control|click|open|automate)\s+(?:the\s+)?(?:browser|desktop)\b|\buse\s+playwright\b", re.I)),
-    ("credentials-auth-or-paid-service", re.compile(r"\b(?:credential|api key|access token|deploy token|secret|log in|paid service)\b", re.I)),
+    ("credentials-auth-or-paid-service", re.compile(
+        r"\b(?:use|enter|change|rotate|renew|revoke|delete|update|set)\b.*\b"
+        r"(?:credentials?|password|paid service|api key|access token|deploy token|secret)\b|\blog in\b", re.I)),
     ("host-mcp-settings-mutation", re.compile(
         r"\b(?:add|change|edit|modify|configure)\s+(?:(?:an?|the)\s+)?(?:host|mcp|connector|settings?)\b", re.I)),
     ("install-or-download", re.compile(r"\b(?:install|download)\b", re.I)),
@@ -74,7 +76,7 @@ APPROVAL_PATTERNS: Final = (
     ("remote-data-egress", re.compile(
         r"\b(?:upload|send|export)\s+(?:(?:an?|the|this|that|our|my)\s+)?"
         r"(?:repo(?:sitory)?(?:\s+data)?|source|code|data)\s+(?:to|outside)\b|"
-        r"\b(?:git\s+)?push\b.*\b(?:origin|remote|main|master|production)\b", re.I)),
+        r"\b(?:git\s+)?push\b.*\b(?:to|branch|origin|remote|github|main|master|production)\b", re.I)),
 )
 NEGATION_PATTERN: Final = re.compile(
     r"\b(?:do not|don't|never|without)\s+(?:\w+\s+){0,4}$",

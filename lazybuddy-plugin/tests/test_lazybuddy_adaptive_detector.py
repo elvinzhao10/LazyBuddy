@@ -307,6 +307,10 @@ def test_decision_id_can_be_overridden():
         ("Configure the MCP settings.", "host-mcp-settings-mutation"),
         ("Rotate the CI deploy token before the release.", "credentials-auth-or-paid-service"),
         ("Push the repository changes to origin main.", "remote-data-egress"),
+        ("Push changes to feature/release-1.0.3.", "remote-data-egress"),
+        ("Push the branch release/v1 to GitHub.", "remote-data-egress"),
+        ("Delete the deploy token.", "credentials-auth-or-paid-service"),
+        ("Update the CI secret.", "credentials-auth-or-paid-service"),
     ),
 )
 def test_concrete_host_control_action_requires_approval(
@@ -319,6 +323,12 @@ def test_concrete_host_control_action_requires_approval(
     # Then
     assert decision["approval_classes"] == [expected_class]
     assert decision["approval_required"] is True
+
+
+def test_credential_discussion_without_a_concrete_action_does_not_require_approval():
+    decision = classify_adaptive_decision("Document the secret rotation policy.")
+    assert decision["approval_classes"] == []
+    assert decision["approval_required"] is False
 
 
 @pytest.mark.parametrize(
