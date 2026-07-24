@@ -77,14 +77,14 @@ APPROVAL_PATTERNS: Final = (
     ("remote-data-egress", re.compile(
         r"\b(?:upload|send|export)\s+(?:(?:an?|the|this|that|our|my)\s+)?"
         r"(?:repo(?:sitory)?(?:\s+data)?|source|code|data)\s+(?:to|outside)\b|"
-        r"\bgit\s+push\b|\bpush\b(?:\s+(?:the\s+)?(?:changes?|branch|repository|repo|code|source|release)\b|\s+[\w.-]+/[\w./-]+)", re.I)),
+        r"\bgit\s+push\b|\bpush\b(?:\s+(?:the\s+)?(?:changes?|branch|repository|repo|code|source|release|origin|upstream|remote|main|master)\b|\s+[\w.-]+/[\w./-]+)", re.I)),
 )
 NEGATION_PATTERN: Final = re.compile(
     r"\b(?:do not|don't|never|without)\s+(?:git\s+)?$",
     re.I,
 )
 DISCUSSION_PATTERN: Final = re.compile(
-    r"\b(?:discuss|document|describe|explain|mention|reference|review)\b[^.?!;\n]*$",
+    r"\b(?:discuss|document|describe|explain|mention|reference|review)\b[^.?!;\n]*\bhow\s+to\s*$",
     re.I,
 )
 WORKFLOW_NEGATION_PATTERN: Final = re.compile(
