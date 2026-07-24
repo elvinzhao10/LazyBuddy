@@ -103,10 +103,9 @@ data to a remote provider, or controlling a browser surface all require
 approval. `release-review` and `security-review` do not themselves require
 approval; the requested concrete action determines the approval boundary.
 
-### Observed v1.0.3 live behavior
+### v1.0.3 policy behavior
 
-The package-level live trial is backed by current package checks that enforce
-the same policy boundaries as LazyTrae: concrete credential changes and Git
+Current package checks enforce the same policy boundaries as LazyTrae: concrete credential changes and Git
 pushes require approval; `investigate why` selects `assisted`; broad validation
 refactors select `planned`; and work spanning the next week selects
 `long-horizon`. A current WorkBuddy session still requires direct observation

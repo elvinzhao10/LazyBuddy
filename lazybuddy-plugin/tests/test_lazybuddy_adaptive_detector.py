@@ -337,9 +337,33 @@ def test_credential_discussion_without_a_concrete_action_does_not_require_approv
         ("Never push changes to origin main.", []),
         ("Do not push changes to origin main.", []),
         ("Push changes to origin main. Do not send logs.", ["remote-data-egress"]),
+        ("Do not send logs then push changes upstream.", ["remote-data-egress"]),
+        ("Never rotate the token. Update the CI secret.", ["credentials-auth-or-paid-service"]),
+        ("Do not update documentation then rotate the deploy token.", ["credentials-auth-or-paid-service"]),
+        ("Do not push changes to origin main, but push the release branch to GitHub.", ["remote-data-egress"]),
+        ("Never delete the old deploy token; update the CI secret.", ["credentials-auth-or-paid-service"]),
     ),
 )
 def test_approval_negation_is_local_to_the_requested_action(
+    prompt_text: str,
+    expected_classes: list[str],
+) -> None:
+    assert classify_adaptive_decision(prompt_text)["approval_classes"] == expected_classes
+
+
+@pytest.mark.parametrize(
+    ("prompt_text", "expected_classes"),
+    (
+        ("Discuss how to rotate credentials.", []),
+        ("Explain how to rotate the deploy token.", []),
+        ("Git push upstream feature/foo.", ["remote-data-egress"]),
+        ("Push feature/foo.", ["remote-data-egress"]),
+        ("Please explain how to push a repository to origin main.", []),
+        ("Push a button to production.", []),
+        ("Push a notification to production.", []),
+    ),
+)
+def test_credential_discussion_and_arbitrary_git_push_preserve_the_approval_boundary(
     prompt_text: str,
     expected_classes: list[str],
 ) -> None:
