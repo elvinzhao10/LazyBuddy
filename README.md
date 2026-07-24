@@ -105,12 +105,12 @@ approval; the requested concrete action determines the approval boundary.
 
 ### Observed v1.0.3 live behavior
 
-The package-level live trial confirms the same policy boundaries as LazyTrae:
-credential/token rotation and a push to a named remote branch require approval;
-`investigate why` selects `assisted`; broad validation refactors select
-`planned`; and work spanning the next week selects `long-horizon`. A current
-WorkBuddy session still requires direct observation before **HOST READINESS**
-can be reported as anything other than **PENDING**.
+The package-level live trial is backed by current package checks that enforce
+the same policy boundaries as LazyTrae: concrete credential changes and Git
+pushes require approval; `investigate why` selects `assisted`; broad validation
+refactors select `planned`; and work spanning the next week selects
+`long-horizon`. A current WorkBuddy session still requires direct observation
+before **HOST READINESS** can be reported as anything other than **PENDING**.
 
 ### Full-plugin host mapping
 
