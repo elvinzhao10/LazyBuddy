@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "invalid_fixtures": [
+    {
+      "file": "identity-invalid.json",
+      "reason": "required identity and official provenance"
+    },
+    {
+      "file": "ownership-invalid.json",
+      "reason": "path containment and owned file types"
+    },
+    {
+      "file": "host-evidence-invalid.json",
+      "reason": "observed readiness evidence and stale release state"
+    },
+    {
+      "file": "malformed-json.json",
+      "reason": "malformed-json"
+    }
+  ]
+}

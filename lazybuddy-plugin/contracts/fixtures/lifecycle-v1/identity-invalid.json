@@ -1,0 +1,56 @@
+{
+  "cases": [
+    {
+      "id": "missing-product",
+      "operation": "delete",
+      "path": [
+        "product"
+      ],
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "missing-origin",
+      "operation": "delete",
+      "path": [
+        "origin"
+      ],
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "missing-full-sha",
+      "operation": "delete",
+      "path": [
+        "commit_sha"
+      ],
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "short-sha",
+      "operation": "replace",
+      "path": [
+        "commit_sha"
+      ],
+      "value": "01bcf33d0450",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "noncanonical-origin",
+      "operation": "replace",
+      "path": [
+        "origin"
+      ],
+      "value": "git@github.com:elvinzhao10/LazyTrae.git",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "cross-product-root",
+      "operation": "replace",
+      "path": [
+        "layout",
+        "product_root"
+      ],
+      "value": "/home/example/.local/share/lazyseries/LazyBuddy",
+      "expected_boundary": "schema"
+    }
+  ]
+}
