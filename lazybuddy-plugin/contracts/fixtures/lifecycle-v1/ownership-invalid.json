@@ -1,0 +1,91 @@
+{
+  "cases": [
+    {
+      "id": "parent-traversal",
+      "operation": "replace",
+      "path": [
+        "created_files",
+        0,
+        "path"
+      ],
+      "value": "../LazyBuddy/releases",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "symlink-ownership",
+      "operation": "replace",
+      "path": [
+        "created_files",
+        0,
+        "type"
+      ],
+      "value": "symlink",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "workbuddy-private-path",
+      "operation": "replace",
+      "path": [
+        "created_files",
+        0,
+        "path"
+      ],
+      "value": "~/.workbuddy/plugins/lazytrae",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "host-private-project-root",
+      "operation": "replace",
+      "path": [
+        "registered_project_declarations",
+        0,
+        "project_root"
+      ],
+      "value": "/home/example/.workbuddy/plugins/lazytrae",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "global-path-claim",
+      "operation": "replace",
+      "path": [
+        "created_files",
+        0,
+        "path"
+      ],
+      "value": "/usr/local/bin/lazytrae",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "host-application-path-claim",
+      "operation": "replace",
+      "path": [
+        "created_files",
+        0,
+        "path"
+      ],
+      "value": "/Applications/Trae.app/Contents/lazytrae",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "host-global-install-root",
+      "operation": "replace",
+      "path": [
+        "layout",
+        "install_root"
+      ],
+      "value": "/Applications",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "cross-product-owned-path",
+      "operation": "replace",
+      "path": [
+        "created_files",
+        0,
+        "path"
+      ],
+      "value": "LazyBuddy/releases/1.0.3-ec3bbbf9e170",
+      "expected_boundary": "schema"
+    }
+  ]
+}

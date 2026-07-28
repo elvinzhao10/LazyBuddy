@@ -1,0 +1,661 @@
+{
+  "$id": "lazy-harness-lifecycle.v1.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Portable receipt contract for a product-isolated durable LazyTrae or LazyBuddy harness installation.",
+  "properties": {
+    "$schema": {
+      "const": "lazy-harness-lifecycle.v1.schema.json",
+      "type": "string"
+    },
+    "active_release": {
+      "$ref": "#/definitions/release_id"
+    },
+    "commit_sha": {
+      "$ref": "#/definitions/full_sha"
+    },
+    "created_files": {
+      "items": {
+        "$ref": "#/definitions/created_file"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "host_evidence": {
+      "$ref": "#/definitions/host_evidence"
+    },
+    "layout": {
+      "$ref": "#/definitions/layout"
+    },
+    "manifest": {
+      "$ref": "#/definitions/manifest"
+    },
+    "origin": {
+      "type": "string"
+    },
+    "ownership_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "cross_product_ownership": {
+          "const": "forbidden",
+          "type": "string"
+        },
+        "host_or_global_ownership": {
+          "const": "forbidden",
+          "type": "string"
+        },
+        "owned_path_base": {
+          "const": "product_root",
+          "type": "string"
+        },
+        "scope": {
+          "const": "product-root-only",
+          "type": "string"
+        },
+        "symlink_ownership": {
+          "const": "forbidden",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "owned_path_base",
+        "cross_product_ownership",
+        "host_or_global_ownership",
+        "symlink_ownership"
+      ],
+      "type": "object"
+    },
+    "previous_release": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/release_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "product": {
+      "enum": [
+        "LazyTrae",
+        "LazyBuddy"
+      ],
+      "type": "string"
+    },
+    "receipt_id": {
+      "pattern": "^[a-z][a-z0-9-]{2,63}$",
+      "type": "string"
+    },
+    "receipt_path": {
+      "$ref": "#/definitions/owned_relative_path"
+    },
+    "registered_project_declarations": {
+      "items": {
+        "$ref": "#/definitions/project_declaration"
+      },
+      "type": "array"
+    },
+    "release": {
+      "$ref": "#/definitions/release"
+    },
+    "runtime": {
+      "$ref": "#/definitions/runtime"
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "$schema",
+    "schema_version",
+    "receipt_id",
+    "product",
+    "origin",
+    "commit_sha",
+    "manifest",
+    "layout",
+    "release",
+    "runtime",
+    "ownership_policy",
+    "created_files",
+    "registered_project_declarations",
+    "receipt_path",
+    "active_release",
+    "previous_release",
+    "host_evidence"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "product": {
+            "const": "LazyTrae"
+          }
+        },
+        "required": [
+          "product"
+        ]
+      },
+      "then": {
+        "properties": {
+          "layout": {
+            "properties": {
+              "product_root": {
+                "pattern": "(?:^|[\\\\/])LazyTrae$"
+              }
+            }
+          },
+          "origin": {
+            "const": "https://github.com/elvinzhao10/LazyTrae.git"
+          },
+          "receipt_id": {
+            "pattern": "^lazytrae-[a-z0-9-]+$"
+          },
+          "receipt_path": {
+            "pattern": "^receipts/lazytrae-[a-z0-9-]+\\.json$"
+          },
+          "registered_project_declarations": {
+            "items": {
+              "properties": {
+                "path": {
+                  "const": ".trae/mcp.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "product": {
+            "const": "LazyBuddy"
+          }
+        },
+        "required": [
+          "product"
+        ]
+      },
+      "then": {
+        "properties": {
+          "layout": {
+            "properties": {
+              "product_root": {
+                "pattern": "(?:^|[\\\\/])LazyBuddy$"
+              }
+            }
+          },
+          "origin": {
+            "const": "https://github.com/elvinzhao10/LazyBuddy.git"
+          },
+          "receipt_id": {
+            "pattern": "^lazybuddy-[a-z0-9-]+$"
+          },
+          "receipt_path": {
+            "pattern": "^receipts/lazybuddy-[a-z0-9-]+\\.json$"
+          },
+          "registered_project_declarations": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "absolute_path": {
+      "allOf": [
+        {
+          "pattern": "^(?:/|[A-Za-z]:[\\\\/]).+",
+          "type": "string"
+        },
+        {
+          "not": {
+            "pattern": "(?:^|[\\\\/])\\.workbuddy(?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "^~"
+          }
+        }
+      ]
+    },
+    "created_file": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "pattern": "^0[0-7]{3}$",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/owned_relative_path"
+        },
+        "sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "enum": [
+            "file",
+            "directory"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "type",
+        "mode",
+        "sha256"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "file"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "sha256": {
+                "$ref": "#/definitions/sha256"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "directory"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "sha256": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "digest": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "$ref": "#/definitions/owned_relative_path"
+        },
+        "sha256": {
+          "$ref": "#/definitions/sha256"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "durable_install_root": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/absolute_path"
+        },
+        {
+          "not": {
+            "pattern": "^(?:/Applications|/Library|/System|/usr|/etc|/var|/opt|/bin|/sbin)(?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "^[A-Za-z]:[\\\\/](?:Program Files|Windows)(?:[\\\\/]|$)"
+          }
+        }
+      ]
+    },
+    "full_sha": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "host_evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_receipt": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/observation_receipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "observed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "observation_receipt"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "pending"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "observation_receipt": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "observed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "observation_receipt": {
+                "$ref": "#/definitions/observation_receipt"
+              }
+            }
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "layout": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "const": "active.json",
+          "type": "string"
+        },
+        "install_root": {
+          "$ref": "#/definitions/durable_install_root"
+        },
+        "launcher": {
+          "const": "launcher.js",
+          "type": "string"
+        },
+        "locks": {
+          "const": "locks/",
+          "type": "string"
+        },
+        "product_root": {
+          "$ref": "#/definitions/durable_install_root"
+        },
+        "receipts": {
+          "const": "receipts/",
+          "type": "string"
+        },
+        "releases": {
+          "const": "releases/",
+          "type": "string"
+        },
+        "rollback": {
+          "const": "rollback/",
+          "type": "string"
+        },
+        "staging": {
+          "const": "staging/",
+          "type": "string"
+        }
+      },
+      "required": [
+        "install_root",
+        "product_root",
+        "releases",
+        "active",
+        "launcher",
+        "receipts",
+        "staging",
+        "locks",
+        "rollback"
+      ],
+      "type": "object"
+    },
+    "manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "digests": {
+          "items": {
+            "$ref": "#/definitions/digest"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "path": {
+          "$ref": "#/definitions/owned_relative_path"
+        },
+        "sha256": {
+          "$ref": "#/definitions/sha256"
+        },
+        "version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "version",
+        "sha256",
+        "digests"
+      ],
+      "type": "object"
+    },
+    "observation_receipt": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "host": {
+          "enum": [
+            "trae-ide",
+            "trae-work",
+            "trae-cli",
+            "codebuddy",
+            "workbuddy"
+          ],
+          "type": "string"
+        },
+        "observed_at": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$",
+          "type": "string"
+        },
+        "type": {
+          "const": "host-observation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "host",
+        "observed_at",
+        "artifact"
+      ],
+      "type": "object"
+    },
+    "owned_relative_path": {
+      "allOf": [
+        {
+          "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$",
+          "type": "string"
+        },
+        {
+          "not": {
+            "pattern": "(?:^|/)\\.\\.?(?:/|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(?:^|/)(?:LazyTrae|LazyBuddy)(?:/|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(?:^|/)\\.workbuddy(?:/|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "^~"
+          }
+        }
+      ]
+    },
+    "project_declaration": {
+      "additionalProperties": false,
+      "properties": {
+        "managed_entry_sha256": {
+          "$ref": "#/definitions/sha256"
+        },
+        "mode": {
+          "pattern": "^0[0-7]{3}$",
+          "type": "string"
+        },
+        "ownership_scope": {
+          "const": "managed-entry-only",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/owned_relative_path"
+        },
+        "project_root": {
+          "$ref": "#/definitions/project_root"
+        }
+      },
+      "required": [
+        "project_root",
+        "path",
+        "mode",
+        "managed_entry_sha256",
+        "ownership_scope"
+      ],
+      "type": "object"
+    },
+    "release": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/release_id"
+        },
+        "path": {
+          "pattern": "^releases/[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "path"
+      ],
+      "type": "object"
+    },
+    "project_root": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/absolute_path"
+        },
+        {
+          "not": {
+            "pattern": "^(?:/Applications|/Library|/System|/usr|/etc|/var|/opt)(?:[\\\\/]|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "^[A-Za-z]:[\\\\/](?:Program Files|Windows)(?:[\\\\/]|$)"
+          }
+        }
+      ]
+    },
+    "release_id": {
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}$",
+      "type": "string"
+    },
+    "runtime": {
+      "additionalProperties": false,
+      "properties": {
+        "fingerprint": {
+          "additionalProperties": false,
+          "properties": {
+            "realpath": {
+              "$ref": "#/definitions/absolute_path"
+            },
+            "sha256": {
+              "$ref": "#/definitions/sha256"
+            },
+            "version": {
+              "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "realpath",
+            "version",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        "ownership": {
+          "const": "external-prerequisite",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/absolute_path"
+        }
+      },
+      "required": [
+        "path",
+        "fingerprint",
+        "ownership"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

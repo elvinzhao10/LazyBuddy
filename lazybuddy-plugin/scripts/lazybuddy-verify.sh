@@ -206,6 +206,7 @@ run_regression_inventory() {
         "v016-automatic-tooling-contract-parity.sh"
         "v017-capability-readiness-contract-parity.sh"
         "v018-docs-manifest-parity.sh"
+        "v103-lifecycle-contract-parity.sh"
     )
     local publication_tests=(
         "publication-regression.sh"
