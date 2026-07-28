@@ -45,6 +45,69 @@
       "expected_boundary": "schema"
     },
     {
+      "id": "project-root-parent-traversal",
+      "operation": "replace",
+      "path": [
+        "registered_project_declarations",
+        0,
+        "project_root"
+      ],
+      "value": "/Users/example/project/../../../Applications/Trae.app",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "project-root-workbuddy-shorthand",
+      "operation": "replace",
+      "path": [
+        "registered_project_declarations",
+        0,
+        "project_root"
+      ],
+      "value": "~/.workbuddy/project",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "runtime-path-parent-traversal",
+      "operation": "replace",
+      "path": [
+        "runtime",
+        "path"
+      ],
+      "value": "/usr/local/bin/../../../etc/passwd",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "runtime-realpath-parent-traversal",
+      "operation": "replace",
+      "path": [
+        "runtime",
+        "fingerprint",
+        "realpath"
+      ],
+      "value": "/usr/local/bin/../../../etc/passwd",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "install-root-parent-traversal",
+      "operation": "replace",
+      "path": [
+        "layout",
+        "install_root"
+      ],
+      "value": "/Users/example/share/../../../Applications",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "product-root-parent-traversal",
+      "operation": "replace",
+      "path": [
+        "layout",
+        "product_root"
+      ],
+      "value": "/Users/example/share/../../../Applications/LazyTrae",
+      "expected_boundary": "schema"
+    },
+    {
       "id": "global-path-claim",
       "operation": "replace",
       "path": [
