@@ -4,6 +4,19 @@
 **Status:** Release-ready commits and artifacts only. Not pushed, tagged, or
 published.
 
+## Durable package lifecycle
+
+v1.0.3 requires **Node.js LTS 20 or newer** and **Git** and verifies
+`https://github.com/elvinzhao10/LazyBuddy.git`. The one-time `onboard`
+bootstrap promotes a commit-addressed bundle to
+`LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
+The checkout may be deleted; later `update`, `status`, plan-first `offboard`,
+and package entrypoints use `node "<install-root>/LazyBuddy/launcher.js"`.
+Same-version ref movement requires `--confirm-revision <full-sha>`. Runtime
+replacement uses scoped offboard/re-onboard, never receipt edits. Historical
+WorkBuddy feedback does not authorize undocumented host-state changes; without
+current observation, **HOST READINESS: PENDING**.
+
 ## What's new
 
 v1.0.3 turns LazyBuddy's menu of named workflows into one adaptive experience.
@@ -130,7 +143,7 @@ same adaptive decision contract at the user level.
   `_build_snapshot` options so the orchestrator can supply a content-derived
   marker; the default remains `git:HEAD` for backward compatibility.
 
-## Known gaps (deferred to v1.0.4)
+## Known v1.0.3 gaps
 
 - **Live-host QA:** WorkBuddy and CodeBuddy live-host verification is PENDING
   — no live host was available in the release session. Package evidence and
