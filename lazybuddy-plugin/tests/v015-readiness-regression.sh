@@ -238,6 +238,14 @@ printf '%s\n' '[docs directory](docs/)' >> "$TMP/directory-link-plugin/README.md
 expect_status package-docs-directory-link 0 env CODEBUDDY_PLUGIN_ROOT="$TMP/directory-link-plugin" bash "$TMP/directory-link-plugin/scripts/lazybuddy-docs-check.sh"
 expect_contains package-docs-directory-link '"broken":0'
 
+mkdir -p "$TMP/directory-link-plugin/tooling/node_modules/third-party"
+printf '%s\n' '[third-party omitted source](CONTRIBUTING.md)' \
+    > "$TMP/directory-link-plugin/tooling/node_modules/third-party/README.md"
+expect_status package-docs-ignore-generated-dependencies 0 \
+    env CODEBUDDY_PLUGIN_ROOT="$TMP/directory-link-plugin" \
+    bash "$TMP/directory-link-plugin/scripts/lazybuddy-docs-check.sh"
+expect_contains package-docs-ignore-generated-dependencies '"broken":0'
+
 for link_case in empty missing escape; do
     cp -R "$PLUGIN_ROOT" "$TMP/$link_case-link-plugin"
     case "$link_case" in

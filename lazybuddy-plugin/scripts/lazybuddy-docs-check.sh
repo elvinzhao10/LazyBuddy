@@ -136,7 +136,9 @@ for scan_dir in "${PLUGIN_ROOT}"; do
                 append_broken "$md_file" "$link" "$resolved_normalized" "target not found"
             fi
         done < <(sed 's/`[^`]*`//g' "$md_file" 2>/dev/null | grep -oE '\[[^]]+\]\([^)]*\)' | sed 's/\[[^]]*\](\(.*\))/\1/' || true)
-    done < <(find "$scan_dir" -name "*.md" -print0 2>/dev/null || true)
+    done < <(
+        find "$scan_dir" -type d -name node_modules -prune -o -name "*.md" -print0 2>/dev/null || true
+    )
 done
 
 check_active_documentation_policy
