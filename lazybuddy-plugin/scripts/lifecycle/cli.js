@@ -18,6 +18,7 @@ const {
 const { safeFile } = require('./files');
 const { receiptFor } = require('./receipt');
 const { parseArgs, usage } = require('./cli-arguments');
+const { parseObservation, renderHandoff, routeSelection } = require('./host-handoff');
 
 const PRODUCT = 'LazyBuddy';
 
@@ -45,7 +46,7 @@ function envelope(options, values) {
     command: options.command,
     status: values.status,
     package_readiness: values.packageReadiness,
-    host_readiness: { status: 'pending' },
+    host_readiness: values.hostReadiness || { status: 'pending' },
     install_root: options.installRoot,
     project_root: options.projectRoot,
     ...values.extra,
@@ -169,14 +170,40 @@ function offboard(options, paths) {
   return { code: 0, output: envelope(options, { status: 'removed', packageReadiness: { status: 'absent' } }) };
 }
 
+function status(options, paths) {
+  const current = inspect(paths);
+  if (current.status !== 'ready') return { code: current.status === 'blocked' ? 1 : 0, output: envelope(options, current) };
+  const selection = routeSelection(options.routes);
+  if (selection.kind === 'none') return { code: 0, output: envelope(options, current) };
+  if (selection.kind === 'conflict') {
+    return {
+      code: 1,
+      output: envelope(options, {
+        status: 'blocked',
+        packageReadiness: current.packageReadiness,
+        extra: { ...current.extra, route_conflict: { routes: selection.routes, next_action: selection.nextAction } },
+      }),
+    };
+  }
+  receiptFor(paths, current.extra.release_id);
+  const releaseRoot = path.join(paths.releases, current.extra.release_id);
+  return {
+    code: 0,
+    output: envelope(options, {
+      ...current,
+      hostReadiness: parseObservation(options.observationReceipt, selection.host),
+      extra: { ...current.extra, host_handoff: renderHandoff(selection.route, releaseRoot, options.projectRoot) },
+    }),
+  };
+}
+
 function execute(options) {
   options.installRoot = resolveInstallRoot({ installRoot: options.installRoot });
   options.projectRoot = resolveProject(options.project);
   const paths = productPaths({ installRoot: options.installRoot, product: PRODUCT });
   if (['onboard', 'update'].includes(options.command)) return install(options, paths);
   if (options.command === 'offboard') return offboard(options, paths);
-  const status = inspect(paths);
-  return { code: status.status === 'blocked' ? 1 : 0, output: envelope(options, status) };
+  return status(options, paths);
 }
 
 function failure(options, error) {
