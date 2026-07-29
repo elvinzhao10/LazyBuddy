@@ -1102,11 +1102,14 @@ PY
 }
 
 codegraph_uninstall() {
-    local created_index runtime_root
+    local created_index enabled runtime_root
     require_safe_existing_root
     codegraph_receipt_is_valid || fail "refusing CodeGraph uninstall: project index is not verified by a matching LazyBuddy receipt"
-    stop_owned_codegraph_processes
     created_index="$(codegraph_receipt_flag created_index)"
+    enabled="$(codegraph_receipt_flag enabled)"
+    if [ "$enabled" = true ]; then
+        stop_owned_codegraph_processes
+    fi
     if [ "$created_index" = true ]; then
         [ -d "$TARGET_ROOT/.codegraph" ] && [ ! -L "$TARGET_ROOT/.codegraph" ] || fail "refusing CodeGraph uninstall: receipt-owned index path is not a safe directory"
         rm -rf "$TARGET_ROOT/.codegraph"
