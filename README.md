@@ -5,9 +5,9 @@
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
 **CodeBuddy CLI**, and **WorkBuddy**. In the supplied macOS QA dated
 2026-07-18, CodeBuddy IDE loaded the full plugin through the CLI-backed
-user-scope marketplace route. WorkBuddy v5.2.6 on macOS loaded the full plugin
-only after user-approved cache preparation followed by the durable GUI `+` binding.
-The GUI Add local directory/Install flows failed in that tested build; the
+user-scope marketplace route. WorkBuddy v5.2.6 supplied historical feedback
+about full-plugin behavior after undocumented host-internal changes. That is
+not an installation route. The GUI flows failed in that tested build; the
 CodeBuddy exact host version/build was not recorded. These are build-specific
 observations, while
 Skills/manual-MCP is the supported fallback.
@@ -145,22 +145,41 @@ registrations, credentials, and live sessions.
 
 ## Install and onboard
 
-Keep the pinned **v1.0.3** release in a permanent folder. Open or link that
-folder in CodeBuddy or WorkBuddy, give the agent the GitHub repository link,
-`https://github.com/elvinzhao10/LazyBuddy`, and type `onboard` in the agent
-chat. Do not use a temporary copy or treat a package file as host proof:
+Prerequisites are **Node.js LTS 20 or newer** and **Git**. Bootstrap only from
+the verified official origin `https://github.com/elvinzhao10/LazyBuddy.git`
+(the `.git` suffix is optional). The first checkout is transport only:
 
 ```bash
-git clone --branch v1.0.3 --depth 1 https://github.com/elvinzhao10/LazyBuddy.git /permanent/path/LazyBuddy
+node <verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js \
+  onboard --source https://github.com/elvinzhao10/LazyBuddy \
+  --install-root <absolute-install-root> \
+  --project <absolute-project-root> --json
 ```
+
+The default `<install-root>` is `~/Library/Application Support/LazySeries` on
+macOS, `${XDG_DATA_HOME:-~/.local/share}/lazyseries` on Linux, and
+`%LOCALAPPDATA%\LazySeries` on Windows. It must be an absolute, non-root,
+durable path outside disposable downloads and caches. After onboarding, use
+the stable launcher:
+
+```bash
+node "<install-root>/LazyBuddy/launcher.js" status \
+  --install-root "<install-root>" --project "<project-root>" --json
+```
+
+The source checkout may then be deleted. The exact installed tree is
+`LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
+The lifecycle commands are `onboard`, `update`, `status`, and `offboard`.
+The official ref resolves to a full commit SHA; a moved same-version ref
+requires a second `update` with `--confirm-revision <full-sha>`.
 
 ### Upgrade from v1.0.2
 
-Inventory managed versus modified/unknown assets before upgrading. Keep v1.0.3
-in a separate permanent folder, run the package checks first, then replace only
-receipt-owned plugin or Skills assets after the required host approval. Preserve
-user changes, old receipts, and host settings until the fresh v1.0.3 session is
-observed.
+Inventory managed versus modified/unknown assets before upgrading. Onboard the
+durable v1.0.3 bundle, run package checks through `launcher.js`, then replace
+only receipt-owned plugin or Skills assets after the required host approval.
+Preserve user changes and host settings until the fresh v1.0.3 session is
+observed. See the [v1.0.3 migration guide](docs/v1.0.3-migration-guide.md).
 
 `onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
 or **WorkBuddy**, runs only safe package checks and local setup, and reports
@@ -180,12 +199,13 @@ verbatim status or screenshot can provide observation; otherwise **HOST
 READINESS: PENDING**.
 
 For CodeBuddy CLI, and for CodeBuddy IDE when the CLI is available
-(`codebuddy`), use the release root containing
+(`codebuddy`), first run durable `status --route codebuddy-marketplace`; use
+the printed active durable release root containing
 `.codebuddy-plugin/marketplace.json` and enter these in order, one approved
 action at a time:
 
 ```text
-codebuddy plugin marketplace add <absolute-release-root>
+codebuddy plugin marketplace add <active-durable-release-root>
 codebuddy plugin install lazybuddy@lazybuddy
 ```
 
@@ -205,43 +225,24 @@ separately, fully restart the IDE, and verify a fresh session.
 
 ### WorkBuddy observed-build route
 
-The supplied WorkBuddy build required user-approved filesystem preparation
-followed by one durable GUI binding. Its GUI Install action hung in an
-orphaned `plugin validate`. Do not click the GUI Install action or direct users
-to it. Do not
-hand-edit `known_marketplaces.json`, because those entries were dropped on
-restart. Before asking for that approval, run this read-only, non-mutating preflight from
-the release root:
+The supplied WorkBuddy v5.2.6 macOS QA reported full-plugin behavior after
+undocumented host-internal changes and one GUI binding. That is historical,
+observed-build feedback only. LazyBuddy v1.0.3 does not endorse, automate, or
+document installation through private WorkBuddy state. The supplied GUI
+Install action also hung in an orphaned `plugin validate`, so do not direct a
+user to it.
+
+This read-only package preflight remains safe:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
   --project-dir <absolute-project-root>
 ```
 
-It only renders/checks the six absolute MCP launchers and project context,
-prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
-`HOST_READINESS=pending`, and does not prepare the cache, register
-`installed_plugins.json`, or prove host readiness. `--apply` refuses and makes
-no host mutation because the WorkBuddy registry schema is private and
-unverified. The supplied WorkBuddy v5.2.6 macOS QA observed the successful full-plugin route only
-after an agent prepared a cache with the absolute MCP render and a registry
-update, followed by the user's GUI `+` binding. Those artifacts are
-build-specific evidence, not a generic installer recipe. Before any
-host-managed cache or registry mutation, require both explicit user approval
-and current host-specific schema inspection with a validated merge plan that
-preserves all existing user entries and unknown fields. If that plan cannot be
-established, stop and use the Skills/manual-MCP fallback. If it can be
-established and the user approves, perform only that validated additive plan;
-never overwrite an unrecognized registry or claim host readiness from the
-mutation.
-
-Then give exactly one GUI action: in WorkBuddy open **Skills → Plugins**, find
-`lazybuddy`, and click **+**; wait for inspection. That `+` binding persisted
-across restarts in the supplied build. As later separate actions, restart/open
-a fresh project session and inspect one real Skill or command, 14 commands, 13
-agents, 12 hooks, and live connections to all six MCP servers. If `+` is
-unavailable after restart, use the fallback. That fallback provides Skills plus
-six MCP connectors only and never commands, agents, or hooks.
+It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
+`HOST_READINESS=pending`. `--apply` refuses. Treat that result as package
+evidence only and use the supported Skills/manual-MCP fallback. A current host
+remains **HOST READINESS: PENDING** until the fallback is observed.
 
 The fallback for either desktop host is Skills-only import plus six individual
 manual local MCP connectors. It excludes commands, Agents, and hooks. Its exact
@@ -264,6 +265,11 @@ and release notes are on the [v1.0.3 release page](https://github.com/elvinzhao1
 `bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` reports **package
 readiness** only. Type `offboard` for the matching safe-removal protocol; it
 never guesses or removes host-managed paths.
+
+Run the durable launcher's `offboard` without `--yes` first. Review its exact
+receipt-owned LazyBuddy product-root plan, then repeat with `--yes` only after
+confirmation. Modified or unknown content is preserved. Project files, another
+LazySeries product, and host settings remain out of scope.
 
 For package command details and the optional tooling lifecycle, see
 [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).

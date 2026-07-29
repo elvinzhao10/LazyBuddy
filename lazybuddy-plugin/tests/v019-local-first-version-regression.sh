@@ -50,6 +50,47 @@ def assert_no_private_omo(root):
     if offenders:
         raise AssertionError(f"release artifact contains private .omo paths: {', '.join(offenders)}")
 
+def assert_durable_lifecycle_docs(root, package_root):
+    paths = [
+        root / "README.md",
+        root / "AGENTS.md",
+        root / "docs/03-install-and-host-verification.md",
+        root / "docs/10-host-capability-matrix.md",
+        root / "docs/reference/host-routes.md",
+        root / "docs/v1.0.3-migration-guide.md",
+        root / "RELEASE_NOTES-v1.0.3.md",
+        package_root / "README.md",
+        package_root / "CHANGELOG.md",
+        package_root / "templates/AGENTS.md",
+    ]
+    for path in paths:
+        contents = path.read_text(encoding="utf-8")
+        name = label(path, root)
+        if "/private/tmp" in contents:
+            raise AssertionError(f"{name} publishes a temporary installation path")
+        if re.search(r"\bv1\.0\.4\b", contents):
+            raise AssertionError(f"{name} mislabels a v1.0.3 gap as a future release")
+        if re.search(r"release folder as the source of truth", contents, re.IGNORECASE):
+            raise AssertionError(f"{name} makes a removable source checkout authoritative")
+        if not re.search(r"Node\.js LTS 20", contents, re.IGNORECASE):
+            raise AssertionError(f"{name} omits the Node.js prerequisite")
+        if not re.search(r"\bGit\b", contents):
+            raise AssertionError(f"{name} omits the Git prerequisite")
+        if not re.search(r"https://github\.com/elvinzhao10/LazyBuddy(?:\.git)?", contents):
+            raise AssertionError(f"{name} omits the verified official origin")
+        if "launcher.js" not in contents:
+            raise AssertionError(f"{name} omits the stable durable launcher")
+        if not re.search(r"\b(onboard|update|status|offboard)\b", contents):
+            raise AssertionError(f"{name} omits lifecycle commands")
+        if not re.search(r"HOST\s+READINESS:\s*PENDING", contents, re.IGNORECASE):
+            raise AssertionError(f"{name} can imply host readiness without observation")
+        actionable = "\n".join(
+            line for line in contents.splitlines()
+            if not re.search(r"\b(do not|never)\b", line, re.IGNORECASE)
+        )
+        if re.search(r"(prepare|install|write|edit|merge|register)[^\n]{0,80}(private (?:cache|registry|state)|host-private)", actionable, re.IGNORECASE):
+            raise AssertionError(f"{name} endorses installation through private host state")
+
 def assert_static_versions(root, package_root, value):
     json_versions = [
         (root / ".codebuddy-plugin/marketplace.json", ("plugins", 0, "version")),
@@ -97,6 +138,7 @@ def assert_static_versions(root, package_root, value):
 
 def assert_release_integrity(root, package_root, value):
     assert_static_versions(root, package_root, value)
+    assert_durable_lifecycle_docs(root, package_root)
     assert_no_private_omo(root)
 
 assert_release_integrity(repository_root, plugin_root, expected)

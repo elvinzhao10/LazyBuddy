@@ -4,6 +4,16 @@
 
 ## v1.0.3 — Adaptive harness (2026-07-20)
 
+The durable route requires **Node.js LTS 20 or newer** and **Git**, accepts only
+`https://github.com/elvinzhao10/LazyBuddy.git`, and provides `onboard`,
+`update`, `status`, and plan-first `offboard`. It owns only
+`LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
+`node "<install-root>/LazyBuddy/launcher.js"` works after source deletion.
+Same-version ref movement requires `--confirm-revision <full-sha>`; runtime
+replacement uses scoped offboard/re-onboard. Package success leaves **HOST
+READINESS: PENDING**. Historical WorkBuddy feedback is observed behavior, not
+an endorsement of installation through private host state.
+
 ### Added
 
 - Local-first onboarding guidance keeps package readiness separate from host
