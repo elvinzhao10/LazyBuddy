@@ -60,15 +60,33 @@ if marketplace_path.is_file():
     entry = next(item for item in marketplace["plugins"] if item["name"] == "lazybuddy")
     assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 
+current_release_patterns = (
+    r"\bLazyBuddy\s+v(\d+\.\d+\.\d+)\b",
+    r"\blazybuddy@lazybuddy\b[^\n]{0,80}\bversion\s+`?v?(\d+\.\d+\.\d+)\b",
+    r"github\.com/elvinzhao10/LazyBuddy/releases/tag/v(\d+\.\d+\.\d+)\b",
+)
 for relative in ("README.md", "AGENTS.md"):
     text = (root.parent / relative).read_text(encoding="utf-8")
-    product_text = re.sub(
-        r"\bWorkBuddy\s+v?\d+\.\d+\.\d+\b", "", text, flags=re.IGNORECASE
-    )
-    product_versions = set(re.findall(r"\bv?(\d+\.\d+\.\d+)\b", product_text))
-    assert product_versions == {expected}, (
+    current_versions = {
+        match
+        for pattern in current_release_patterns
+        for match in re.findall(pattern, text, flags=re.IGNORECASE)
+    }
+    assert current_versions == {expected}, (
         f"{relative} current LazyBuddy release references reported "
-        f"{sorted(product_versions)!r}"
+        f"{sorted(current_versions)!r}"
     )
+
+historical_heading = "### Upgrade from v1.0.2"
+assert not any(
+    re.search(pattern, historical_heading, flags=re.IGNORECASE)
+    for pattern in current_release_patterns
+), "historical upgrade headings must not be parsed as current release identity"
+misleading_identity = "LazyBuddy v1.0.2 is the current release"
+assert {
+    match
+    for pattern in current_release_patterns
+    for match in re.findall(pattern, misleading_identity, flags=re.IGNORECASE)
+} == {"1.0.2"}, "misleading current-release prose must remain detectable"
 PY
 printf 'v1.0 runtime version regression: PASS\n'

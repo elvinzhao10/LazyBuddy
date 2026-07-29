@@ -141,13 +141,18 @@ def assert_release_integrity(root, package_root, value):
     assert_durable_lifecycle_docs(root, package_root)
     assert_no_private_omo(root)
 
-assert_release_integrity(repository_root, plugin_root, expected)
+assert_static_versions(repository_root, plugin_root, expected)
+assert_durable_lifecycle_docs(repository_root, plugin_root)
 
 source_manifest = plugin_root / ".codebuddy-plugin/plugin.json"
 source_before = source_manifest.read_bytes()
 with tempfile.TemporaryDirectory(prefix="lazybuddy v102 version fixture ") as temporary:
     fixture_root = Path(temporary) / "Lazy Buddy Release"
-    shutil.copytree(repository_root, fixture_root, ignore=shutil.ignore_patterns(".git", ".debug-journal.md"))
+    shutil.copytree(
+        repository_root,
+        fixture_root,
+        ignore=shutil.ignore_patterns(".git", ".omo", ".debug-journal.md"),
+    )
     fixture_package = fixture_root / "lazybuddy-plugin"
     assert_release_integrity(fixture_root, fixture_package, expected)
     if " " not in str(fixture_root):
@@ -173,7 +178,11 @@ source_template = plugin_root / "templates/AGENTS.md"
 source_template_before = source_template.read_bytes()
 with tempfile.TemporaryDirectory(prefix="lazybuddy v102 template fixture ") as temporary:
     fixture_root = Path(temporary) / "Lazy Buddy Release"
-    shutil.copytree(repository_root, fixture_root, ignore=shutil.ignore_patterns(".git", ".debug-journal.md"))
+    shutil.copytree(
+        repository_root,
+        fixture_root,
+        ignore=shutil.ignore_patterns(".git", ".omo", ".debug-journal.md"),
+    )
     fixture_package = fixture_root / "lazybuddy-plugin"
     assert_release_integrity(fixture_root, fixture_package, expected)
     fixture_template = fixture_package / "templates/AGENTS.md"
@@ -195,7 +204,11 @@ if source_template.read_bytes() != source_template_before:
 
 with tempfile.TemporaryDirectory(prefix="lazybuddy v102 artifact fixture ") as temporary:
     fixture_root = Path(temporary) / "Lazy Buddy Release"
-    shutil.copytree(repository_root, fixture_root, ignore=shutil.ignore_patterns(".git", ".debug-journal.md"))
+    shutil.copytree(
+        repository_root,
+        fixture_root,
+        ignore=shutil.ignore_patterns(".git", ".omo", ".debug-journal.md"),
+    )
     fixture_package = fixture_root / "lazybuddy-plugin"
     assert_release_integrity(fixture_root, fixture_package, expected)
     private_evidence = fixture_root / ".omo/evidence/internal.md"
