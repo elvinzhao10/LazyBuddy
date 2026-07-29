@@ -14,7 +14,7 @@ FIXTURES="$CONTRACTS/fixtures/v103"
     shasum -a 256 -c sha256sums.txt >/dev/null
 )
 
-node - "$CONTRACTS" <<'NODE'
+NODE_PATH="$PLUGIN_ROOT/tooling/node_modules" node - "$CONTRACTS" <<'NODE'
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');

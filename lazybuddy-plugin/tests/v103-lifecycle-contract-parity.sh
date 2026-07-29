@@ -59,14 +59,15 @@ BUDDY_CONTRACTS="$BUDDY_PLUGIN/contracts"
 [ -f "$TRAE_CLI/package.json" ] || fail "misconfigured LazyTrae root"
 [ -f "$BUDDY_PLUGIN/tests/lifecycle-contract.test.js" ] || fail "misconfigured LazyBuddy root"
 [ -d "$TRAE_CLI/node_modules/ajv" ] || fail "LazyTrae contract dependencies are not installed"
+[ -d "$BUDDY_PLUGIN/tooling/node_modules/ajv" ] || fail "LazyBuddy contract dependencies are not installed"
 
 (cd "$TRAE_CLI" && node --test test/lifecycle-contract.test.js)
-NODE_PATH="$TRAE_CLI/node_modules" node --test "$BUDDY_PLUGIN/tests/lifecycle-contract.test.js"
+NODE_PATH="$BUDDY_PLUGIN/tooling/node_modules" node --test "$BUDDY_PLUGIN/tests/lifecycle-contract.test.js"
 (cd "$TRAE_CLI" && node --test \
     test/lifecycle-core.test.js \
     test/lifecycle-command.test.js \
     test/lifecycle-platform-fixtures.test.js)
-NODE_PATH="$TRAE_CLI/node_modules" node --test \
+NODE_PATH="$BUDDY_PLUGIN/tooling/node_modules" node --test \
     "$BUDDY_PLUGIN/tests/lifecycle-core.test.js" \
     "$BUDDY_PLUGIN/tests/lifecycle-entrypoint.test.js" \
     "$BUDDY_PLUGIN/tests/lifecycle-platform-fixtures.test.js"

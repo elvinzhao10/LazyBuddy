@@ -12,6 +12,7 @@
   "dependencies": {
     "@colbymchenry/codegraph": "1.4.1",
     "@ast-grep/cli": "0.44.1",
-    "@vscode/ripgrep": "1.18.0"
+    "@vscode/ripgrep": "1.18.0",
+    "ajv": "8.20.0"
   }
 }
