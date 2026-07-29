@@ -107,7 +107,13 @@ test('lock contention and stale recovery require explicit confirmation', () => {
   expectCode(() => acquireLock(f.paths, 'update'), 'LOCKED');
   expectCode(() => recoverStaleLock(f.paths), 'CONFIRMATION_REQUIRED');
   lock.release();
-  fs.writeFileSync(f.paths.lock, JSON.stringify({ pid: 99999999, host: os.hostname(), started_at: '2000-01-01T00:00:00.000Z' }));
+  fs.writeFileSync(f.paths.lock, JSON.stringify({
+    pid: 99999999,
+    host: os.hostname(),
+    started_at: '2000-01-01T00:00:00.000Z',
+    operation: 'update',
+    nonce: '00000000-0000-4000-8000-000000000000',
+  }));
   expectCode(() => acquireLock(f.paths, 'update'), 'LOCKED');
   recoverStaleLock(f.paths, 'recover-stale-lock');
   assert.equal(fs.existsSync(f.paths.lock), false);
