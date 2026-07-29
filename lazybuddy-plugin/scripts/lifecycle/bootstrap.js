@@ -1,9 +1,9 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const { promoteRelease } = require('./core');
 const { LifecycleError } = require('./errors');
 const { safeFile } = require('./files');
@@ -52,7 +52,7 @@ function parseOfficialSource(source, product) {
 }
 
 function run(command, args, options) {
-  const result = spawnSync(command, args, {
+  const result = childProcess.spawnSync(command, args, {
     cwd: options.cwd,
     encoding: 'utf8',
     env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
@@ -127,14 +127,6 @@ function verifyStagedPackage(root, product) {
   return { entrypoint: spec.entrypoint, manifest: spec.manifest, selfTest: spec.selfTest, version: VERSION };
 }
 
-function localTransport(parsed, options) {
-  if (options.transportRemote === undefined) return parsed.canonicalOrigin;
-  if (options.allowLocalFixture !== true || !path.isAbsolute(options.transportRemote)) {
-    throw new LifecycleError('INVALID_ORIGIN', 'local transport is restricted to explicit test fixtures');
-  }
-  return options.transportRemote;
-}
-
 function confirmationResult(parsed, sha) {
   return {
     canonical_origin: parsed.canonicalOrigin,
@@ -148,7 +140,10 @@ function confirmationResult(parsed, sha) {
 
 function bootstrapRelease(paths, options) {
   const parsed = parseOfficialSource(options.sourceUrl, paths.product);
-  const remote = localTransport(parsed, options);
+  if (Object.hasOwn(options, 'allowLocalFixture') || Object.hasOwn(options, 'transportRemote')) {
+    throw new LifecycleError('INVALID_ORIGIN', 'bootstrap transport must use the canonical official origin');
+  }
+  const remote = parsed.canonicalOrigin;
   const gitPath = options.gitPath || 'git';
   const runtimePath = options.runtimePath || process.execPath;
   const timeoutMs = options.timeoutMs || 30_000;
