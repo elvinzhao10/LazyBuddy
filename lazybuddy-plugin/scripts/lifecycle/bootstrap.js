@@ -17,7 +17,7 @@ const CONTRACT_DIGESTS = Object.freeze({
 });
 const PRODUCTS = Object.freeze({
   LazyBuddy: {
-    entrypoint: 'lazybuddy-plugin/scripts/lifecycle.js',
+    entrypoint: 'lazybuddy-plugin/scripts/lazybuddy-lifecycle.js',
     manifest: 'lazybuddy-plugin/.codebuddy-plugin/plugin.json',
     manifests: [
       ['lazybuddy-plugin/.codebuddy-plugin/plugin.json', 'lazybuddy'],
@@ -162,12 +162,23 @@ function bootstrapRelease(paths, options) {
   const activeSha = active && active.active_release.startsWith(`${VERSION}-`)
     ? receiptFor(paths, active.active_release).receipt.commit_sha
     : null;
-  if (active && active.active_release.startsWith(`${VERSION}-`)
-    && activeSha !== revision.sha
-    && options.confirmRevision !== revision.sha) return confirmationResult(parsed, revision.sha);
   if (options.confirmRevision !== undefined && options.confirmRevision !== revision.sha) {
     throw new LifecycleError('REVISION_CONFIRMATION_MISMATCH', 'revision confirmation does not match resolved SHA');
   }
+  if (active && activeSha === revision.sha) {
+    return {
+      canonical_origin: parsed.canonicalOrigin,
+      commit_sha: revision.sha,
+      prerequisites: { git: gitVersion, node: nodeVersion },
+      release_id: active.active_release,
+      status: 'unchanged',
+      test: { status: 'not_run' },
+      version: VERSION,
+    };
+  }
+  if (active && active.active_release.startsWith(`${VERSION}-`)
+    && activeSha !== revision.sha
+    && options.confirmRevision !== revision.sha) return confirmationResult(parsed, revision.sha);
   const releaseId = `${VERSION}-${revision.sha.slice(0, 12)}`;
   const stagingPath = path.join(paths.staging, `${releaseId}-${process.pid}-${crypto.randomUUID()}`);
   try {

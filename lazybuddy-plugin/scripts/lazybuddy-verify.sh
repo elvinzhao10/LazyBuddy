@@ -199,6 +199,7 @@ run_regression_inventory() {
         "v017-codegraph-lifecycle-caller-survival-regression.sh"
         "v017-codegraph-uninstall-pid-identity-regression.sh"
         "v018-verifier-regression.sh"
+        "v103-lifecycle-entrypoint-regression.sh"
     )
     local standalone_tests=("${core_tests[@]}" "${lifecycle_tests[@]}")
     local selected_tests=()

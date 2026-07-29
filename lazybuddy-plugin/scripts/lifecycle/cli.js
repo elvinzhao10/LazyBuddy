@@ -1,0 +1,234 @@
+'use strict';
+
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+  LifecycleError,
+  acquireLock,
+  bootstrapRelease,
+  offboardProduct,
+  parseOfficialSource,
+  prepareProductRoot,
+  productPaths,
+  readActive,
+  recoveryReport,
+  resolveInstallRoot,
+} = require('./index');
+const { safeFile } = require('./files');
+const { receiptFor } = require('./receipt');
+const { parseArgs, usage } = require('./cli-arguments');
+
+const PRODUCT = 'LazyBuddy';
+
+function resolveProject(value) {
+  const candidate = value === undefined ? process.cwd() : value;
+  if (!path.isAbsolute(candidate) || path.parse(path.resolve(candidate)).root === path.resolve(candidate)) {
+    throw new LifecycleError('INVALID_PROJECT', '--project must be a non-root absolute path');
+  }
+  let stat;
+  try {
+    stat = fs.lstatSync(candidate);
+  } catch (error) {
+    throw new LifecycleError('INVALID_PROJECT', 'project path is unavailable', error);
+  }
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    throw new LifecycleError('INVALID_PROJECT', 'project path must be a real directory');
+  }
+  return fs.realpathSync(candidate);
+}
+
+function envelope(options, values) {
+  return {
+    schema_version: 1,
+    product: PRODUCT,
+    command: options.command,
+    status: values.status,
+    package_readiness: values.packageReadiness,
+    host_readiness: { status: 'pending' },
+    install_root: options.installRoot,
+    project_root: options.projectRoot,
+    ...values.extra,
+  };
+}
+
+function assertRuntime(paths, active, receipt) {
+  const runtime = active.runtime_path;
+  let file;
+  try {
+    file = safeFile(runtime, 'STALE_RUNTIME');
+  } catch (error) {
+    throw new LifecycleError('STALE_RUNTIME', `recorded Node runtime is unavailable: ${runtime}`, error);
+  }
+  const fingerprint = receipt.runtime.fingerprint;
+  const digest = crypto.createHash('sha256').update(file.bytes).digest('hex');
+  if (fs.realpathSync(runtime) !== fingerprint.realpath || digest !== fingerprint.sha256
+    || active.release_metadata[active.active_release].runtime_path !== runtime) {
+    throw new LifecycleError('STALE_RUNTIME', 'recorded Node runtime fingerprint changed');
+  }
+}
+
+function inspect(paths) {
+  if (!fs.existsSync(paths.productRoot)) return { status: 'absent', packageReadiness: { status: 'absent' } };
+  const recovery = recoveryReport(paths);
+  if (recovery.issues.length > 0) {
+    return { status: 'blocked', packageReadiness: { status: 'blocked', issues: recovery.issues } };
+  }
+  try {
+    const active = readActive(paths);
+    if (!active) throw new LifecycleError('ACTIVE_ABSENT', 'active lifecycle state is absent');
+    const verified = receiptFor(paths, active.active_release);
+    assertRuntime(paths, active, verified.receipt);
+    return {
+      status: 'ready',
+      packageReadiness: {
+        status: 'ready',
+        bundle: {
+          release_id: active.active_release,
+          version: '1.0.3',
+          launcher: paths.launcher,
+        },
+      },
+      extra: {
+        release_id: active.active_release,
+        commit_sha: verified.receipt.commit_sha,
+      },
+    };
+  } catch (error) {
+    return {
+      status: 'blocked',
+      packageReadiness: {
+        status: 'blocked',
+        issues: [{ code: error.code || 'INVALID_STATE', path: paths.productRoot }],
+      },
+    };
+  }
+}
+
+function install(options, paths) {
+  parseOfficialSource(options.source, PRODUCT);
+  if (options.command === 'update' && !fs.existsSync(paths.active)) {
+    throw new LifecycleError('NOT_INSTALLED', 'update requires an installed LazyBuddy bundle');
+  }
+  const prepared = prepareProductRoot({ installRoot: options.installRoot, product: PRODUCT });
+  const lock = acquireLock(prepared, options.command);
+  try {
+    const result = bootstrapRelease(prepared, {
+      sourceUrl: options.source,
+      confirmRevision: options.confirmRevision,
+    });
+    if (result.status === 'revision_confirmation_required') {
+      return {
+        code: 2,
+        output: envelope(options, {
+          status: result.status,
+          packageReadiness: { status: 'ready' },
+          extra: {
+            commit_sha: result.commit_sha,
+            required_confirmation: result.required_confirmation,
+            action: 'rerun lifecycle update with --confirm-revision <full-sha>',
+          },
+        }),
+      };
+    }
+    return {
+      code: 0,
+      output: envelope(options, {
+        status: result.status,
+        packageReadiness: { status: 'ready' },
+        extra: { release_id: result.release_id, commit_sha: result.commit_sha },
+      }),
+    };
+  } finally {
+    lock.release();
+  }
+}
+
+function offboard(options, paths) {
+  if (!fs.existsSync(paths.productRoot)) {
+    return { code: 0, output: envelope(options, { status: 'absent', packageReadiness: { status: 'absent' } }) };
+  }
+  if (fs.existsSync(paths.lock)) throw new LifecycleError('LOCKED', 'lifecycle operation lock exists');
+  if (!options.yes) {
+    const current = inspect(paths);
+    if (current.status === 'blocked') {
+      return { code: 1, output: envelope(options, current) };
+    }
+    return {
+      code: 2,
+      output: envelope(options, {
+        status: 'confirmation_required',
+        packageReadiness: { status: 'ready' },
+        extra: {
+          action: `remove exact receipt-owned LazyBuddy state at ${paths.productRoot}; preserve project and host settings; rerun with --yes`,
+        },
+      }),
+    };
+  }
+  offboardProduct(paths, 'offboard-product');
+  return { code: 0, output: envelope(options, { status: 'removed', packageReadiness: { status: 'absent' } }) };
+}
+
+function execute(options) {
+  options.installRoot = resolveInstallRoot({ installRoot: options.installRoot });
+  options.projectRoot = resolveProject(options.project);
+  const paths = productPaths({ installRoot: options.installRoot, product: PRODUCT });
+  if (['onboard', 'update'].includes(options.command)) return install(options, paths);
+  if (options.command === 'offboard') return offboard(options, paths);
+  const status = inspect(paths);
+  return { code: status.status === 'blocked' ? 1 : 0, output: envelope(options, status) };
+}
+
+function failure(options, error) {
+  let installRoot = null;
+  try {
+    installRoot = resolveInstallRoot({ installRoot: options.installRoot });
+  } catch (error) {
+    if (!(error instanceof LifecycleError)) throw error;
+  }
+  const issuePath = installRoot === null ? null : path.join(installRoot, PRODUCT);
+  return envelope(
+    {
+      command: options.command || 'unknown',
+      installRoot,
+      projectRoot: options.projectRoot || options.project || process.cwd(),
+    },
+    {
+      status: 'error',
+      packageReadiness: {
+        status: 'blocked',
+        issues: [{ code: error.code || 'UNEXPECTED_ERROR', path: issuePath }],
+      },
+      extra: { error: { code: error.code || 'UNEXPECTED_ERROR', message: error.message } },
+    },
+  );
+}
+
+function print(result, asJson) {
+  if (asJson) process.stdout.write(`${JSON.stringify(result.output)}\n`);
+  else process.stdout.write(`${result.output.product} ${result.output.command}: ${result.output.status}\n`);
+}
+
+function run(argv) {
+  let options = { command: argv[0], json: argv.includes('--json') };
+  try {
+    options = parseArgs(argv);
+    if (options.help) {
+      process.stdout.write(usage());
+      return 0;
+    }
+    const result = execute(options);
+    print(result, options.json);
+    return result.code;
+  } catch (cause) {
+    const error = cause instanceof LifecycleError
+      ? cause
+      : new LifecycleError('UNEXPECTED_ERROR', cause instanceof Error ? cause.message : String(cause), cause);
+    const output = failure(options, error);
+    if (options.json) process.stdout.write(`${JSON.stringify(output)}\n`);
+    else process.stderr.write(`lazybuddy lifecycle: ${error.code}: ${error.message}\n`);
+    return 1;
+  }
+}
+
+module.exports = { parseArgs, run, usage };

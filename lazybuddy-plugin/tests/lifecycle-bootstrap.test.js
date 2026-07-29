@@ -33,7 +33,7 @@ function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\
   fs.mkdirSync(contracts, { recursive: true });
   fs.writeFileSync(path.join(packageRoot, '.codebuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.0.3"}\n');
   fs.writeFileSync(path.join(packageRoot, '.workbuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.0.3"}\n');
-  fs.writeFileSync(path.join(packageRoot, 'scripts', 'lifecycle.js'), "console.log('fixture-launch-ok')\n");
+  fs.writeFileSync(path.join(packageRoot, 'scripts', 'lazybuddy-lifecycle.js'), "console.log('fixture-launch-ok')\n");
   fs.writeFileSync(path.join(packageRoot, 'scripts', 'lifecycle-self-test.js'), selfTest);
   for (const name of ['lazy-harness-lifecycle.v1.schema.json', 'lazy-harness-lifecycle.v1.example.json']) {
     const bytes = fs.readFileSync(path.join(FIXTURE_CONTRACTS, name));
@@ -166,7 +166,7 @@ test('repo, tag, branch, and full-SHA sources resolve through Git to the same im
 test('same version at a different SHA requires an exact revision confirmation', () => {
   const f = fixture();
   const first = bootstrap(f);
-  fs.appendFileSync(path.join(f.source, 'lazybuddy-plugin', 'scripts', 'lifecycle.js'), "// v2\n");
+  fs.appendFileSync(path.join(f.source, 'lazybuddy-plugin', 'scripts', 'lazybuddy-lifecycle.js'), "// v2\n");
   git(f.source, ['add', 'lazybuddy-plugin']);
   git(f.source, ['commit', '-m', 'fixture v2']);
   git(f.source, ['push', '--force', f.remote, 'main']);
@@ -245,10 +245,10 @@ test('manifest, checksum, self-test, prerequisite, and clone failures preserve a
 
 test('dirty source bytes, local transport bypass, and mismatched confirmations fail closed', () => {
   const f = fixture();
-  const entrypoint = path.join(f.source, 'lazybuddy-plugin/scripts/lifecycle.js');
+  const entrypoint = path.join(f.source, 'lazybuddy-plugin/scripts/lazybuddy-lifecycle.js');
   fs.writeFileSync(entrypoint, "console.log('dirty-untrusted')\n");
   const clean = bootstrap(f);
-  const installed = path.join(f.paths.releases, clean.release_id, 'lazybuddy-plugin/scripts/lifecycle.js');
+  const installed = path.join(f.paths.releases, clean.release_id, 'lazybuddy-plugin/scripts/lazybuddy-lifecycle.js');
   assert.doesNotMatch(fs.readFileSync(installed, 'utf8'), /dirty-untrusted/);
   const bypass = fixture();
   expectCode(() => bootstrapRelease(bypass.paths, {
