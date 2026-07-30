@@ -150,7 +150,6 @@ function acquireBootstrapLock(paths, operation) {
 }
 
 function bootstrapProduct(paths, operation, options) {
-  const productRootExisted = fs.existsSync(paths.productRoot);
   prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
   const lock = acquireBootstrapLock(paths, operation);
   prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
@@ -161,7 +160,7 @@ function bootstrapProduct(paths, operation, options) {
     return result;
   } finally {
     lock.release();
-    if (!completed && !productRootExisted) removeEmptyProductRoot(paths);
+    if (!completed) removeEmptyProductRoot(paths);
   }
 }
 

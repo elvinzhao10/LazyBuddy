@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
 const CLI = path.join(PLUGIN_ROOT, 'scripts', 'lazybuddy-lifecycle.js');
@@ -80,6 +80,31 @@ function run(f, command, extra = []) {
   return { ...result, output: JSON.parse(result.stdout) };
 }
 
+async function waitForPath(target, timeoutMs = 5_000) {
+  const started = Date.now();
+  while (!fs.existsSync(target)) {
+    if (Date.now() - started >= timeoutMs) throw new Error(`timed out waiting for ${target}`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
+function startOnboard({ environment, installRoot, projectRoot }) {
+  const child = spawn(process.execPath, [
+    CLI, 'onboard', '--source', OFFICIAL,
+    '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], { env: environment });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data', (chunk) => { stdout += chunk; });
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  return new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', (status) => resolve({ status, stderr, stdout }));
+  });
+}
+
 test('fresh onboard prerequisite failure leaves no lifecycle scaffold', (t) => {
   // Given: fresh spaced project/install roots and a PATH without Git.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy prerequisite failure '));
@@ -103,6 +128,101 @@ test('fresh onboard prerequisite failure leaves no lifecycle scaffold', (t) => {
   assert.equal(result.status, 1);
   assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
   assert.equal(fs.existsSync(path.join(installRoot, 'LazyBuddy')), false);
+});
+
+test('two concurrent fresh prerequisite failures leave no lifecycle scaffold', { timeout: 15_000 }, async (t) => {
+  // Given: two real CLI processes paused on opposite sides of first-process cleanup.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy concurrent failure '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  const emptyPath = path.join(sandbox, 'empty path');
+  const hook = path.join(sandbox, 'concurrency-hook.js');
+  const firstEntered = path.join(sandbox, 'first-entered');
+  const releaseFirst = path.join(sandbox, 'release-first');
+  const secondEntered = path.join(sandbox, 'second-entered');
+  const releaseSecond = path.join(sandbox, 'release-second');
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(emptyPath);
+  fs.writeFileSync(hook, `'use strict';
+const childProcess = require('node:child_process');
+const fs = require('node:fs');
+const wait = (target) => {
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(target)) {
+    if (Date.now() >= deadline) throw new Error('barrier timed out: ' + target);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+};
+if (process.env.BOOTSTRAP_ROLE === 'first') {
+  const realSpawnSync = childProcess.spawnSync;
+  childProcess.spawnSync = (command, args, options) => {
+    if (command !== 'git') return realSpawnSync(command, args, options);
+    fs.writeFileSync(process.env.FIRST_ENTERED, '');
+    wait(process.env.RELEASE_FIRST);
+    const error = new Error('spawnSync git ENOENT');
+    error.code = 'ENOENT';
+    return { error, status: null, stderr: '', stdout: '' };
+  };
+}
+if (process.env.BOOTSTRAP_ROLE === 'second') {
+  const realMkdirSync = fs.mkdirSync;
+  let blocked = false;
+  fs.mkdirSync = (target, options) => {
+    if (!blocked && target === process.env.BLOCKED_DIRECTORY) {
+      blocked = true;
+      fs.writeFileSync(process.env.SECOND_ENTERED, '');
+      wait(process.env.RELEASE_SECOND);
+    }
+    return realMkdirSync(target, options);
+  };
+}
+`);
+  const common = {
+    ...process.env,
+    NODE_OPTIONS: `--require=${JSON.stringify(hook)}`,
+    PATH: emptyPath,
+  };
+  const first = startOnboard({
+    environment: {
+      ...common,
+      BOOTSTRAP_ROLE: 'first',
+      FIRST_ENTERED: firstEntered,
+      RELEASE_FIRST: releaseFirst,
+    },
+    installRoot,
+    projectRoot,
+  });
+  await waitForPath(firstEntered);
+  const second = startOnboard({
+    environment: {
+      ...common,
+      BLOCKED_DIRECTORY: path.join(productRoot, 'releases'),
+      BOOTSTRAP_ROLE: 'second',
+      RELEASE_SECOND: releaseSecond,
+      SECOND_ENTERED: secondEntered,
+    },
+    installRoot,
+    projectRoot,
+  });
+  await waitForPath(secondEntered);
+
+  // When: the first process fails and cleans before the second resumes its preparation.
+  fs.writeFileSync(releaseFirst, '');
+  const firstResult = await first;
+  await waitForPath(path.dirname(productRoot));
+  assert.equal(fs.existsSync(productRoot), false);
+  fs.writeFileSync(releaseSecond, '');
+  const secondResult = await second;
+
+  // Then: both errors are structured and the shared fresh scaffold is absent.
+  for (const result of [firstResult, secondResult]) {
+    assert.equal(result.status, 1, result.stderr);
+    assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
+    assert.doesNotMatch(result.stderr, /ENOENT/);
+  }
+  assert.equal(fs.existsSync(productRoot), false, 'concurrent failures left an empty LazyBuddy scaffold');
 });
 
 test('update emits revision confirmation while releasing its lifecycle lock', (t) => {
