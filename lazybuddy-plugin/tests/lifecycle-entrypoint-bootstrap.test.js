@@ -80,6 +80,31 @@ function run(f, command, extra = []) {
   return { ...result, output: JSON.parse(result.stdout) };
 }
 
+test('fresh onboard prerequisite failure leaves no lifecycle scaffold', (t) => {
+  // Given: fresh spaced project/install roots and a PATH without Git.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy prerequisite failure '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const emptyPath = path.join(sandbox, 'empty path');
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(emptyPath);
+
+  // When: the real lifecycle CLI attempts a fresh onboard.
+  const result = spawnSync(process.execPath, [
+    CLI, 'onboard', '--source', OFFICIAL,
+    '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: emptyPath },
+  });
+
+  // Then: the prerequisite error is reported without creating product state.
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
+  assert.equal(fs.existsSync(path.join(installRoot, 'LazyBuddy')), false);
+});
+
 test('update emits revision confirmation while releasing its lifecycle lock', (t) => {
   // Given: an installed release and a different commit at the same version.
   const f = fixture();

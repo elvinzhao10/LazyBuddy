@@ -94,10 +94,26 @@ function prepareProductRoot(options) {
   return paths;
 }
 
+function removeEmptyProductRoot(paths) {
+  const directories = [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback];
+  const expected = new Set(directories.map((directory) => path.basename(directory)));
+  const root = fs.lstatSync(paths.productRoot);
+  if (!root.isDirectory() || root.isSymbolicLink()) return;
+  const names = fs.readdirSync(paths.productRoot);
+  if (names.length !== expected.size || names.some((name) => !expected.has(name))) return;
+  for (const directory of directories) {
+    const stat = fs.lstatSync(directory);
+    if (!stat.isDirectory() || stat.isSymbolicLink() || fs.readdirSync(directory).length !== 0) return;
+  }
+  for (const directory of directories) fs.rmdirSync(directory);
+  fs.rmdirSync(paths.productRoot);
+}
+
 module.exports = {
   assertSafeAncestors,
   contained,
   prepareProductRoot,
   productPaths,
+  removeEmptyProductRoot,
   resolveInstallRoot,
 };
