@@ -7,8 +7,9 @@ const path = require('node:path');
 const { promoteRelease } = require('./core');
 const { LifecycleError } = require('./errors');
 const { safeFile } = require('./files');
+const { prepareProductRoot, removeEmptyProductRoot } = require('./paths');
 const { receiptFor } = require('./receipt');
-const { readActive } = require('./state');
+const { acquireLock, readActive } = require('./state');
 
 const VERSION = '1.0.3';
 const CONTRACT_DIGESTS = Object.freeze({
@@ -138,6 +139,21 @@ function confirmationResult(parsed, sha) {
   };
 }
 
+function bootstrapProduct(paths, operation, options) {
+  const productRootExisted = fs.existsSync(paths.productRoot);
+  prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
+  const lock = acquireLock(paths, operation);
+  let completed = false;
+  try {
+    const result = bootstrapRelease(paths, options);
+    completed = true;
+    return result;
+  } finally {
+    lock.release();
+    if (!completed && !productRootExisted) removeEmptyProductRoot(paths);
+  }
+}
+
 function bootstrapRelease(paths, options) {
   const parsed = parseOfficialSource(options.sourceUrl, paths.product);
   if (Object.hasOwn(options, 'allowLocalFixture') || Object.hasOwn(options, 'transportRemote')) {
@@ -230,6 +246,7 @@ function bootstrapRelease(paths, options) {
 module.exports = {
   CONTRACT_DIGESTS,
   VERSION,
+  bootstrapProduct,
   bootstrapRelease,
   parseOfficialSource,
   resolveRevision,

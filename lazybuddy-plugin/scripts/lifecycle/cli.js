@@ -5,11 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   LifecycleError,
-  acquireLock,
-  bootstrapRelease,
+  bootstrapProduct,
   offboardProduct,
   parseOfficialSource,
-  prepareProductRoot,
   productPaths,
   readActive,
   recoveryReport,
@@ -111,38 +109,32 @@ function install(options, paths) {
   if (options.command === 'update' && !fs.existsSync(paths.active)) {
     throw new LifecycleError('NOT_INSTALLED', 'update requires an installed LazyBuddy bundle');
   }
-  const prepared = prepareProductRoot({ installRoot: options.installRoot, product: PRODUCT });
-  const lock = acquireLock(prepared, options.command);
-  try {
-    const result = bootstrapRelease(prepared, {
-      sourceUrl: options.source,
-      confirmRevision: options.confirmRevision,
-    });
-    if (result.status === 'revision_confirmation_required') {
-      return {
-        code: 2,
-        output: envelope(options, {
-          status: result.status,
-          packageReadiness: { status: 'ready' },
-          extra: {
-            commit_sha: result.commit_sha,
-            required_confirmation: result.required_confirmation,
-            action: 'rerun lifecycle update with --confirm-revision <full-sha>',
-          },
-        }),
-      };
-    }
+  const result = bootstrapProduct(paths, options.command, {
+    sourceUrl: options.source,
+    confirmRevision: options.confirmRevision,
+  });
+  if (result.status === 'revision_confirmation_required') {
     return {
-      code: 0,
+      code: 2,
       output: envelope(options, {
         status: result.status,
         packageReadiness: { status: 'ready' },
-        extra: { release_id: result.release_id, commit_sha: result.commit_sha },
+        extra: {
+          commit_sha: result.commit_sha,
+          required_confirmation: result.required_confirmation,
+          action: 'rerun lifecycle update with --confirm-revision <full-sha>',
+        },
       }),
     };
-  } finally {
-    lock.release();
   }
+  return {
+    code: 0,
+    output: envelope(options, {
+      status: result.status,
+      packageReadiness: { status: 'ready' },
+      extra: { release_id: result.release_id, commit_sha: result.commit_sha },
+    }),
+  };
 }
 
 function offboard(options, paths) {
