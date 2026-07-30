@@ -57,10 +57,10 @@ function acquireLock(paths, operation) {
   }
   return {
     record,
-    release() {
-      const current = readJson(paths.lock, 'LOCK_CHANGED');
+    release(lockPath = paths.lock) {
+      const current = readJson(lockPath, 'LOCK_CHANGED');
       if (current.nonce !== record.nonce) throw new LifecycleError('LOCK_CHANGED', 'lifecycle lock ownership changed');
-      fs.unlinkSync(paths.lock);
+      fs.unlinkSync(lockPath);
     },
   };
 }

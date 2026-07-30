@@ -244,52 +244,47 @@ test('manifest, checksum, self-test, prerequisite, and clone failures preserve a
   }
 });
 
-test('failed fresh bootstrap cleanup cannot tear down a concurrent successful bootstrap', () => {
-  // Given: a fresh product root and cleanup paused after its empty-root check.
+test('failed fresh bootstrap quarantines its root before a concurrent successful bootstrap', () => {
+  // Given: a fresh product root and a concurrent bootstrap triggered at cleanup relocation.
   const f = fixture();
   fs.rmSync(f.paths.productRoot, { recursive: true });
   const missingGit = path.join(f.sandbox, 'missing-git');
-  const realOpenSync = fs.openSync;
-  const realRmdirSync = fs.rmdirSync;
+  const realRenameSync = fs.renameSync;
   const realSpawnSync = childProcess.spawnSync;
-  let cleanupStarted = false;
-  let rootRemoved = false;
   let concurrentResult;
   childProcess.spawnSync = (command, args, options) => realSpawnSync(
     command,
     args.map((arg) => arg === OFFICIAL ? f.remote : arg),
     options,
   );
-  fs.openSync = (target, flags, mode) => {
-    if (target === f.paths.lock && cleanupStarted && !rootRemoved) {
-      rootRemoved = true;
-      fs.rmSync(f.paths.productRoot, { recursive: true });
-    }
-    return realOpenSync(target, flags, mode);
-  };
-  fs.rmdirSync = (target) => {
-    if (target === f.paths.releases && concurrentResult === undefined) {
-      cleanupStarted = true;
+  fs.renameSync = (source, target) => {
+    const result = realRenameSync(source, target);
+    if (source === f.paths.productRoot && concurrentResult === undefined) {
+      assert.equal(
+        fs.existsSync(path.join(target, 'locks', 'lifecycle.lock')),
+        true,
+        'cleanup relocated the product root after releasing its lifecycle lock',
+      );
       concurrentResult = bootstrapProduct(f.paths, 'onboard', {
         sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
       });
     }
-    return realRmdirSync(target);
+    return result;
   };
 
   try {
-    // When: missing-Git failure cleanup overlaps a second real bootstrap.
+    // When: missing-Git failure cleanup overlaps the second real bootstrap.
     expectCode(() => bootstrapProduct(f.paths, 'onboard', {
       gitPath: missingGit,
       sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
     }), 'PREREQUISITE_MISSING');
   } finally {
-    fs.openSync = realOpenSync;
-    fs.rmdirSync = realRmdirSync;
+    fs.renameSync = realRenameSync;
     childProcess.spawnSync = realSpawnSync;
   }
 
-  // Then: the concurrent success and its durable state survive cleanup.
+  // Then: the concurrent success occupies a new root and survives cleanup.
+  assert.notEqual(concurrentResult, undefined, 'failed cleanup did not atomically quarantine its product root');
   assert.equal(concurrentResult.status, 'ready');
   assert.equal(fs.existsSync(f.paths.active), true);
   assert.equal(fs.existsSync(f.paths.launcher), true);

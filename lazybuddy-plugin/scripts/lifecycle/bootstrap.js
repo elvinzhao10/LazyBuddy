@@ -7,7 +7,11 @@ const path = require('node:path');
 const { promoteRelease } = require('./core');
 const { LifecycleError } = require('./errors');
 const { safeFile } = require('./files');
-const { completeBootstrapProductRoot, prepareBootstrapProductRoot, removeEmptyProductRoot } = require('./paths');
+const {
+  prepareBootstrapProductRoot,
+  quarantineEmptyProductRoot,
+  removeQuarantinedProductRoot,
+} = require('./paths');
 const { receiptFor } = require('./receipt');
 const { acquireLock, readActive } = require('./state');
 
@@ -139,29 +143,42 @@ function confirmationResult(parsed, sha) {
   };
 }
 
-function acquireBootstrapLock(paths, operation) {
-  try {
-    return acquireLock(paths, operation);
-  } catch (error) {
-    if (!error || error.code !== 'ENOENT') throw error;
-    prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
-    return acquireLock(paths, operation);
+function acquireBootstrapLock(paths, operation, prepared, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let current = prepared;
+  while (true) {
+    try {
+      return { lock: acquireLock(paths, operation), prepared: current };
+    } catch (error) {
+      if (error && error.code === 'ENOENT') {
+        current = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
+        continue;
+      }
+      if (!error || error.code !== 'LOCKED' || current.ownership === null || Date.now() >= deadline) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
   }
 }
 
 function bootstrapProduct(paths, operation, options) {
   let prepared = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
-  const lock = acquireBootstrapLock(paths, operation);
-  prepared = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
+  const acquired = acquireBootstrapLock(paths, operation, prepared, options.timeoutMs || 30_000);
+  const lock = acquired.lock;
+  prepared = acquired.prepared;
+  prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
   let completed = false;
+  let quarantine = null;
   try {
     const result = bootstrapRelease(paths, options);
     completed = true;
-    completeBootstrapProductRoot(paths, prepared.ownership);
     return result;
   } finally {
-    lock.release();
-    if (!completed) removeEmptyProductRoot(paths, prepared.ownership);
+    if (!completed) quarantine = quarantineEmptyProductRoot(paths, prepared.ownership);
+    const lockPath = quarantine === null
+      ? paths.lock
+      : path.join(quarantine, 'locks', path.basename(paths.lock));
+    lock.release(lockPath);
+    if (quarantine !== null) removeQuarantinedProductRoot(paths, quarantine);
   }
 }
 

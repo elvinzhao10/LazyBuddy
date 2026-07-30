@@ -167,6 +167,161 @@ test('failed onboard preserves a caller-owned exact empty lifecycle scaffold', (
   }
 });
 
+test('failed onboard preserves a caller-owned scaffold with a forged valid bootstrap marker', (t) => {
+  // Given: a caller-created exact scaffold and a marker matching the public bootstrap schema.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy forged bootstrap marker '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  const emptyPath = path.join(sandbox, 'empty path');
+  const directories = ['releases', 'receipts', 'staging', 'locks', 'rollback'];
+  const marker = path.join(productRoot, '.bootstrap-owner.json');
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(emptyPath);
+  for (const directory of directories) fs.mkdirSync(path.join(productRoot, directory), { recursive: true });
+  fs.writeFileSync(marker, '{"nonce":"00000000-0000-4000-8000-000000000000","product":"LazyBuddy","schema_version":1}\n');
+  const snapshots = new Map(
+    ['', ...directories, '.bootstrap-owner.json'].map((entry) => {
+      const target = path.join(productRoot, entry);
+      const stat = fs.lstatSync(target);
+      return [entry, {
+        bytes: stat.isFile() ? fs.readFileSync(target) : null,
+        dev: stat.dev,
+        ino: stat.ino,
+        mode: stat.mode,
+        nlink: stat.nlink,
+      }];
+    }),
+  );
+
+  // When: the real lifecycle CLI fails because Git is unavailable.
+  const result = spawnSync(process.execPath, [
+    CLI, 'onboard', '--source', OFFICIAL,
+    '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: emptyPath },
+  });
+
+  // Then: structured failure preserves every caller-owned byte, type, and identity.
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
+  for (const [entry, snapshot] of snapshots) {
+    const target = path.join(productRoot, entry);
+    const stat = fs.lstatSync(target);
+    assert.deepEqual({
+      bytes: stat.isFile() ? fs.readFileSync(target) : null,
+      dev: stat.dev,
+      ino: stat.ino,
+      mode: stat.mode,
+      nlink: stat.nlink,
+    }, snapshot);
+  }
+});
+
+test('fresh root creator retries after a concurrent failure acquires its lifecycle lock', { timeout: 15_000 }, async (t) => {
+  // Given: the root creator is paused while a second process acquires the new root's lock.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy creator lock race '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  const emptyPath = path.join(sandbox, 'empty path');
+  const hook = path.join(sandbox, 'creator-lock-hook.js');
+  const ownerWaiting = path.join(sandbox, 'owner-waiting');
+  const releaseOwner = path.join(sandbox, 'release-owner');
+  const ownerContended = path.join(sandbox, 'owner-contended');
+  const contenderEntered = path.join(sandbox, 'contender-entered');
+  const releaseContender = path.join(sandbox, 'release-contender');
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(emptyPath);
+  fs.writeFileSync(hook, `'use strict';
+const childProcess = require('node:child_process');
+const fs = require('node:fs');
+const wait = (target) => {
+  const deadline = Date.now() + 5000;
+  while (!fs.existsSync(target)) {
+    if (Date.now() >= deadline) throw new Error('barrier timed out: ' + target);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+};
+if (process.env.BOOTSTRAP_ROLE === 'owner') {
+  const realOpenSync = fs.openSync;
+  let paused = false;
+  fs.openSync = (target, flags, mode) => {
+    if (!paused && target === process.env.BLOCKED_LOCK) {
+      paused = true;
+      fs.writeFileSync(process.env.OWNER_WAITING, '');
+      wait(process.env.RELEASE_OWNER);
+    }
+    try {
+      return realOpenSync(target, flags, mode);
+    } catch (error) {
+      if (target === process.env.BLOCKED_LOCK && error && error.code === 'EEXIST') {
+        fs.writeFileSync(process.env.OWNER_CONTENDED, '');
+      }
+      throw error;
+    }
+  };
+}
+if (process.env.BOOTSTRAP_ROLE === 'contender') {
+  const realSpawnSync = childProcess.spawnSync;
+  childProcess.spawnSync = (command, args, options) => {
+    if (command !== 'git') return realSpawnSync(command, args, options);
+    fs.writeFileSync(process.env.CONTENDER_ENTERED, '');
+    wait(process.env.RELEASE_CONTENDER);
+    const error = new Error('spawnSync git ENOENT');
+    error.code = 'ENOENT';
+    return { error, status: null, stderr: '', stdout: '' };
+  };
+}
+`);
+  const common = {
+    ...process.env,
+    NODE_OPTIONS: `--require=${JSON.stringify(hook)}`,
+    PATH: emptyPath,
+  };
+  const owner = startOnboard({
+    environment: {
+      ...common,
+      BLOCKED_LOCK: path.join(productRoot, 'locks', 'lifecycle.lock'),
+      BOOTSTRAP_ROLE: 'owner',
+      OWNER_CONTENDED: ownerContended,
+      OWNER_WAITING: ownerWaiting,
+      RELEASE_OWNER: releaseOwner,
+    },
+    installRoot,
+    projectRoot,
+  });
+  await waitForPath(ownerWaiting);
+  const contender = startOnboard({
+    environment: {
+      ...common,
+      BOOTSTRAP_ROLE: 'contender',
+      CONTENDER_ENTERED: contenderEntered,
+      RELEASE_CONTENDER: releaseContender,
+    },
+    installRoot,
+    projectRoot,
+  });
+  await waitForPath(contenderEntered);
+
+  // When: the creator observes contention before the contender releases the lock.
+  fs.writeFileSync(releaseOwner, '');
+  await waitForPath(ownerContended);
+  fs.writeFileSync(releaseContender, '');
+  const results = await Promise.all([owner, contender]);
+
+  // Then: both failures are structured and the creator removes its fresh root.
+  for (const result of results) {
+    assert.equal(result.status, 1, result.stderr);
+    assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
+    assert.doesNotMatch(result.stderr, /ENOENT/);
+  }
+  assert.equal(fs.existsSync(productRoot), false, 'lock contention left the fresh LazyBuddy scaffold');
+});
+
 test('two concurrent fresh prerequisite failures leave no lifecycle scaffold', { timeout: 15_000 }, async (t) => {
   // Given: two real CLI processes paused on opposite sides of first-process cleanup.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy concurrent failure '));
