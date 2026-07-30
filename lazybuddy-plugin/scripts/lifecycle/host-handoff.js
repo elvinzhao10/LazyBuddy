@@ -35,7 +35,7 @@ function routeSelection(routes) {
   return { kind: 'route', route: selected[0], host: ROUTES[selected[0]] };
 }
 
-function parseObservation(receiptPath, host) {
+function parseObservation(receiptPath, host, now = new Date()) {
   if (receiptPath === undefined) return { status: 'pending' };
   if (!path.isAbsolute(receiptPath) || path.parse(path.resolve(receiptPath)).root === path.resolve(receiptPath)
     || /(?:^|[\\/])\.workbuddy(?:[\\/]|$)/.test(receiptPath)) {
@@ -48,13 +48,17 @@ function parseObservation(receiptPath, host) {
     if (error instanceof LifecycleError) throw error;
     throw new LifecycleError('OBSERVATION_RECEIPT_INVALID', 'observation receipt must be valid JSON', error);
   }
+  const observedAt = new Date(receipt?.observed_at);
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)
     || JSON.stringify(Object.keys(receipt).sort()) !== JSON.stringify(OBSERVATION_KEYS)
     || receipt.type !== 'host-observation' || receipt.host !== host
     || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$/.test(receipt.observed_at)
+    || Number.isNaN(observedAt.getTime())
     || !/^[A-Za-z0-9._:-]+$/.test(receipt.artifact)) {
     throw new LifecycleError('OBSERVATION_RECEIPT_INVALID', 'observation receipt does not match the selected host');
   }
+  const currentDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  if (observedAt < currentDay || observedAt > now) return { status: 'pending' };
   return { status: 'observed', observation_receipt: receipt };
 }
 
