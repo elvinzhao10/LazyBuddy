@@ -11,9 +11,65 @@ pass() { printf 'PASS %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 
 mkdir "$TMP/plugin"
-tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf - . | tar -C "$TMP/plugin" -xf -
+# Given the former streaming fixture copy, when its consumer exits after one
+# byte, then pipefail exposes tar's real write-side EPIPE failure.  The
+# controlled early close makes this independent of archive size and host I/O.
+if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf - . \
+    2>"$TMP/old-stream.stderr" | { IFS= read -r -n 1 _; exit 0; }; then
+    old_stream_statuses=("${PIPESTATUS[@]}")
+else
+    old_stream_statuses=("${PIPESTATUS[@]}")
+fi
+if [ "${old_stream_statuses[0]}" -ne 0 ] \
+    && [ "${old_stream_statuses[1]}" -eq 0 ] \
+    && grep -qi 'write error' "$TMP/old-stream.stderr"; then
+    pass "controlled old streaming archive reports producer EPIPE"
+else
+    fail "controlled old streaming archive must report producer EPIPE"
+fi
+
+if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf "$TMP/plugin.tar" .; then
+    pass "file-backed fixture archive is created"
+else
+    fail "file-backed fixture archive creation"
+    exit 1
+fi
+if tar -C "$TMP/plugin" -xf "$TMP/plugin.tar"; then
+    pass "file-backed fixture archive extracts successfully"
+else
+    fail "file-backed fixture archive extraction"
+    exit 1
+fi
 FIXTURE="$TMP/plugin"
+[ -f "$FIXTURE/LICENSE" ] && pass "file-backed fixture contains the source license" || fail "file-backed fixture source license"
 [ ! -e "$FIXTURE/tooling/node_modules" ] && pass "verifier fixture omits unused tooling dependencies" || fail "verifier fixture must omit unused tooling dependencies"
+
+fixture_parity() {
+    local candidate="$1" report="$2"
+    if diff -ru --exclude='node_modules' "$PLUGIN_ROOT" "$candidate" >"$report"; then
+        return 0
+    fi
+    printf 'FIXTURE_PARITY_MISMATCH: %s\n' "$candidate" >>"$report"
+    return 1
+}
+
+if fixture_parity "$FIXTURE" "$TMP/fixture-parity.out"; then
+    pass "file-backed fixture passes named source parity validation"
+else
+    cat "$TMP/fixture-parity.out" >&2
+    fail "file-backed fixture source parity validation"
+fi
+cp -R "$FIXTURE" "$TMP/mismatched-plugin"
+rm -f "$TMP/mismatched-plugin/LICENSE"
+if fixture_parity "$TMP/mismatched-plugin" "$TMP/mismatched-parity.out"; then
+    fail "deliberate fixture mismatch must fail named parity validation"
+elif grep -Fq 'FIXTURE_PARITY_MISMATCH:' "$TMP/mismatched-parity.out" \
+    && grep -Fq 'LICENSE' "$TMP/mismatched-parity.out"; then
+    pass "deliberate fixture mismatch fails named parity validation"
+else
+    cat "$TMP/mismatched-parity.out" >&2
+    fail "deliberate fixture mismatch parity failure detail"
+fi
 grep -Fq 'VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"' "$FIXTURE/scripts/lazybuddy-verify.sh" && pass "aggregate default timeout is finite release budget" || fail "aggregate default timeout budget"
 
 # Given the complete standalone inventory, when the aggregate verifier assigns
