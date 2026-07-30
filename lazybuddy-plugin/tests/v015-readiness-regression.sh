@@ -157,9 +157,9 @@ if [ "${LAZYBUDDY_READINESS_PARENT_COPY_DEPTH:-0}" -eq 0 ]; then
     printf '# poisoned parent handoff\n' > "$TMP/poisoned-parent/docs/handoff.md"
     cp -R "$PLUGIN_ROOT" "$PARENT_COPY"
     expect_status copied-plugin-ignores-parent-docs 0 env \
-        LAZYBUDDY_READINESS_PARENT_COPY_DEPTH=1 \
         CODEBUDDY_PLUGIN_ROOT="$PARENT_COPY" \
-        bash "$PARENT_COPY/tests/v015-readiness-regression.sh"
+        bash "$PARENT_COPY/scripts/lazybuddy-docs-check.sh"
+    expect_contains copied-plugin-ignores-parent-docs '"broken":0'
 fi
 
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"
