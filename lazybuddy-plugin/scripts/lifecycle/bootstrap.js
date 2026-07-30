@@ -7,7 +7,7 @@ const path = require('node:path');
 const { promoteRelease } = require('./core');
 const { LifecycleError } = require('./errors');
 const { safeFile } = require('./files');
-const { prepareProductRoot, removeEmptyProductRoot } = require('./paths');
+const { completeBootstrapProductRoot, prepareBootstrapProductRoot, removeEmptyProductRoot } = require('./paths');
 const { receiptFor } = require('./receipt');
 const { acquireLock, readActive } = require('./state');
 
@@ -144,23 +144,24 @@ function acquireBootstrapLock(paths, operation) {
     return acquireLock(paths, operation);
   } catch (error) {
     if (!error || error.code !== 'ENOENT') throw error;
-    prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
+    prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
     return acquireLock(paths, operation);
   }
 }
 
 function bootstrapProduct(paths, operation, options) {
-  prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
+  let prepared = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
   const lock = acquireBootstrapLock(paths, operation);
-  prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
+  prepared = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
   let completed = false;
   try {
     const result = bootstrapRelease(paths, options);
     completed = true;
+    completeBootstrapProductRoot(paths, prepared.ownership);
     return result;
   } finally {
     lock.release();
-    if (!completed) removeEmptyProductRoot(paths);
+    if (!completed) removeEmptyProductRoot(paths, prepared.ownership);
   }
 }
 

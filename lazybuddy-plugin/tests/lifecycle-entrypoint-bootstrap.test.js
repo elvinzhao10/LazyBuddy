@@ -130,6 +130,43 @@ test('fresh onboard prerequisite failure leaves no lifecycle scaffold', (t) => {
   assert.equal(fs.existsSync(path.join(installRoot, 'LazyBuddy')), false);
 });
 
+test('failed onboard preserves a caller-owned exact empty lifecycle scaffold', (t) => {
+  // Given: a caller-created product root with the exact five empty lifecycle directories.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy caller scaffold '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  const emptyPath = path.join(sandbox, 'empty path');
+  const directories = ['releases', 'receipts', 'staging', 'locks', 'rollback'];
+  fs.mkdirSync(projectRoot);
+  fs.mkdirSync(emptyPath);
+  for (const directory of directories) fs.mkdirSync(path.join(productRoot, directory), { recursive: true });
+  const identities = new Map(
+    ['', ...directories].map((directory) => {
+      const stat = fs.lstatSync(path.join(productRoot, directory));
+      return [directory, { dev: stat.dev, ino: stat.ino }];
+    }),
+  );
+
+  // When: the real lifecycle CLI fails because Git is unavailable.
+  const result = spawnSync(process.execPath, [
+    CLI, 'onboard', '--source', OFFICIAL,
+    '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: emptyPath },
+  });
+
+  // Then: structured failure preserves every caller-owned directory identity.
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
+  for (const [directory, identity] of identities) {
+    const stat = fs.lstatSync(path.join(productRoot, directory));
+    assert.deepEqual({ dev: stat.dev, ino: stat.ino }, identity);
+  }
+});
+
 test('two concurrent fresh prerequisite failures leave no lifecycle scaffold', { timeout: 15_000 }, async (t) => {
   // Given: two real CLI processes paused on opposite sides of first-process cleanup.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy concurrent failure '));
