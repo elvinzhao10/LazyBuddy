@@ -7,6 +7,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { spawnSync } = require('node:child_process');
 const { prepareProductRoot, promoteRelease, stageRelease } = require('../scripts/lifecycle');
+const { parseObservation } = require('../scripts/lifecycle/host-handoff');
 
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
 const CLI = path.join(PLUGIN_ROOT, 'scripts', 'lazybuddy-lifecycle.js');
@@ -94,8 +95,25 @@ test('status renders receipt-verified CodeBuddy and WorkBuddy handoffs without h
   assert.equal(fs.readFileSync(privateFile, 'utf8'), '{"caller":"owned"}\n');
 });
 
-test('status accepts only a matching explicit observation and reports route conflicts as remediation only', (t) => {
-  // Given: a durable release and a user-supplied WorkBuddy observation receipt.
+test('parseObservation preserves a current matching observation at an injected time', (t) => {
+  // Given: one matching observation from the current UTC day.
+  const f = fixture();
+  const observation = path.join(f.projectRoot, 'current-workbuddy-observation.json');
+  const receipt = {
+    type: 'host-observation', host: 'workbuddy', observed_at: '2026-07-30T10:00:00Z', artifact: 'skill-and-mcp',
+  };
+  fs.writeFileSync(observation, JSON.stringify(receipt) + '\n');
+  t.after(() => fs.rmSync(f.sandbox, { recursive: true }));
+
+  // When: the receipt is parsed against a known current time.
+  const result = parseObservation(observation, 'workbuddy', new Date('2026-07-30T12:00:00Z'));
+
+  // Then: current evidence keeps its explicit observed result.
+  assert.deepEqual(result, { status: 'observed', observation_receipt: receipt });
+});
+
+test('status keeps stale observations pending and reports route conflicts as remediation only', (t) => {
+  // Given: a durable release and a historical user-supplied WorkBuddy observation receipt.
   const f = fixture();
   const observation = path.join(f.projectRoot, 'workbuddy-observation.json');
   const privateObservation = path.join(f.sandbox, '.workbuddy', 'plugins', 'state.json');
@@ -106,16 +124,15 @@ test('status accepts only a matching explicit observation and reports route conf
   fs.writeFileSync(privateObservation, fs.readFileSync(observation));
   t.after(() => fs.rmSync(f.sandbox, { recursive: true }));
 
-  // When: full-plugin status receives the matching receipt, then both WorkBuddy routes are selected.
-  const observed = json(command(args(f, ['workbuddy-full-plugin'], ['--observation-receipt', observation])));
+  // When: full-plugin status receives the stale receipt, then both WorkBuddy routes are selected.
+  const stale = json(command(args(f, ['workbuddy-full-plugin'], ['--observation-receipt', observation])));
   const conflictResult = command(args(f, ['workbuddy-full-plugin', 'manual-skills-mcp-fallback']));
   const conflict = json(conflictResult);
   const privateResult = command(args(f, ['workbuddy-full-plugin'], ['--observation-receipt', privateObservation]));
   const privateOutput = json(privateResult);
 
-  // Then: observation is explicit while a conflict exposes only host-UI remediation.
-  assert.equal(observed.host_readiness.status, 'observed');
-  assert.equal(observed.host_readiness.observation_receipt.artifact, 'skill-and-mcp');
+  // Then: stale evidence cannot claim an observed or ready host while a conflict exposes only host-UI remediation.
+  assert.deepEqual(stale.host_readiness, { status: 'pending' });
   assert.equal(conflictResult.status, 1);
   assert.equal(conflict.status, 'blocked');
   assert.equal(conflict.host_handoff, undefined);
