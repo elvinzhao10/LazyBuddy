@@ -7,7 +7,6 @@ const path = require('node:path');
 const { LifecycleError } = require('./errors');
 
 const PRODUCTS = new Set(['LazyTrae', 'LazyBuddy']);
-const BOOTSTRAP_MARKER = '.bootstrap-owner.json';
 
 function resolveInstallRoot({
   installRoot,
@@ -96,113 +95,118 @@ function prepareProductRoot(options) {
   return paths;
 }
 
-function bootstrapOwnership(paths) {
-  const marker = path.join(paths.productRoot, BOOTSTRAP_MARKER);
+function productRootIdentity(paths) {
   try {
-    const stat = fs.lstatSync(marker);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) return null;
-    const record = JSON.parse(fs.readFileSync(marker, 'utf8'));
-    if (record.schema_version !== 1 || record.product !== paths.product
-      || typeof record.nonce !== 'string'
-      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(record.nonce)) {
-      return null;
+    const stat = fs.lstatSync(paths.productRoot);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new LifecycleError('UNSAFE_PATH', `unsafe product root: ${paths.productRoot}`);
     }
-    return { dev: stat.dev, ino: stat.ino, marker, nonce: record.nonce };
+    return { dev: stat.dev, ino: stat.ino };
   } catch (error) {
-    if (error && (error.code === 'ENOENT' || error instanceof SyntaxError)) return null;
+    if (error && error.code === 'ENOENT') return null;
     throw error;
   }
 }
 
-function writeBootstrapMarker(root, product) {
-  fs.writeFileSync(path.join(root, BOOTSTRAP_MARKER), `${JSON.stringify({
-    nonce: crypto.randomUUID(),
-    product,
-    schema_version: 1,
-  })}\n`, { flag: 'wx', mode: 0o600 });
-}
-
-function ownsBootstrapMarker(paths, ownership) {
-  const current = bootstrapOwnership(paths);
-  return current && current.dev === ownership.dev && current.ino === ownership.ino
-    && current.nonce === ownership.nonce;
-}
-
-function completeBootstrapProductRoot(paths, ownership) {
-  if (!ownership) return;
-  if (!ownsBootstrapMarker(paths, ownership)) {
-    throw new LifecycleError('OWNERSHIP_REFUSED', 'bootstrap ownership marker changed');
+function prepareExistingProductRoot(paths, identity) {
+  for (const directory of [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback]) {
+    try {
+      fs.mkdirSync(directory, { mode: 0o700 });
+    } catch (error) {
+      if (!error || error.code !== 'EEXIST') {
+        if (error && error.code === 'ENOENT') return false;
+        throw error;
+      }
+    }
+    let stat;
+    try {
+      stat = fs.lstatSync(directory);
+    } catch (error) {
+      if (error && error.code === 'ENOENT') return false;
+      throw error;
+    }
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new LifecycleError('UNSAFE_PATH', `unsafe durable directory: ${directory}`);
+    }
+    const current = productRootIdentity(paths);
+    if (!current || current.dev !== identity.dev || current.ino !== identity.ino) return false;
   }
-  fs.unlinkSync(ownership.marker);
+  return true;
 }
 
 function prepareBootstrapProductRoot(options) {
   const paths = productPaths(options);
   assertSafeAncestors(paths.productRoot);
   fs.mkdirSync(paths.installRoot, { recursive: true, mode: 0o700 });
-  if (fs.existsSync(paths.productRoot)) {
-    const initial = fs.lstatSync(paths.productRoot);
-    prepareProductRoot(options);
-    const current = fs.lstatSync(paths.productRoot);
-    if ((initial.dev !== current.dev || initial.ino !== current.ino) && !bootstrapOwnership(paths)) {
-      try {
-        writeBootstrapMarker(paths.productRoot, paths.product);
-      } catch (error) {
-        if (!error || error.code !== 'EEXIST') throw error;
-      }
+  while (true) {
+    const existing = productRootIdentity(paths);
+    if (existing) {
+      if (prepareExistingProductRoot(paths, existing)) return { ownership: null, paths };
+      continue;
     }
-    return { ownership: bootstrapOwnership(paths), paths };
-  }
-
-  const temporaryRoot = path.join(
-    paths.installRoot,
-    `.${paths.product}-bootstrap-${process.pid}-${crypto.randomUUID()}`,
-  );
-  try {
-    fs.mkdirSync(temporaryRoot, { mode: 0o700 });
-    for (const directory of ['releases', 'receipts', 'staging', 'locks', 'rollback']) {
-      fs.mkdirSync(path.join(temporaryRoot, directory), { mode: 0o700 });
+    try {
+      fs.mkdirSync(paths.productRoot, { mode: 0o700 });
+    } catch (error) {
+      if (!error || error.code !== 'EEXIST') throw error;
+      continue;
     }
-    writeBootstrapMarker(temporaryRoot, paths.product);
-    fs.renameSync(temporaryRoot, paths.productRoot);
-  } catch (error) {
-    if (fs.existsSync(temporaryRoot)) fs.rmSync(temporaryRoot, { recursive: true });
-    if (!error || (error.code !== 'EEXIST' && error.code !== 'ENOTEMPTY')) throw error;
+    const ownership = productRootIdentity(paths);
+    if (!ownership) continue;
+    if (prepareExistingProductRoot(paths, ownership)) return { ownership, paths };
   }
-  prepareProductRoot(options);
-  return { ownership: bootstrapOwnership(paths), paths };
 }
 
-function removeEmptyProductRoot(paths, ownership) {
-  if (!ownership) return;
+function quarantineEmptyProductRoot(paths, ownership) {
+  if (!ownership) return null;
   try {
     const directories = [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback];
-    const expected = new Set([...directories.map((directory) => path.basename(directory)), BOOTSTRAP_MARKER]);
+    const expected = new Set(directories.map((directory) => path.basename(directory)));
     const root = fs.lstatSync(paths.productRoot);
-    if (!root.isDirectory() || root.isSymbolicLink()) return;
+    if (!root.isDirectory() || root.isSymbolicLink()
+      || root.dev !== ownership.dev || root.ino !== ownership.ino) return null;
     const names = fs.readdirSync(paths.productRoot);
-    if (names.length !== expected.size || names.some((name) => !expected.has(name))) return;
-    if (!ownsBootstrapMarker(paths, ownership)) return;
+    if (names.length !== expected.size || names.some((name) => !expected.has(name))) return null;
     for (const directory of directories) {
       const stat = fs.lstatSync(directory);
-      if (!stat.isDirectory() || stat.isSymbolicLink() || fs.readdirSync(directory).length !== 0) return;
+      if (!stat.isDirectory() || stat.isSymbolicLink()) return null;
+      const entries = fs.readdirSync(directory);
+      if (directory === paths.locks) {
+        if (entries.length !== 1 || entries[0] !== path.basename(paths.lock)) return null;
+      } else if (entries.length !== 0) {
+        return null;
+      }
     }
-    fs.unlinkSync(ownership.marker);
-    for (const directory of directories) fs.rmdirSync(directory);
-    fs.rmdirSync(paths.productRoot);
+    const quarantine = path.join(
+      paths.installRoot,
+      `.${paths.product}-cleanup-${process.pid}-${crypto.randomUUID()}`,
+    );
+    fs.renameSync(paths.productRoot, quarantine);
+    return quarantine;
   } catch (error) {
-    if (error && (error.code === 'ENOENT' || error.code === 'ENOTEMPTY')) return;
+    if (error && (error.code === 'ENOENT' || error.code === 'ENOTEMPTY')) return null;
+    throw error;
+  }
+}
+
+function removeQuarantinedProductRoot(paths, quarantine) {
+  try {
+    for (const directory of [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback]) {
+      fs.rmdirSync(path.join(quarantine, path.basename(directory)));
+    }
+    fs.rmdirSync(quarantine);
+  } catch (error) {
+    if (error && ['ENOENT', 'ENOTDIR', 'ENOTEMPTY'].includes(error.code)) return;
     throw error;
   }
 }
 
 module.exports = {
   assertSafeAncestors,
-  completeBootstrapProductRoot,
   contained,
   prepareBootstrapProductRoot,
   prepareProductRoot,
   productPaths,
-  removeEmptyProductRoot,
+  quarantineEmptyProductRoot,
+  removeQuarantinedProductRoot,
   resolveInstallRoot,
 };
