@@ -10,8 +10,10 @@ trap cleanup EXIT
 pass() { printf 'PASS %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 
-cp -R "$PLUGIN_ROOT" "$TMP/plugin"
+mkdir "$TMP/plugin"
+tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf - . | tar -C "$TMP/plugin" -xf -
 FIXTURE="$TMP/plugin"
+[ ! -e "$FIXTURE/tooling/node_modules" ] && pass "verifier fixture omits unused tooling dependencies" || fail "verifier fixture must omit unused tooling dependencies"
 grep -Fq 'VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"' "$FIXTURE/scripts/lazybuddy-verify.sh" && pass "aggregate default timeout is finite release budget" || fail "aggregate default timeout budget"
 
 # Given the complete standalone inventory, when the aggregate verifier assigns
