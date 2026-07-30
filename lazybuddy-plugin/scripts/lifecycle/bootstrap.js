@@ -139,10 +139,21 @@ function confirmationResult(parsed, sha) {
   };
 }
 
+function acquireBootstrapLock(paths, operation) {
+  try {
+    return acquireLock(paths, operation);
+  } catch (error) {
+    if (!error || error.code !== 'ENOENT') throw error;
+    prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
+    return acquireLock(paths, operation);
+  }
+}
+
 function bootstrapProduct(paths, operation, options) {
   const productRootExisted = fs.existsSync(paths.productRoot);
   prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
-  const lock = acquireLock(paths, operation);
+  const lock = acquireBootstrapLock(paths, operation);
+  prepareProductRoot({ installRoot: paths.installRoot, product: paths.product });
   let completed = false;
   try {
     const result = bootstrapRelease(paths, options);

@@ -10,6 +10,7 @@ const { spawnSync } = childProcess;
 const test = require('node:test');
 const {
   LifecycleError,
+  bootstrapProduct,
   bootstrapRelease,
   parseOfficialSource,
   prepareProductRoot,
@@ -241,6 +242,57 @@ test('manifest, checksum, self-test, prerequisite, and clone failures preserve a
       assert.deepEqual(fs.readdirSync(f.paths.staging), []);
     });
   }
+});
+
+test('failed fresh bootstrap cleanup cannot tear down a concurrent successful bootstrap', () => {
+  // Given: a fresh product root and cleanup paused after its empty-root check.
+  const f = fixture();
+  fs.rmSync(f.paths.productRoot, { recursive: true });
+  const missingGit = path.join(f.sandbox, 'missing-git');
+  const realOpenSync = fs.openSync;
+  const realRmdirSync = fs.rmdirSync;
+  const realSpawnSync = childProcess.spawnSync;
+  let cleanupStarted = false;
+  let rootRemoved = false;
+  let concurrentResult;
+  childProcess.spawnSync = (command, args, options) => realSpawnSync(
+    command,
+    args.map((arg) => arg === OFFICIAL ? f.remote : arg),
+    options,
+  );
+  fs.openSync = (target, flags, mode) => {
+    if (target === f.paths.lock && cleanupStarted && !rootRemoved) {
+      rootRemoved = true;
+      fs.rmSync(f.paths.productRoot, { recursive: true });
+    }
+    return realOpenSync(target, flags, mode);
+  };
+  fs.rmdirSync = (target) => {
+    if (target === f.paths.releases && concurrentResult === undefined) {
+      cleanupStarted = true;
+      concurrentResult = bootstrapProduct(f.paths, 'onboard', {
+        sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
+      });
+    }
+    return realRmdirSync(target);
+  };
+
+  try {
+    // When: missing-Git failure cleanup overlaps a second real bootstrap.
+    expectCode(() => bootstrapProduct(f.paths, 'onboard', {
+      gitPath: missingGit,
+      sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
+    }), 'PREREQUISITE_MISSING');
+  } finally {
+    fs.openSync = realOpenSync;
+    fs.rmdirSync = realRmdirSync;
+    childProcess.spawnSync = realSpawnSync;
+  }
+
+  // Then: the concurrent success and its durable state survive cleanup.
+  assert.equal(concurrentResult.status, 'ready');
+  assert.equal(fs.existsSync(f.paths.active), true);
+  assert.equal(fs.existsSync(f.paths.launcher), true);
 });
 
 test('dirty source bytes, local transport bypass, and mismatched confirmations fail closed', () => {
