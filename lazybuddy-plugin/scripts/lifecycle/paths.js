@@ -1,11 +1,13 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { LifecycleError } = require('./errors');
 
 const PRODUCTS = new Set(['LazyTrae', 'LazyBuddy']);
+const BOOTSTRAP_MARKER = '.bootstrap-owner.json';
 
 function resolveInstallRoot({
   installRoot,
@@ -94,18 +96,98 @@ function prepareProductRoot(options) {
   return paths;
 }
 
-function removeEmptyProductRoot(paths) {
+function bootstrapOwnership(paths) {
+  const marker = path.join(paths.productRoot, BOOTSTRAP_MARKER);
+  try {
+    const stat = fs.lstatSync(marker);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) return null;
+    const record = JSON.parse(fs.readFileSync(marker, 'utf8'));
+    if (record.schema_version !== 1 || record.product !== paths.product
+      || typeof record.nonce !== 'string'
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(record.nonce)) {
+      return null;
+    }
+    return { dev: stat.dev, ino: stat.ino, marker, nonce: record.nonce };
+  } catch (error) {
+    if (error && (error.code === 'ENOENT' || error instanceof SyntaxError)) return null;
+    throw error;
+  }
+}
+
+function writeBootstrapMarker(root, product) {
+  fs.writeFileSync(path.join(root, BOOTSTRAP_MARKER), `${JSON.stringify({
+    nonce: crypto.randomUUID(),
+    product,
+    schema_version: 1,
+  })}\n`, { flag: 'wx', mode: 0o600 });
+}
+
+function ownsBootstrapMarker(paths, ownership) {
+  const current = bootstrapOwnership(paths);
+  return current && current.dev === ownership.dev && current.ino === ownership.ino
+    && current.nonce === ownership.nonce;
+}
+
+function completeBootstrapProductRoot(paths, ownership) {
+  if (!ownership) return;
+  if (!ownsBootstrapMarker(paths, ownership)) {
+    throw new LifecycleError('OWNERSHIP_REFUSED', 'bootstrap ownership marker changed');
+  }
+  fs.unlinkSync(ownership.marker);
+}
+
+function prepareBootstrapProductRoot(options) {
+  const paths = productPaths(options);
+  assertSafeAncestors(paths.productRoot);
+  fs.mkdirSync(paths.installRoot, { recursive: true, mode: 0o700 });
+  if (fs.existsSync(paths.productRoot)) {
+    const initial = fs.lstatSync(paths.productRoot);
+    prepareProductRoot(options);
+    const current = fs.lstatSync(paths.productRoot);
+    if ((initial.dev !== current.dev || initial.ino !== current.ino) && !bootstrapOwnership(paths)) {
+      try {
+        writeBootstrapMarker(paths.productRoot, paths.product);
+      } catch (error) {
+        if (!error || error.code !== 'EEXIST') throw error;
+      }
+    }
+    return { ownership: bootstrapOwnership(paths), paths };
+  }
+
+  const temporaryRoot = path.join(
+    paths.installRoot,
+    `.${paths.product}-bootstrap-${process.pid}-${crypto.randomUUID()}`,
+  );
+  try {
+    fs.mkdirSync(temporaryRoot, { mode: 0o700 });
+    for (const directory of ['releases', 'receipts', 'staging', 'locks', 'rollback']) {
+      fs.mkdirSync(path.join(temporaryRoot, directory), { mode: 0o700 });
+    }
+    writeBootstrapMarker(temporaryRoot, paths.product);
+    fs.renameSync(temporaryRoot, paths.productRoot);
+  } catch (error) {
+    if (fs.existsSync(temporaryRoot)) fs.rmSync(temporaryRoot, { recursive: true });
+    if (!error || (error.code !== 'EEXIST' && error.code !== 'ENOTEMPTY')) throw error;
+  }
+  prepareProductRoot(options);
+  return { ownership: bootstrapOwnership(paths), paths };
+}
+
+function removeEmptyProductRoot(paths, ownership) {
+  if (!ownership) return;
   try {
     const directories = [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback];
-    const expected = new Set(directories.map((directory) => path.basename(directory)));
+    const expected = new Set([...directories.map((directory) => path.basename(directory)), BOOTSTRAP_MARKER]);
     const root = fs.lstatSync(paths.productRoot);
     if (!root.isDirectory() || root.isSymbolicLink()) return;
     const names = fs.readdirSync(paths.productRoot);
     if (names.length !== expected.size || names.some((name) => !expected.has(name))) return;
+    if (!ownsBootstrapMarker(paths, ownership)) return;
     for (const directory of directories) {
       const stat = fs.lstatSync(directory);
       if (!stat.isDirectory() || stat.isSymbolicLink() || fs.readdirSync(directory).length !== 0) return;
     }
+    fs.unlinkSync(ownership.marker);
     for (const directory of directories) fs.rmdirSync(directory);
     fs.rmdirSync(paths.productRoot);
   } catch (error) {
@@ -116,7 +198,9 @@ function removeEmptyProductRoot(paths) {
 
 module.exports = {
   assertSafeAncestors,
+  completeBootstrapProductRoot,
   contained,
+  prepareBootstrapProductRoot,
   prepareProductRoot,
   productPaths,
   removeEmptyProductRoot,
