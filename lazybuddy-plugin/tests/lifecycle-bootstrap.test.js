@@ -13,7 +13,10 @@ const {
   bootstrapProduct,
   bootstrapRelease,
   parseOfficialSource,
+  prepareBootstrapProductRoot,
   prepareProductRoot,
+  productPaths,
+  quarantineEmptyProductRoot,
 } = require('../scripts/lifecycle');
 
 const OFFICIAL = 'https://github.com/elvinzhao10/LazyBuddy.git';
@@ -87,6 +90,17 @@ function bootstrap(f, overrides = {}) {
 
 function expectCode(action, code) {
   assert.throws(action, (error) => error instanceof LifecycleError && error.code === code);
+}
+
+function exactScaffold(root) {
+  for (const directory of ['releases', 'receipts', 'staging', 'locks', 'rollback']) {
+    fs.mkdirSync(path.join(root, directory), { recursive: true });
+  }
+}
+
+function identity(target) {
+  const stat = fs.lstatSync(target);
+  return { dev: stat.dev, ino: stat.ino, mode: stat.mode, nlink: stat.nlink };
 }
 
 test('parses only canonical official HTTPS source forms for the selected product', () => {
@@ -244,50 +258,153 @@ test('manifest, checksum, self-test, prerequisite, and clone failures preserve a
   }
 });
 
-test('failed fresh bootstrap quarantines its root before a concurrent successful bootstrap', () => {
-  // Given: a fresh product root and a concurrent bootstrap triggered at cleanup relocation.
+test('failed fresh bootstrap leaves a reusable scaffold for a later successful bootstrap', () => {
   const f = fixture();
   fs.rmSync(f.paths.productRoot, { recursive: true });
   const missingGit = path.join(f.sandbox, 'missing-git');
-  const realRenameSync = fs.renameSync;
   const realSpawnSync = childProcess.spawnSync;
-  let concurrentResult;
   childProcess.spawnSync = (command, args, options) => realSpawnSync(
     command,
     args.map((arg) => arg === OFFICIAL ? f.remote : arg),
     options,
   );
-  fs.renameSync = (source, target) => {
-    const result = realRenameSync(source, target);
-    if (source === f.paths.productRoot && concurrentResult === undefined) {
-      assert.equal(
-        fs.existsSync(path.join(target, 'locks', 'lifecycle.lock')),
-        true,
-        'cleanup relocated the product root after releasing its lifecycle lock',
-      );
-      concurrentResult = bootstrapProduct(f.paths, 'onboard', {
-        sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
-      });
-    }
-    return result;
-  };
-
+  let laterResult;
   try {
     // When: missing-Git failure cleanup overlaps the second real bootstrap.
     expectCode(() => bootstrapProduct(f.paths, 'onboard', {
       gitPath: missingGit,
       sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
     }), 'PREREQUISITE_MISSING');
+    laterResult = bootstrapProduct(f.paths, 'onboard', {
+      sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
+    });
   } finally {
-    fs.renameSync = realRenameSync;
     childProcess.spawnSync = realSpawnSync;
   }
 
-  // Then: the concurrent success occupies a new root and survives cleanup.
-  assert.notEqual(concurrentResult, undefined, 'failed cleanup did not atomically quarantine its product root');
-  assert.equal(concurrentResult.status, 'ready');
+  // Then: fail-closed preservation remains reusable without hidden cleanup roots.
+  assert.equal(laterResult.status, 'ready');
   assert.equal(fs.existsSync(f.paths.active), true);
   assert.equal(fs.existsSync(f.paths.launcher), true);
+  assert.deepEqual(fs.readdirSync(f.paths.installRoot).filter((entry) => entry.startsWith('.LazyBuddy-')), []);
+});
+
+test('failed bootstrap preserves a caller replacement installed before creator ownership capture', (t) => {
+  const f = fixture();
+  fs.rmSync(f.paths.productRoot, { recursive: true });
+  const caller = path.join(f.sandbox, 'capture caller');
+  exactScaffold(caller);
+  const callerIdentity = identity(caller);
+  const realMkdtempSync = fs.mkdtempSync;
+  const realMkdirSync = fs.mkdirSync;
+  const realRenameSync = fs.renameSync;
+  let callerTarget;
+  const replace = (target) => {
+    fs.rmSync(target, { recursive: true, force: true });
+    realRenameSync(caller, target);
+    callerTarget = target;
+  };
+  t.mock.method(fs, 'mkdtempSync', (...args) => {
+    const created = realMkdtempSync(...args);
+    if (!callerTarget && path.basename(created).startsWith('.LazyBuddy-bootstrap-')) replace(created);
+    return created;
+  });
+  t.mock.method(fs, 'mkdirSync', (target, ...args) => {
+    const result = realMkdirSync(target, ...args);
+    if (!callerTarget && target === f.paths.productRoot) replace(target);
+    return result;
+  });
+
+  expectCode(() => bootstrapProduct(f.paths, 'onboard', {
+    gitPath: path.join(f.sandbox, 'missing-git'),
+    sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
+  }), 'PREREQUISITE_MISSING');
+
+  assert.ok(callerTarget, 'test seam did not install the caller root');
+  assert.deepEqual(identity(callerTarget), callerIdentity);
+});
+
+test('bootstrap refuses an exact-empty caller product root without changing it', (t) => {
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy empty caller '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const installRoot = path.join(sandbox, 'install root');
+  const paths = productPaths({ installRoot, product: 'LazyBuddy' });
+  fs.mkdirSync(paths.productRoot, { recursive: true });
+  const before = identity(paths.productRoot);
+
+  expectCode(() => prepareBootstrapProductRoot({ installRoot, product: 'LazyBuddy', timeoutMs: 50 }), 'WORKSPACE_PRESERVED');
+
+  assert.deepEqual(identity(paths.productRoot), before);
+  assert.deepEqual(fs.readdirSync(paths.productRoot), []);
+});
+
+test('cleanup never relocates either caller when a second caller occupies the public root', (t) => {
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy two callers '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const paths = productPaths({ installRoot: sandbox, product: 'LazyBuddy' });
+  exactScaffold(paths.productRoot);
+  fs.writeFileSync(paths.lock, '{}');
+  const ownership = identity(paths.productRoot);
+  const callerA = path.join(sandbox, 'caller-a');
+  const callerB = path.join(sandbox, 'caller-b');
+  exactScaffold(callerA);
+  exactScaffold(callerB);
+  const callerAIdentity = identity(callerA);
+  const callerBIdentity = identity(callerB);
+  const realRenameSync = fs.renameSync;
+  let injected = false;
+  t.mock.method(fs, 'renameSync', (source, target) => {
+    if (!injected && source === paths.productRoot && path.basename(target).startsWith('.LazyBuddy-cleanup-')) {
+      injected = true;
+      fs.rmSync(source, { recursive: true });
+      realRenameSync(callerA, source);
+      realRenameSync(source, target);
+      realRenameSync(callerB, source);
+      return;
+    }
+    return realRenameSync(source, target);
+  });
+
+  assert.equal(quarantineEmptyProductRoot(paths, ownership), null);
+  assert.equal(injected, false, 'cleanup attempted to relocate a public root');
+  assert.deepEqual(identity(callerA), callerAIdentity);
+  assert.deepEqual(identity(callerB), callerBIdentity);
+  assert.deepEqual(identity(paths.productRoot), ownership);
+  assert.deepEqual(fs.readdirSync(sandbox).filter((entry) => entry.startsWith('.LazyBuddy-cleanup-')), []);
+});
+
+test('bootstrap preparation collision retry is bounded by its timeout', (t) => {
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy collision timeout '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const modulePath = require.resolve('../scripts/lifecycle');
+  const program = `'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const realMkdirSync = fs.mkdirSync;
+const realRenameSync = fs.renameSync;
+const root = process.argv[1];
+fs.mkdirSync = (target, ...args) => {
+  if (target === path.join(root, 'LazyBuddy')) { const error = new Error('collision'); error.code = 'EEXIST'; throw error; }
+  return realMkdirSync(target, ...args);
+};
+fs.renameSync = (source, target) => {
+  if (target === path.join(root, 'LazyBuddy')) { const error = new Error('collision'); error.code = 'EEXIST'; throw error; }
+  return realRenameSync(source, target);
+};
+try {
+  require(${JSON.stringify(modulePath)}).prepareBootstrapProductRoot({ installRoot: root, product: 'LazyBuddy', timeoutMs: 40 });
+  process.exitCode = 2;
+} catch (error) {
+  process.stdout.write(String(error.code));
+  process.exitCode = error.code === 'LOCKED' ? 0 : 3;
+}`;
+
+  const result = spawnSync(process.execPath, ['-e', program, path.join(sandbox, 'install root')], {
+    encoding: 'utf8',
+    timeout: 500,
+  });
+  assert.equal(result.status, 0, result.error ? result.error.message : result.stderr);
+  assert.equal(result.stdout, 'LOCKED');
 });
 
 test('dirty source bytes, local transport bypass, and mismatched confirmations fail closed', () => {

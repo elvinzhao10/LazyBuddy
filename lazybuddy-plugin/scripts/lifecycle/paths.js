@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -110,14 +109,6 @@ function productRootIdentity(paths) {
 
 function prepareExistingProductRoot(paths, identity) {
   for (const directory of [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback]) {
-    try {
-      fs.mkdirSync(directory, { mode: 0o700 });
-    } catch (error) {
-      if (!error || error.code !== 'EEXIST') {
-        if (error && error.code === 'ENOENT') return false;
-        throw error;
-      }
-    }
     let stat;
     try {
       stat = fs.lstatSync(directory);
@@ -136,13 +127,15 @@ function prepareExistingProductRoot(paths, identity) {
 
 function prepareBootstrapProductRoot(options) {
   const paths = productPaths(options);
+  const deadline = options.deadline || Date.now() + (options.timeoutMs || 30_000);
   assertSafeAncestors(paths.productRoot);
   fs.mkdirSync(paths.installRoot, { recursive: true, mode: 0o700 });
   while (true) {
+    if (Date.now() >= deadline) throw new LifecycleError('LOCKED', 'lifecycle bootstrap root remained contended');
     const existing = productRootIdentity(paths);
     if (existing) {
       if (prepareExistingProductRoot(paths, existing)) return { ownership: null, paths };
-      continue;
+      throw new LifecycleError('WORKSPACE_PRESERVED', `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
     }
     try {
       fs.mkdirSync(paths.productRoot, { mode: 0o700 });
@@ -152,53 +145,22 @@ function prepareBootstrapProductRoot(options) {
     }
     const ownership = productRootIdentity(paths);
     if (!ownership) continue;
+    for (const directory of [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback]) {
+      try {
+        fs.mkdirSync(directory, { mode: 0o700 });
+      } catch (error) {
+        if (!error || error.code !== 'EEXIST') throw error;
+      }
+    }
     if (prepareExistingProductRoot(paths, ownership)) return { ownership, paths };
   }
 }
 
-function quarantineEmptyProductRoot(paths, ownership) {
-  if (!ownership) return null;
-  try {
-    const directories = [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback];
-    const expected = new Set(directories.map((directory) => path.basename(directory)));
-    const root = fs.lstatSync(paths.productRoot);
-    if (!root.isDirectory() || root.isSymbolicLink()
-      || root.dev !== ownership.dev || root.ino !== ownership.ino) return null;
-    const names = fs.readdirSync(paths.productRoot);
-    if (names.length !== expected.size || names.some((name) => !expected.has(name))) return null;
-    for (const directory of directories) {
-      const stat = fs.lstatSync(directory);
-      if (!stat.isDirectory() || stat.isSymbolicLink()) return null;
-      const entries = fs.readdirSync(directory);
-      if (directory === paths.locks) {
-        if (entries.length !== 1 || entries[0] !== path.basename(paths.lock)) return null;
-      } else if (entries.length !== 0) {
-        return null;
-      }
-    }
-    const quarantine = path.join(
-      paths.installRoot,
-      `.${paths.product}-cleanup-${process.pid}-${crypto.randomUUID()}`,
-    );
-    fs.renameSync(paths.productRoot, quarantine);
-    return quarantine;
-  } catch (error) {
-    if (error && (error.code === 'ENOENT' || error.code === 'ENOTEMPTY')) return null;
-    throw error;
-  }
+function quarantineEmptyProductRoot() {
+  return null;
 }
 
-function removeQuarantinedProductRoot(paths, quarantine) {
-  try {
-    for (const directory of [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback]) {
-      fs.rmdirSync(path.join(quarantine, path.basename(directory)));
-    }
-    fs.rmdirSync(quarantine);
-  } catch (error) {
-    if (error && ['ENOENT', 'ENOTDIR', 'ENOTEMPTY'].includes(error.code)) return;
-    throw error;
-  }
-}
+function removeQuarantinedProductRoot() {}
 
 module.exports = {
   assertSafeAncestors,
