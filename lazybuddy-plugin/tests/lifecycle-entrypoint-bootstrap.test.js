@@ -164,6 +164,63 @@ test('onboard preserves an unverified workspace with a structured refusal', (t) 
   assert.deepEqual(fs.readdirSync(productRoot), ['caller-owned.txt']);
 });
 
+test('identity-changing onboard returns a recovery state without writing the replacement workspace', (t) => {
+  // Given: a real CLI whose new product root is replaced when its private bootstrap lock opens.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy swapped caller scaffold '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  const hook = path.join(sandbox, 'swap-hook.js');
+  fs.mkdirSync(projectRoot);
+  fs.writeFileSync(hook, `'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const realOpenSync = fs.openSync;
+let swapped = false;
+fs.openSync = (target, flags, mode) => {
+  if (!swapped && target === process.env.BLOCKED_LOCK) {
+    swapped = true;
+    fs.rmSync(process.env.PRODUCT_ROOT, { recursive: true });
+    for (const directory of ['releases', 'receipts', 'staging', 'locks', 'rollback']) {
+      fs.mkdirSync(path.join(process.env.PRODUCT_ROOT, directory), { recursive: true });
+    }
+    fs.writeFileSync(path.join(process.env.PRODUCT_ROOT, 'sentinel.txt'), 'caller-owned\\n');
+  }
+  return realOpenSync(target, flags, mode);
+};
+`);
+
+  // When: lifecycle detects the changed root after creating only its private lock.
+  const result = spawnSync(process.execPath, [
+    CLI, 'onboard', '--source', OFFICIAL,
+    '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      BLOCKED_LOCK: path.join(installRoot, '.LazyBuddy.bootstrap.lock'),
+      NODE_OPTIONS: `--require=${JSON.stringify(hook)}`,
+      PRODUCT_ROOT: productRoot,
+    },
+  });
+  const report = JSON.parse(result.stdout);
+
+  // Then: the recovery report enumerates retained lifecycle artifacts and the sentinel stays exact.
+  assert.equal(result.status, 1, result.stderr);
+  assert.equal(report.error.code, 'WORKSPACE_PRESERVED');
+  assert.deepEqual(report.preservation, {
+    status: 'recovery_required',
+    public_workspace: productRoot,
+    retained_artifacts: [
+      { kind: 'bootstrap_workspace', last_known_path: productRoot },
+      { kind: 'lifecycle_lock', last_known_path: path.join(installRoot, '.LazyBuddy.bootstrap.lock') },
+    ],
+  });
+  assert.equal(fs.readFileSync(path.join(productRoot, 'sentinel.txt'), 'utf8'), 'caller-owned\n');
+  assert.deepEqual(fs.readdirSync(path.join(productRoot, 'locks')), []);
+});
+
 test('failed onboard preserves a caller-owned exact empty lifecycle scaffold', (t) => {
   // Given: a caller-created product root with the exact five empty lifecycle directories.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy caller scaffold '));
@@ -319,7 +376,7 @@ if (process.env.BOOTSTRAP_ROLE === 'contender') {
   const owner = startOnboard({
     environment: {
       ...common,
-      BLOCKED_LOCK: path.join(productRoot, 'locks', 'lifecycle.lock'),
+      BLOCKED_LOCK: path.join(installRoot, '.LazyBuddy.bootstrap.lock'),
       BOOTSTRAP_ROLE: 'owner',
       OWNER_CONTENDED: ownerContended,
       OWNER_WAITING: ownerWaiting,
@@ -425,7 +482,7 @@ if (process.env.BOOTSTRAP_ROLE === 'second') {
   const second = startOnboard({
     environment: {
       ...common,
-      BLOCKED_LOCK: path.join(productRoot, 'locks', 'lifecycle.lock'),
+      BLOCKED_LOCK: path.join(installRoot, '.LazyBuddy.bootstrap.lock'),
       BOOTSTRAP_ROLE: 'second',
       RELEASE_SECOND: releaseSecond,
       SECOND_ENTERED: secondEntered,

@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { LifecycleError } = require('./errors');
+const { LifecycleError, workspacePreserved } = require('./errors');
 const { atomicJson, readJson, safeFile } = require('./files');
 const { ownedRelativePath } = require('./ownership');
 
@@ -35,7 +35,7 @@ function installLauncher(paths) {
   fs.writeFileSync(paths.launcher, LAUNCHER, { mode: 0o755, flag: 'wx' });
 }
 
-function acquireLock(paths, operation, productIdentity) {
+function acquireLock(paths, operation, productIdentity, lockPath = paths.lock) {
   const record = {
     pid: process.pid,
     host: os.hostname(),
@@ -47,7 +47,7 @@ function acquireLock(paths, operation, productIdentity) {
   let lockIdentity;
   const rootIdentity = productIdentity || fs.lstatSync(paths.productRoot);
   try {
-    descriptor = fs.openSync(paths.lock, 'wx', 0o600);
+    descriptor = fs.openSync(lockPath, 'wx', 0o600);
     fs.writeFileSync(descriptor, JSON.stringify(record) + '\n');
     lockIdentity = fs.fstatSync(descriptor);
     fs.fsyncSync(descriptor);
@@ -60,15 +60,10 @@ function acquireLock(paths, operation, productIdentity) {
       if (!error || error.code !== 'ENOENT') throw error;
     }
     if (!currentRoot || currentRoot.dev !== rootIdentity.dev || currentRoot.ino !== rootIdentity.ino) {
-      let currentLock;
-      try {
-        currentLock = fs.lstatSync(paths.lock);
-      } catch (error) {
-        if (!error || error.code !== 'ENOENT') throw error;
-      }
-      if (currentLock && currentLock.isFile() && currentLock.nlink === 1
-        && currentLock.dev === lockIdentity.dev && currentLock.ino === lockIdentity.ino) fs.unlinkSync(paths.lock);
-      throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed while acquiring the lifecycle lock');
+      throw workspacePreserved(paths, [
+        { kind: 'bootstrap_workspace', lastKnownPath: paths.productRoot },
+        { kind: 'lifecycle_lock', lastKnownPath: lockPath },
+      ], 'product root identity changed while acquiring the lifecycle lock');
     }
   } catch (error) {
     if (descriptor !== undefined) fs.closeSync(descriptor);
@@ -77,20 +72,26 @@ function acquireLock(paths, operation, productIdentity) {
   }
   return {
     record,
-    release(lockPath = paths.lock) {
+    release(releasePath = lockPath) {
       let currentRoot;
       try {
         currentRoot = fs.lstatSync(paths.productRoot);
       } catch (error) {
         if (error && error.code === 'ENOENT') {
-          throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed while the lifecycle lock was held', error);
+          throw workspacePreserved(paths, [
+            { kind: 'bootstrap_workspace', lastKnownPath: paths.productRoot },
+            { kind: 'lifecycle_lock', lastKnownPath: releasePath },
+          ], 'product root identity changed while the lifecycle lock was held', error);
         }
         throw error;
       }
       if (currentRoot.dev !== rootIdentity.dev || currentRoot.ino !== rootIdentity.ino) {
-        throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed while the lifecycle lock was held');
+        throw workspacePreserved(paths, [
+          { kind: 'bootstrap_workspace', lastKnownPath: paths.productRoot },
+          { kind: 'lifecycle_lock', lastKnownPath: releasePath },
+        ], 'product root identity changed while the lifecycle lock was held');
       }
-      const file = safeFile(lockPath, 'LOCK_CHANGED');
+      const file = safeFile(releasePath, 'LOCK_CHANGED');
       let current;
       try {
         current = JSON.parse(file.bytes.toString('utf8'));
@@ -101,7 +102,7 @@ function acquireLock(paths, operation, productIdentity) {
         || file.stat.dev !== lockIdentity.dev || file.stat.ino !== lockIdentity.ino) {
         throw new LifecycleError('LOCK_CHANGED', 'lifecycle lock ownership changed');
       }
-      fs.unlinkSync(lockPath);
+      fs.unlinkSync(releasePath);
     },
   };
 }
