@@ -147,7 +147,7 @@ function acquireBootstrapLock(paths, operation, prepared, deadline) {
   let current = prepared;
   while (true) {
     try {
-      return { lock: acquireLock(paths, operation, current.identity, paths.bootstrapLock), prepared: current };
+      return { lock: acquireLock(paths, operation, current.identity, paths.bootstrapLock, 'bootstrap'), prepared: current };
     } catch (error) {
       if (error && error.code === 'ENOENT') {
         current = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });

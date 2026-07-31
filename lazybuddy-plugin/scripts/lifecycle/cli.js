@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const {
@@ -9,14 +8,12 @@ const {
   offboardProduct,
   parseOfficialSource,
   productPaths,
-  readActive,
-  recoveryReport,
   resolveInstallRoot,
 } = require('./index');
-const { safeFile } = require('./files');
 const { receiptFor } = require('./receipt');
 const { parseArgs, usage } = require('./cli-arguments');
 const { parseObservation, renderHandoff, routeSelection } = require('./host-handoff');
+const { createStatus } = require('./status');
 
 const PRODUCT = 'LazyBuddy';
 
@@ -51,58 +48,7 @@ function envelope(options, values) {
   };
 }
 
-function assertRuntime(paths, active, receipt) {
-  const runtime = active.runtime_path;
-  let file;
-  try {
-    file = safeFile(runtime, 'STALE_RUNTIME');
-  } catch (error) {
-    throw new LifecycleError('STALE_RUNTIME', `recorded Node runtime is unavailable: ${runtime}`, error);
-  }
-  const fingerprint = receipt.runtime.fingerprint;
-  const digest = crypto.createHash('sha256').update(file.bytes).digest('hex');
-  if (fs.realpathSync(runtime) !== fingerprint.realpath || digest !== fingerprint.sha256
-    || active.release_metadata[active.active_release].runtime_path !== runtime) {
-    throw new LifecycleError('STALE_RUNTIME', 'recorded Node runtime fingerprint changed');
-  }
-}
-
-function inspect(paths) {
-  if (!fs.existsSync(paths.productRoot)) return { status: 'absent', packageReadiness: { status: 'absent' } };
-  const recovery = recoveryReport(paths);
-  if (recovery.issues.length > 0) {
-    return { status: 'blocked', packageReadiness: { status: 'blocked', issues: recovery.issues } };
-  }
-  try {
-    const active = readActive(paths);
-    if (!active) throw new LifecycleError('ACTIVE_ABSENT', 'active lifecycle state is absent');
-    const verified = receiptFor(paths, active.active_release);
-    assertRuntime(paths, active, verified.receipt);
-    return {
-      status: 'ready',
-      packageReadiness: {
-        status: 'ready',
-        bundle: {
-          release_id: active.active_release,
-          version: '1.0.3',
-          launcher: paths.launcher,
-        },
-      },
-      extra: {
-        release_id: active.active_release,
-        commit_sha: verified.receipt.commit_sha,
-      },
-    };
-  } catch (error) {
-    return {
-      status: 'blocked',
-      packageReadiness: {
-        status: 'blocked',
-        issues: [{ code: error.code || 'INVALID_STATE', path: paths.productRoot }],
-      },
-    };
-  }
-}
+const { inspect, recoverBootstrap } = createStatus({ envelope });
 
 function install(options, paths) {
   parseOfficialSource(options.source, PRODUCT);
@@ -195,6 +141,7 @@ function execute(options) {
   const paths = productPaths({ installRoot: options.installRoot, product: PRODUCT });
   if (['onboard', 'update'].includes(options.command)) return install(options, paths);
   if (options.command === 'offboard') return offboard(options, paths);
+  if (options.command === 'recover-bootstrap-lock') return recoverBootstrap(options, paths);
   return status(options, paths);
 }
 

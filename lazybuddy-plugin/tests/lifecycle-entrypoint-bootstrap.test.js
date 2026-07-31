@@ -169,7 +169,7 @@ test('onboard preserves an unverified workspace with a structured refusal', (t) 
   assert.deepEqual(fs.readdirSync(productRoot), ['caller-owned.txt']);
 });
 
-test('identity-changing onboard returns a recovery state without writing the replacement workspace', (t) => {
+test('collision-preserved bootstrap lock is surfaced and recovered through the real lifecycle CLI', (t) => {
   // Given: a real CLI whose new product root is replaced when its private bootstrap lock opens.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy swapped caller scaffold '));
   t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
@@ -223,6 +223,25 @@ fs.openSync = (target, flags, mode) => {
   });
   assert.equal(fs.readFileSync(path.join(productRoot, 'sentinel.txt'), 'utf8'), 'caller-owned\n');
   assert.deepEqual(fs.readdirSync(path.join(productRoot, 'locks')), []);
+
+  // When: the real status and explicit recovery commands inspect the retained sibling lock.
+  const status = spawnSync(process.execPath, [
+    CLI, 'status', '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], { encoding: 'utf8' });
+  const recovered = spawnSync(process.execPath, [
+    CLI, 'recover-bootstrap-lock', '--install-root', installRoot, '--project', projectRoot, '--yes', '--json',
+  ], { encoding: 'utf8' });
+
+  // Then: status names the sibling lock, recovery removes only it, and the caller workspace stays untouched.
+  assert.equal(status.status, 1, status.stderr);
+  assert.ok(JSON.parse(status.stdout).package_readiness.issues.some((issue) => (
+    issue.code === 'BOOTSTRAP_LOCK_PRESENT' && issue.path === path.join(installRoot, '.LazyBuddy.bootstrap.lock')
+  )));
+  assert.equal(recovered.status, 0, recovered.stderr);
+  assert.equal(JSON.parse(recovered.stdout).status, 'bootstrap_lock_recovered');
+  assert.equal(fs.existsSync(path.join(installRoot, '.LazyBuddy.bootstrap.lock')), false);
+  assert.equal(fs.readFileSync(path.join(productRoot, 'sentinel.txt'), 'utf8'), 'caller-owned\n');
+  assert.equal(fs.existsSync(path.join(productRoot, 'locks', 'lifecycle.lock')), false);
 });
 
 test('failed onboard preserves a caller-owned exact empty lifecycle scaffold', (t) => {

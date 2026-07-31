@@ -13,6 +13,7 @@ const {
   prepareProductRoot,
   promoteRelease,
   pruneRollback,
+  recoverBootstrapLock,
   recoverStaleLock,
   recoveryReport,
   resolveInstallRoot,
@@ -117,6 +118,41 @@ test('lock contention and stale recovery require explicit confirmation', () => {
   expectCode(() => acquireLock(f.paths, 'update'), 'LOCKED');
   recoverStaleLock(f.paths, 'recover-stale-lock');
   assert.equal(fs.existsSync(f.paths.lock), false);
+});
+
+test('bootstrap stale-lock recovery rejects malformed, linked, and replaced siblings', (t) => {
+  const f = fixture();
+  const record = {
+    pid: 99999999,
+    host: os.hostname(),
+    started_at: '2000-01-01T00:00:00.000Z',
+    operation: 'onboard',
+    nonce: '00000000-0000-4000-8000-000000000000',
+    lock_kind: 'bootstrap',
+    product: f.product,
+  };
+  fs.writeFileSync(f.paths.bootstrapLock, '{}\n');
+  expectCode(() => recoverBootstrapLock(f.paths, 'recover-stale-bootstrap-lock'), 'OWNERSHIP_REFUSED');
+  fs.rmSync(f.paths.bootstrapLock);
+  const linkedTarget = path.join(f.sandbox, 'linked-lock');
+  fs.writeFileSync(linkedTarget, JSON.stringify(record));
+  fs.symlinkSync(linkedTarget, f.paths.bootstrapLock);
+  expectCode(() => recoverBootstrapLock(f.paths, 'recover-stale-bootstrap-lock'), 'OWNERSHIP_REFUSED');
+  fs.rmSync(f.paths.bootstrapLock);
+  fs.writeFileSync(f.paths.bootstrapLock, JSON.stringify(record));
+  const replacement = JSON.stringify({ ...record, nonce: '11111111-1111-4111-8111-111111111111' });
+  const replacementPath = path.join(f.sandbox, 'replacement-lock');
+  const lstatSync = fs.lstatSync;
+  let lockStats = 0;
+  t.mock.method(fs, 'lstatSync', (target) => {
+    if (target === f.paths.bootstrapLock && ++lockStats === 2) {
+      fs.writeFileSync(replacementPath, replacement);
+      fs.renameSync(replacementPath, target);
+    }
+    return lstatSync(target);
+  });
+  expectCode(() => recoverBootstrapLock(f.paths, 'recover-stale-bootstrap-lock'), 'OWNERSHIP_REFUSED');
+  assert.equal(fs.readFileSync(f.paths.bootstrapLock, 'utf8'), replacement);
 });
 
 test('cross-device promotion failure leaves the old active release readable', (t) => {
