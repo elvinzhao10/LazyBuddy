@@ -150,10 +150,10 @@ the verified official origin `https://github.com/elvinzhao10/LazyBuddy.git`
 (the `.git` suffix is optional). The first checkout is transport only:
 
 ```bash
-node <verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js \
+node "<verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js" \
   onboard --source https://github.com/elvinzhao10/LazyBuddy \
-  --install-root <absolute-install-root> \
-  --project <absolute-project-root> --json
+  --install-root "<absolute-install-root>" \
+  --project "<absolute-project-root>" --json
 ```
 
 The default `<install-root>` is `~/Library/Application Support/LazySeries` on
