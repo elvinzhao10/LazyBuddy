@@ -14,6 +14,11 @@ plan-first `offboard`. The exact durable tree is
 The source checkout may be deleted after promotion. Never install in a
 temporary or cache directory.
 
+If lifecycle state collides with an existing path, preserve the caller
+workspace. Only an explicitly verified lifecycle-owned sibling bootstrap lock
+or product `staging/`/`locks/` artifact is recoverable; never remove or replace
+caller workspace files.
+
 1. Detect or ask for **CodeBuddy IDE**, **CodeBuddy CLI**, or **WorkBuddy**.
 2. Resolve the absolute release/plugin root; never guess it from PATH or treat
    `--plugin-dir` as an installed route.

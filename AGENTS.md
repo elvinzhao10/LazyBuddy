@@ -19,6 +19,11 @@ Never install into a temporary/cache directory or treat package state as proof
 that a host loaded it. Lifecycle commands are `onboard`, `update`, `status`,
 and `offboard`.
 
+If lifecycle state collides with an existing path, preserve the caller
+workspace. Only an explicitly verified lifecycle-owned sibling bootstrap lock
+or product `staging/`/`locks/` artifact is recoverable; never remove or replace
+caller workspace files.
+
 ## Current-message routing contract
 
 Before taking onboarding action, scan the whole current user message,
@@ -232,6 +237,9 @@ new session; never scan or guess host directories and never remove another
 host's settings. An upgrade rollback must likewise remove only v1.0.3
 receipt-owned assets after approval; never overwrite user-modified v1.0.2
 assets.
+Recovery is limited to an explicitly verified lifecycle-owned sibling bootstrap
+lock or product `staging/`/`locks/` artifact; the caller workspace is always
+preserved.
 
 If `status` reports `STALE_RUNTIME`, do not edit `active.json` or receipts.
 Use a fresh checkout from the verified GitHub origin for scoped offboard and

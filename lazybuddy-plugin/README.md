@@ -20,18 +20,36 @@ primarily inspired by LazyCodex, while [NOTICE](NOTICE) records LazyCodex and
 OmO upstream attribution. It is an independent implementation and does not
 require LazyCodex or OmO at runtime.
 
-## Local-first onboarding
+## Durable onboarding
 
-Keep the pinned `v1.0.3` release in a permanent folder, open or link it in the
-selected CodeBuddy or WorkBuddy host, give the agent
-`https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent asks
-which host is in use, runs safe package checks, and reports **package
-readiness** separately from **host readiness**. Before any host-managed
-marketplace, plugin, Skills, connector, account, or credential action it asks
-for approval, then gives one exact action and waits. After the response it
-inspects the app with Computer Use; reload/new session is a separate action.
-If Computer Use is unavailable, a user-pasted verbatim status or screenshot is
-observed evidence. Without either, **HOST READINESS: PENDING**.
+Bootstrap v1.0.3 once from a verified official source checkout, then use the
+durable launcher rather than treating that checkout as the installed runtime:
+
+```bash
+node <verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js \
+  onboard --source https://github.com/elvinzhao10/LazyBuddy \
+  --install-root <absolute-install-root> --project <absolute-project-root> --json
+node "<install-root>/LazyBuddy/launcher.js" status \
+  --install-root "<install-root>" --project "<project-root>" --json
+```
+
+The source checkout is transport only and may be removed after promotion. The
+durable install root must be absolute, non-root, and outside disposable
+downloads or caches. Open or link the active durable release in the selected
+CodeBuddy or WorkBuddy host, give the agent `https://github.com/elvinzhao10/LazyBuddy`,
+and type `onboard`. The agent asks which host is in use, runs safe package
+checks, and reports **package readiness** separately from **host readiness**.
+Before any host-managed marketplace, plugin, Skills, connector, account, or
+credential action it asks for approval, then gives one exact action and waits.
+After the response it inspects the app with Computer Use; reload/new session is
+a separate action. If Computer Use is unavailable, a user-pasted verbatim
+status or screenshot is observed evidence. Without either, **HOST READINESS:
+PENDING**.
+
+If lifecycle state collides with an existing path, preserve the caller
+workspace. Only an explicitly verified lifecycle-owned sibling bootstrap lock
+or product `staging/`/`locks/` artifact is recoverable; never remove or replace
+caller workspace files.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
@@ -50,7 +68,9 @@ changes. That feedback is not an installation route. The GUI flows failed in
 that tested build; Skills import/copy plus six individual manual local MCP
 connectors remains the supported fallback.
 
-1. **Onboard** — open the permanent pinned release in the selected host and type `onboard` after providing the GitHub repository link.
+1. **Onboard** — bootstrap the durable release, open or link that active
+   release in the selected host, and type `onboard` after providing the GitHub
+   repository link.
 2. **Verify the package** — from this `lazybuddy-plugin/` directory, run `bash scripts/lazybuddy-load-check.sh`, then `bash scripts/lazybuddy-plugin-doctor.sh`. These checks report package readiness, not host loading or MCP connection.
 3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or Skill and all six MCP connections in a new session. In WorkBuddy, confirm an imported Skill and each manually configured local connector; do not infer commands, agents, hooks, or MCP loading from files or load-check output without full-plugin proof.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.

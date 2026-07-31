@@ -173,6 +173,11 @@ The lifecycle commands are `onboard`, `update`, `status`, and `offboard`.
 The official ref resolves to a full commit SHA; a moved same-version ref
 requires a second `update` with `--confirm-revision <full-sha>`.
 
+If lifecycle state collides with an existing path or an interrupted operation,
+the caller workspace is preserved. Recovery is limited to an explicitly
+verified lifecycle-owned sibling bootstrap lock or product `staging/`/`locks/`
+artifact; it never authorizes removal or replacement of caller workspace files.
+
 ### Upgrade from v1.0.2
 
 Inventory managed versus modified/unknown assets before upgrading. Onboard the
@@ -269,7 +274,9 @@ never guesses or removes host-managed paths.
 Run the durable launcher's `offboard` without `--yes` first. Review its exact
 receipt-owned LazyBuddy product-root plan, then repeat with `--yes` only after
 confirmation. Modified or unknown content is preserved. Project files, another
-LazySeries product, and host settings remain out of scope.
+LazySeries product, and host settings remain out of scope. A recovery command
+may address only an explicitly verified lifecycle-owned sibling bootstrap lock
+or product `staging/`/`locks/` artifact; the caller workspace stays preserved.
 
 For package command details and the optional tooling lifecycle, see
 [lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
