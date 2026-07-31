@@ -64,7 +64,7 @@ active durable release root printed by `status --route
 codebuddy-marketplace` (not a source checkout or nested `lazybuddy-plugin/`):
 
 ```text
-codebuddy plugin marketplace add <active-durable-release-root>
+codebuddy plugin marketplace add "<active-durable-release-root>"
 codebuddy plugin install lazybuddy@lazybuddy
 ```
 
@@ -95,7 +95,7 @@ read-only:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
-  --project-dir <absolute-project-root>
+  --project-dir "<absolute-project-root>"
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and

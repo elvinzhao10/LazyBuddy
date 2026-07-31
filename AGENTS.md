@@ -104,7 +104,7 @@ The supported local route uses the **release root** (the directory containing
 `lazybuddy-plugin/` directory:
 
 ```text
-codebuddy plugin marketplace add <active-durable-release-root>
+codebuddy plugin marketplace add "<active-durable-release-root>"
 codebuddy plugin install lazybuddy@lazybuddy
 ```
 
@@ -117,7 +117,7 @@ as persistence.
 These are three separate future user actions:
 
 1. **Action 1 — discover:** after approval, add the absolute release root with
-   `codebuddy plugin marketplace add <active-durable-release-root>` (or the
+   `codebuddy plugin marketplace add "<active-durable-release-root>"` (or the
    equivalent interactive `/plugin` menu inside CodeBuddy), then wait while the
    agent uses Computer Use to observe that
    `lazybuddy@lazybuddy` is discovered. Do not install yet.
@@ -165,7 +165,7 @@ The agent may render/check package inputs without changing WorkBuddy:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
-  --project-dir <absolute-project-root>
+  --project-dir "<absolute-project-root>"
 ```
 
 This preflight is read-only and prints `HOST_PREPARATION=not-applied`,

@@ -56,7 +56,7 @@ Run durable `status --route codebuddy-marketplace` and use its active durable
 release root containing `.codebuddy-plugin/marketplace.json`:
 
 ```text
-codebuddy plugin marketplace add <active-durable-release-root>
+codebuddy plugin marketplace add "<active-durable-release-root>"
 codebuddy plugin install lazybuddy@lazybuddy
 ```
 
@@ -77,7 +77,7 @@ When the CLI is available (`codebuddy`), use the same release-root marketplace
 route as CodeBuddy CLI:
 
 ```text
-codebuddy plugin marketplace add <active-durable-release-root>
+codebuddy plugin marketplace add "<active-durable-release-root>"
 codebuddy plugin install lazybuddy@lazybuddy
 ```
 
@@ -98,7 +98,7 @@ root:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
-  --project-dir <absolute-project-root>
+  --project-dir "<absolute-project-root>"
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
