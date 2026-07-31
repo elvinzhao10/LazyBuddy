@@ -33,7 +33,7 @@ supported local fallback.
 | Host | Local route | Supported fallback | Required host proof |
 | --- | --- | --- | --- |
 | **CodeBuddy IDE** | When the CLI is available (`codebuddy`), use the user-scope release-root marketplace route shared with CodeBuddy CLI. The GUI route is only an observed-build alternative; the supplied GUI Add local directory flow failed. | Public Skills import plus manual MCP JSON when the CLI is unavailable. It excludes commands, agents, and hooks. | New-session Skill/command appropriate to the chosen route and all six MCP connections. |
-| **CodeBuddy CLI** | Run durable `status --route codebuddy-marketplace`, then use its active durable release root with `codebuddy plugin marketplace add <active-durable-release-root>`; wait before `codebuddy plugin install lazybuddy@lazybuddy`. | Inside a CodeBuddy session, the interactive `/plugin` menu provides the same route. `--plugin-dir` is development/testing only, never persistent. | Fresh-session Skill/command and all six MCP connections. |
+| **CodeBuddy CLI** | Run durable `status --route codebuddy-marketplace`, then use its active durable release root with `codebuddy plugin marketplace add "<active-durable-release-root>"`; wait before `codebuddy plugin install lazybuddy@lazybuddy`. | Inside a CodeBuddy session, the interactive `/plugin` menu provides the same route. `--plugin-dir` is development/testing only, never persistent. | Fresh-session Skill/command and all six MCP connections. |
 | **WorkBuddy** | Historical full-plugin observation only; no supported public installation contract was verified. | Skills-only import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | One imported Skill plus every connector. The GUI Install action is broken in the supplied build. |
 
 The supplied macOS QA dated 2026-07-18 inspected WorkBuddy v5.2.6 on macOS
@@ -53,7 +53,7 @@ release root:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
-  --project-dir <absolute-project-root>
+  --project-dir "<absolute-project-root>"
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and

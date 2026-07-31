@@ -86,7 +86,7 @@ This package preflight remains read-only:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
-  --project-dir <absolute-project-root>
+  --project-dir "<absolute-project-root>"
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
@@ -102,7 +102,7 @@ printed by durable `status --route codebuddy-marketplace` to the local
 marketplace:
 
 ```text
-codebuddy plugin marketplace add <active-durable-release-root>
+codebuddy plugin marketplace add "<active-durable-release-root>"
 codebuddy plugin install lazybuddy@lazybuddy
 ```
 
