@@ -218,7 +218,10 @@ function failure(options, error) {
         status: 'blocked',
         issues: [{ code: error.code || 'UNEXPECTED_ERROR', path: issuePath }],
       },
-      extra: { error: { code: error.code || 'UNEXPECTED_ERROR', message: error.message } },
+      extra: {
+        ...(error.preservation ? { preservation: error.preservation } : {}),
+        error: { code: error.code || 'UNEXPECTED_ERROR', message: error.message },
+      },
     },
   );
 }

@@ -5,7 +5,7 @@ const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { promoteRelease } = require('./core');
-const { LifecycleError } = require('./errors');
+const { LifecycleError, workspacePreserved } = require('./errors');
 const { safeFile } = require('./files');
 const {
   prepareBootstrapProductRoot,
@@ -147,7 +147,7 @@ function acquireBootstrapLock(paths, operation, prepared, deadline) {
   let current = prepared;
   while (true) {
     try {
-      return { lock: acquireLock(paths, operation, current.identity), prepared: current };
+      return { lock: acquireLock(paths, operation, current.identity, paths.bootstrapLock), prepared: current };
     } catch (error) {
       if (error && error.code === 'ENOENT') {
         current = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
@@ -172,22 +172,28 @@ function bootstrapProduct(paths, operation, options) {
   try {
     const postLock = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
     if (postLock.identity.dev !== prepared.identity.dev || postLock.identity.ino !== prepared.identity.ino) {
-      throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed after lifecycle lock acquisition');
+      throw workspacePreserved(paths, [
+        { kind: 'bootstrap_workspace', lastKnownPath: paths.productRoot },
+      ], 'product root identity changed after lifecycle lock acquisition');
     }
     result = bootstrapRelease(paths, options);
     completed = true;
   } catch (error) {
-    failure = error;
+    failure = error.code === 'WORKSPACE_PRESERVED' && prepared.ownership !== null
+      ? workspacePreserved(paths, [
+        { kind: 'bootstrap_workspace', lastKnownPath: paths.productRoot },
+        { kind: 'lifecycle_lock', lastKnownPath: paths.bootstrapLock },
+      ], error.message, error)
+      : error;
   } finally {
     try {
-      if (!completed) quarantine = quarantineEmptyProductRoot(paths, prepared.ownership);
-      const lockPath = quarantine === null
-        ? paths.lock
-        : path.join(quarantine, 'locks', path.basename(paths.lock));
-      lock.release(lockPath);
-      if (quarantine !== null) removeQuarantinedProductRoot(paths, quarantine);
+      if (!failure || failure.code !== 'WORKSPACE_PRESERVED') {
+        if (!completed) quarantine = quarantineEmptyProductRoot(paths, prepared.ownership);
+        lock.release(paths.bootstrapLock);
+        if (quarantine !== null) removeQuarantinedProductRoot(paths, quarantine);
+      }
     } catch (error) {
-      if (failure === null) failure = error;
+      if (failure === null || error.code === 'WORKSPACE_PRESERVED') failure = error;
     }
   }
   if (failure !== null) throw failure;

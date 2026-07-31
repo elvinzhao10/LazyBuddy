@@ -357,11 +357,13 @@ test('post-lock root replacement stops before bootstrap descendants and remains 
   const realRenameSync = fs.renameSync;
   const realSpawnSync = childProcess.spawnSync;
   let rootReadsAfterLock = 0;
+  let replacementRootReads = 0;
   let swapped = false;
   let spawnCountAfterSwap = 0;
   t.mock.method(fs, 'lstatSync', (target, ...args) => {
     const stat = realLstatSync(target, ...args);
-    if (!swapped && target === f.paths.productRoot && fs.existsSync(f.paths.lock)) {
+    if (swapped && target === f.paths.productRoot) replacementRootReads += 1;
+    if (!swapped && target === f.paths.productRoot && fs.existsSync(f.paths.bootstrapLock)) {
       rootReadsAfterLock += 1;
       if (rootReadsAfterLock === 7) {
         fs.rmSync(f.paths.productRoot, { recursive: true });
@@ -390,19 +392,30 @@ test('post-lock root replacement stops before bootstrap descendants and remains 
   // Then: preservation is primary, no later command runs, and the caller tree is identity-exact.
   assert.deepEqual({
     code: error && error.code,
+    preservation: error && error.preservation,
+    replacementRootReads,
     spawnCountAfterSwap,
     swapped,
     tree: treeSnapshot(f.paths.productRoot),
   }, {
     code: 'WORKSPACE_PRESERVED',
+    preservation: {
+      status: 'recovery_required',
+      public_workspace: f.paths.productRoot,
+      retained_artifacts: [
+        { kind: 'bootstrap_workspace', last_known_path: f.paths.productRoot },
+        { kind: 'lifecycle_lock', last_known_path: f.paths.bootstrapLock },
+      ],
+    },
+    replacementRootReads: 1,
     spawnCountAfterSwap: 0,
     swapped: true,
     tree: expectedTree,
   });
 });
 
-test('cleanup preserves a replacement caller lock even when it copies the acquired nonce', (t) => {
-  // Given: a caller root ready to replace the creator immediately after the lock write.
+test('lock-acquisition collision retains the private lock without touching replacement descendants', (t) => {
+  // Given: a caller root ready to replace the creator immediately after the private lock write.
   const f = fixture();
   t.after(() => fs.rmSync(f.sandbox, { recursive: true, force: true }));
   fs.rmSync(f.paths.productRoot, { recursive: true });
@@ -412,21 +425,29 @@ test('cleanup preserves a replacement caller lock even when it copies the acquir
   const realFsyncSync = fs.fsyncSync;
   const realRenameSync = fs.renameSync;
   let expectedTree;
+  const descendantAccesses = [];
+  let monitorDescendants = false;
   let swapped = false;
+  const realLstatSync = fs.lstatSync;
+  t.mock.method(fs, 'lstatSync', (target, ...args) => {
+    if (monitorDescendants && typeof target === 'string' && target.startsWith(`${f.paths.productRoot}${path.sep}`)) {
+      descendantAccesses.push(target);
+    }
+    return realLstatSync(target, ...args);
+  });
   t.mock.method(fs, 'fsyncSync', (descriptor) => {
     const result = realFsyncSync(descriptor);
-    if (!swapped && fs.existsSync(f.paths.lock)) {
-      const copiedRecord = fs.readFileSync(f.paths.lock);
+    if (!swapped && fs.existsSync(f.paths.bootstrapLock)) {
       fs.rmSync(f.paths.productRoot, { recursive: true });
       realRenameSync(caller, f.paths.productRoot);
-      fs.writeFileSync(f.paths.lock, copiedRecord, { mode: 0o600 });
       expectedTree = treeSnapshot(f.paths.productRoot);
       swapped = true;
+      monitorDescendants = true;
     }
     return result;
   });
 
-  // When: normal failure cleanup encounters the copied nonce in a replacement inode.
+  // When: lock acquisition detects that the public root identity changed.
   let error;
   try {
     bootstrapProduct(f.paths, 'onboard', {
@@ -437,13 +458,25 @@ test('cleanup preserves a replacement caller lock even when it copies the acquir
     error = caught;
   }
 
-  // Then: root identity loss is reported and cleanup never removes or changes the caller lock.
+  // Then: root identity loss is recoverable and no descendant of the caller root is accessed.
+  monitorDescendants = false;
   assert.deepEqual({
     code: error && error.code,
+    descendantAccesses,
+    preservation: error && error.preservation,
     swapped,
     tree: treeSnapshot(f.paths.productRoot),
   }, {
     code: 'WORKSPACE_PRESERVED',
+    descendantAccesses: [],
+    preservation: {
+      status: 'recovery_required',
+      public_workspace: f.paths.productRoot,
+      retained_artifacts: [
+        { kind: 'bootstrap_workspace', last_known_path: f.paths.productRoot },
+        { kind: 'lifecycle_lock', last_known_path: f.paths.bootstrapLock },
+      ],
+    },
     swapped: true,
     tree: expectedTree,
   });

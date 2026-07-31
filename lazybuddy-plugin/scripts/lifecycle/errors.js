@@ -8,4 +8,17 @@ class LifecycleError extends Error {
   }
 }
 
-module.exports = { LifecycleError };
+function workspacePreserved(paths, artifacts, message, cause) {
+  const error = new LifecycleError('WORKSPACE_PRESERVED', message, cause);
+  error.preservation = {
+    status: 'recovery_required',
+    public_workspace: paths.productRoot,
+    retained_artifacts: artifacts.map(({ kind, lastKnownPath }) => ({
+      kind,
+      last_known_path: lastKnownPath,
+    })),
+  };
+  return error;
+}
+
+module.exports = { LifecycleError, workspacePreserved };

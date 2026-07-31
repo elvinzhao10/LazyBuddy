@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { LifecycleError } = require('./errors');
+const { LifecycleError, workspacePreserved } = require('./errors');
 
 const PRODUCTS = new Set(['LazyTrae', 'LazyBuddy']);
 
@@ -69,6 +69,7 @@ function productPaths({ installRoot, product }) {
     installRoot: resolvedRoot,
     product,
     productRoot,
+    bootstrapLock: path.join(resolvedRoot, `.${product}.bootstrap.lock`),
     releases: path.join(productRoot, 'releases'),
     active: path.join(productRoot, 'active.json'),
     launcher: path.join(productRoot, 'launcher.js'),
@@ -142,7 +143,7 @@ function prepareBootstrapProductRoot(options) {
         const identity = productRootIdentity(paths);
         if (sameIdentity(existing, identity)) return { identity, ownership: null, paths };
       }
-      throw new LifecycleError('WORKSPACE_PRESERVED', `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
+      throw workspacePreserved(paths, [], `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
     }
     try {
       fs.mkdirSync(paths.productRoot, { mode: 0o700 });
@@ -163,7 +164,9 @@ function prepareBootstrapProductRoot(options) {
       const identity = productRootIdentity(paths);
       if (sameIdentity(ownership, identity)) return { identity, ownership, paths };
     }
-    throw new LifecycleError('WORKSPACE_PRESERVED', `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
+    throw workspacePreserved(paths, [
+      { kind: 'bootstrap_workspace', lastKnownPath: paths.productRoot },
+    ], `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
   }
 }
 
