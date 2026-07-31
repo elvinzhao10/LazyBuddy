@@ -2,7 +2,7 @@
 
 const { LifecycleError } = require('./errors');
 
-const COMMANDS = new Set(['onboard', 'update', 'status', 'offboard']);
+const COMMANDS = new Set(['onboard', 'update', 'status', 'offboard', 'recover-bootstrap-lock']);
 const VALUE_FLAGS = new Set(['--install-root', '--project', '--source', '--confirm-revision', '--observation-receipt']);
 const BOOLEAN_FLAGS = new Set(['--json', '--yes']);
 const ROUTE_FLAG = '--route';
@@ -17,6 +17,7 @@ Commands:
   update    Verify and promote an official LazyBuddy revision
   status    Inspect durable package and host-readiness state
   offboard  Plan or remove exact receipt-owned LazyBuddy state
+  recover-bootstrap-lock  Recover a verified stale sibling bootstrap lock
 
 Common options:
   --install-root <absolute-path>
@@ -31,7 +32,7 @@ Onboard/update options:
   --source <canonical-official-url>
   --confirm-revision <full-sha>
 
-Offboard option:
+Offboard/recover-bootstrap-lock option:
   --yes
 `;
 }
@@ -83,8 +84,8 @@ function parseArgs(argv) {
   if (options.observationReceipt && options.routes.length === 0) {
     throw new LifecycleError('INVALID_ARGUMENT', '--observation-receipt requires one selected --route');
   }
-  if (options.yes && command !== 'offboard') {
-    throw new LifecycleError('INVALID_ARGUMENT', '--yes applies only to offboard');
+  if (options.yes && !['offboard', 'recover-bootstrap-lock'].includes(command)) {
+    throw new LifecycleError('INVALID_ARGUMENT', '--yes applies only to offboard or recover-bootstrap-lock');
   }
   if (['onboard', 'update'].includes(command) && !options.source) {
     throw new LifecycleError('INVALID_ARGUMENT', '--source is required for onboard and update');

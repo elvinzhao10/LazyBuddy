@@ -35,13 +35,14 @@ function installLauncher(paths) {
   fs.writeFileSync(paths.launcher, LAUNCHER, { mode: 0o755, flag: 'wx' });
 }
 
-function acquireLock(paths, operation, productIdentity, lockPath = paths.lock) {
+function acquireLock(paths, operation, productIdentity, lockPath = paths.lock, lockKind = null) {
   const record = {
     pid: process.pid,
     host: os.hostname(),
     started_at: new Date().toISOString(),
     operation,
     nonce: crypto.randomUUID(),
+    ...(lockKind === null ? {} : { lock_kind: lockKind, product: paths.product }),
   };
   let descriptor;
   let lockIdentity;
@@ -107,12 +108,17 @@ function acquireLock(paths, operation, productIdentity, lockPath = paths.lock) {
   };
 }
 
-function recoverStaleLock(paths, confirmation) {
+function recoverStaleLock(paths, confirmation, lockPath = paths.lock, expectedLockKind = null) {
   if (confirmation !== 'recover-stale-lock') {
     throw new LifecycleError('CONFIRMATION_REQUIRED', 'pass explicit recover-stale-lock confirmation');
   }
-  if (!fs.existsSync(paths.lock)) throw new LifecycleError('NO_LOCK', 'no lifecycle lock exists');
-  const file = safeFile(paths.lock, 'OWNERSHIP_REFUSED');
+  try {
+    fs.lstatSync(lockPath);
+  } catch (error) {
+    if (error && error.code === 'ENOENT') throw new LifecycleError('NO_LOCK', 'no lifecycle lock exists');
+    throw error;
+  }
+  const file = safeFile(lockPath, 'OWNERSHIP_REFUSED');
   let record;
   try {
     record = JSON.parse(file.bytes.toString('utf8'));
@@ -126,6 +132,9 @@ function recoverStaleLock(paths, confirmation) {
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(record.nonce)) {
     throw new LifecycleError('OWNERSHIP_REFUSED', 'lifecycle lock is not an owned lock record');
   }
+  if (expectedLockKind !== null && (record.product !== paths.product || record.lock_kind !== expectedLockKind)) {
+    throw new LifecycleError('OWNERSHIP_REFUSED', 'lifecycle lock does not match the requested recovery route');
+  }
   if (record.host !== os.hostname()) {
     throw new LifecycleError('LOCK_STALENESS_UNPROVEN', 'cannot prove a lock from another host is stale');
   }
@@ -138,11 +147,18 @@ function recoverStaleLock(paths, confirmation) {
       throw new LifecycleError('LOCK_STALENESS_UNPROVEN', 'cannot prove lifecycle lock is stale', error);
     }
   }
-  const current = fs.lstatSync(paths.lock);
+  const current = fs.lstatSync(lockPath);
   if (!current.isFile() || current.nlink !== 1 || current.dev !== file.stat.dev || current.ino !== file.stat.ino) {
     throw new LifecycleError('OWNERSHIP_REFUSED', 'lifecycle lock changed during recovery');
   }
-  fs.unlinkSync(paths.lock);
+  fs.unlinkSync(lockPath);
+}
+
+function recoverBootstrapLock(paths, confirmation) {
+  if (confirmation !== 'recover-stale-bootstrap-lock') {
+    throw new LifecycleError('CONFIRMATION_REQUIRED', 'pass explicit recover-stale-bootstrap-lock confirmation');
+  }
+  recoverStaleLock(paths, 'recover-stale-lock', paths.bootstrapLock, 'bootstrap');
 }
 
 function readActive(paths) {
@@ -179,6 +195,16 @@ function writeActive(paths, active) {
 function recoveryReport(paths) {
   const issues = [];
   let activeState = null;
+  try {
+    fs.lstatSync(paths.bootstrapLock);
+    issues.push({
+      code: 'BOOTSTRAP_LOCK_PRESENT',
+      path: paths.bootstrapLock,
+      recovery: 'lifecycle recover-bootstrap-lock --yes',
+    });
+  } catch (error) {
+    if (!error || error.code !== 'ENOENT') throw error;
+  }
   if (!fs.existsSync(paths.productRoot)) {
     issues.push({ code: 'ABSENT_ROOT', path: paths.productRoot });
     return { product: paths.product, issues };
@@ -210,6 +236,7 @@ module.exports = {
   acquireLock,
   installLauncher,
   readActive,
+  recoverBootstrapLock,
   recoverStaleLock,
   recoveryReport,
   writeActive,
