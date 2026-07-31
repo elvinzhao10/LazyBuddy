@@ -26,9 +26,9 @@ Bootstrap v1.0.3 once from a verified official source checkout, then use the
 durable launcher rather than treating that checkout as the installed runtime:
 
 ```bash
-node <verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js \
+node "<verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js" \
   onboard --source https://github.com/elvinzhao10/LazyBuddy \
-  --install-root <absolute-install-root> --project <absolute-project-root> --json
+  --install-root "<absolute-install-root>" --project "<absolute-project-root>" --json
 node "<install-root>/LazyBuddy/launcher.js" status \
   --install-root "<install-root>" --project "<project-root>" --json
 ```

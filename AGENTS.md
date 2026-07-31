@@ -17,7 +17,7 @@ default install root is `~/Library/Application Support/LazySeries` on macOS,
 `LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
 Never install into a temporary/cache directory or treat package state as proof
 that a host loaded it. Lifecycle commands are `onboard`, `update`, `status`,
-and `offboard`.
+`offboard`, and `recover-bootstrap-lock`.
 
 If lifecycle state collides with an existing path, preserve the caller
 workspace. Only an explicitly verified lifecycle-owned sibling bootstrap lock

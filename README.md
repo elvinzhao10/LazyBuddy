@@ -169,7 +169,8 @@ node "<install-root>/LazyBuddy/launcher.js" status \
 
 The source checkout may then be deleted. The exact installed tree is
 `LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
-The lifecycle commands are `onboard`, `update`, `status`, and `offboard`.
+The lifecycle commands are `onboard`, `update`, `status`, `offboard`, and
+`recover-bootstrap-lock`.
 The official ref resolves to a full commit SHA; a moved same-version ref
 requires a second `update` with `--confirm-revision <full-sha>`.
 
