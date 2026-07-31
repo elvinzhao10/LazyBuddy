@@ -107,6 +107,10 @@ function productRootIdentity(paths) {
   }
 }
 
+function sameIdentity(left, right) {
+  return Boolean(left && right && left.dev === right.dev && left.ino === right.ino);
+}
+
 function prepareExistingProductRoot(paths, identity) {
   for (const directory of [paths.releases, paths.receipts, paths.staging, paths.locks, paths.rollback]) {
     let stat;
@@ -134,7 +138,10 @@ function prepareBootstrapProductRoot(options) {
     if (Date.now() >= deadline) throw new LifecycleError('LOCKED', 'lifecycle bootstrap root remained contended');
     const existing = productRootIdentity(paths);
     if (existing) {
-      if (prepareExistingProductRoot(paths, existing)) return { ownership: null, paths };
+      if (prepareExistingProductRoot(paths, existing)) {
+        const identity = productRootIdentity(paths);
+        if (sameIdentity(existing, identity)) return { identity, ownership: null, paths };
+      }
       throw new LifecycleError('WORKSPACE_PRESERVED', `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
     }
     try {
@@ -152,7 +159,11 @@ function prepareBootstrapProductRoot(options) {
         if (!error || error.code !== 'EEXIST') throw error;
       }
     }
-    if (prepareExistingProductRoot(paths, ownership)) return { ownership, paths };
+    if (prepareExistingProductRoot(paths, ownership)) {
+      const identity = productRootIdentity(paths);
+      if (sameIdentity(ownership, identity)) return { identity, ownership, paths };
+    }
+    throw new LifecycleError('WORKSPACE_PRESERVED', `existing product root was preserved because lifecycle ownership is unverified: ${paths.productRoot}`);
   }
 }
 

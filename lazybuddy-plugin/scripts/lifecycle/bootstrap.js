@@ -147,7 +147,7 @@ function acquireBootstrapLock(paths, operation, prepared, deadline) {
   let current = prepared;
   while (true) {
     try {
-      return { lock: acquireLock(paths, operation), prepared: current };
+      return { lock: acquireLock(paths, operation, current.identity), prepared: current };
     } catch (error) {
       if (error && error.code === 'ENOENT') {
         current = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
@@ -165,21 +165,33 @@ function bootstrapProduct(paths, operation, options) {
   const acquired = acquireBootstrapLock(paths, operation, prepared, deadline);
   const lock = acquired.lock;
   prepared = acquired.prepared;
-  prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
   let completed = false;
   let quarantine = null;
+  let failure = null;
+  let result;
   try {
-    const result = bootstrapRelease(paths, options);
+    const postLock = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
+    if (postLock.identity.dev !== prepared.identity.dev || postLock.identity.ino !== prepared.identity.ino) {
+      throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed after lifecycle lock acquisition');
+    }
+    result = bootstrapRelease(paths, options);
     completed = true;
-    return result;
+  } catch (error) {
+    failure = error;
   } finally {
-    if (!completed) quarantine = quarantineEmptyProductRoot(paths, prepared.ownership);
-    const lockPath = quarantine === null
-      ? paths.lock
-      : path.join(quarantine, 'locks', path.basename(paths.lock));
-    lock.release(lockPath);
-    if (quarantine !== null) removeQuarantinedProductRoot(paths, quarantine);
+    try {
+      if (!completed) quarantine = quarantineEmptyProductRoot(paths, prepared.ownership);
+      const lockPath = quarantine === null
+        ? paths.lock
+        : path.join(quarantine, 'locks', path.basename(paths.lock));
+      lock.release(lockPath);
+      if (quarantine !== null) removeQuarantinedProductRoot(paths, quarantine);
+    } catch (error) {
+      if (failure === null) failure = error;
+    }
   }
+  if (failure !== null) throw failure;
+  return result;
 }
 
 function bootstrapRelease(paths, options) {

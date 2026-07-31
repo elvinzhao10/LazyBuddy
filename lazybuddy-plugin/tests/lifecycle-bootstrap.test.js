@@ -103,6 +103,26 @@ function identity(target) {
   return { dev: stat.dev, ino: stat.ino, mode: stat.mode, nlink: stat.nlink };
 }
 
+function treeSnapshot(root) {
+  const entries = [];
+  const visit = (target, relative = '') => {
+    const stat = fs.lstatSync(target);
+    entries.push({
+      relative,
+      dev: stat.dev,
+      ino: stat.ino,
+      mode: stat.mode,
+      nlink: stat.nlink,
+      sha256: stat.isFile() ? crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex') : null,
+    });
+    if (stat.isDirectory()) {
+      for (const name of fs.readdirSync(target).sort()) visit(path.join(target, name), path.join(relative, name));
+    }
+  };
+  visit(root);
+  return entries;
+}
+
 test('parses only canonical official HTTPS source forms for the selected product', () => {
   const accepted = [
     ['https://github.com/elvinzhao10/LazyBuddy', 'v1.0.3'],
@@ -322,6 +342,111 @@ test('failed bootstrap preserves a caller replacement installed before creator o
 
   assert.ok(callerTarget, 'test seam did not install the caller root');
   assert.deepEqual(identity(callerTarget), callerIdentity);
+});
+
+test('post-lock root replacement stops before bootstrap descendants and remains exact', (t) => {
+  // Given: a creator lock and a caller tree swapped after the final preparation identity read.
+  const f = fixture();
+  t.after(() => fs.rmSync(f.sandbox, { recursive: true, force: true }));
+  fs.rmSync(f.paths.productRoot, { recursive: true });
+  const caller = path.join(f.sandbox, 'late caller');
+  exactScaffold(caller);
+  fs.writeFileSync(path.join(caller, 'sentinel.txt'), 'caller-owned\n');
+  const expectedTree = treeSnapshot(caller);
+  const realLstatSync = fs.lstatSync;
+  const realRenameSync = fs.renameSync;
+  const realSpawnSync = childProcess.spawnSync;
+  let rootReadsAfterLock = 0;
+  let swapped = false;
+  let spawnCountAfterSwap = 0;
+  t.mock.method(fs, 'lstatSync', (target, ...args) => {
+    const stat = realLstatSync(target, ...args);
+    if (!swapped && target === f.paths.productRoot && fs.existsSync(f.paths.lock)) {
+      rootReadsAfterLock += 1;
+      if (rootReadsAfterLock === 7) {
+        fs.rmSync(f.paths.productRoot, { recursive: true });
+        realRenameSync(caller, f.paths.productRoot);
+        swapped = true;
+      }
+    }
+    return stat;
+  });
+  t.mock.method(childProcess, 'spawnSync', (...args) => {
+    if (swapped) spawnCountAfterSwap += 1;
+    return realSpawnSync(...args);
+  });
+
+  // When: bootstrap reaches the post-lock boundary.
+  let error;
+  try {
+    bootstrapProduct(f.paths, 'onboard', {
+      gitPath: path.join(f.sandbox, 'missing-git'),
+      sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
+    });
+  } catch (caught) {
+    error = caught;
+  }
+
+  // Then: preservation is primary, no later command runs, and the caller tree is identity-exact.
+  assert.deepEqual({
+    code: error && error.code,
+    spawnCountAfterSwap,
+    swapped,
+    tree: treeSnapshot(f.paths.productRoot),
+  }, {
+    code: 'WORKSPACE_PRESERVED',
+    spawnCountAfterSwap: 0,
+    swapped: true,
+    tree: expectedTree,
+  });
+});
+
+test('cleanup preserves a replacement caller lock even when it copies the acquired nonce', (t) => {
+  // Given: a caller root ready to replace the creator immediately after the lock write.
+  const f = fixture();
+  t.after(() => fs.rmSync(f.sandbox, { recursive: true, force: true }));
+  fs.rmSync(f.paths.productRoot, { recursive: true });
+  const caller = path.join(f.sandbox, 'copied lock caller');
+  exactScaffold(caller);
+  fs.writeFileSync(path.join(caller, 'sentinel.txt'), 'caller-owned\n');
+  const realFsyncSync = fs.fsyncSync;
+  const realRenameSync = fs.renameSync;
+  let expectedTree;
+  let swapped = false;
+  t.mock.method(fs, 'fsyncSync', (descriptor) => {
+    const result = realFsyncSync(descriptor);
+    if (!swapped && fs.existsSync(f.paths.lock)) {
+      const copiedRecord = fs.readFileSync(f.paths.lock);
+      fs.rmSync(f.paths.productRoot, { recursive: true });
+      realRenameSync(caller, f.paths.productRoot);
+      fs.writeFileSync(f.paths.lock, copiedRecord, { mode: 0o600 });
+      expectedTree = treeSnapshot(f.paths.productRoot);
+      swapped = true;
+    }
+    return result;
+  });
+
+  // When: normal failure cleanup encounters the copied nonce in a replacement inode.
+  let error;
+  try {
+    bootstrapProduct(f.paths, 'onboard', {
+      gitPath: path.join(f.sandbox, 'missing-git'),
+      sourceUrl: 'https://github.com/elvinzhao10/LazyBuddy/tree/main',
+    });
+  } catch (caught) {
+    error = caught;
+  }
+
+  // Then: root identity loss is reported and cleanup never removes or changes the caller lock.
+  assert.deepEqual({
+    code: error && error.code,
+    swapped,
+    tree: treeSnapshot(f.paths.productRoot),
+  }, {
+    code: 'WORKSPACE_PRESERVED',
+    swapped: true,
+    tree: expectedTree,
+  });
 });
 
 test('bootstrap refuses an exact-empty caller product root without changing it', (t) => {
