@@ -105,7 +105,7 @@ function startOnboard({ environment, installRoot, projectRoot }) {
   });
 }
 
-test('fresh onboard prerequisite failure leaves no lifecycle scaffold', (t) => {
+test('fresh onboard prerequisite failure leaves a reusable fail-closed scaffold', (t) => {
   // Given: fresh spaced project/install roots and a PATH without Git.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy prerequisite failure '));
   t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
@@ -124,10 +124,44 @@ test('fresh onboard prerequisite failure leaves no lifecycle scaffold', (t) => {
     env: { ...process.env, PATH: emptyPath },
   });
 
-  // Then: the prerequisite error is reported without creating product state.
+  // Then: the prerequisite error is reported with only the reusable scaffold retained.
   assert.equal(result.status, 1);
   assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
-  assert.equal(fs.existsSync(path.join(installRoot, 'LazyBuddy')), false);
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  assert.deepEqual(fs.readdirSync(productRoot).sort(), ['locks', 'receipts', 'releases', 'rollback', 'staging']);
+  for (const entry of fs.readdirSync(productRoot)) assert.deepEqual(fs.readdirSync(path.join(productRoot, entry)), []);
+});
+
+test('onboard preserves an unverified workspace with a structured refusal', (t) => {
+  // Given: a caller-owned workspace already occupies the lifecycle product path.
+  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy preserved workspace '));
+  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
+  const projectRoot = path.join(sandbox, 'project with spaces');
+  const installRoot = path.join(sandbox, 'install root');
+  const productRoot = path.join(installRoot, 'LazyBuddy');
+  const sentinel = path.join(productRoot, 'caller-owned.txt');
+  fs.mkdirSync(projectRoot, { recursive: true });
+  fs.mkdirSync(productRoot, { recursive: true });
+  fs.writeFileSync(sentinel, 'retain me\n');
+  const before = fs.lstatSync(productRoot);
+
+  // When: the real lifecycle CLI attempts onboard against that path.
+  const result = spawnSync(process.execPath, [
+    CLI, 'onboard', '--source', OFFICIAL,
+    '--install-root', installRoot, '--project', projectRoot, '--json',
+  ], { encoding: 'utf8' });
+  const report = JSON.parse(result.stdout);
+
+  // Then: refusal is machine-readable and the workspace remains byte- and identity-exact.
+  assert.equal(result.status, 1, result.stderr);
+  assert.equal(report.status, 'error');
+  assert.equal(report.error.code, 'WORKSPACE_PRESERVED');
+  assert.equal(report.package_readiness.status, 'blocked');
+  assert.equal(report.host_readiness.status, 'pending');
+  assert.equal(fs.readFileSync(sentinel, 'utf8'), 'retain me\n');
+  const after = fs.lstatSync(productRoot);
+  assert.deepEqual({ dev: after.dev, ino: after.ino }, { dev: before.dev, ino: before.ino });
+  assert.deepEqual(fs.readdirSync(productRoot), ['caller-owned.txt']);
 });
 
 test('failed onboard preserves a caller-owned exact empty lifecycle scaffold', (t) => {
@@ -313,16 +347,17 @@ if (process.env.BOOTSTRAP_ROLE === 'contender') {
   fs.writeFileSync(releaseContender, '');
   const results = await Promise.all([owner, contender]);
 
-  // Then: both failures are structured and the creator removes its fresh root.
+  // Then: both failures are structured and leave only a reusable unlocked scaffold.
   for (const result of results) {
     assert.equal(result.status, 1, result.stderr);
     assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
     assert.doesNotMatch(result.stderr, /ENOENT/);
   }
-  assert.equal(fs.existsSync(productRoot), false, 'lock contention left the fresh LazyBuddy scaffold');
+  assert.equal(fs.existsSync(productRoot), true);
+  assert.deepEqual(fs.readdirSync(path.join(productRoot, 'locks')), []);
 });
 
-test('two concurrent fresh prerequisite failures leave no lifecycle scaffold', { timeout: 15_000 }, async (t) => {
+test('two concurrent fresh prerequisite failures leave a reusable lifecycle scaffold', { timeout: 15_000 }, async (t) => {
   // Given: two real CLI processes paused on opposite sides of first-process cleanup.
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy concurrent failure '));
   t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
@@ -359,15 +394,15 @@ if (process.env.BOOTSTRAP_ROLE === 'first') {
   };
 }
 if (process.env.BOOTSTRAP_ROLE === 'second') {
-  const realMkdirSync = fs.mkdirSync;
+  const realOpenSync = fs.openSync;
   let blocked = false;
-  fs.mkdirSync = (target, options) => {
-    if (!blocked && target === process.env.BLOCKED_DIRECTORY) {
+  fs.openSync = (target, ...args) => {
+    if (!blocked && target === process.env.BLOCKED_LOCK) {
       blocked = true;
       fs.writeFileSync(process.env.SECOND_ENTERED, '');
       wait(process.env.RELEASE_SECOND);
     }
-    return realMkdirSync(target, options);
+    return realOpenSync(target, ...args);
   };
 }
 `);
@@ -390,7 +425,7 @@ if (process.env.BOOTSTRAP_ROLE === 'second') {
   const second = startOnboard({
     environment: {
       ...common,
-      BLOCKED_DIRECTORY: path.join(productRoot, 'releases'),
+      BLOCKED_LOCK: path.join(productRoot, 'locks', 'lifecycle.lock'),
       BOOTSTRAP_ROLE: 'second',
       RELEASE_SECOND: releaseSecond,
       SECOND_ENTERED: secondEntered,
@@ -404,17 +439,19 @@ if (process.env.BOOTSTRAP_ROLE === 'second') {
   fs.writeFileSync(releaseFirst, '');
   const firstResult = await first;
   await waitForPath(path.dirname(productRoot));
-  assert.equal(fs.existsSync(productRoot), false);
+  assert.equal(fs.existsSync(productRoot), true);
+  assert.deepEqual(fs.readdirSync(path.join(productRoot, 'locks')), []);
   fs.writeFileSync(releaseSecond, '');
   const secondResult = await second;
 
-  // Then: both errors are structured and the shared fresh scaffold is absent.
+  // Then: both errors are structured and the shared fresh scaffold remains reusable.
   for (const result of [firstResult, secondResult]) {
     assert.equal(result.status, 1, result.stderr);
     assert.equal(JSON.parse(result.stdout).error.code, 'PREREQUISITE_MISSING');
     assert.doesNotMatch(result.stderr, /ENOENT/);
   }
-  assert.equal(fs.existsSync(productRoot), false, 'concurrent failures left an empty LazyBuddy scaffold');
+  assert.equal(fs.existsSync(productRoot), true);
+  assert.deepEqual(fs.readdirSync(path.join(productRoot, 'locks')), []);
 });
 
 test('update emits revision confirmation while releasing its lifecycle lock', (t) => {

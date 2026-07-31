@@ -143,15 +143,14 @@ function confirmationResult(parsed, sha) {
   };
 }
 
-function acquireBootstrapLock(paths, operation, prepared, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
+function acquireBootstrapLock(paths, operation, prepared, deadline) {
   let current = prepared;
   while (true) {
     try {
       return { lock: acquireLock(paths, operation), prepared: current };
     } catch (error) {
       if (error && error.code === 'ENOENT') {
-        current = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
+        current = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
         continue;
       }
       if (!error || error.code !== 'LOCKED' || current.ownership === null || Date.now() >= deadline) throw error;
@@ -161,11 +160,12 @@ function acquireBootstrapLock(paths, operation, prepared, timeoutMs) {
 }
 
 function bootstrapProduct(paths, operation, options) {
-  let prepared = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
-  const acquired = acquireBootstrapLock(paths, operation, prepared, options.timeoutMs || 30_000);
+  const deadline = Date.now() + (options.timeoutMs || 30_000);
+  let prepared = prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
+  const acquired = acquireBootstrapLock(paths, operation, prepared, deadline);
   const lock = acquired.lock;
   prepared = acquired.prepared;
-  prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product });
+  prepareBootstrapProductRoot({ installRoot: paths.installRoot, product: paths.product, deadline });
   let completed = false;
   let quarantine = null;
   try {
