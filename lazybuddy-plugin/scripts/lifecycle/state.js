@@ -35,7 +35,7 @@ function installLauncher(paths) {
   fs.writeFileSync(paths.launcher, LAUNCHER, { mode: 0o755, flag: 'wx' });
 }
 
-function acquireLock(paths, operation) {
+function acquireLock(paths, operation, productIdentity) {
   const record = {
     pid: process.pid,
     host: os.hostname(),
@@ -44,12 +44,32 @@ function acquireLock(paths, operation) {
     nonce: crypto.randomUUID(),
   };
   let descriptor;
+  let lockIdentity;
+  const rootIdentity = productIdentity || fs.lstatSync(paths.productRoot);
   try {
     descriptor = fs.openSync(paths.lock, 'wx', 0o600);
     fs.writeFileSync(descriptor, JSON.stringify(record) + '\n');
+    lockIdentity = fs.fstatSync(descriptor);
     fs.fsyncSync(descriptor);
     fs.closeSync(descriptor);
     descriptor = undefined;
+    let currentRoot;
+    try {
+      currentRoot = fs.lstatSync(paths.productRoot);
+    } catch (error) {
+      if (!error || error.code !== 'ENOENT') throw error;
+    }
+    if (!currentRoot || currentRoot.dev !== rootIdentity.dev || currentRoot.ino !== rootIdentity.ino) {
+      let currentLock;
+      try {
+        currentLock = fs.lstatSync(paths.lock);
+      } catch (error) {
+        if (!error || error.code !== 'ENOENT') throw error;
+      }
+      if (currentLock && currentLock.isFile() && currentLock.nlink === 1
+        && currentLock.dev === lockIdentity.dev && currentLock.ino === lockIdentity.ino) fs.unlinkSync(paths.lock);
+      throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed while acquiring the lifecycle lock');
+    }
   } catch (error) {
     if (descriptor !== undefined) fs.closeSync(descriptor);
     if (error && error.code === 'EEXIST') throw new LifecycleError('LOCKED', 'lifecycle operation lock exists', error);
@@ -58,8 +78,29 @@ function acquireLock(paths, operation) {
   return {
     record,
     release(lockPath = paths.lock) {
-      const current = readJson(lockPath, 'LOCK_CHANGED');
-      if (current.nonce !== record.nonce) throw new LifecycleError('LOCK_CHANGED', 'lifecycle lock ownership changed');
+      let currentRoot;
+      try {
+        currentRoot = fs.lstatSync(paths.productRoot);
+      } catch (error) {
+        if (error && error.code === 'ENOENT') {
+          throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed while the lifecycle lock was held', error);
+        }
+        throw error;
+      }
+      if (currentRoot.dev !== rootIdentity.dev || currentRoot.ino !== rootIdentity.ino) {
+        throw new LifecycleError('WORKSPACE_PRESERVED', 'product root identity changed while the lifecycle lock was held');
+      }
+      const file = safeFile(lockPath, 'LOCK_CHANGED');
+      let current;
+      try {
+        current = JSON.parse(file.bytes.toString('utf8'));
+      } catch (error) {
+        throw new LifecycleError('LOCK_CHANGED', 'lifecycle lock ownership changed', error);
+      }
+      if (current.nonce !== record.nonce || !file.stat.isFile() || file.stat.nlink !== 1
+        || file.stat.dev !== lockIdentity.dev || file.stat.ino !== lockIdentity.ino) {
+        throw new LifecycleError('LOCK_CHANGED', 'lifecycle lock ownership changed');
+      }
       fs.unlinkSync(lockPath);
     },
   };
