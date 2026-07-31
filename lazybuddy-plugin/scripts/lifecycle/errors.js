@@ -13,10 +13,12 @@ function workspacePreserved(paths, artifacts, message, cause) {
   error.preservation = {
     status: 'recovery_required',
     public_workspace: paths.productRoot,
-    retained_artifacts: artifacts.map(({ kind, lastKnownPath }) => ({
-      kind,
-      last_known_path: lastKnownPath,
-    })),
+    retained_artifacts: artifacts
+      .filter(({ lastKnownPath }) => lastKnownPath !== paths.productRoot)
+      .map(({ kind, lastKnownPath }) => ({
+        kind,
+        last_known_path: lastKnownPath,
+      })),
   };
   return error;
 }
