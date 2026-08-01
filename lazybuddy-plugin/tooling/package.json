@@ -1,6 +1,6 @@
 {
   "name": "@lazyseries/lazybuddy-tooling",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Locked package-owned tooling foundation for LazyBuddy.",
   "engines": {
@@ -12,6 +12,7 @@
   "dependencies": {
     "@colbymchenry/codegraph": "1.4.1",
     "@ast-grep/cli": "0.44.1",
-    "@vscode/ripgrep": "1.18.0"
+    "@vscode/ripgrep": "1.18.0",
+    "ajv": "8.20.0"
   }
 }

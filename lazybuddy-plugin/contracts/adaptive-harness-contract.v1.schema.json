@@ -1,0 +1,874 @@
+{
+  "$id": "adaptive-harness-contract.v1.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Portable behavior contract and fixture-family schema for the v1.0.3 adaptive harness.",
+  "properties": {
+    "$schema": {
+      "const": "adaptive-harness-contract.v1.schema.json",
+      "type": "string"
+    },
+    "authority_matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "continuity": { "$ref": "#/definitions/authority_level" },
+        "debugging": { "$ref": "#/definitions/authority_level" },
+        "exploration": { "$ref": "#/definitions/authority_level" },
+        "implementation": { "$ref": "#/definitions/authority_level" },
+        "planning": { "$ref": "#/definitions/authority_level" },
+        "quality-review": { "$ref": "#/definitions/authority_level" },
+        "release-review": { "$ref": "#/definitions/authority_level" },
+        "security-review": { "$ref": "#/definitions/authority_level" },
+        "verification": { "$ref": "#/definitions/authority_level" }
+      },
+      "required": [
+        "continuity",
+        "debugging",
+        "exploration",
+        "implementation",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review",
+        "verification"
+      ],
+      "type": "object"
+    },
+    "approval_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "automatic_action_classes": {
+          "items": { "$ref": "#/definitions/automatic_action_class" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "approval_required_action_classes": {
+          "items": { "$ref": "#/definitions/approval_class" },
+          "maxItems": 7,
+          "minItems": 7,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "review_responsibilities_require_approval": {
+          "const": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "automatic_action_classes",
+        "approval_required_action_classes",
+        "review_responsibilities_require_approval"
+      ],
+      "type": "object"
+    },
+    "behavior_scope": {
+      "additionalProperties": false,
+      "properties": {
+        "implementation_resolution": { "const": "excluded", "type": "string" },
+        "portable": { "const": true, "type": "boolean" },
+        "state_extension": { "const": "optional-additive-existing-state", "type": "string" }
+      },
+      "required": ["implementation_resolution", "portable", "state_extension"],
+      "type": "object"
+    },
+    "continuation_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "material_change_requires_reclassification": {
+          "items": { "$ref": "#/definitions/fingerprint_field" },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "re_evaluate_before_reuse": {
+          "items": { "enum": ["approval", "risk"], "type": "string" },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "required_matches": {
+          "items": { "$ref": "#/definitions/fingerprint_field" },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "stale_evidence_policy": {
+          "items": { "$ref": "#/definitions/stale_evidence_action" },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "material_change_requires_reclassification",
+        "re_evaluate_before_reuse",
+        "required_matches",
+        "stale_evidence_policy"
+      ],
+      "type": "object"
+    },
+    "contract_version": { "const": "v1", "type": "string" },
+    "decision_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "explicit_workflow": { "const": "authoritative", "type": "string" },
+        "resolution_order": {
+          "items": { "$ref": "#/definitions/decision_step" },
+          "maxItems": 7,
+          "minItems": 7,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "tie_breaker": { "const": "lowest-sufficient-mode", "type": "string" }
+      },
+      "required": ["explicit_workflow", "resolution_order", "tie_breaker"],
+      "type": "object"
+    },
+    "escalation_bounds": {
+      "additionalProperties": false,
+      "properties": {
+        "blocked_after_bound": { "const": true, "type": "boolean" },
+        "escalation_triggers": {
+          "items": { "$ref": "#/definitions/escalation_trigger" },
+          "maxItems": 5,
+          "minItems": 5,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "max_auto_escalations": { "const": 2, "type": "integer" },
+        "mode_increase": { "const": "at-most-one-level-per-trigger", "type": "string" }
+      },
+      "required": [
+        "blocked_after_bound",
+        "escalation_triggers",
+        "max_auto_escalations",
+        "mode_increase"
+      ],
+      "type": "object"
+    },
+    "fingerprint_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": { "const": "sha256", "type": "string" },
+        "format": { "const": "sha256:<64-lowercase-hex>", "type": "string" },
+        "host_material": { "const": "capability-and-authority-boundary", "type": "string" },
+        "revision_material": {
+          "items": { "$ref": "#/definitions/revision_material" },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "revision_unavailable": { "const": "fail-closed", "type": "string" },
+        "scope_material": { "const": "canonical-task-boundary", "type": "string" }
+      },
+      "required": [
+        "algorithm",
+        "format",
+        "host_material",
+        "revision_material",
+        "revision_unavailable",
+        "scope_material"
+      ],
+      "type": "object"
+    },
+    "modes": {
+      "additionalProperties": false,
+      "properties": {
+        "assisted": { "$ref": "#/definitions/mode" },
+        "direct": { "$ref": "#/definitions/mode" },
+        "long-horizon": { "$ref": "#/definitions/mode" },
+        "orchestrated": { "$ref": "#/definitions/mode" },
+        "planned": { "$ref": "#/definitions/mode" }
+      },
+      "required": ["assisted", "direct", "long-horizon", "orchestrated", "planned"],
+      "type": "object"
+    },
+    "request_digest": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": { "const": "sha256", "type": "string" },
+        "encoding": { "const": "utf-8", "type": "string" },
+        "format": { "const": "sha256:<64-lowercase-hex>", "type": "string" },
+        "input": { "const": "exact-prompt-bytes", "type": "string" }
+      },
+      "required": ["algorithm", "encoding", "format", "input"],
+      "type": "object"
+    },
+    "transparency": {
+      "additionalProperties": false,
+      "properties": {
+        "required_explanation_fields": {
+          "items": { "$ref": "#/definitions/explanation_field" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "substitution_explanation_required": { "const": true, "type": "boolean" }
+      },
+      "required": ["required_explanation_fields", "substitution_explanation_required"],
+      "type": "object"
+    }
+  },
+  "required": [
+    "$schema",
+    "authority_matrix",
+    "approval_policy",
+    "behavior_scope",
+    "continuation_policy",
+    "contract_version",
+    "decision_policy",
+    "escalation_bounds",
+    "fingerprint_policy",
+    "modes",
+    "request_digest",
+    "transparency"
+  ],
+  "title": "Adaptive Harness Contract v1",
+  "type": "object",
+  "definitions": {
+    "approval_class": {
+      "enum": [
+        "account-marketplace-or-publish-mutation",
+        "browser-or-desktop-control",
+        "credentials-auth-or-paid-service",
+        "host-mcp-settings-mutation",
+        "install-or-download",
+        "persistent-capability",
+        "remote-data-egress"
+      ],
+      "type": "string"
+    },
+    "approval_expectation": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "not-required" } } },
+          "then": { "properties": { "requiredClasses": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "status": { "enum": ["denied", "granted", "pending"] } } },
+          "then": { "properties": { "requiredClasses": { "minItems": 1 } } }
+        }
+      ],
+      "properties": {
+        "requiredClasses": {
+          "items": { "$ref": "#/definitions/approval_class" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": ["denied", "granted", "not-required", "pending"],
+          "type": "string"
+        }
+      },
+      "required": ["requiredClasses", "status"],
+      "type": "object"
+    },
+    "authority_boundary": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_required": {
+          "items": { "$ref": "#/definitions/approval_class" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "automatic": {
+          "items": { "$ref": "#/definitions/automatic_action_class" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": ["approval_required", "automatic"],
+      "type": "object"
+    },
+    "authority_level": { "const": "automatic", "type": "string" },
+    "automatic_action_class": {
+      "enum": [
+        "existing-capability-use",
+        "package-owned-local-state",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ],
+      "type": "string"
+    },
+    "blocker": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "attemptedApproaches": {
+              "items": { "$ref": "#/definitions/portable_text" },
+              "minItems": 1,
+              "type": "array"
+            },
+            "currentEvidence": { "$ref": "#/definitions/portable_text" },
+            "nextRequiredDecision": { "$ref": "#/definitions/portable_text" },
+            "reproducedFailure": { "$ref": "#/definitions/portable_text" },
+            "unresolvedDecision": { "$ref": "#/definitions/portable_text" }
+          },
+          "required": [
+            "attemptedApproaches",
+            "currentEvidence",
+            "nextRequiredDecision",
+            "reproducedFailure",
+            "unresolvedDecision"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "capability_class": {
+      "enum": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "type": "string"
+    },
+    "continuation_case": {
+      "additionalProperties": false,
+      "properties": {
+        "changedMaterial": {
+          "items": { "$ref": "#/definitions/fingerprint_field" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "newFingerprints": { "$ref": "#/definitions/fingerprint_set" },
+        "oldFingerprints": { "$ref": "#/definitions/fingerprint_set" },
+        "preservedDiagnostic": {
+          "additionalProperties": false,
+          "properties": {
+            "preserved": { "const": true, "type": "boolean" },
+            "priorDecisionId": { "$ref": "#/definitions/portable_text" },
+            "reason": { "$ref": "#/definitions/portable_text" }
+          },
+          "required": ["preserved", "priorDecisionId", "reason"],
+          "type": "object"
+        },
+        "priorCompletionEvidence": { "const": "rejected", "type": "string" },
+        "priorSnapshot": { "$ref": "#/definitions/snapshot" },
+        "reclassifiedDecision": { "$ref": "#/definitions/expected_decision" }
+      },
+      "required": [
+        "changedMaterial",
+        "newFingerprints",
+        "oldFingerprints",
+        "preservedDiagnostic",
+        "priorCompletionEvidence",
+        "priorSnapshot",
+        "reclassifiedDecision"
+      ],
+      "type": "object"
+    },
+    "decision_step": {
+      "enum": [
+        "broad-or-ambiguous-work",
+        "compatible-continuation",
+        "explicit-user-workflow",
+        "high-risk-or-multi-system-work",
+        "long-horizon-work",
+        "small-clear-low-risk-work",
+        "unfamiliar-cross-file-or-diagnostic-work"
+      ],
+      "type": "string"
+    },
+    "escalation_transition": {
+      "additionalProperties": false,
+      "properties": {
+        "fromMode": { "$ref": "#/definitions/mode_name" },
+        "sequence": { "maximum": 2, "minimum": 1, "type": "integer" },
+        "stageAdded": {
+          "oneOf": [
+            { "$ref": "#/definitions/stage" },
+            { "type": "null" }
+          ]
+        },
+        "toMode": { "$ref": "#/definitions/mode_name" },
+        "trigger": { "$ref": "#/definitions/escalation_trigger" }
+      },
+      "required": ["fromMode", "sequence", "stageAdded", "toMode", "trigger"],
+      "type": "object"
+    },
+    "escalation_trigger": {
+      "enum": [
+        "broader-scope-revealed",
+        "capability-unavailable",
+        "new-risk-finding",
+        "user-goal-changed",
+        "verification-failure"
+      ],
+      "type": "string"
+    },
+    "evidence_downgrade": {
+      "enum": ["additional-verification-required", "none", "reduced-confidence"],
+      "type": "string"
+    },
+    "expected_decision": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "approval_required": { "const": false } } },
+          "then": { "properties": { "approval_classes": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "approval_required": { "const": true } } },
+          "then": { "properties": { "approval_classes": { "minItems": 1 } } }
+        }
+      ],
+      "properties": {
+        "allowed_substitutions": {
+          "items": { "$ref": "#/definitions/substitution" },
+          "type": "array"
+        },
+        "approval_classes": {
+          "items": { "$ref": "#/definitions/approval_class" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "approval_required": { "type": "boolean" },
+        "authority_boundary": { "$ref": "#/definitions/authority_boundary" },
+        "capabilities": {
+          "items": { "$ref": "#/definitions/capability_class" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "mode": { "$ref": "#/definitions/mode_name" },
+        "not_selected": { "$ref": "#/definitions/not_selected" },
+        "ownership": {
+          "items": { "$ref": "#/definitions/ownership" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "reasons": {
+          "items": { "$ref": "#/definitions/portable_text" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "responsibilities": {
+          "items": { "$ref": "#/definitions/responsibility" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "stages": {
+          "items": { "$ref": "#/definitions/stage" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "user_explanation": { "$ref": "#/definitions/user_explanation" },
+        "verification_level": { "$ref": "#/definitions/verification_level" }
+      },
+      "required": [
+        "allowed_substitutions",
+        "approval_classes",
+        "approval_required",
+        "authority_boundary",
+        "capabilities",
+        "mode",
+        "not_selected",
+        "ownership",
+        "reasons",
+        "responsibilities",
+        "stages",
+        "user_explanation",
+        "verification_level"
+      ],
+      "type": "object"
+    },
+    "explanation_field": {
+      "enum": [
+        "approval",
+        "capability-classes",
+        "evidence-impact",
+        "mode",
+        "not-selected",
+        "responsibilities",
+        "stages"
+      ],
+      "type": "string"
+    },
+    "fingerprint": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "available" } } },
+          "then": { "properties": { "digest": { "$ref": "#/definitions/sha256_digest" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "then": { "properties": { "digest": { "type": "null" } } }
+        }
+      ],
+      "properties": {
+        "digest": {
+          "oneOf": [
+            { "$ref": "#/definitions/sha256_digest" },
+            { "type": "null" }
+          ]
+        },
+        "status": { "enum": ["available", "unavailable"], "type": "string" }
+      },
+      "required": ["digest", "status"],
+      "type": "object"
+    },
+    "fingerprint_field": {
+      "enum": ["hostFingerprint", "requestDigest", "revisionFingerprint", "scopeFingerprint"],
+      "type": "string"
+    },
+    "fingerprint_set": {
+      "additionalProperties": false,
+      "properties": {
+        "hostFingerprint": { "$ref": "#/definitions/sha256_digest" },
+        "requestDigest": { "$ref": "#/definitions/sha256_digest" },
+        "revisionFingerprint": { "$ref": "#/definitions/fingerprint" },
+        "scopeFingerprint": { "$ref": "#/definitions/sha256_digest" }
+      },
+      "required": ["hostFingerprint", "requestDigest", "revisionFingerprint", "scopeFingerprint"],
+      "type": "object"
+    },
+    "fixture": {
+      "additionalProperties": false,
+      "properties": {
+        "adversarial_checks": {
+          "items": { "$ref": "#/definitions/portable_text" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "category": { "$ref": "#/definitions/fixture_category" },
+        "context": { "$ref": "#/definitions/portable_object" },
+        "continuation_case": { "$ref": "#/definitions/continuation_case" },
+        "description": { "$ref": "#/definitions/portable_text" },
+        "expected_decision": { "$ref": "#/definitions/expected_decision" },
+        "expected_snapshot": {
+          "additionalProperties": false,
+          "properties": { "adaptive": { "$ref": "#/definitions/snapshot" } },
+          "required": ["adaptive"],
+          "type": "object"
+        },
+        "id": { "pattern": "^[0-9]{2}-[a-z0-9-]+$", "type": "string" },
+        "permitted_escalation": {
+          "additionalProperties": false,
+          "properties": {
+            "max_auto_escalations": { "maximum": 2, "minimum": 0, "type": "integer" },
+            "triggers_allowed": {
+              "items": { "$ref": "#/definitions/escalation_trigger" },
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": ["max_auto_escalations", "triggers_allowed"],
+          "type": "object"
+        },
+        "request": { "$ref": "#/definitions/portable_text" }
+      },
+      "required": [
+        "adversarial_checks",
+        "category",
+        "context",
+        "description",
+        "expected_decision",
+        "expected_snapshot",
+        "id",
+        "permitted_escalation",
+        "request"
+      ],
+      "type": "object"
+    },
+    "fixture_category": {
+      "enum": [
+        "broad-feature-unresolved-design",
+        "direct-task-verification-failure",
+        "explicit-named-workflow",
+        "localized-one-file-correction",
+        "multi-session-migration",
+        "preferred-capability-unavailable",
+        "release-or-publication-change",
+        "security-sensitive-authorization-change",
+        "stale-continuation-snapshot",
+        "unfamiliar-cross-file-bug"
+      ],
+      "type": "string"
+    },
+    "fixture_manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "const": "v1", "type": "string" },
+        "fixture_set": { "const": "v103", "type": "string" },
+        "fixtures": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "category": { "$ref": "#/definitions/fixture_category" },
+              "file": { "pattern": "^[0-9]{2}-[a-z0-9-]+\\.json$", "type": "string" },
+              "id": { "pattern": "^[0-9]{2}-[a-z0-9-]+$", "type": "string" },
+              "sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }
+            },
+            "required": ["category", "file", "id", "sha256"],
+            "type": "object"
+          },
+          "maxItems": 10,
+          "minItems": 10,
+          "type": "array"
+        }
+      },
+      "required": ["contract_version", "fixture_set", "fixtures"],
+      "type": "object"
+    },
+    "mode": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_required": { "const": false, "type": "boolean" },
+        "capabilities": {
+          "items": { "$ref": "#/definitions/capability_class" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "responsibilities": {
+          "items": { "$ref": "#/definitions/responsibility" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "stages": {
+          "items": { "$ref": "#/definitions/stage" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "verification_level": { "$ref": "#/definitions/verification_level" }
+      },
+      "required": ["approval_required", "capabilities", "responsibilities", "stages", "verification_level"],
+      "type": "object"
+    },
+    "mode_name": {
+      "enum": ["assisted", "direct", "long-horizon", "orchestrated", "planned"],
+      "type": "string"
+    },
+    "not_selected": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": { "$ref": "#/definitions/capability_class" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "reasons": {
+          "items": { "$ref": "#/definitions/portable_text" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "responsibilities": {
+          "items": { "$ref": "#/definitions/responsibility" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "stages": {
+          "items": { "$ref": "#/definitions/stage" },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": ["capabilities", "reasons", "responsibilities", "stages"],
+      "type": "object"
+    },
+    "ownership": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerClass": {
+          "enum": ["adaptive-orchestrator", "continuity-owner", "implementation-owner", "independent-reviewer"],
+          "type": "string"
+        },
+        "responsibility": { "$ref": "#/definitions/responsibility" },
+        "stage": { "$ref": "#/definitions/stage" }
+      },
+      "required": ["ownerClass", "responsibility", "stage"],
+      "type": "object"
+    },
+    "portable_object": {
+      "additionalProperties": { "$ref": "#/definitions/portable_value" },
+      "propertyNames": {
+        "not": {
+          "pattern": "runtimeResolution|runtime_resolution|hostMapping|host_mapping|providerMapping|provider_mapping|internalPath|internal_path"
+        }
+      },
+      "type": "object"
+    },
+    "portable_text": {
+      "minLength": 1,
+      "not": {
+        "pattern": "runtimeResolution|host-native|package-lsp|package-cli|package-loop-store|lsp-bridge|/Users/|\\\\Users\\\\|\\.worktrees/|\\.trae/|\\.lazytrae/|(^|\\s)(src|lib|packages|tests?)/|provider[=:]|host[=:]"
+      },
+      "type": "string"
+    },
+    "portable_value": {
+      "anyOf": [
+        { "$ref": "#/definitions/portable_text" },
+        { "type": "boolean" },
+        { "type": "integer" },
+        { "type": "null" },
+        {
+          "items": { "$ref": "#/definitions/portable_value" },
+          "type": "array"
+        },
+        { "$ref": "#/definitions/portable_object" }
+      ]
+    },
+    "responsibility": {
+      "enum": [
+        "continuity",
+        "debugging",
+        "exploration",
+        "implementation",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review",
+        "verification"
+      ],
+      "type": "string"
+    },
+    "revision_material": {
+      "enum": [
+        "committed-base",
+        "nonignored-untracked-content",
+        "staged-content",
+        "tracked-working-content"
+      ],
+      "type": "string"
+    },
+    "risk_level": { "enum": ["high", "low", "material", "standard"], "type": "string" },
+    "sha256_digest": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" },
+    "snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": { "$ref": "#/definitions/approval_expectation" },
+        "blocker": { "$ref": "#/definitions/blocker" },
+        "capabilityClasses": {
+          "items": { "$ref": "#/definitions/capability_class" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "capabilitySubstitutions": {
+          "items": { "$ref": "#/definitions/substitution" },
+          "type": "array"
+        },
+        "currentStage": { "$ref": "#/definitions/stage" },
+        "decisionId": { "pattern": "^[a-z0-9-]+$", "type": "string" },
+        "escalationCount": { "maximum": 2, "minimum": 0, "type": "integer" },
+        "escalationHistory": {
+          "items": { "$ref": "#/definitions/escalation_transition" },
+          "maxItems": 2,
+          "type": "array"
+        },
+        "hostFingerprint": { "$ref": "#/definitions/sha256_digest" },
+        "mode": { "$ref": "#/definitions/mode_name" },
+        "nextAction": { "$ref": "#/definitions/portable_text" },
+        "reasons": {
+          "items": { "$ref": "#/definitions/portable_text" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "requestDigest": { "$ref": "#/definitions/sha256_digest" },
+        "responsibilities": {
+          "items": { "$ref": "#/definitions/responsibility" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "revisionFingerprint": { "$ref": "#/definitions/fingerprint" },
+        "risk": { "$ref": "#/definitions/risk_level" },
+        "scopeFingerprint": { "$ref": "#/definitions/sha256_digest" },
+        "stages": {
+          "items": { "$ref": "#/definitions/stage" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "verificationLevel": { "$ref": "#/definitions/verification_level" },
+        "version": { "const": 1, "type": "integer" }
+      },
+      "required": [
+        "approval",
+        "blocker",
+        "capabilityClasses",
+        "capabilitySubstitutions",
+        "currentStage",
+        "decisionId",
+        "escalationCount",
+        "escalationHistory",
+        "hostFingerprint",
+        "mode",
+        "nextAction",
+        "reasons",
+        "requestDigest",
+        "responsibilities",
+        "revisionFingerprint",
+        "risk",
+        "scopeFingerprint",
+        "stages",
+        "verificationLevel",
+        "version"
+      ],
+      "type": "object"
+    },
+    "stage": {
+      "enum": ["continue", "debug", "implement", "plan", "review", "understand", "verify"],
+      "type": "string"
+    },
+    "stale_evidence_action": {
+      "enum": [
+        "preserve-diagnostic-evidence",
+        "reclassify-current-decision",
+        "reject-prior-completion"
+      ],
+      "type": "string"
+    },
+    "substitution": {
+      "additionalProperties": false,
+      "properties": {
+        "allowedSubstitutionClasses": {
+          "items": { "$ref": "#/definitions/capability_class" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evidenceDowngrade": { "$ref": "#/definitions/evidence_downgrade" },
+        "explanation": { "$ref": "#/definitions/portable_text" },
+        "requiredClass": { "$ref": "#/definitions/capability_class" }
+      },
+      "required": ["allowedSubstitutionClasses", "evidenceDowngrade", "explanation", "requiredClass"],
+      "type": "object"
+    },
+    "user_explanation": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": { "$ref": "#/definitions/portable_text" },
+        "evidence": { "$ref": "#/definitions/portable_text" },
+        "not_selected": { "$ref": "#/definitions/portable_text" },
+        "selected": { "$ref": "#/definitions/portable_text" }
+      },
+      "required": ["approval", "evidence", "not_selected", "selected"],
+      "type": "object"
+    },
+    "verification_level": {
+      "enum": ["independent", "live-surface", "standard", "targeted"],
+      "type": "string"
+    }
+  }
+}

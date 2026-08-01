@@ -38,11 +38,61 @@ check() {
 }
 
 validator_reports_success() {
-    local output="$1"
-    case "$output" in
-        "Validation successful: 0 errors"|"Validation passed with no errors") return 0 ;;
-        *) return 1 ;;
-    esac
+    local result_file="$1"
+    python3 - "$result_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    result = json.load(handle)
+if result.get("status") != "pass" or result.get("reason") != "ok":
+    raise SystemExit(1)
+output = result.get("tail")
+if not isinstance(output, str):
+    raise SystemExit(1)
+output = output.strip()
+if output in {"Validation successful: 0 errors", "Validation passed with no errors"}:
+    raise SystemExit(0)
+
+structured_output = output
+for prefix in ("Validation passed with details:", "Validation passed"):
+    if not output.startswith(prefix):
+        continue
+    remainder = output[len(prefix):]
+    if not remainder or not remainder[0].isspace():
+        raise SystemExit(1)
+    structured_output = remainder.lstrip()
+    break
+
+decoder = json.JSONDecoder()
+try:
+    validator_result, consumed = decoder.raw_decode(structured_output)
+except json.JSONDecodeError:
+    raise SystemExit(1)
+if structured_output[consumed:].strip():
+    raise SystemExit(1)
+if not isinstance(validator_result, dict):
+    raise SystemExit(1)
+
+def has_nonempty_error(result):
+    for field in ("errors", "error"):
+        if field not in result:
+            continue
+        value = result[field]
+        if value is None:
+            continue
+        if isinstance(value, str):
+            if value.strip():
+                return True
+            continue
+        if value:
+            return True
+    return False
+
+if validator_result.get("valid") is True and not has_nonempty_error(validator_result):
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
 }
 
 if ! [[ "$HOST_VALIDATOR_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
@@ -205,7 +255,7 @@ import sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
 PY
 )"
-        if validator_reports_success "$validator_output"; then
+        if validator_reports_success "$validator_result"; then
             check "CodeBuddy manifest validator" ok
         else
             check "CodeBuddy manifest validator" "$validator_output"

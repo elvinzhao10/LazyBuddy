@@ -2,6 +2,98 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.0.3 — Adaptive harness (2026-07-20)
+
+The durable route requires **Node.js LTS 20 or newer** and **Git**, accepts only
+`https://github.com/elvinzhao10/LazyBuddy.git`, and provides `onboard`,
+`update`, `status`, and plan-first `offboard`. It owns only
+`LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
+`node "<install-root>/LazyBuddy/launcher.js"` works after source deletion.
+Same-version ref movement requires `--confirm-revision <full-sha>`; runtime
+replacement uses scoped offboard/re-onboard. Package success leaves **HOST
+READINESS: PENDING**. Historical WorkBuddy feedback is observed behavior, not
+an endorsement of installation through private host state.
+
+### Added
+
+- Local-first onboarding guidance keeps package readiness separate from host
+  readiness; host readiness remains **PENDING** until a fresh host session is
+  observed.
+- Adaptive harness contract (`adaptive-harness-contract.v1.json`) shared
+  byte-identical across LazyTrae and LazyBuddy, with paired sha256 digest
+  parity and no runtime coupling between repositories.
+- Ten behavioral fixtures under `contracts/fixtures/v103/` covering direct,
+  assisted, planned, orchestrated, long-horizon, provider-fallback,
+  explicit-override, escalation-bound, and responsibility-ownership
+  scenarios.
+- Thin adaptive adapter for LazyBuddy (`lazybuddy_adaptive_detector.py`,
+  `lazybuddy_adaptive_mapping.py`, `lazybuddy_adaptive_snapshot.py`,
+  `lazybuddy_adaptive_explanation.py`, `lazybuddy_adaptive_hosts.py`) that
+  extends the existing detector, policy, capability, and state seams without
+  duplicating execution logic.
+- Optional additive `adaptive` snapshot block in run/loop state
+  (single-writer, backward-compatible); existing v1.0.2 state without the
+  block continues to load.
+- Deterministic seven-step decision policy: explicit override then compatible
+  continuation then long-horizon then orchestrated then planned then
+  assisted then direct, selecting the lowest sufficient mode.
+- Bounded escalation: at most two automatic depth escalations per decision,
+  after which a blocked-state record is produced.
+- Authority-safe capability fallback with substitution reporting through
+  existing status surfaces.
+- Full-plugin CodeBuddy and WorkBuddy adaptive mappings; the Skills/MCP-only
+  route remains an explicitly degraded fallback, not the product target.
+- Adaptive explanation through existing status/capability surfaces (mode,
+  selected stages, responsibilities, capabilities, not-selected, approval
+  required).
+
+### Changed
+
+- Plugin manifests, marketplace metadata, tooling packages, hook/verifier
+  banners, documentation clients, and public install guidance updated to
+  v1.0.3.
+- Existing status/capability surface extended with adaptive explanation when
+  an `adaptive` block is present in state.
+
+### Verified behavior
+
+- Continuation resume: compatible snapshots resume the saved stage, mode, and
+  escalation state. Incompatible request or revision snapshots reclassify from
+  `understand` without mutating prior state. The W4.5 continuation suite passes.
+- Evidence freshness: revision fingerprints are carried in adaptive snapshots;
+  a changed fingerprint triggers stale reclassification and re-verification
+  signalling. The existing `lazy-verifier` surface is reused without a
+  parallel lineage store. The W4.6 evidence-freshness suite passes.
+- Shared fixture parity: the LazyBuddy runtime matches all ten complete v1.0.3
+  snapshots when fixture identity inputs (`decisionId`, `hostFingerprint`,
+  `revisionFingerprint`, and `scopeFingerprint`) are supplied separately. The
+  all-ten detector regression validates each full decision and snapshot.
+- Combined W4.5/W4.6 verification passes 12/12 tests.
+
+### Known Gap (host-only)
+
+- Live-host QA: WorkBuddy and CodeBuddy live-host verification PENDING (no
+  live host available in the release session). Package evidence and full
+  fixture parity do not substitute for live-host evidence.
+
+### Unchanged
+
+- Authority boundaries: read-only and package-owned capabilities activate
+  automatically; installations, persistence, host settings, credentials, and
+  remote access require approval.
+- Host-readiness boundaries: package evidence is not live-host evidence.
+- No new MCP servers, remote providers, host settings, or production
+  dependencies. The six existing MCP servers (run-ledger, verification,
+  status-dashboard, context-graph, code-intel, docs) plus the lsp server keep
+  their identities.
+- No cross-repository runtime dependencies.
+- No state-store replacement or memory migration.
+- No dynamic command or hook registration.
+- Explicit named workflows (`lazy-init-deep`, `lazy-ulw-plan`,
+  `lazy-start-work`, `lazy-ulw-loop`, `lazy-review-work`) remain
+  authoritative.
+
+
 ## v1.0.2 — Current-message onboarding intent (2026-07-18)
 
 - Added the local-first onboarding hotfix: the copied package and local

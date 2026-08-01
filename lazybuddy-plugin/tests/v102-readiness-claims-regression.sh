@@ -76,6 +76,14 @@ grep -Fq 'agents, commands, and hooks remain unavailable' "$FALLBACK_OUTPUT" || 
 grep -Fqx 'PACKAGE_READINESS=degraded' "$FALLBACK_OUTPUT" || fail 'manual fallback did not remain degraded'
 pass 'manual fallback is Skills-only and explicitly degraded'
 
+DOCS_OUTPUT="$TMP/docs-check.out"
+if ! CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$PLUGIN_ROOT/scripts/lazybuddy-docs-check.sh" >"$DOCS_OUTPUT"; then
+    cat "$DOCS_OUTPUT" >&2
+    fail 'package documentation contains an escaping or missing link'
+fi
+grep -Fq '"broken":0' "$DOCS_OUTPUT" || fail 'package documentation check did not report zero broken links'
+pass 'package documentation stays inside the copied plugin root'
+
 for doc in \
     "$PLUGIN_ROOT/docs/verification-matrix.md" \
     "$PLUGIN_ROOT/README.md" \
@@ -86,4 +94,4 @@ for doc in \
 done
 pass 'readiness and route docs define the collision boundary'
 
-printf 'v1.0.2 readiness-claims regression: PASS\n'
+printf 'v1.0.3 readiness-claims regression: PASS\n'

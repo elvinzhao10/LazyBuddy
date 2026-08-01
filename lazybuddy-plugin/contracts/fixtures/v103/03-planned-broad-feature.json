@@ -1,0 +1,175 @@
+{
+  "adversarial_checks": [
+    "Unresolved design choices must be settled before product edits.",
+    "Broad scope alone must not create an independent team.",
+    "No implementation-specific capability mapping may appear."
+  ],
+  "category": "broad-feature-unresolved-design",
+  "context": {
+    "acceptance_criteria": "incomplete",
+    "decisions_to_resolve": [
+      "layout",
+      "rendering approach",
+      "asynchronous behavior",
+      "error handling"
+    ],
+    "scope": "broad",
+    "scope_signals": [
+      "multiple components",
+      "architectural boundary"
+    ],
+    "verification_scope": "standard"
+  },
+  "description": "A broad feature with unresolved design choices selects planning before implementation.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "planned",
+    "not_selected": {
+      "capabilities": [
+        "documentation",
+        "task-state"
+      ],
+      "reasons": [
+        "The feature is bounded to one session and needs no durable continuation.",
+        "Independent review is not justified by the current risk."
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug",
+        "review"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
+    "reasons": [
+      "Acceptance criteria remain unresolved.",
+      "Several design decisions must precede product edits.",
+      "The scope is broad but does not require independent workstreams."
+    ],
+    "responsibilities": [
+      "exploration",
+      "planning",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify"
+    ],
+    "user_explanation": {
+      "approval": "No approval action class is selected.",
+      "evidence": "Standard verification follows the approved design.",
+      "not_selected": "Durable continuation and independent review are unnecessary.",
+      "selected": "Planning resolves the open design choices before implementation."
+    },
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "architecture-context",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-03-planned-broad-feature",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:5c6267c5d28bcc109d942aee0cb97defd5af10393a16ec91ce1f5cdb6929a71c",
+      "mode": "planned",
+      "nextAction": "Resolve the four design decisions and approve a bounded implementation plan.",
+      "reasons": [
+        "Acceptance criteria remain unresolved.",
+        "Several design decisions must precede product edits."
+      ],
+      "requestDigest": "sha256:bd0cb90a85ab469f0d12705c42b6713ff006134d755d6aa2c0702fb44ef1dc03",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:46c0d36c20eb2d4d8ea85e3471acfb7966eda74cd85ba0213f1fe36003b287f0",
+        "status": "available"
+      },
+      "risk": "standard",
+      "scopeFingerprint": "sha256:95431510e22db3f905b38abc1c9e7cd9197920214ef18d10532b4868f95f9475",
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    }
+  },
+  "id": "03-planned-broad-feature",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "broader-scope-revealed",
+      "new-risk-finding",
+      "verification-failure"
+    ]
+  },
+  "request": "Add report export support, but first resolve layout, rendering, asynchronous behavior, and error handling decisions."
+}

@@ -1,0 +1,147 @@
+{
+  "adversarial_checks": [
+    "A localized low-risk correction must not add planning.",
+    "Availability of deeper capabilities must not increase the mode.",
+    "No approval class is selected for the requested repository edit."
+  ],
+  "category": "localized-one-file-correction",
+  "context": {
+    "acceptance_criteria": "clear",
+    "file_count": 1,
+    "risk_signals": [],
+    "scope": "localized",
+    "verification_scope": "targeted"
+  },
+  "description": "A localized one-file behavior correction selects direct mode and targeted verification.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "outcome-verification",
+      "text-search"
+    ],
+    "mode": "direct",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "semantic-navigation",
+        "structural-search",
+        "task-state"
+      ],
+      "reasons": [
+        "The request is already localized and does not need broader context.",
+        "The task does not need resumable state or independent review."
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "exploration",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug",
+        "plan",
+        "review",
+        "understand"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
+    "reasons": [
+      "The change is localized and its acceptance criteria are clear.",
+      "Targeted verification is sufficient.",
+      "The lowest sufficient mode is direct."
+    ],
+    "responsibilities": [
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "implement",
+      "verify"
+    ],
+    "user_explanation": {
+      "approval": "No approval action class is selected.",
+      "evidence": "A focused check is sufficient evidence.",
+      "not_selected": "Planning, continuation, and independent review are unnecessary.",
+      "selected": "Direct implementation and targeted verification are selected."
+    },
+    "verification_level": "targeted"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "outcome-verification",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "implement",
+      "decisionId": "fixture-01-direct-localized-fix",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:747cac03d877cfd152dec42724ae80a1ea856f79995b92bc9a12f1064ced83f0",
+      "mode": "direct",
+      "nextAction": "Apply the localized correction and run the focused check.",
+      "reasons": [
+        "The change is localized and its acceptance criteria are clear.",
+        "Targeted verification is sufficient."
+      ],
+      "requestDigest": "sha256:7b36a534d8fd7566e641ac135821f0ed3d567c5255bf6cf6b4c6345930934a26",
+      "responsibilities": [
+        "implementation",
+        "verification"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:e55072ac99b7ff151b609c62c8df38f9087a3aeebbcc2d3f57a2012004b1925e",
+        "status": "available"
+      },
+      "risk": "low",
+      "scopeFingerprint": "sha256:e48884288b14b0d71bf9be9f2ee395d421293c3319d28618534890b925b5e0c2",
+      "stages": [
+        "implement",
+        "verify"
+      ],
+      "verificationLevel": "targeted",
+      "version": 1
+    }
+  },
+  "id": "01-direct-localized-fix",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "verification-failure"
+    ]
+  },
+  "request": "Correct the misspelled word in one error message and run the focused check."
+}

@@ -1,0 +1,179 @@
+{
+  "adversarial_checks": [
+    "Multi-session work must use the existing continuation state rather than create a new state system.",
+    "The adaptive snapshot must remain optional and additive.",
+    "Package-owned local checkpoints do not require persistent-capability approval."
+  ],
+  "category": "multi-session-migration",
+  "context": {
+    "checkpoint_requirement": "durable",
+    "scope": "multi-session",
+    "session_count": 3,
+    "signals": {
+      "continuation_requested": true,
+      "repeated_cycles": true
+    },
+    "verification_scope": "standard"
+  },
+  "description": "An explicit multi-session migration selects long-horizon work and resumable package-owned checkpoints.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "package-owned-local-state",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "architecture-context",
+      "documentation",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "long-horizon",
+    "not_selected": {
+      "capabilities": [],
+      "reasons": [
+        "The multi-session migration requires the complete portable capability class set.",
+        "Independent review is not selected solely because work spans sessions."
+      ],
+      "responsibilities": [
+        "debugging",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "debug",
+        "review"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      },
+      {
+        "ownerClass": "continuity-owner",
+        "responsibility": "continuity",
+        "stage": "continue"
+      }
+    ],
+    "reasons": [
+      "The request explicitly spans multiple sessions.",
+      "Durable checkpoints and repeated cycles are required.",
+      "Existing package-owned continuation state is sufficient."
+    ],
+    "responsibilities": [
+      "exploration",
+      "planning",
+      "implementation",
+      "verification",
+      "continuity"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "continue"
+    ],
+    "user_explanation": {
+      "approval": "Package-owned local checkpoints are automatic for this task.",
+      "evidence": "Each checkpoint retains standard verification evidence.",
+      "not_selected": "A replacement state system and independent review are unnecessary.",
+      "selected": "Long-horizon continuation preserves progress across multiple sessions."
+    },
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-06-long-horizon-migration",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:05081d680529990d1e45fc8d1b1ff51cef43f668fbb551aab562b125875760b1",
+      "mode": "long-horizon",
+      "nextAction": "Establish the first checkpoint and begin the bounded migration plan.",
+      "reasons": [
+        "The request explicitly spans multiple sessions.",
+        "Durable checkpoints are required."
+      ],
+      "requestDigest": "sha256:5405bb746da27bc6ff081c05fec63e5a74695665237a638624c2b1145cc0e409",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "continuity"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:9d166888ad6f4da419cf538c3c020a06003ef34feb64dd8221f9b4269c73dd49",
+        "status": "available"
+      },
+      "risk": "material",
+      "scopeFingerprint": "sha256:03dc843bd7ad3a555c5688541d5060c6b7cb1a54ce96fec128059bccf26d5efd",
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "continue"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    }
+  },
+  "id": "06-long-horizon-migration",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "new-risk-finding",
+      "user-goal-changed",
+      "verification-failure"
+    ]
+  },
+  "request": "Migrate session authentication over three sessions while preserving compatibility and durable checkpoints."
+}

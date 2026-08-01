@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v1.0.2)
+# lazybuddy-verify.sh — Master verification runner (v1.0.3)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -188,6 +188,7 @@ run_regression_inventory() {
         "v102-mcp-cwd-regression.sh"
         "v102-readiness-claims-regression.sh"
         "v102-workbuddy-package-preparation-regression.sh"
+        "v103-adaptive-contract-regression.sh"
     )
     local lifecycle_tests=(
         "v015-readiness-regression.sh"
@@ -198,6 +199,7 @@ run_regression_inventory() {
         "v017-codegraph-lifecycle-caller-survival-regression.sh"
         "v017-codegraph-uninstall-pid-identity-regression.sh"
         "v018-verifier-regression.sh"
+        "v103-lifecycle-entrypoint-regression.sh"
     )
     local standalone_tests=("${core_tests[@]}" "${lifecycle_tests[@]}")
     local selected_tests=()
@@ -205,6 +207,7 @@ run_regression_inventory() {
         "v016-automatic-tooling-contract-parity.sh"
         "v017-capability-readiness-contract-parity.sh"
         "v018-docs-manifest-parity.sh"
+        "v103-lifecycle-contract-parity.sh"
     )
     local publication_tests=(
         "publication-regression.sh"

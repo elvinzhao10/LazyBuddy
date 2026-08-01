@@ -1,0 +1,184 @@
+{
+  "adversarial_checks": [
+    "Release work must receive independent release review and artifact evidence.",
+    "Release review responsibility alone must not require approval.",
+    "Publishing remains excluded and separately approval-gated."
+  ],
+  "category": "release-or-publication-change",
+  "context": {
+    "publish_requested": false,
+    "risk_signals": [
+      "release-change",
+      "material-user-impact"
+    ],
+    "scope": "multi-surface",
+    "verification_scope": "independent"
+  },
+  "description": "Release preparation selects orchestration, independent release review, and artifact evidence while keeping publication outside scope.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [
+        "account-marketplace-or-publish-mutation"
+      ],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "orchestrated",
+    "not_selected": {
+      "capabilities": [
+        "documentation"
+      ],
+      "reasons": [
+        "No separate documentation capability is necessary for the bounded release metadata edits.",
+        "Publication mutation is explicitly excluded from the request."
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "debug"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "verification",
+        "stage": "verify"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "quality-review",
+        "stage": "review"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "release-review",
+        "stage": "review"
+      }
+    ],
+    "reasons": [
+      "Release preparation is materially risky and needs independent evidence.",
+      "Release review is a responsibility rather than an approval action class.",
+      "Publication mutation remains outside the selected actions."
+    ],
+    "responsibilities": [
+      "exploration",
+      "planning",
+      "implementation",
+      "verification",
+      "quality-review",
+      "release-review"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "review"
+    ],
+    "user_explanation": {
+      "approval": "No approval is required until an excluded publish mutation is requested.",
+      "evidence": "Independent release review and artifact verification are required.",
+      "not_selected": "Publishing and account mutation are not selected.",
+      "selected": "Release preparation is orchestrated with independent evidence."
+    },
+    "verification_level": "independent"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "architecture-context",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-05-orchestrated-release",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:6509c479baeed5af739287139d2231dd83c5aebb7014379a823381ccf6a88c8d",
+      "mode": "orchestrated",
+      "nextAction": "Prepare release artifacts and capture independent verification without publishing.",
+      "reasons": [
+        "Release preparation is materially risky.",
+        "Independent artifact evidence is required."
+      ],
+      "requestDigest": "sha256:8f9fc4a0c4ab5a7f7dc508285994c01ef4d42e348eacdfd62bd5008bf18e20d0",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "quality-review",
+        "release-review"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:c683564c87e4185f0847976d2271ad9ab75a89562f9bdbb38cca68f6fb8d9180",
+        "status": "available"
+      },
+      "risk": "material",
+      "scopeFingerprint": "sha256:b1d434f1b345e2ddb4a4ce1fa8f42aae68f518cfeb323692799c5f95a70ea5ef",
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "verificationLevel": "independent",
+      "version": 1
+    }
+  },
+  "id": "05-orchestrated-release",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "new-risk-finding",
+      "verification-failure"
+    ]
+  },
+  "request": "Prepare release 2.1.0 metadata and artifacts, but do not publish or mutate any account."
+}

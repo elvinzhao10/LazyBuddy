@@ -1,0 +1,180 @@
+{
+  "adversarial_checks": [
+    "The first targeted verification failure adds debugging without deepening the mode.",
+    "Mode increases only after the failure reveals materially broader scope.",
+    "The two-transition bound prevents an unbounded repair loop."
+  ],
+  "category": "direct-task-verification-failure",
+  "context": {
+    "initial_mode": "direct",
+    "scope_revealed_broader": true,
+    "signals": {
+      "verification_failure": true
+    },
+    "verification_scope": "standard"
+  },
+  "description": "A direct task first adds debugging after verification failure, then increases one mode only when broader scope is proven.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "The revealed scope remains bounded after one mode increase.",
+        "Durable continuation and independent review are unnecessary."
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "debugging",
+        "stage": "debug"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
+    "reasons": [
+      "The first verification failure adds a debugging stage.",
+      "The failure reveals broader scope and permits one mode increase.",
+      "Two adjacent transitions consume the automatic escalation bound."
+    ],
+    "responsibilities": [
+      "exploration",
+      "debugging",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "debug",
+      "implement",
+      "verify"
+    ],
+    "user_explanation": {
+      "approval": "No approval action class is selected.",
+      "evidence": "Standard verification reruns after bounded debugging.",
+      "not_selected": "Planning and orchestration remain unnecessary after one mode increase.",
+      "selected": "Debugging was added first; assisted mode followed only after broader scope was proven."
+    },
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-09-bounded-escalation",
+      "escalationCount": 2,
+      "escalationHistory": [
+        {
+          "fromMode": "direct",
+          "sequence": 1,
+          "stageAdded": "debug",
+          "toMode": "direct",
+          "trigger": "verification-failure"
+        },
+        {
+          "fromMode": "direct",
+          "sequence": 2,
+          "stageAdded": "understand",
+          "toMode": "assisted",
+          "trigger": "broader-scope-revealed"
+        }
+      ],
+      "hostFingerprint": "sha256:e54aa37ce2567f1e5c30447231bb740b64fea963e64b44857375367faf95621f",
+      "mode": "assisted",
+      "nextAction": "Trace the broader dependency, apply the bounded correction, and rerun standard verification.",
+      "reasons": [
+        "Verification failure added debugging.",
+        "Broader scope justified one mode increase."
+      ],
+      "requestDigest": "sha256:7383e5a1f1e7af03e3d04ba2f3699484d7804ca9cc3fe2ebb7370b78a35a15d9",
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:6cfa0412a5109654e3738479a03715ef25ce58b7f78484efc7ee6adfba30a34b",
+        "status": "available"
+      },
+      "risk": "standard",
+      "scopeFingerprint": "sha256:bb1065c2c459cdc896cb0af8238df22b2eb672d6ab2e19680647aad9e4b9e3cc",
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    }
+  },
+  "id": "09-escalation-bound",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "broader-scope-revealed",
+      "verification-failure"
+    ]
+  },
+  "request": "Correct locale date formatting; the first targeted verification has failed and revealed a broader dependency."
+}

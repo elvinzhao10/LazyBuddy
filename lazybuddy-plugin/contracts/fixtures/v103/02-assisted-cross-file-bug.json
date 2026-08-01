@@ -1,0 +1,171 @@
+{
+  "adversarial_checks": [
+    "Cross-file diagnosis must include understanding and debugging before implementation.",
+    "Bounded diagnostic work must not select an orchestrated team.",
+    "The fixture must not name an implementation or internal location."
+  ],
+  "category": "unfamiliar-cross-file-bug",
+  "context": {
+    "cross_file_signals": [
+      "request handling",
+      "cache logic",
+      "view state"
+    ],
+    "file_count": 4,
+    "repository_familiarity": "unfamiliar",
+    "scope": "bounded",
+    "signals": {
+      "primarily_debugging": true
+    },
+    "verification_scope": "standard"
+  },
+  "description": "An unfamiliar cross-file defect selects assisted exploration, debugging, implementation, and verification.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "The cross-file trace is bounded and does not require broad architecture context.",
+        "The work is expected to finish without durable continuation."
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "debugging",
+        "stage": "debug"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
+    "reasons": [
+      "The defect crosses several unfamiliar components.",
+      "Exploration and debugging are required before a bounded implementation.",
+      "The scope does not justify orchestration."
+    ],
+    "responsibilities": [
+      "exploration",
+      "debugging",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "debug",
+      "implement",
+      "verify"
+    ],
+    "user_explanation": {
+      "approval": "No approval action class is selected.",
+      "evidence": "Standard verification follows the diagnostic correction.",
+      "not_selected": "Planning and durable continuation are unnecessary for this bounded trace.",
+      "selected": "Assisted exploration and debugging precede implementation."
+    },
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-02-assisted-cross-file-bug",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:85de651d40cbf4ee81dee05b1bf8f0195f55afeda225e1f5a08a3d65727593e8",
+      "mode": "assisted",
+      "nextAction": "Trace the stale-data behavior across the bounded components.",
+      "reasons": [
+        "The defect crosses several unfamiliar components.",
+        "Exploration and debugging are required before implementation."
+      ],
+      "requestDigest": "sha256:2b6650ecc6941819abe52771de45589365b4a7d1c7438eb157ee66b511419aed",
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:00bde445f5e8574f55a3a576c16bfdfb3adfa6b82019948070348ae40ae709e6",
+        "status": "available"
+      },
+      "risk": "standard",
+      "scopeFingerprint": "sha256:630c6c5770b2ec7b23c3944ecd62ed4c9a0ff236f41ca17848fab25d35e8315e",
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    }
+  },
+  "id": "02-assisted-cross-file-bug",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "broader-scope-revealed",
+      "verification-failure"
+    ]
+  },
+  "request": "Diagnose why profile data stays stale after a bounded refactor that crosses the request handler, cache logic, and view state."
+}

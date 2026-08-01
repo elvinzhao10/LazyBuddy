@@ -1,0 +1,237 @@
+{
+  "$schema": "adaptive-harness-contract.v1.schema.json",
+  "authority_matrix": {
+    "continuity": "automatic",
+    "debugging": "automatic",
+    "exploration": "automatic",
+    "implementation": "automatic",
+    "planning": "automatic",
+    "quality-review": "automatic",
+    "release-review": "automatic",
+    "security-review": "automatic",
+    "verification": "automatic"
+  },
+  "approval_policy": {
+    "automatic_action_classes": [
+      "existing-capability-use",
+      "package-owned-local-state",
+      "read-only-local-inspection",
+      "repository-edit",
+      "targeted-local-execution"
+    ],
+    "approval_required_action_classes": [
+      "account-marketplace-or-publish-mutation",
+      "browser-or-desktop-control",
+      "credentials-auth-or-paid-service",
+      "host-mcp-settings-mutation",
+      "install-or-download",
+      "persistent-capability",
+      "remote-data-egress"
+    ],
+    "review_responsibilities_require_approval": false
+  },
+  "behavior_scope": {
+    "implementation_resolution": "excluded",
+    "portable": true,
+    "state_extension": "optional-additive-existing-state"
+  },
+  "continuation_policy": {
+    "material_change_requires_reclassification": [
+      "hostFingerprint",
+      "requestDigest",
+      "revisionFingerprint",
+      "scopeFingerprint"
+    ],
+    "re_evaluate_before_reuse": [
+      "approval",
+      "risk"
+    ],
+    "required_matches": [
+      "hostFingerprint",
+      "requestDigest",
+      "revisionFingerprint",
+      "scopeFingerprint"
+    ],
+    "stale_evidence_policy": [
+      "preserve-diagnostic-evidence",
+      "reject-prior-completion",
+      "reclassify-current-decision"
+    ]
+  },
+  "contract_version": "v1",
+  "decision_policy": {
+    "explicit_workflow": "authoritative",
+    "resolution_order": [
+      "explicit-user-workflow",
+      "compatible-continuation",
+      "long-horizon-work",
+      "high-risk-or-multi-system-work",
+      "broad-or-ambiguous-work",
+      "unfamiliar-cross-file-or-diagnostic-work",
+      "small-clear-low-risk-work"
+    ],
+    "tie_breaker": "lowest-sufficient-mode"
+  },
+  "escalation_bounds": {
+    "blocked_after_bound": true,
+    "escalation_triggers": [
+      "broader-scope-revealed",
+      "capability-unavailable",
+      "new-risk-finding",
+      "user-goal-changed",
+      "verification-failure"
+    ],
+    "max_auto_escalations": 2,
+    "mode_increase": "at-most-one-level-per-trigger"
+  },
+  "fingerprint_policy": {
+    "algorithm": "sha256",
+    "format": "sha256:<64-lowercase-hex>",
+    "host_material": "capability-and-authority-boundary",
+    "revision_material": [
+      "committed-base",
+      "nonignored-untracked-content",
+      "staged-content",
+      "tracked-working-content"
+    ],
+    "revision_unavailable": "fail-closed",
+    "scope_material": "canonical-task-boundary"
+  },
+  "modes": {
+    "assisted": {
+      "approval_required": false,
+      "capabilities": [
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "responsibilities": [
+        "debugging",
+        "exploration",
+        "implementation",
+        "verification"
+      ],
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "verification_level": "standard"
+    },
+    "direct": {
+      "approval_required": false,
+      "capabilities": [
+        "outcome-verification",
+        "text-search"
+      ],
+      "responsibilities": [
+        "implementation",
+        "verification"
+      ],
+      "stages": [
+        "implement",
+        "verify"
+      ],
+      "verification_level": "targeted"
+    },
+    "long-horizon": {
+      "approval_required": false,
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "responsibilities": [
+        "continuity",
+        "exploration",
+        "implementation",
+        "planning",
+        "verification"
+      ],
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "continue"
+      ],
+      "verification_level": "standard"
+    },
+    "orchestrated": {
+      "approval_required": false,
+      "capabilities": [
+        "architecture-context",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "responsibilities": [
+        "exploration",
+        "implementation",
+        "planning",
+        "quality-review",
+        "verification"
+      ],
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "verification_level": "independent"
+    },
+    "planned": {
+      "approval_required": false,
+      "capabilities": [
+        "architecture-context",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "responsibilities": [
+        "exploration",
+        "implementation",
+        "planning",
+        "verification"
+      ],
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify"
+      ],
+      "verification_level": "standard"
+    }
+  },
+  "request_digest": {
+    "algorithm": "sha256",
+    "encoding": "utf-8",
+    "format": "sha256:<64-lowercase-hex>",
+    "input": "exact-prompt-bytes"
+  },
+  "transparency": {
+    "required_explanation_fields": [
+      "approval",
+      "capability-classes",
+      "evidence-impact",
+      "mode",
+      "not-selected",
+      "responsibilities",
+      "stages"
+    ],
+    "substitution_explanation_required": true
+  }
+}

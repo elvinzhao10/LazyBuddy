@@ -80,7 +80,7 @@ if [ ! -f "$PLUGIN_ROOT/.workbuddy-plugin/plugin.json" ] \
     || [ ! -f "$PLUGIN_ROOT/.mcp.json" ] \
     || [ ! -f "$RELEASE_ROOT/.codebuddy-plugin/marketplace.json" ]; then
     printf '%s\n' \
-        'ERROR: LazyBuddy plugin root is unavailable; keep this script under the v1.0.2 lazybuddy-plugin/scripts directory.' >&2
+        'ERROR: LazyBuddy plugin root is unavailable; keep this script under the v1.0.3 lazybuddy-plugin/scripts directory.' >&2
     exit 1
 fi
 
@@ -96,7 +96,7 @@ case "$HOME" in
         ;;
 esac
 
-python3 - "$PLUGIN_ROOT" "$RELEASE_ROOT" "$PROJECT_ROOT" "$HOME" <<'PY'
+python3 -B - "$PLUGIN_ROOT" "$RELEASE_ROOT" "$PROJECT_ROOT" "$HOME" <<'PY'
 import json
 import os
 from pathlib import Path
@@ -107,7 +107,7 @@ plugin_root = Path(sys.argv[1]).resolve()
 release_root = Path(sys.argv[2]).resolve()
 project_root = Path(sys.argv[3]).resolve()
 home_root = Path(os.path.abspath(sys.argv[4]))
-version = "1.0.2"
+version = "1.0.3"
 server_names = (
     "run-ledger",
     "verification",
@@ -138,7 +138,7 @@ try:
         "WorkBuddy manifest",
     )
     if work_manifest.get("name") != "lazybuddy" or work_manifest.get("version") != version:
-        raise ValueError("WorkBuddy manifest must identify lazybuddy version 1.0.2")
+        raise ValueError("WorkBuddy manifest must identify lazybuddy version 1.0.3")
 
     marketplace = load_object(
         release_root / ".codebuddy-plugin" / "marketplace.json",
@@ -156,7 +156,7 @@ try:
         None,
     )
     if entry is None or entry.get("version") != version or entry.get("source") != "./lazybuddy-plugin":
-        raise ValueError("release marketplace must contain lazybuddy 1.0.2 from ./lazybuddy-plugin")
+        raise ValueError("release marketplace must contain lazybuddy 1.0.3 from ./lazybuddy-plugin")
     if (release_root / entry["source"]).resolve() != plugin_root:
         raise ValueError("release marketplace source does not resolve to this plugin root")
 

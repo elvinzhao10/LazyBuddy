@@ -5,6 +5,7 @@ set -euo pipefail
 
 RUN_ID="${1:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd -P -- "$SCRIPT_DIR/../.." && pwd -P)}"
 source "$SCRIPT_DIR/state-paths.sh"
 
 if ! state_require_safe_run_id "$RUN_ID"; then
@@ -26,8 +27,11 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 1
 fi
 
-python3 - "$STATE_FILE" <<'PY'
-import json, sys
+python3 - "$STATE_FILE" "$PLUGIN_ROOT" <<'PY'
+import json, os, sys
+
+sys.path.insert(0, os.path.join(sys.argv[2], 'tooling'))
+from lazybuddy_adaptive_snapshot import validate_adaptive_snapshot
 
 with open(sys.argv[1]) as f:
     d = json.load(f)
@@ -100,6 +104,10 @@ if not isinstance(pr, dict):
 b = d.get('budget', {})
 if not isinstance(b, dict):
     errors.append('budget must be an object')
+
+adaptive = d.get('adaptive')
+if adaptive is not None and not validate_adaptive_snapshot(adaptive):
+    errors.append('adaptive snapshot does not satisfy the v1.0.3 portable schema')
 
 if errors:
     print('FAIL')

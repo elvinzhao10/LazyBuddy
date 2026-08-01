@@ -137,6 +137,9 @@ copy_publication_fixture() {
         "$REPOSITORY_ROOT/SECURITY.md" "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$fixture_root/"
     cp "$REPOSITORY_ROOT/LICENSE" "$REPOSITORY_ROOT/NOTICE" "$REPOSITORY_ROOT/lazybuddy-banner.jpg" "$fixture_root/"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/README.md" "$fixture_root/lazybuddy-plugin/README.md"
+    mkdir -p "$fixture_root/lazybuddy-plugin/contracts"
+    cp "$REPOSITORY_ROOT/lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json" \
+        "$fixture_root/lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json"
 }
 
 assert_bad_link() {

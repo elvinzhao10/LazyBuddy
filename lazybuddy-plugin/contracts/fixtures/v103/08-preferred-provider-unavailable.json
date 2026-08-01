@@ -1,0 +1,190 @@
+{
+  "adversarial_checks": [
+    "Unavailable semantic navigation must not silently activate a new implementation.",
+    "The assisted mode must remain unchanged when a safe class-level substitution exists.",
+    "Weaker evidence must be explained and compensated with additional verification."
+  ],
+  "category": "preferred-capability-unavailable",
+  "context": {
+    "preferred_capability": "semantic-navigation",
+    "preferred_capability_available": false,
+    "scope": "cross-file",
+    "signals": {
+      "capability_unavailable": true
+    },
+    "substitution_classes": [
+      "structural-search",
+      "text-search"
+    ],
+    "verification_scope": "standard"
+  },
+  "description": "An unavailable preferred capability preserves assisted mode through a safe class-level substitution and explicit evidence downgrade.",
+  "expected_decision": {
+    "allowed_substitutions": [
+      {
+        "allowedSubstitutionClasses": [
+          "structural-search",
+          "text-search"
+        ],
+        "evidenceDowngrade": "additional-verification-required",
+        "explanation": "Structural and text search preserve discovery coverage but require additional verification.",
+        "requiredClass": "semantic-navigation"
+      }
+    ],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "A bounded class-level substitution avoids deeper workflow selection.",
+        "No durable continuation is required."
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "debugging",
+        "stage": "debug"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
+    "reasons": [
+      "The preferred capability class is unavailable.",
+      "A safe substitution preserves assisted mode.",
+      "Additional verification compensates for weaker navigation evidence."
+    ],
+    "responsibilities": [
+      "exploration",
+      "debugging",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "debug",
+      "implement",
+      "verify"
+    ],
+    "user_explanation": {
+      "approval": "No install or activation approval is requested because existing classes provide the fallback.",
+      "evidence": "Additional verification compensates for the weaker substitution.",
+      "not_selected": "A deeper mode and new capability activation are unnecessary.",
+      "selected": "Assisted mode uses structural and text search as allowed substitution classes."
+    },
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [
+        {
+          "allowedSubstitutionClasses": [
+            "structural-search",
+            "text-search"
+          ],
+          "evidenceDowngrade": "additional-verification-required",
+          "explanation": "Structural and text search preserve discovery coverage but require additional verification.",
+          "requiredClass": "semantic-navigation"
+        }
+      ],
+      "currentStage": "understand",
+      "decisionId": "fixture-08-preferred-capability-unavailable",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:8dfbfc43bf39c1d399a453701f58d3ea4628a3841b3fa83fe9e6c07756c00efb",
+      "mode": "assisted",
+      "nextAction": "Use the allowed substitution classes and add the compensating verification.",
+      "reasons": [
+        "The preferred capability class is unavailable.",
+        "A safe substitution preserves assisted mode."
+      ],
+      "requestDigest": "sha256:0b9fee6c60fc2a2c853b8cc4fc91b1f29deda9df4af1dd0af62e065fd4ccfc54",
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:a81cb0c9df2044b5a355952d2d596f81370a53f48a1c3fdccba3ed563e6cec8f",
+        "status": "available"
+      },
+      "risk": "standard",
+      "scopeFingerprint": "sha256:8a0175f8cdb20011ef31b2b126034dfd4ca97c495578de52c14981b510c943e0",
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    }
+  },
+  "id": "08-preferred-capability-unavailable",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "capability-unavailable",
+      "verification-failure"
+    ]
+  },
+  "request": "Refactor search to support fuzzy matching when semantic navigation is unavailable for this task."
+}

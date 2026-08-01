@@ -1,0 +1,150 @@
+{
+  "adversarial_checks": [
+    "The explicit named workflow must remain authoritative.",
+    "Implementation must remain forbidden by the plan-only instruction.",
+    "The fixture must not depend on a product-specific workflow identifier."
+  ],
+  "category": "explicit-named-workflow",
+  "context": {
+    "authoritative_instruction": true,
+    "named_workflow_class": "plan-only",
+    "signals": {
+      "explicit_user_workflow": true
+    },
+    "verification_scope": "targeted"
+  },
+  "description": "An explicit plan-only workflow remains authoritative and stops before implementation.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection"
+      ]
+    },
+    "capabilities": [
+      "architecture-context",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "planned",
+    "not_selected": {
+      "capabilities": [
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "The explicit instruction stops before execution.",
+        "No durable continuation is required for a plan-only result."
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "implementation",
+        "quality-review",
+        "release-review",
+        "security-review",
+        "verification"
+      ],
+      "stages": [
+        "continue",
+        "debug",
+        "implement",
+        "review",
+        "verify"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      }
+    ],
+    "reasons": [
+      "The user explicitly selected a named plan-only workflow.",
+      "The classifier must not replace or deepen the explicit request.",
+      "Implementation is excluded by the instruction."
+    ],
+    "responsibilities": [
+      "exploration",
+      "planning"
+    ],
+    "stages": [
+      "understand",
+      "plan"
+    ],
+    "user_explanation": {
+      "approval": "No approval action class is selected.",
+      "evidence": "The plan artifact receives a targeted structural check.",
+      "not_selected": "Implementation and continuation are excluded by the user.",
+      "selected": "The named plan-only workflow is authoritative."
+    },
+    "verification_level": "targeted"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "architecture-context",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-07-explicit-workflow-override",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:79001d1570922ae2fcf9718fbf090006763a5e9152f2fd9ad80e9905d2212775",
+      "mode": "planned",
+      "nextAction": "Produce the approved plan and stop before implementation.",
+      "reasons": [
+        "The explicit named workflow is authoritative.",
+        "Implementation is excluded by the instruction."
+      ],
+      "requestDigest": "sha256:e6dc62b71812de455f7508c24ce0a2384bef5152fb70a31d6e09d294316227d6",
+      "responsibilities": [
+        "exploration",
+        "planning"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:b48621a38486ff2bad63669ee202eca41bcb65790daf67a2714a06b133051d2c",
+        "status": "available"
+      },
+      "risk": "low",
+      "scopeFingerprint": "sha256:815ad5a30ce4017eea221def37cedd80980a58edb9d917fd212cc1d2e2415dae",
+      "stages": [
+        "understand",
+        "plan"
+      ],
+      "verificationLevel": "targeted",
+      "version": 1
+    }
+  },
+  "id": "07-explicit-workflow-override",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "new-risk-finding",
+      "user-goal-changed"
+    ]
+  },
+  "request": "Use the named plan-only workflow and stop after producing the approved plan."
+}

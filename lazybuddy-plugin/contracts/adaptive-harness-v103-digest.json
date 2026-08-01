@@ -1,0 +1,78 @@
+{
+  "digest_version": "v1",
+  "release": "v1.0.3",
+  "artifacts": [
+    {
+      "name": "adaptive-harness-contract.v1.json",
+      "sha256": "a7091f3a195b8abd1afd5cbe1c40fa0fab844150b41a39bbd689c76be8358d66",
+      "size_bytes": 5822
+    },
+    {
+      "name": "adaptive-harness-contract.v1.schema.json",
+      "sha256": "ccbf88b35bcc762234f078505356a7bb879247818dc4cf9c0a7230b11a521b92",
+      "size_bytes": 28941
+    },
+    {
+      "name": "adaptive-harness-contract.v1.json.sha256",
+      "sha256": "3f9871bc63ff52b0807ce383aa5affbb58ff9cd55eb46452ec27106e0208dbbc",
+      "size_bytes": 100
+    }
+  ],
+  "fixtures": [
+    {
+      "name": "01-direct-localized-fix.json",
+      "sha256": "8a6ece6442b25086ac5196b6bed2ff43f45b680ecc0f2ec5757f4f052260dd08",
+      "size_bytes": 4352
+    },
+    {
+      "name": "02-assisted-cross-file-bug.json",
+      "sha256": "962ad4ee6f2859c4bff9dd1e14860a641a2a5bc2d04196591b0ea5f1c3d53d6c",
+      "size_bytes": 5104
+    },
+    {
+      "name": "03-planned-broad-feature.json",
+      "sha256": "9c0b4155ec3d0febd84028e1830137411024a27ee2858788d00ecfdcbd4d80f2",
+      "size_bytes": 5116
+    },
+    {
+      "name": "04-orchestrated-security-change.json",
+      "sha256": "c4b0a92f882b33c3decd5a1f0b01ee298565ffbe684a8f1e6d37a5fa1f38e8e3",
+      "size_bytes": 5499
+    },
+    {
+      "name": "05-orchestrated-release.json",
+      "sha256": "6e73f7f6216ac07e127dc215da31b587fcdadd040f1f7ef07a9d0e098f226cd0",
+      "size_bytes": 5506
+    },
+    {
+      "name": "06-long-horizon-migration.json",
+      "sha256": "5e3bb6a30ee97415a716ebb2572b8b6bd3bd0fa8117bed4d5b61518e7368f69c",
+      "size_bytes": 5363
+    },
+    {
+      "name": "07-explicit-workflow-override.json",
+      "sha256": "de4832f3cd407a561881b30d94588ab7aa5be29878b884099c0d88a2c1219c86",
+      "size_bytes": 4432
+    },
+    {
+      "name": "08-preferred-provider-unavailable.json",
+      "sha256": "5af5ff299a81b23a2fc28ce461b7b2d266ad7c4805c09c6f0fdf73eeed42a321",
+      "size_bytes": 5939
+    },
+    {
+      "name": "09-escalation-bound.json",
+      "sha256": "7ba4ac28dcf1ec28e33e09760b746c96bf674b42496c1f8996ba4652f255fa84",
+      "size_bytes": 5385
+    },
+    {
+      "name": "10-responsibility-ownership.json",
+      "sha256": "a47701b73a2a080db54a5baeb33ab6ac98c087e1effce7477904a1e9cb6aa00e",
+      "size_bytes": 11001
+    }
+  ],
+  "fixture_directory": {
+    "manifest_sha256": "06c3179903dfa69f3a7a0f91b5e067b600b6cf8b9ad111f8f08cb4d7975fbfb7",
+    "sha256sums_sha256": "232718fd1b32a3cfb60ac9e3ec618800ab35614e0e7e11e19b50b4b7e595c7d7"
+  },
+  "verification_policy": "Compare current bytes, sizes, manifest relationships, schema validation, and checksum sidecars independently in each repository."
+}

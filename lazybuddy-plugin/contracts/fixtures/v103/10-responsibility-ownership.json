@@ -1,0 +1,341 @@
+{
+  "adversarial_checks": [
+    "A changed revision fingerprint must reject continuation reuse.",
+    "Prior completion evidence must remain rejected after material change.",
+    "The stale snapshot must be preserved for diagnosis while a fresh decision is classified.",
+    "Current risk and approval are re-evaluated before the new decision is used."
+  ],
+  "category": "stale-continuation-snapshot",
+  "context": {
+    "continuation_requested": true,
+    "current_approval_classes": [],
+    "current_risk": "material",
+    "material_change": [
+      "revisionFingerprint"
+    ],
+    "prior_completion_recorded": true
+  },
+  "continuation_case": {
+    "changedMaterial": [
+      "revisionFingerprint"
+    ],
+    "newFingerprints": {
+      "hostFingerprint": "sha256:d0b02066faa02cdf8c3fbf0eba9861086c186b50a16c7c3697bc751137d35d2d",
+      "requestDigest": "sha256:b68aa2f09f446bc37f536c58ce92081819f0210fc410a9561c59826cb1d90bb0",
+      "revisionFingerprint": {
+        "digest": "sha256:79de460e6e1dab36af0fd8fb2826a9add53067ccffd8c3c00c9a381ffca886af",
+        "status": "available"
+      },
+      "scopeFingerprint": "sha256:c58ae11b5cce16ddda6028a46b7f9af85ebd544ebab539bf895737129c20793f"
+    },
+    "oldFingerprints": {
+      "hostFingerprint": "sha256:d0b02066faa02cdf8c3fbf0eba9861086c186b50a16c7c3697bc751137d35d2d",
+      "requestDigest": "sha256:b68aa2f09f446bc37f536c58ce92081819f0210fc410a9561c59826cb1d90bb0",
+      "revisionFingerprint": {
+        "digest": "sha256:7b78b7afa68356a9b243768b28d067ecd7182a3e0621d46bbc631114a651d7cc",
+        "status": "available"
+      },
+      "scopeFingerprint": "sha256:c58ae11b5cce16ddda6028a46b7f9af85ebd544ebab539bf895737129c20793f"
+    },
+    "preservedDiagnostic": {
+      "preserved": true,
+      "priorDecisionId": "fixture-10-stale-continuation-old",
+      "reason": "The prior snapshot is retained only to diagnose the material revision change."
+    },
+    "priorCompletionEvidence": "rejected",
+    "priorSnapshot": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "continue",
+      "decisionId": "fixture-10-stale-continuation-old",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:d0b02066faa02cdf8c3fbf0eba9861086c186b50a16c7c3697bc751137d35d2d",
+      "mode": "long-horizon",
+      "nextAction": "Prior completion was recorded before the revision changed.",
+      "reasons": [
+        "The prior snapshot represented a compatible checkpoint before material change."
+      ],
+      "requestDigest": "sha256:b68aa2f09f446bc37f536c58ce92081819f0210fc410a9561c59826cb1d90bb0",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "continuity"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:7b78b7afa68356a9b243768b28d067ecd7182a3e0621d46bbc631114a651d7cc",
+        "status": "available"
+      },
+      "risk": "material",
+      "scopeFingerprint": "sha256:c58ae11b5cce16ddda6028a46b7f9af85ebd544ebab539bf895737129c20793f",
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "continue"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    },
+    "reclassifiedDecision": {
+      "allowed_substitutions": [],
+      "approval_classes": [],
+      "approval_required": false,
+      "authority_boundary": {
+        "approval_required": [],
+        "automatic": [
+          "existing-capability-use",
+          "package-owned-local-state",
+          "read-only-local-inspection",
+          "repository-edit",
+          "targeted-local-execution"
+        ]
+      },
+      "capabilities": [
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "mode": "assisted",
+      "not_selected": {
+        "capabilities": [
+          "architecture-context",
+          "documentation",
+          "execution",
+          "task-state"
+        ],
+        "reasons": [
+          "The changed revision requires fresh understanding but not a full new plan.",
+          "Prior completion evidence cannot satisfy current verification."
+        ],
+        "responsibilities": [
+          "continuity",
+          "planning",
+          "quality-review",
+          "release-review",
+          "security-review"
+        ],
+        "stages": [
+          "continue",
+          "plan",
+          "review"
+        ]
+      },
+      "ownership": [
+        {
+          "ownerClass": "implementation-owner",
+          "responsibility": "exploration",
+          "stage": "understand"
+        },
+        {
+          "ownerClass": "implementation-owner",
+          "responsibility": "debugging",
+          "stage": "debug"
+        },
+        {
+          "ownerClass": "implementation-owner",
+          "responsibility": "implementation",
+          "stage": "implement"
+        },
+        {
+          "ownerClass": "implementation-owner",
+          "responsibility": "verification",
+          "stage": "verify"
+        }
+      ],
+      "reasons": [
+        "The revision fingerprint changed materially.",
+        "The stale snapshot is diagnostic only and prior completion is rejected.",
+        "Current risk and approval were re-evaluated before reclassification."
+      ],
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "user_explanation": {
+        "approval": "Current approval classes were re-evaluated and none are selected.",
+        "evidence": "Prior completion is rejected and fresh standard verification is required.",
+        "not_selected": "A full restart and reuse of stale completion are both unnecessary.",
+        "selected": "Assisted reclassification begins from fresh understanding after the revision change."
+      },
+      "verification_level": "standard"
+    }
+  },
+  "description": "A material revision change preserves the prior snapshot for diagnosis, rejects its completion evidence, and produces a fresh reclassified decision.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "package-owned-local-state",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "text-search"
+    ],
+    "mode": "assisted",
+    "not_selected": {
+      "capabilities": [
+        "architecture-context",
+        "documentation",
+        "execution",
+        "task-state"
+      ],
+      "reasons": [
+        "The changed revision requires fresh understanding but not a full new plan.",
+        "Prior completion evidence cannot satisfy current verification."
+      ],
+      "responsibilities": [
+        "continuity",
+        "planning",
+        "quality-review",
+        "release-review",
+        "security-review"
+      ],
+      "stages": [
+        "continue",
+        "plan",
+        "review"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "debugging",
+        "stage": "debug"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "verification",
+        "stage": "verify"
+      }
+    ],
+    "reasons": [
+      "The revision fingerprint changed materially.",
+      "The stale snapshot is diagnostic only and prior completion is rejected.",
+      "Current risk and approval were re-evaluated before reclassification."
+    ],
+    "responsibilities": [
+      "exploration",
+      "debugging",
+      "implementation",
+      "verification"
+    ],
+    "stages": [
+      "understand",
+      "debug",
+      "implement",
+      "verify"
+    ],
+    "user_explanation": {
+      "approval": "Current approval classes were re-evaluated and none are selected.",
+      "evidence": "Prior completion is rejected and fresh standard verification is required.",
+      "not_selected": "A full restart and reuse of stale completion are both unnecessary.",
+      "selected": "Assisted reclassification begins from fresh understanding after the revision change."
+    },
+    "verification_level": "standard"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-10-stale-continuation-new",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:d0b02066faa02cdf8c3fbf0eba9861086c186b50a16c7c3697bc751137d35d2d",
+      "mode": "assisted",
+      "nextAction": "Preserve the stale diagnostic, reject prior completion, and run fresh verification.",
+      "reasons": [
+        "The revision fingerprint changed materially.",
+        "Prior completion evidence is stale."
+      ],
+      "requestDigest": "sha256:b68aa2f09f446bc37f536c58ce92081819f0210fc410a9561c59826cb1d90bb0",
+      "responsibilities": [
+        "exploration",
+        "debugging",
+        "implementation",
+        "verification"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:79de460e6e1dab36af0fd8fb2826a9add53067ccffd8c3c00c9a381ffca886af",
+        "status": "available"
+      },
+      "risk": "material",
+      "scopeFingerprint": "sha256:c58ae11b5cce16ddda6028a46b7f9af85ebd544ebab539bf895737129c20793f",
+      "stages": [
+        "understand",
+        "debug",
+        "implement",
+        "verify"
+      ],
+      "verificationLevel": "standard",
+      "version": 1
+    }
+  },
+  "id": "10-stale-continuation",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "new-risk-finding",
+      "user-goal-changed",
+      "verification-failure"
+    ]
+  },
+  "request": "Resume the authentication migration after the implementation revision changed since the prior checkpoint."
+}

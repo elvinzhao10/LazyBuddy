@@ -1,0 +1,182 @@
+{
+  "adversarial_checks": [
+    "A security-sensitive authorization change must receive independent review.",
+    "Security review responsibility alone must not create an approval request.",
+    "Implementation and independent review must have distinct owner classes."
+  ],
+  "category": "security-sensitive-authorization-change",
+  "context": {
+    "risk_signals": [
+      "security-sensitive",
+      "authorization-change",
+      "material-user-impact"
+    ],
+    "scope": "cross-file",
+    "verification_scope": "independent"
+  },
+  "description": "A security-sensitive authorization change selects orchestration and independent security review without conflating review with action approval.",
+  "expected_decision": {
+    "allowed_substitutions": [],
+    "approval_classes": [],
+    "approval_required": false,
+    "authority_boundary": {
+      "approval_required": [],
+      "automatic": [
+        "existing-capability-use",
+        "read-only-local-inspection",
+        "repository-edit",
+        "targeted-local-execution"
+      ]
+    },
+    "capabilities": [
+      "architecture-context",
+      "execution",
+      "outcome-verification",
+      "semantic-navigation",
+      "structural-search",
+      "task-state",
+      "text-search"
+    ],
+    "mode": "orchestrated",
+    "not_selected": {
+      "capabilities": [
+        "documentation"
+      ],
+      "reasons": [
+        "No documentation change is required by this authorization correction.",
+        "Release review is outside the selected responsibility set."
+      ],
+      "responsibilities": [
+        "continuity",
+        "debugging",
+        "release-review"
+      ],
+      "stages": [
+        "continue",
+        "debug"
+      ]
+    },
+    "ownership": [
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "exploration",
+        "stage": "understand"
+      },
+      {
+        "ownerClass": "adaptive-orchestrator",
+        "responsibility": "planning",
+        "stage": "plan"
+      },
+      {
+        "ownerClass": "implementation-owner",
+        "responsibility": "implementation",
+        "stage": "implement"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "verification",
+        "stage": "verify"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "quality-review",
+        "stage": "review"
+      },
+      {
+        "ownerClass": "independent-reviewer",
+        "responsibility": "security-review",
+        "stage": "review"
+      }
+    ],
+    "reasons": [
+      "Authorization behavior is security-sensitive.",
+      "Material risk requires independent verification and security review.",
+      "Review responsibility is automatic and selects no approval action class."
+    ],
+    "responsibilities": [
+      "exploration",
+      "planning",
+      "implementation",
+      "verification",
+      "quality-review",
+      "security-review"
+    ],
+    "stages": [
+      "understand",
+      "plan",
+      "implement",
+      "verify",
+      "review"
+    ],
+    "user_explanation": {
+      "approval": "No approval action class is selected by security review itself.",
+      "evidence": "Independent verification and security review are required.",
+      "not_selected": "Release and continuation responsibilities are outside this bounded change.",
+      "selected": "Orchestration separates implementation from independent review."
+    },
+    "verification_level": "independent"
+  },
+  "expected_snapshot": {
+    "adaptive": {
+      "approval": {
+        "requiredClasses": [],
+        "status": "not-required"
+      },
+      "blocker": null,
+      "capabilityClasses": [
+        "architecture-context",
+        "execution",
+        "outcome-verification",
+        "semantic-navigation",
+        "structural-search",
+        "task-state",
+        "text-search"
+      ],
+      "capabilitySubstitutions": [],
+      "currentStage": "understand",
+      "decisionId": "fixture-04-orchestrated-security-change",
+      "escalationCount": 0,
+      "escalationHistory": [],
+      "hostFingerprint": "sha256:80c6a1dae259621acca5cb7bb8c65dc9b3f4e5217786d1fb8929b63ba0c6ce8e",
+      "mode": "orchestrated",
+      "nextAction": "Assign implementation and independent review to distinct owners.",
+      "reasons": [
+        "Authorization behavior is security-sensitive.",
+        "Material risk requires independent verification."
+      ],
+      "requestDigest": "sha256:b3ca35dde53d55f100b798e529e1ee0d9085aa8f6ed1c91a6b915b07771b27bc",
+      "responsibilities": [
+        "exploration",
+        "planning",
+        "implementation",
+        "verification",
+        "quality-review",
+        "security-review"
+      ],
+      "revisionFingerprint": {
+        "digest": "sha256:ab8153001ef26d94ddf2f1ebedd0ed4464578ab2f568d3eaa701be844285c088",
+        "status": "available"
+      },
+      "risk": "high",
+      "scopeFingerprint": "sha256:3a1746303a7e7c5b73f090653dc5d03e1f19e9b0afaf236c8e35435506d40c18",
+      "stages": [
+        "understand",
+        "plan",
+        "implement",
+        "verify",
+        "review"
+      ],
+      "verificationLevel": "independent",
+      "version": 1
+    }
+  },
+  "id": "04-orchestrated-security-change",
+  "permitted_escalation": {
+    "max_auto_escalations": 2,
+    "triggers_allowed": [
+      "new-risk-finding",
+      "verification-failure"
+    ]
+  },
+  "request": "Restrict billing administration access to authorized administrators and independently review the authorization change."
+}

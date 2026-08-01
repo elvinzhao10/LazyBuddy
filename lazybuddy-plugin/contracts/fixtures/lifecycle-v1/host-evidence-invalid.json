@@ -1,0 +1,52 @@
+{
+  "cases": [
+    {
+      "id": "unobserved-host-readiness",
+      "operation": "replace",
+      "path": [
+        "host_evidence",
+        "status"
+      ],
+      "value": "observed",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "misleading-success-output",
+      "operation": "replace",
+      "path": [
+        "host_evidence",
+        "observation_receipt"
+      ],
+      "value": "PASS: HOST READINESS=observed",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "unknown-host-status",
+      "operation": "replace",
+      "path": [
+        "host_evidence",
+        "status"
+      ],
+      "value": "ready",
+      "expected_boundary": "schema"
+    },
+    {
+      "id": "stale-active-release",
+      "operation": "replace",
+      "path": [
+        "active_release"
+      ],
+      "value": "1.0.2-aaaaaaaaaaaa",
+      "expected_boundary": "relationship"
+    },
+    {
+      "id": "same-active-and-previous-release",
+      "operation": "replace",
+      "path": [
+        "previous_release"
+      ],
+      "value": "1.0.3-01bcf33d0450",
+      "expected_boundary": "relationship"
+    }
+  ]
+}

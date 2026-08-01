@@ -33,11 +33,11 @@ expect_status() {
     else
         status=$?
     fi
+    printf '%s\n' "$output" > "$TMP/${label}.out"
     if [ "$status" -ne "$expected" ]; then
         fail "$label (exit $status, expected $expected): ${output:0:160}"
         return
     fi
-    printf '%s\n' "$output" > "$TMP/${label}.out"
     pass "$label"
 }
 
@@ -53,13 +53,34 @@ expect_contains() {
 
 cp -R "$PLUGIN_ROOT" "$TMP/installed-plugin"
 INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
+FULL_PACKAGE_VALIDATOR_BIN="$TMP/full-package-validator-bin"
+FULL_PACKAGE_VALIDATOR_MARKER="$TMP/full-package-validator.log"
+mkdir -p "$FULL_PACKAGE_VALIDATOR_BIN"
+printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    '[ "${1:-}" = plugin ] && [ "${2:-}" = validate ] && [ -n "${3:-}" ] || exit 64' \
+    'printf "invoked\n" >> "${LAZYBUDDY_V015_VALIDATOR_MARKER:?}"' \
+    'printf "%s\n" "Validation successful: 0 errors"' \
+    > "$FULL_PACKAGE_VALIDATOR_BIN/codebuddy"
+chmod +x "$FULL_PACKAGE_VALIDATOR_BIN/codebuddy"
 
 expect_status full-package-readiness 0 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-load-check.sh"
 expect_contains full-package-readiness '^PACKAGE_READINESS=full$'
 expect_contains full-package-readiness '^PASS commands: 14/14$'
 expect_contains full-package-readiness '^PASS MCP servers: 6/6$'
-expect_status full-package-doctor 0 env CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_status full-package-doctor 0 env \
+    PATH="$FULL_PACKAGE_VALIDATOR_BIN:$PATH" \
+    LAZYBUDDY_V015_VALIDATOR_MARKER="$FULL_PACKAGE_VALIDATOR_MARKER" \
+    CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" \
+    bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_contains full-package-doctor '^  \[PASS\] CodeBuddy manifest validator$'
 expect_contains full-package-doctor '^  \[PASS\] Command definitions \(14\)$'
+if [ -s "$FULL_PACKAGE_VALIDATOR_MARKER" ]; then
+    pass "full-package-doctor uses test-owned validator"
+else
+    fail "full-package-doctor did not use test-owned validator"
+fi
 
 expect_status self-contained-package-contract 0 python3 - "$INSTALLED_PLUGIN" <<'PY'
 import json
@@ -136,9 +157,9 @@ if [ "${LAZYBUDDY_READINESS_PARENT_COPY_DEPTH:-0}" -eq 0 ]; then
     printf '# poisoned parent handoff\n' > "$TMP/poisoned-parent/docs/handoff.md"
     cp -R "$PLUGIN_ROOT" "$PARENT_COPY"
     expect_status copied-plugin-ignores-parent-docs 0 env \
-        LAZYBUDDY_READINESS_PARENT_COPY_DEPTH=1 \
         CODEBUDDY_PLUGIN_ROOT="$PARENT_COPY" \
-        bash "$PARENT_COPY/tests/v015-readiness-regression.sh"
+        bash "$PARENT_COPY/scripts/lazybuddy-docs-check.sh"
+    expect_contains copied-plugin-ignores-parent-docs '"broken":0'
 fi
 
 printf '{invalid json\n' > "$INSTALLED_PLUGIN/.workbuddy-plugin/plugin.json"
@@ -216,6 +237,14 @@ cp -R "$PLUGIN_ROOT" "$TMP/directory-link-plugin"
 printf '%s\n' '[docs directory](docs/)' >> "$TMP/directory-link-plugin/README.md"
 expect_status package-docs-directory-link 0 env CODEBUDDY_PLUGIN_ROOT="$TMP/directory-link-plugin" bash "$TMP/directory-link-plugin/scripts/lazybuddy-docs-check.sh"
 expect_contains package-docs-directory-link '"broken":0'
+
+mkdir -p "$TMP/directory-link-plugin/tooling/node_modules/third-party"
+printf '%s\n' '[third-party omitted source](CONTRIBUTING.md)' \
+    > "$TMP/directory-link-plugin/tooling/node_modules/third-party/README.md"
+expect_status package-docs-ignore-generated-dependencies 0 \
+    env CODEBUDDY_PLUGIN_ROOT="$TMP/directory-link-plugin" \
+    bash "$TMP/directory-link-plugin/scripts/lazybuddy-docs-check.sh"
+expect_contains package-docs-ignore-generated-dependencies '"broken":0'
 
 for link_case in empty missing escape; do
     cp -R "$PLUGIN_ROOT" "$TMP/$link_case-link-plugin"
