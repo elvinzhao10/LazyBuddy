@@ -13,7 +13,7 @@ linked, caller-owned, project, global, and host-managed paths are retained.
 
 ```bash
 bash scripts/lazybuddy-tooling.sh uninstall \
-  --tooling-root /absolute/path/to/lazybuddy-tools
+  --tooling-root "/absolute/path/to/lazybuddy-tools"
 ```
 
 The command does not scan by name and does not remove credentials, host state,

@@ -35,7 +35,7 @@ From an unrelated workspace, an operator can name the copied plugin directly:
 
 ```bash
 CODEBUDDY_PLUGIN_ROOT="/absolute/path/to/lazybuddy-plugin" \
-  bash /absolute/path/to/lazybuddy-plugin/scripts/lazybuddy-load-check.sh
+  bash "/absolute/path/to/lazybuddy-plugin/scripts/lazybuddy-load-check.sh"
 ```
 
 The explicit override selects that plugin root directly; it does not discover a
