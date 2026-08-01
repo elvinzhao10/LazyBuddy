@@ -30,7 +30,7 @@ and diagnostics—never rename.
 ```bash
 # Reads the existing policy state; it does not create or update it.
 bash scripts/lazybuddy-tooling.sh providers --policy ask-once --json
-bash scripts/lazybuddy-tooling.sh detect --tooling-root /absolute/lazybuddy-tools
+bash scripts/lazybuddy-tooling.sh detect --tooling-root "/absolute/lazybuddy-tools"
 ```
 
 `providers` and `detect` are read-only inspection commands. Do not use
@@ -57,7 +57,7 @@ an explicit workspace, capability, provider, and scope:
 
 ```bash
 bash scripts/lazybuddy-tooling.sh approval grant \
-  --workspace /absolute/project --capability ID --provider ID \
+  --workspace "/absolute/project" --capability ID --provider ID \
   --scope workspace --json
 ```
 

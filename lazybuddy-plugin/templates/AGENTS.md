@@ -8,8 +8,8 @@ precedence.
 
 Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`, then use
-`node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`, and
-plan-first `offboard`. The exact durable tree is
+`node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`,
+`recover-bootstrap-lock`, and plan-first `offboard`. The exact durable tree is
 `LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
 The source checkout may be deleted after promotion. Never install in a
 temporary or cache directory.

@@ -16,7 +16,7 @@ For a package-owned tooling root:
 
 ```bash
 bash scripts/lazybuddy-tooling.sh uninstall \
-  --tooling-root /absolute/path/to/lazybuddy-tools
+  --tooling-root "/absolute/path/to/lazybuddy-tools"
 ```
 
 The command removes only an unmodified, receipt-owned installation. It checks

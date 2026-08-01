@@ -4,8 +4,8 @@
 
 **Node.js LTS 20 or newer** and **Git** are required. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use
-`node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`, and
-plan-first `offboard`. The exact tree is
+`node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`,
+`recover-bootstrap-lock`, and plan-first `offboard`. The exact tree is
 `LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`;
 the source checkout may be deleted. Same-version ref movement requires
 `--confirm-revision <full-sha>`, and a stale runtime requires scoped
@@ -261,19 +261,19 @@ location, or host-managed path.
 
 ```bash
 # Inspect host/owned providers without changing anything.
-bash scripts/lazybuddy-tooling.sh detect --tooling-root /absolute/path/to/lazybuddy-tools
+bash scripts/lazybuddy-tooling.sh detect --tooling-root "/absolute/path/to/lazybuddy-tools"
 
 # Install locked fallback tools only when host providers are missing.
-bash scripts/lazybuddy-tooling.sh install --tooling-root /absolute/empty/lazybuddy-tools
+bash scripts/lazybuddy-tooling.sh install --tooling-root "/absolute/empty/lazybuddy-tools"
 
 # Inspect repository-native checks without running them.
-bash scripts/lazybuddy-tooling.sh verify --target /absolute/project --dry-run
+bash scripts/lazybuddy-tooling.sh verify --target "/absolute/project" --dry-run
 
 # Run only explicitly selected, declared checks with a 60-second default limit.
-bash scripts/lazybuddy-tooling.sh verify --target /absolute/project --run lint test
+bash scripts/lazybuddy-tooling.sh verify --target "/absolute/project" --run lint test
 
 # Remove only an unmodified LazyBuddy receipt-owned tooling root.
-bash scripts/lazybuddy-tooling.sh uninstall --tooling-root /absolute/path/to/lazybuddy-tools
+bash scripts/lazybuddy-tooling.sh uninstall --tooling-root "/absolute/path/to/lazybuddy-tools"
 ```
 
 Repository verification recognizes package-manager lockfiles plus declared
@@ -326,19 +326,19 @@ and diagnostics. Rename is intentionally unavailable.
 ```bash
 # Inspect without changing the project or tooling root.
 bash scripts/lazybuddy-tooling.sh lsp-status \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-lsp-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-lsp-tools"
 
 # Provision the detected TS/JS or Python provider only in the empty root.
 bash scripts/lazybuddy-tooling.sh lsp-install \
-  --target /absolute/project --tooling-root /absolute/empty/lazybuddy-lsp-tools
+  --target "/absolute/project" --tooling-root "/absolute/empty/lazybuddy-lsp-tools"
 
 # A host MCP configuration can launch this package-owned stdio bridge.
-CWD=/absolute/project LAZYBUDDY_TOOLING_ROOT=/absolute/lazybuddy-lsp-tools \
+CWD="/absolute/project" LAZYBUDDY_TOOLING_ROOT="/absolute/lazybuddy-lsp-tools" \
   bash mcp/lsp/server.sh
 
 # Remove only an unmodified LSP receipt-owned root.
 bash scripts/lazybuddy-tooling.sh lsp-uninstall \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-lsp-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-lsp-tools"
 ```
 
 The locked TS/JS provider is `typescript-language-server@5.3.0` with
@@ -365,25 +365,25 @@ deliberately choose a project root:
 ```bash
 # Inspect only. This never starts CodeGraph or creates .codegraph/.
 bash scripts/lazybuddy-tooling.sh codegraph-doctor \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-codegraph-tools"
 
 # Provision the pinned package, build the project-local index, then enable it.
 bash scripts/lazybuddy-tooling.sh codegraph-install \
-  --target /absolute/project --tooling-root /absolute/absent/lazybuddy-codegraph-tools
+  --target "/absolute/project" --tooling-root "/absolute/absent/lazybuddy-codegraph-tools"
 bash scripts/lazybuddy-tooling.sh codegraph-init \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-codegraph-tools"
 bash scripts/lazybuddy-tooling.sh codegraph-enable \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-codegraph-tools"
 
 # Print an explicit MCP registration fragment; merge it through the host UI.
 bash scripts/lazybuddy-tooling.sh codegraph-export-mcp \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-codegraph-tools"
 
 # Remove only an index proven by LazyBuddy's receipt, then remove the tooling root.
 bash scripts/lazybuddy-tooling.sh codegraph-uninstall \
-  --target /absolute/project --tooling-root /absolute/lazybuddy-codegraph-tools
+  --target "/absolute/project" --tooling-root "/absolute/lazybuddy-codegraph-tools"
 bash scripts/lazybuddy-tooling.sh uninstall \
-  --tooling-root /absolute/lazybuddy-codegraph-tools
+  --tooling-root "/absolute/lazybuddy-codegraph-tools"
 ```
 
 `codegraph-doctor` recommends the capability only at 500 supported source files
@@ -408,21 +408,21 @@ credentials; any credential remains in the user's host environment.
 ```bash
 # Inspect optional state without making a remote request.
 bash scripts/lazybuddy-tooling.sh remote-status \
-  --tooling-root /absolute/lazybuddy-tools
+  --tooling-root "/absolute/lazybuddy-tools"
 
 # Enable only the desired registration fragments.
 bash scripts/lazybuddy-tooling.sh remote-enable \
-  --tooling-root /absolute/lazybuddy-tools context7
+  --tooling-root "/absolute/lazybuddy-tools" context7
 bash scripts/lazybuddy-tooling.sh remote-enable \
-  --tooling-root /absolute/lazybuddy-tools grep_app
+  --tooling-root "/absolute/lazybuddy-tools" grep_app
 
 # Print a merge-only MCP fragment; it does not edit host configuration.
 bash scripts/lazybuddy-tooling.sh remote-export-mcp \
-  --tooling-root /absolute/lazybuddy-tools
+  --tooling-root "/absolute/lazybuddy-tools"
 
 # Disable an optional registration without touching any host entry.
 bash scripts/lazybuddy-tooling.sh remote-disable \
-  --tooling-root /absolute/lazybuddy-tools context7
+  --tooling-root "/absolute/lazybuddy-tools" context7
 ```
 
 ## License
