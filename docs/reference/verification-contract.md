@@ -10,7 +10,7 @@ the package commands from `lazybuddy-plugin/`.
 | MCP integration | `bash scripts/lazybuddy-mcp-test.sh` | `MCP test: ALL PASS`. |
 | Aggregate verification | `bash scripts/lazybuddy-verify.sh` | JSON containing `"all_pass":true`. |
 | Publication contract | `bash tests/publication-regression.sh` | Root publications, the learner-path manifest, and contained local links pass. |
-| Cross-repository learner manifest | `bash tests/v018-docs-manifest-parity.sh --lazybuddy-root /absolute/lazybuddy --lazytrae-root /absolute/lazytrae` | Explicit roots have the same learner paths and page titles; host-specific prose may differ. |
+| Cross-repository learner manifest | `bash tests/v018-docs-manifest-parity.sh --lazybuddy-root "/absolute/lazybuddy" --lazytrae-root "/absolute/lazytrae"` | Explicit roots have the same learner paths and page titles; host-specific prose may differ. |
 
 Package readiness and doctor cover copied assets, six local MCP declarations,
 the optional-capability policy, and receipt-safe removal rules. They do not
