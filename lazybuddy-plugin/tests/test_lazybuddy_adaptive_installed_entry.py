@@ -13,7 +13,7 @@ import pytest
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 HOOK = PLUGIN_ROOT / "scripts" / "hooks" / "user-prompt-submit.sh"
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
-LEGACY_SECRET_WARNING = (
+PROMPT_REDACTION_NOTICE = (
     "[LazyBuddy WARNING] Your prompt may contain a secret (API key, token, or "
     "credential). Consider redacting it before sending.\n"
 )
@@ -130,7 +130,7 @@ def test_installed_hook_preserves_secret_only_warning_baseline() -> None:
 
     # Then
     assert completed.returncode == 0
-    assert completed.stdout == LEGACY_SECRET_WARNING
+    assert completed.stdout == PROMPT_REDACTION_NOTICE
     assert secret not in completed.stdout
     assert completed.stderr == ""
 
