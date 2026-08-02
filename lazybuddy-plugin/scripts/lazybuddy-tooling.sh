@@ -253,7 +253,7 @@ owned_root_is_valid() {
 
 readiness_summary() {
     python3 -B "$PLUGIN_ROOT/tooling/lazybuddy_capability_readiness.py" readiness-report --tooling-root "$TOOLING_ROOT" --json \
-        | python3 -c 'import json, sys; records = json.load(sys.stdin)["records"]; print(",".join(sorted({record["status"] for record in records})))'
+        | python3 -c 'import json, sys; records = json.load(sys.stdin)["records"]; print(",".join(sorted({record["internal_status"] for record in records})))'
 }
 
 print_status() {

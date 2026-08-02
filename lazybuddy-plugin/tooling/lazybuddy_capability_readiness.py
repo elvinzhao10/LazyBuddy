@@ -13,12 +13,24 @@ from typing import Final
 
 from lazybuddy_capability_contract import BrokerError, PLUGIN_ROOT, contract_digest
 
-READINESS_CONTRACT: Final = PLUGIN_ROOT / "contracts" / "lazyseries-capability-readiness.v1.json"; READINESS_VERSION: Final = "0.18.0"
+READINESS_CONTRACT: Final = PLUGIN_ROOT / "contracts" / "lazyseries-capability-readiness.v2.json"
+READINESS_VERSION: Final = "2.0.0"
 READINESS_CHECKSUM: Final = READINESS_CONTRACT.with_suffix(READINESS_CONTRACT.suffix + ".sha256")
-READINESS_SCHEMA_SHA256: Final = "ef78955b26f77769b3717f8ec8699781972a47f9514ce4955ee7dcbd6738c219"
-READINESS_STATUSES: Final = frozenset({"package-ready", "owned-ready", "missing", "incompatible", "disabled", "failed-optional", "not-initialized"})
-READINESS_SCOPES: Final = frozenset({"package-ready", "observed-build-route", "manual-skills-mcp-fallback", "live-host-proof"})
-READINESS_REQUIRED_FIELDS: Final = frozenset({"schema_version", "contract_version", "contract_digest", "host", "capability", "provider", "status", "readiness_scope", "reason_code", "message", "receipt", "details"})
+READINESS_SCHEMA_SHA256: Final = "17898bbc1812c445c26bddacbe286d53eabcd5f2add3f30d10c2515942db1f87"
+READINESS_HOSTS: Final = frozenset({"codebuddy-cli", "codebuddy-ide", "workbuddy", "trae-cli", "trae-ide", "trae-work"})
+READINESS_REQUIRED_FIELDS: Final = frozenset({"schema_version", "contract_version", "policy_digest", "host", "capability", "provider", "internal_status", "native_mode", "public_label", "package_status", "probe_status", "readiness_scope", "reason_code", "message", "evidence"})
+EVIDENCE_REQUIRED_FIELDS: Final = frozenset({"scope", "ref", "sha256", "session_id"})
+INTERNAL_STATE_MAPPING: Final = {
+    "package-ready": ("invoke-documented", "documented-tested", "ready", "not-run", "package"),
+    "owned-ready": ("invoke-documented", "documented-tested", "ready", "not-run", "package"),
+    "missing": ("unavailable", "unavailable", "missing", "not-run", "package"),
+    "incompatible": ("unavailable", "unavailable", "incompatible", "not-run", "package"),
+    "disabled": ("descriptor-only", "documented-untested", "disabled", "not-run", "package"),
+    "failed-optional": ("unavailable", "unavailable", "failed", "not-run", "package"),
+    "not-initialized": ("descriptor-only", "documented-untested", "not-checked", "not-run", "package"),
+    "probe-observed": ("observe-only", "observed-build-specific", "not-checked", "observed", "probe"),
+    "current-session-ready": ("invoke-documented", "documented-tested", "ready", "observed", "current-session"),
+}
 READINESS_CAPABILITIES: Final = (
     ("local_search", "ripgrep"), ("structural_search", "ast-grep"), ("code_navigation", "lsp"),
     ("architecture_search", "codegraph"), ("documentation_search", "context7"), ("web_search", "web"),
@@ -36,9 +48,10 @@ def readiness_contract_integrity(contract_path: Path = READINESS_CONTRACT, check
     return (
         declared == READINESS_SCHEMA_SHA256
         and hashlib.sha256(raw).hexdigest() == READINESS_SCHEMA_SHA256
-        and contract.get("schema_version") == 1
+        and contract.get("schema_version") == 2
         and contract.get("contract_version") == READINESS_VERSION
-        and contract.get("properties", {}).get("contract_digest", {}).get("const") == contract_digest()
+        and contract.get("properties", {}).get("policy_digest", {}).get("const") == contract_digest()
+        and contract.get("x-internal-state-mapping") == {key: list(value) for key, value in INTERNAL_STATE_MAPPING.items()}
     )
 def safe_directory(path: Path) -> bool:
     return path.is_dir() and not path.is_symlink()
@@ -187,20 +200,32 @@ def lsp_owned_provider(root: Path, language: str) -> Path | None:
     return provider if digest is not None and receipt == expected and receipt_path.read_bytes() == canonical_json(expected) else None
 
 
-def record(capability: str, provider: str | None, status: str, message: str, reason_code: str | None, receipt: dict[str, object] | None, details: dict[str, object], readiness_scope: str = "package-ready") -> dict[str, object]:
+def record(capability: str, provider: str | None, status: str, message: str, reason_code: str | None, receipt: dict[str, object] | None, details: dict[str, object], readiness_scope: str = "package") -> dict[str, object]:
+    native_mode, public_label, package_status, probe_status, mapped_scope = INTERNAL_STATE_MAPPING[status]
+    if readiness_scope != mapped_scope:
+        raise ValueError(f"internal_status {status} requires readiness_scope {mapped_scope}")
+    policy_digest = contract_digest()
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "contract_version": READINESS_VERSION,
-        "contract_digest": contract_digest(),
-        "host": "lazybuddy",
+        "policy_digest": policy_digest,
+        "host": "codebuddy-cli",
         "capability": capability,
         "provider": provider,
-        "status": status,
+        "internal_status": status,
+        "native_mode": native_mode,
+        "public_label": public_label,
+        "package_status": package_status,
+        "probe_status": probe_status,
         "readiness_scope": readiness_scope,
         "reason_code": reason_code,
         "message": message,
-        "receipt": receipt,
-        "details": details,
+        "evidence": {
+            "scope": readiness_scope,
+            "ref": f"automatic-tooling-contract.v1.json#sha256={policy_digest}",
+            "sha256": policy_digest,
+            "session_id": None,
+        },
     }
 
 
@@ -289,31 +314,124 @@ def records(tooling_root: Path, target: Path | None, contract_paths: tuple[Path,
     ]
 
 
+def validate_readiness_record(value: object, *, source_scope: str, current_session_id: str | None = None) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise ValueError("readiness receipt must be an object")
+    unknown = set(value) - READINESS_REQUIRED_FIELDS
+    missing = READINESS_REQUIRED_FIELDS - set(value)
+    if unknown:
+        raise ValueError(f"readiness receipt has unknown fields: {', '.join(sorted(unknown))}")
+    if missing:
+        raise ValueError(f"readiness receipt is missing required field: {', '.join(sorted(missing))}")
+    if value["schema_version"] != 2:
+        raise ValueError("schema_version must be 2")
+    if value["contract_version"] != READINESS_VERSION:
+        raise ValueError(f"contract_version must be {READINESS_VERSION}")
+    if value["policy_digest"] != contract_digest():
+        raise ValueError("policy_digest does not match the packaged policy")
+    if not isinstance(value["host"], str) or value["host"] not in READINESS_HOSTS:
+        raise ValueError("host is not a declared LazySeries surface")
+    if not isinstance(value["capability"], str) or not value["capability"]:
+        raise ValueError("capability must be a non-empty string")
+    if value["provider"] is not None and not isinstance(value["provider"], str):
+        raise ValueError("provider must be a string or null")
+    internal_status = value["internal_status"]
+    if not isinstance(internal_status, str):
+        raise ValueError("internal_status is unknown")
+    mapping = INTERNAL_STATE_MAPPING.get(internal_status)
+    if mapping is None:
+        raise ValueError("internal_status is unknown")
+    actual_mapping = (value["native_mode"], value["public_label"], value["package_status"], value["probe_status"], value["readiness_scope"])
+    if actual_mapping != mapping:
+        raise ValueError("internal_status mapping is inconsistent")
+    if value["reason_code"] is not None and not isinstance(value["reason_code"], str):
+        raise ValueError("reason_code must be a string or null")
+    if not isinstance(value["message"], str):
+        raise ValueError("message must be a string")
+    evidence = value["evidence"]
+    if not isinstance(evidence, dict):
+        raise ValueError("evidence must be an object")
+    evidence_unknown = set(evidence) - EVIDENCE_REQUIRED_FIELDS
+    evidence_missing = EVIDENCE_REQUIRED_FIELDS - set(evidence)
+    if evidence_unknown:
+        raise ValueError(f"evidence has unknown fields: {', '.join(sorted(evidence_unknown))}")
+    if evidence_missing:
+        raise ValueError(f"evidence is missing required field: {', '.join(sorted(evidence_missing))}")
+    if evidence["scope"] != value["readiness_scope"]:
+        raise ValueError("evidence scope does not match readiness_scope")
+    if not isinstance(evidence["ref"], str) or not evidence["ref"]:
+        raise ValueError("evidence ref must be a non-empty string")
+    digest = evidence["sha256"]
+    if not isinstance(digest, str) or len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise ValueError("evidence sha256 must be a lowercase SHA-256 digest")
+    if source_scope != value["readiness_scope"]:
+        if source_scope == "package":
+            raise ValueError("package evidence cannot emit host-ready readiness")
+        raise ValueError("source scope does not match readiness_scope")
+    session_id = evidence["session_id"]
+    if source_scope == "current-session":
+        if not isinstance(current_session_id, str) or not current_session_id or session_id != current_session_id:
+            raise ValueError("evidence does not belong to the current session")
+    elif session_id is not None:
+        raise ValueError("non-session evidence must not contain a session_id")
+    return value
+
+
+def normalize_v1_readiness_record(value: object) -> dict[str, object]:
+    required = {"schema_version", "contract_version", "contract_digest", "host", "capability", "provider", "status", "readiness_scope", "reason_code", "message", "receipt", "details"}
+    if not isinstance(value, dict) or set(value) != required or value.get("schema_version") != 1 or value.get("contract_version") != "0.18.0":
+        raise ValueError("historical v1 readiness receipt is invalid")
+    host = {"lazybuddy": "codebuddy-cli", "lazytrae": "trae-cli"}.get(value["host"])
+    status = value["status"]
+    if host is None or not isinstance(status, str) or status not in INTERNAL_STATE_MAPPING:
+        raise ValueError("historical v1 readiness receipt has unknown host or status")
+    normalized = record(value["capability"], value["provider"], status, value["message"], value["reason_code"], None, {})
+    normalized["host"] = host
+    return normalized
+
+
 def validate(value: list[dict[str, object]]) -> None:
-    if not value: raise ValueError("readiness records are empty")
-    if any(set(item) != READINESS_REQUIRED_FIELDS or item["schema_version"] != 1 or item["contract_version"] != READINESS_VERSION or item["contract_digest"] != contract_digest() or item["host"] != "lazybuddy" or not isinstance(item["capability"], str) or not item["capability"] or item["provider"] is not None and not isinstance(item["provider"], str) or item["status"] not in READINESS_STATUSES or item["readiness_scope"] not in READINESS_SCOPES or item["reason_code"] is not None and not isinstance(item["reason_code"], str) or not isinstance(item["message"], str) or not isinstance(item["details"], dict) for item in value):
-        raise ValueError("readiness records do not satisfy the public contract")
-    if any(item["receipt"] is not None and (not isinstance(item["receipt"], dict) or set(item["receipt"]) != {"owner", "schema_version", "state"} or not isinstance(item["receipt"]["owner"], str) or not item["receipt"]["owner"] or item["receipt"]["schema_version"] != 1 or not isinstance(item["receipt"]["state"], str) or not item["receipt"]["state"]) for item in value):
-        raise ValueError("readiness records do not satisfy the public contract")
+    if not value:
+        raise ValueError("readiness records are empty")
+    for item in value:
+        validate_readiness_record(item, source_scope="package")
 
 
 def validate_package_records(value: list[dict[str, object]]) -> None:
     validate(value)
-    if any(item["readiness_scope"] != "package-ready" for item in value):
-        raise ValueError("package checks may emit only package-ready evidence")
+    if any(item["readiness_scope"] != "package" for item in value):
+        raise ValueError("package evidence cannot emit host-ready readiness")
 
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Read-only LazyBuddy capability readiness report")
-    action = result.add_subparsers(dest="command", required=True).add_parser("readiness-report")
+    actions = result.add_subparsers(dest="command", required=True)
+    action = actions.add_parser("readiness-report")
     action.add_argument("--tooling-root", type=Path, default=PLUGIN_ROOT / ".lazybuddy-readiness-uninitialized")
     action.add_argument("--target", type=Path)
     action.add_argument("--json", action="store_true", required=True)
+    validate_action = actions.add_parser("validate-receipt")
+    validate_action.add_argument("--file", type=Path, required=True)
+    validate_action.add_argument("--source-scope", choices=("package", "probe", "current-session"), required=True)
+    validate_action.add_argument("--current-session-id")
+    validate_action.add_argument("--contract-path", type=Path, default=READINESS_CONTRACT)
+    validate_action.add_argument("--checksum-path", type=Path, default=READINESS_CHECKSUM)
     return result
 
 
 def main() -> int:
     args = parser().parse_args()
+    if args.command == "validate-receipt":
+        try:
+            if not readiness_contract_integrity(args.contract_path, args.checksum_path):
+                raise ValueError("contract checksum or policy binding is invalid")
+            value = json.loads(args.file.read_text(encoding="utf-8"))
+            parsed = validate_readiness_record(value, source_scope=args.source_scope, current_session_id=args.current_session_id)
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            print(f"readiness receipt invalid: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps(parsed, sort_keys=True))
+        return 0
     if not args.tooling_root.is_absolute() or ".." in args.tooling_root.parts: parser().error("--tooling-root must be an absolute traversal-free path")
     if args.target is not None and (not args.target.is_absolute() or ".." in args.target.parts): parser().error("--target must be an absolute traversal-free path")
     try:

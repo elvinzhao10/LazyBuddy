@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "contract_version": "2.0.0",
+  "policy_digest": "3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a",
+  "host": "trae-ide",
+  "capability": "host_session",
+  "provider": "trae-ide",
+  "internal_status": "current-session-ready",
+  "native_mode": "invoke-documented",
+  "public_label": "documented-tested",
+  "package_status": "ready",
+  "probe_status": "observed",
+  "readiness_scope": "current-session",
+  "reason_code": null,
+  "message": "The session identifier is intentionally forged.",
+  "evidence": {
+    "scope": "current-session",
+    "ref": "session:session-forged",
+    "sha256": "3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a",
+    "session_id": "session-forged"
+  }
+}

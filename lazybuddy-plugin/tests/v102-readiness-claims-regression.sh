@@ -37,26 +37,24 @@ from pathlib import Path
 plugin_root = Path(sys.argv[1])
 report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 records = report["records"]
-assert records and all(item["readiness_scope"] == "package-ready" for item in records)
-assert all(item["status"] != "host-ready" for item in records)
+assert records and all(item["readiness_scope"] == "package" for item in records)
+assert all(item["readiness_scope"] != "current-session" for item in records)
 sys.path.insert(0, str(plugin_root / "tooling"))
 from lazybuddy_capability_readiness import validate_package_records
 
 validate_package_records(records)
 live = copy.deepcopy(records)
-live[0]["readiness_scope"] = "live-host-proof"
+live[0]["readiness_scope"] = "current-session"
 try:
     validate_package_records(live)
 except ValueError as error:
-    assert "package-ready" in str(error)
+    assert "mapping" in str(error) or "package evidence" in str(error)
 else:
     raise AssertionError("package validator accepted a live host claim")
 
 both_routes = copy.deepcopy(records)
-both_routes[0]["readiness_scope"] = "observed-build-route"
-both_routes[0]["details"]["route"] = "plugin"
-both_routes[1]["readiness_scope"] = "manual-skills-mcp-fallback"
-both_routes[1]["details"]["route"] = "manual"
+both_routes[0]["readiness_scope"] = "probe"
+both_routes[1]["readiness_scope"] = "current-session"
 try:
     validate_package_records(both_routes)
 except ValueError:

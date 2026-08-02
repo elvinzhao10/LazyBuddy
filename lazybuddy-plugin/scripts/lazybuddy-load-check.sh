@@ -325,8 +325,8 @@ try:
         not isinstance(records, list)
         or len(records) != 9
         or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records)
-        or any(record.get("status") == "host-ready" for record in records)
-        or any(record.get("readiness_scope") != "package-ready" for record in records)
+        or any(record.get("readiness_scope") == "current-session" for record in records)
+        or any(record.get("readiness_scope") != "package" for record in records)
     ):
         raise ValueError("canonical report did not return nine integrity-valid records")
 except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
