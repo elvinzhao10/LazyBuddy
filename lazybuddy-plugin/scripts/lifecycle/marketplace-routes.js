@@ -14,6 +14,12 @@ const PAYLOAD_COMPONENTS = Object.freeze({
   hooks: ['./hooks/hooks.json'],
   mcpServers: ['./.mcp.json'],
 });
+const CODEBUDDY_USER_CONFIG = Object.freeze({
+  mcp_mode: Object.freeze({
+    description: 'MCP profile: direct, assisted, planned, orchestrated, or long-horizon.',
+    sensitive: false,
+  }),
+});
 
 function digest(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
@@ -75,7 +81,7 @@ function inventory(pluginRoot, policy) {
 
 function validateManifest(value, host, expectedVersion) {
   const expected = host === 'codebuddy'
-    ? { name: 'lazybuddy', version: expectedVersion, commands: PAYLOAD_COMPONENTS.commands, agents: PAYLOAD_COMPONENTS.agents, hooks: PAYLOAD_COMPONENTS.hooks, mcpServers: PAYLOAD_COMPONENTS.mcpServers }
+    ? { name: 'lazybuddy', version: expectedVersion, commands: PAYLOAD_COMPONENTS.commands, agents: PAYLOAD_COMPONENTS.agents, hooks: PAYLOAD_COMPONENTS.hooks, mcpServers: PAYLOAD_COMPONENTS.mcpServers, userConfig: CODEBUDDY_USER_CONFIG }
     : { name: 'lazybuddy', version: expectedVersion, description: 'LazyBuddy workflows for CodeBuddy and WorkBuddy.', skills: PAYLOAD_COMPONENTS.skills, commands: PAYLOAD_COMPONENTS.commands, agents: PAYLOAD_COMPONENTS.agents, hooks: PAYLOAD_COMPONENTS.hooks, mcpServers: PAYLOAD_COMPONENTS.mcpServers };
   if (host === 'codebuddy') expected.description = 'LazyBuddy workflows for CodeBuddy and WorkBuddy.';
   const errorCode = value?.version === expectedVersion ? 'MARKETPLACE_IDENTITY_INVALID' : 'MARKETPLACE_VERSION_MISMATCH';

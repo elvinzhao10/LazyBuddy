@@ -333,6 +333,16 @@ else
     check ".mcp.json exists" "missing"
 fi
 
+PROFILE_VALIDATION_DATA="${TMPDIR:-/tmp}/lazybuddy-doctor-profile-data-$$"
+if profile_result=$(python3 "${PLUGIN_ROOT}/scripts/lazybuddy-mcp-profile.py" \
+    --mode orchestrated \
+    --project-dir "$PROJECT_ROOT" \
+    --plugin-data "$PROFILE_VALIDATION_DATA" 2>&1); then
+    check "MCP typed profile contract" ok
+else
+    check "MCP typed profile contract" "$profile_result"
+fi
+
 if contract_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import hashlib
 import json

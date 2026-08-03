@@ -32,10 +32,13 @@ config = json.load(open(sys.argv[1]))
 servers = config["mcpServers"]
 assert tuple(servers) == ("run-ledger", "verification", "status-dashboard", "context-graph", "code-intel", "docs"), servers
 for name, entry in servers.items():
-    assert entry["cwd"] == "${CODEBUDDY_PROJECT_DIR}", (name, entry)
+    assert entry["type"] == "stdio", (name, entry)
     assert entry["args"] == [f"${{CODEBUDDY_PLUGIN_ROOT}}/mcp/{name}/server.sh"], (name, entry)
+    assert entry["env"]["CWD"] == "${CODEBUDDY_PROJECT_DIR}", (name, entry)
+    assert entry["env"]["CODEBUDDY_PROJECT_DIR"] == "${CODEBUDDY_PROJECT_DIR}", (name, entry)
+    assert "cwd" not in entry and "required" not in entry, (name, entry)
 PYEOF
-then pass_case 'all six declarations use project CWD and plugin-root launchers'; else fail_case 'all six declarations use project CWD and plugin-root launchers'; fi
+then pass_case 'all six typed declarations use project CWD and plugin-root launchers'; else fail_case 'all six typed declarations use project CWD and plugin-root launchers'; fi
 
 assert_jsonrpc_initialize() {
     local label="$1" server="$2" output

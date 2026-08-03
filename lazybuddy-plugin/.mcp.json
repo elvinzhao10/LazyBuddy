@@ -1,40 +1,82 @@
 {
   "mcpServers": {
     "run-ledger": {
+      "type": "stdio",
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/run-ledger/server.sh"],
-      "cwd": "${CODEBUDDY_PROJECT_DIR}",
-      "required": false
+      "env": {
+        "CWD": "${CODEBUDDY_PROJECT_DIR}",
+        "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+        "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+        "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+        "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache"
+      },
+      "defer_loading": false
     },
     "verification": {
+      "type": "stdio",
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/verification/server.sh"],
-      "cwd": "${CODEBUDDY_PROJECT_DIR}",
-      "required": false
+      "env": {
+        "CWD": "${CODEBUDDY_PROJECT_DIR}",
+        "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+        "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+        "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+        "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache"
+      },
+      "defer_loading": false
     },
     "status-dashboard": {
+      "type": "stdio",
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/status-dashboard/server.sh"],
-      "cwd": "${CODEBUDDY_PROJECT_DIR}",
-      "required": false
+      "env": {
+        "CWD": "${CODEBUDDY_PROJECT_DIR}",
+        "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+        "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+        "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+        "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache"
+      },
+      "defer_loading": false
     },
     "context-graph": {
+      "type": "stdio",
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/context-graph/server.sh"],
-      "cwd": "${CODEBUDDY_PROJECT_DIR}",
-      "required": false
+      "env": {
+        "CWD": "${CODEBUDDY_PROJECT_DIR}",
+        "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+        "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+        "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+        "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache"
+      },
+      "defer_loading": true
     },
     "code-intel": {
+      "type": "stdio",
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/code-intel/server.sh"],
-      "cwd": "${CODEBUDDY_PROJECT_DIR}",
-      "required": false
+      "env": {
+        "CWD": "${CODEBUDDY_PROJECT_DIR}",
+        "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+        "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+        "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+        "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache"
+      },
+      "defer_loading": true
     },
     "docs": {
+      "type": "stdio",
       "command": "bash",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/docs/server.sh"],
-      "cwd": "${CODEBUDDY_PROJECT_DIR}",
-      "required": false
+      "env": {
+        "CWD": "${CODEBUDDY_PROJECT_DIR}",
+        "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+        "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+        "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+        "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache"
+      },
+      "defer_loading": true
     }
   }
 }

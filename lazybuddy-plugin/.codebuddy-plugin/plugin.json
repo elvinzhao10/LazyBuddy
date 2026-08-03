@@ -13,5 +13,11 @@
   ],
   "mcpServers": [
     "./.mcp.json"
-  ]
+  ],
+  "userConfig": {
+    "mcp_mode": {
+      "description": "MCP profile: direct, assisted, planned, orchestrated, or long-horizon.",
+      "sensitive": false
+    }
+  }
 }

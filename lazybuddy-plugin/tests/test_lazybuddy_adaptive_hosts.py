@@ -177,18 +177,34 @@ def test_status_dashboard_always_in_mcp_servers(mode):
     assert "status-dashboard" in hosts["skills_mcp_only_fallback"]["mcp_servers"]
 
 
-def test_orchestrated_mode_includes_verification_mcp():
-    """Orchestrated capabilities include outcome-verification, which maps to verification MCP."""
-    decision = _decision_for_mode("orchestrated")
+@pytest.mark.parametrize("mode", ALL_MODES)
+def test_core_mcp_servers_are_direct_in_every_mode(mode):
+    decision = _decision_for_mode(mode)
+
     hosts = map_adaptive_decision_to_hosts(decision)
-    assert "verification" in hosts["codebuddy_full_plugin"]["mcp_servers"]
+
+    expected_core = ["run-ledger", "verification", "status-dashboard"]
+    assert hosts["codebuddy_full_plugin"]["mcp_servers"][:3] == expected_core
+    assert hosts["workbuddy_full_plugin"]["mcp_servers"][:3] == expected_core
+    assert hosts["skills_mcp_only_fallback"]["mcp_servers"][:3] == expected_core
 
 
-def test_long_horizon_includes_run_ledger_mcp():
-    """Long-horizon capabilities include task-state, which maps to run-ledger MCP."""
-    decision = _decision_for_mode("long-horizon")
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [
+        ("direct", ["run-ledger", "verification", "status-dashboard"]),
+        ("assisted", ["run-ledger", "verification", "status-dashboard", "context-graph", "code-intel"]),
+        ("planned", ["run-ledger", "verification", "status-dashboard", "context-graph", "docs"]),
+        ("orchestrated", list(ALL_MCP_SERVERS)),
+        ("long-horizon", list(ALL_MCP_SERVERS)),
+    ],
+)
+def test_mode_selects_exact_mcp_profile(mode, expected):
+    decision = _decision_for_mode(mode)
+
     hosts = map_adaptive_decision_to_hosts(decision)
-    assert "run-ledger" in hosts["codebuddy_full_plugin"]["mcp_servers"]
+
+    assert hosts["codebuddy_full_plugin"]["mcp_servers"] == expected
 
 
 def test_capability_to_mcp_map_covers_all_caps():

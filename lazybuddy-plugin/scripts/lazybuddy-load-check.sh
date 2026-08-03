@@ -297,6 +297,22 @@ if mcp is not None:
     actual = mcp.get("mcpServers")
     count = len(actual) if isinstance(actual, dict) else -1
     result("PASS" if count == 6 else "FAIL", "MCP servers", f"{count}/6")
+    profile_check = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(root, "scripts", "lazybuddy-mcp-profile.py"),
+            "--mode", "orchestrated",
+            "--project-dir", os.path.dirname(root),
+            "--plugin-data", os.path.join(os.path.realpath(os.getenv("TMPDIR", "/tmp")), f"lazybuddy-profile-validation-{os.getpid()}"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if profile_check.returncode == 0:
+        result("PASS", "MCP typed profile contract", "six typed declarations; core direct; optional deferred")
+    else:
+        result("FAIL", "MCP typed profile contract", profile_check.stderr.strip() or "profile validation failed")
 
 contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
 contract_digest_path = contract_path + ".sha256"

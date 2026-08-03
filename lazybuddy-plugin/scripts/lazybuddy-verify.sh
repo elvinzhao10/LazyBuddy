@@ -189,6 +189,7 @@ run_regression_inventory() {
         "v102-readiness-claims-regression.sh"
         "v102-workbuddy-package-preparation-regression.sh"
         "v103-adaptive-contract-regression.sh"
+        "v110-mcp-profiles-regression.sh"
     )
     local lifecycle_tests=(
         "v015-readiness-regression.sh"

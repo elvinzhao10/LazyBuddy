@@ -9,14 +9,14 @@
   },
   "artifacts": {
     ".codebuddy-plugin/marketplace.json": "3d93794dd05673a6b39f22f7ec5bf46733122c2d3cfea69de0e98808a17e1db6",
-    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "5d79f3cfd31a86425fe4d9ee2b6cf17310b26d556c4556981689c2c446ee19ee",
+    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "edd23bef66c239cba0ab1b03cc221fe29da341ab18e1b641db24dfe7b9ee3e36",
     "lazybuddy-plugin/.workbuddy-plugin/plugin.json": "f6a20dc6b2e4e47825f7ba8d0df8bd214a1d91ebfc3a60cd27ff047ced1870be"
   },
   "payload": {
     "roots": ["skills", "commands", "agents", "hooks", "mcp"],
     "files": [".mcp.json"],
-    "file_count": 59,
-    "inventory_sha256": "b8a4786467638e0088e74566bb9ceef0cbd9b979d1bc9bef141a4eaa6a3fc06f"
+    "file_count": 60,
+    "inventory_sha256": "95ad98ef13697abb0814831ffb03fa63fba0b426cef51d8d1786372f85f35c76"
   },
   "default_routes": {
     "codebuddy-ide": "codebuddy-marketplace",
