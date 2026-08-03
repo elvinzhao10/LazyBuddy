@@ -45,6 +45,14 @@ elif mode == "nested-schema":
     print(json.dumps({"session_id":"session-nested-schema","result":"wrong","structured_output":{"answer":""}}))
 elif mode == "nan":
     print('{"session_id":"session-nan","result":"misleading success","structured_output":{"answer":NaN}}')
+elif mode == "enum-bool-top":
+    print(json.dumps({"session_id":"session-enum-bool-top","result":"wrong","structured_output":True}))
+elif mode == "const-bool-top":
+    print(json.dumps({"session_id":"session-const-bool-top","result":"wrong","structured_output":True}))
+elif mode == "enum-bool-nested":
+    print(json.dumps({"session_id":"session-enum-bool-nested","result":"wrong","structured_output":{"answer":True}}))
+elif mode == "const-bool-nested":
+    print(json.dumps({"session_id":"session-const-bool-nested","result":"wrong","structured_output":{"answer":True}}))
 elif mode == "turns":
     print(json.dumps({"session_id":"session-turns","result":"too many","num_turns":4,"structured_output":{"answer":"safe"}}))
 elif mode == "nonzero":
@@ -269,6 +277,32 @@ assert state['runtime_fingerprints'][0]['host']=='codebuddy-cli'
 PY
 pass 'successful exact session ID is persisted through existing runtime binding state'
 cp "$TMP/fake-codebuddy" "$TMP/fake-codebuddy.bound"
+
+printf '{"enum":[1]}\n' > "$TMP/enum-bool-top-schema.json"
+printf '{"const":1}\n' > "$TMP/const-bool-top-schema.json"
+printf '{"type":"object","properties":{"answer":{"enum":[1]}},"required":["answer"]}\n' > "$TMP/enum-bool-nested-schema.json"
+printf '{"type":"object","properties":{"answer":{"const":1}},"required":["answer"]}\n' > "$TMP/const-bool-nested-schema.json"
+for schema_case in enum-bool-top const-bool-top enum-bool-nested const-bool-nested; do
+  cp "$STATE" "$TMP/$schema_case-state-before.json"
+  if ARGV_LOG="$TMP/$schema_case-argv.json" FAKE_MODE="$schema_case" python3 "$RUNNER" \
+    --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
+    --input-file "$TMP/prompt.txt" --input-format text --output-format json \
+    --json-schema-file "$TMP/$schema_case-schema.json" --max-turns 3 --timeout 3 \
+    --mcp-config "$TMP/mcp config.json" --permission-mode default \
+    --subagent-permission-mode default --state-file "$STATE" \
+    --binding-root "$PLUGIN_ROOT" --asset-file "$PLUGIN_ROOT/asset-source-manifest.v1.json" \
+    --probe-file "$PLUGIN_ROOT/README.md" --result-file "$TMP/$schema_case-result.json" \
+    --stdout-file "$TMP/$schema_case.stdout" --stderr-file "$TMP/$schema_case.stderr"; then
+    fail "$schema_case unexpectedly succeeded"
+  fi
+  python3 - "$TMP/$schema_case-result.json" <<'PY'
+import json, pathlib, sys
+result=json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert result['reason']=='schema_mismatch', result
+PY
+  cmp "$TMP/$schema_case-state-before.json" "$STATE" || fail "$schema_case mutated session state"
+done
+pass 'JSON Schema const/enum distinguish bool from number at top-level and nested values'
 
 cp "$STATE" "$TMP/state-before-failures.json"
 for mode in malformed permission missing-session schema turns nonzero hang spoof; do

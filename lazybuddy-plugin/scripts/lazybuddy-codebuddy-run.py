@@ -36,6 +36,14 @@ def strict_json(text: str) -> JSONValue:
     return json.loads(text, parse_constant=reject_constant)
 
 
+def json_equal(left: JSONValue, right: JSONValue) -> bool:
+    if isinstance(left, bool) or isinstance(right, bool): return type(left) is type(right) and left == right
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)): return left == right
+    if isinstance(left, list) and isinstance(right, list): return len(left) == len(right) and all(json_equal(a, b) for a, b in zip(left, right))
+    if isinstance(left, dict) and isinstance(right, dict): return left.keys() == right.keys() and all(json_equal(left[key], right[key]) for key in left)
+    return type(left) is type(right) and left == right
+
+
 def read_json(path: Path, reason: str) -> JSONValue:
     try:
         return strict_json(path.read_text(encoding="utf-8"))
@@ -57,32 +65,26 @@ def schema_object(value: JSONValue) -> dict[str, JSONValue]:
     if not isinstance(value, dict): raise AdapterError("invalid_json_schema")
     if set(value) - SUPPORTED_SCHEMA_KEYS: raise AdapterError("unsupported_json_schema")
     if any(key in value and not isinstance(value[key], str) for key in ("$schema", "title", "description")): raise AdapterError("invalid_json_schema")
-    expected = value.get("type")
+    expected = value.get("type"); required = value.get("required", []); properties = value.get("properties", {})
     if expected is not None and (not isinstance(expected, str) or expected not in SCHEMA_TYPES): raise AdapterError("invalid_json_schema")
-    required = value.get("required", [])
     if not isinstance(required, list) or any(not isinstance(name, str) for name in required) or len({name for name in required if isinstance(name, str)}) != len(required): raise AdapterError("invalid_json_schema")
-    properties = value.get("properties", {})
     if not isinstance(properties, dict) or any(not isinstance(name, str) or not isinstance(child, dict) for name, child in properties.items()): raise AdapterError("invalid_json_schema")
-    for child in properties.values():
-        schema_object(child)
+    for child in properties.values(): schema_object(child)
     if "additionalProperties" in value and not isinstance(value["additionalProperties"], bool): raise AdapterError("invalid_json_schema")
-    if "items" in value:
-        if not isinstance(value["items"], dict): raise AdapterError("invalid_json_schema")
-        schema_object(value["items"])
+    if "items" in value and not isinstance(value["items"], dict): raise AdapterError("invalid_json_schema")
+    if "items" in value: schema_object(value["items"])
     for key in ("oneOf", "allOf"):
-        if key in value:
-            candidates = value[key]
-            if not isinstance(candidates, list) or any(not isinstance(candidate, dict) for candidate in candidates): raise AdapterError("invalid_json_schema")
-            for candidate in candidates:
-                schema_object(candidate)
+        if key in value: candidates = value[key]
+        if key in value and (not isinstance(candidates, list) or any(not isinstance(candidate, dict) for candidate in candidates)): raise AdapterError("invalid_json_schema")
+        if key in value: [schema_object(candidate) for candidate in candidates]
     if "enum" in value and (not isinstance(value["enum"], list) or not value["enum"]): raise AdapterError("invalid_json_schema")
     return value
 
 
 def validate_schema(value: JSONValue, schema: dict[str, JSONValue]) -> bool:
-    if "const" in schema and value != schema["const"]: return False
+    if "const" in schema and not json_equal(value, schema["const"]): return False
     enum = schema.get("enum")
-    if enum is not None and value not in enum: return False
+    if enum is not None and not any(json_equal(value, candidate) for candidate in enum): return False
     one_of = schema.get("oneOf")
     if one_of is not None:
         matches = 0
