@@ -85,7 +85,9 @@ test('treats fallback as generated recovery and conflicts with either marketplac
   assert.equal(fallback.recovery.generated_only, true);
   assert.equal(fallback.recovery.asset_manifest, 'lazybuddy-plugin/asset-source-manifest.v1.json');
   assert.equal(codebuddyConflict.kind, 'conflict');
+  assert.deepEqual(codebuddyConflict.routes, ['codebuddy-marketplace', 'manual-skills-mcp-fallback']);
   assert.equal(workbuddyConflict.kind, 'conflict');
+  assert.deepEqual(workbuddyConflict.routes, ['manual-skills-mcp-fallback', 'workbuddy-full-plugin']);
 });
 
 test('generated fallback uninstall refuses all mutation when one receipt-owned skill was modified', (t) => {

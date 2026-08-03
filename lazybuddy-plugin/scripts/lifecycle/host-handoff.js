@@ -31,7 +31,7 @@ function routeSelection(routes) {
   if (hasFull && hasFallback) {
     return {
       kind: 'conflict',
-      routes: ['manual-skills-mcp-fallback', 'workbuddy-full-plugin'],
+      routes: selected,
       nextAction: 'Use the host UI to remove the prior LazyBuddy route, start a fresh session, then select exactly one route.',
     };
   }
