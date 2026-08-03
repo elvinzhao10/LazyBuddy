@@ -105,6 +105,28 @@ b = d.get('budget', {})
 if not isinstance(b, dict):
     errors.append('budget must be an object')
 
+# Runtime bindings extend this state record; there is no separate session store.
+session_ids = d.get('session_ids', [])
+runtime_fingerprints = d.get('runtime_fingerprints', [])
+if not isinstance(session_ids, list) or any(not isinstance(value, str) or not value for value in session_ids):
+    errors.append('session_ids must contain nonempty strings')
+elif len(session_ids) != len(set(session_ids)):
+    errors.append('session_ids must be exact and unique')
+if not isinstance(runtime_fingerprints, list):
+    errors.append('runtime_fingerprints must be an array')
+else:
+    binding_ids = [value.get('session_id') for value in runtime_fingerprints if isinstance(value, dict)]
+    if len(binding_ids) != len(runtime_fingerprints) or binding_ids != session_ids:
+        errors.append('runtime_fingerprints must match session_ids exactly')
+    required_fingerprints = {'host','session','binary','root','revision','worktree','mcp','asset','probe'}
+    for binding in runtime_fingerprints:
+        fingerprints = binding.get('fingerprints', {}) if isinstance(binding, dict) else {}
+        if set(fingerprints) != required_fingerprints or any(
+            not isinstance(value, str) or not value.startswith('sha256:') or len(value) != 71
+            for value in fingerprints.values()
+        ):
+            errors.append('runtime binding fingerprints are malformed')
+
 adaptive = d.get('adaptive')
 if adaptive is not None and not validate_adaptive_snapshot(adaptive):
     errors.append('adaptive snapshot does not satisfy the v1.0.3 portable schema')

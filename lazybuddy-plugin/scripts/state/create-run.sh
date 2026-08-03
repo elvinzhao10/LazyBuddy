@@ -48,7 +48,8 @@ state = {
     'iteration': {'count': 0, 'max': 500, 'mode': 'normal'},
     'last_checkpoint': None,
     'budget': {'max_tokens': None, 'max_cost_usd': None},
-    'session_ids': []
+    'session_ids': [],
+    'runtime_fingerprints': []
 }
 with open(state_file, 'w') as f:
     json.dump(state, f, indent=2)
