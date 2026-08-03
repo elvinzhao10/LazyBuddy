@@ -9,7 +9,7 @@ const test = require('node:test');
 
 const CLI = path.resolve(__dirname, '..', 'scripts', 'assets', 'asset-ownership-cli.js');
 
-test('CLI generates, checks, refuses conflict, and safely uninstalls a real temp tree', (t) => {
+test('CLI generates, checks, and refuses all uninstall mutation after caller modification', (t) => {
   // Given: a neutral one-file source and empty destination.
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-assets-cli-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -32,12 +32,15 @@ test('CLI generates, checks, refuses conflict, and safely uninstalls a real temp
   fs.writeFileSync(target, 'caller\n');
   fs.writeFileSync(sourceFile, 'source\n');
   const before = fs.readFileSync(target);
+  const receiptBefore = fs.readFileSync(receipt);
   const conflict = spawnSync(process.execPath, [CLI, 'generate', ...args], { encoding: 'utf8' });
-  // Then: conflict is nonzero and uninstall preserves the caller bytes.
+  // Then: conflict and receipt-aware uninstall both refuse without changing caller or receipt bytes.
   assert.notEqual(conflict.status, 0);
   assert.match(conflict.stderr, /merge conflict/i);
   assert.deepEqual(fs.readFileSync(target), before);
-  assert.equal(spawnSync(process.execPath, [CLI, 'uninstall', ...args]).status, 0);
+  const uninstall = spawnSync(process.execPath, [CLI, 'uninstall', ...args], { encoding: 'utf8' });
+  assert.notEqual(uninstall.status, 0);
+  assert.match(uninstall.stderr, /modified.*refus/i);
   assert.deepEqual(fs.readFileSync(target), before);
-  assert.equal(fs.existsSync(receipt), false);
+  assert.deepEqual(fs.readFileSync(receipt), receiptBefore);
 });

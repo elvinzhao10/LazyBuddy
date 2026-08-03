@@ -179,21 +179,23 @@ test('reports stale files and rolls back every target after an atomic rename fai
   assert.deepEqual(fs.readFileSync(settings), beforeSettings);
 });
 
-test('uninstall removes exact owned outputs only and preserves modified files', (t) => {
+test('uninstall refuses all removal when any receipt-owned output was modified', (t) => {
   // Given: one exact receipt-owned file and one caller-modified output.
   const input = fixture(t);
   installAssets(input);
   const guide = path.join(input.destinationRoot, '.host', 'guide.md');
   const settings = path.join(input.destinationRoot, '.host', 'settings.json');
   fs.writeFileSync(guide, 'caller\n');
+  const before = new Map([
+    [guide, fs.readFileSync(guide)],
+    [settings, fs.readFileSync(settings)],
+    [input.receiptPath, fs.readFileSync(input.receiptPath)],
+  ]);
   // When: receipt-owned assets are uninstalled.
-  const result = uninstallAssets(input);
-  // Then: only the exact output and receipt are deleted.
-  assert.deepEqual(result.removed, ['.host/settings.json']);
-  assert.deepEqual(result.preserved, ['.host/guide.md']);
-  assert.equal(fs.existsSync(settings), false);
-  assert.equal(fs.readFileSync(guide, 'utf8'), 'caller\n');
-  assert.equal(fs.existsSync(input.receiptPath), false);
+  const removal = () => uninstallAssets(input);
+  // Then: removal refuses before changing any output or receipt byte.
+  assert.throws(removal, /modified.*refus/i);
+  for (const [target, bytes] of before) assert.deepEqual(fs.readFileSync(target), bytes);
 });
 
 test('uninstall restores every owned file and receipt when the second unlink fails', (t) => {

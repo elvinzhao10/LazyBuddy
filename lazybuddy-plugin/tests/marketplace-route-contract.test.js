@@ -88,7 +88,7 @@ test('treats fallback as generated recovery and conflicts with either marketplac
   assert.equal(workbuddyConflict.kind, 'conflict');
 });
 
-test('generated fallback uninstall removes only receipt-owned unmodified skill paths', (t) => {
+test('generated fallback uninstall refuses all mutation when one receipt-owned skill was modified', (t) => {
   // Given: generated recovery Skills with one caller-modified output.
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-fallback-removal-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -103,15 +103,22 @@ test('generated fallback uninstall removes only receipt-owned unmodified skill p
   assert.equal(spawnSync(process.execPath, [ASSET_CLI, 'generate', ...common]).status, 0);
   const modified = path.join(destination, 'skills', 'lazy-programming', 'SKILL.md');
   fs.appendFileSync(modified, '\ncaller-owned note\n');
+  const receiptValue = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+  const before = new Map([
+    ...receiptValue.files.map((entry) => {
+      const target = path.join(destination, entry.path);
+      return [target, fs.readFileSync(target)];
+    }),
+    [receipt, fs.readFileSync(receipt)],
+  ]);
 
   // When: the real receipt-aware uninstall command removes the recovery export.
   const removal = spawnSync(process.execPath, [ASSET_CLI, 'uninstall', ...common], { encoding: 'utf8' });
 
-  // Then: the modified user file survives while unmodified receipt paths and receipt are removed.
-  assert.equal(removal.status, 0, removal.stderr);
-  assert.equal(fs.readFileSync(modified, 'utf8').endsWith('caller-owned note\n'), true);
-  assert.equal(fs.existsSync(path.join(destination, 'skills', 'lazy-debugging', 'SKILL.md')), false);
-  assert.equal(fs.existsSync(receipt), false);
+  // Then: removal refuses nonzero before changing any generated output or receipt byte.
+  assert.notEqual(removal.status, 0);
+  assert.match(removal.stderr, /modified.*refus/i);
+  for (const [target, bytes] of before) assert.deepEqual(fs.readFileSync(target), bytes);
 });
 
 test('refuses malformed route manifests and stale fallback receipts without changing outputs', (t) => {

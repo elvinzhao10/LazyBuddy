@@ -218,13 +218,16 @@ function uninstallAssets(options) {
     const file = safeFile(target, `asset output ${entry.path}`);
     return { entry, target, removable: Boolean(file) && !entry.caller_modified && sha256(file.bytes) === entry.output_sha256 };
   });
+  const unsafe = classification.filter((item) => !item.removable);
+  if (unsafe.length) {
+    throw new Error(`modified or missing asset output; refusing atomic uninstall: ${unsafe.map((item) => item.entry.path).join(', ')}`);
+  }
   const removed = classification.filter((item) => item.removable).map((item) => item.entry.path);
-  const preserved = classification.filter((item) => !item.removable).map((item) => item.entry.path);
   transactionalUnlink(destinationRoot, [
     ...classification.filter((item) => item.removable).map((item) => item.target),
     location.absolute,
   ]);
-  return { removed, preserved };
+  return { removed, preserved: [] };
 }
 
 module.exports = { checkAssets, compileAssets, installAssets, uninstallAssets };
