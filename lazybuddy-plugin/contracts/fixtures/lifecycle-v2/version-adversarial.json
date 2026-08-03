@@ -1,0 +1,26 @@
+{
+  "active": [
+    {
+      "id": "unknown-version",
+      "path": ["schema_version"],
+      "value": 3
+    },
+    {
+      "id": "tampered-schema",
+      "path": ["$schema"],
+      "value": "lazy-harness-active.v1.schema.json"
+    }
+  ],
+  "receipt": [
+    {
+      "id": "unknown-version",
+      "path": ["schema_version"],
+      "value": 3
+    },
+    {
+      "id": "tampered-schema",
+      "path": ["$schema"],
+      "value": "lazy-harness-lifecycle.v1.schema.json"
+    }
+  ]
+}

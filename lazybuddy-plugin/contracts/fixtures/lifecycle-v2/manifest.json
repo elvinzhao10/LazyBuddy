@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "valid": ["active-valid.json", "receipt-valid.json"],
+  "adversarial": ["version-adversarial.json"]
+}

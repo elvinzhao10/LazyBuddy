@@ -1,0 +1,16 @@
+{
+  "$schema": "lazy-harness-active.v2.schema.json",
+  "schema_version": 2,
+  "product": "LazyTrae",
+  "active_release": "1.0.3-01bcf33d0450",
+  "previous_release": null,
+  "entrypoint": "lazytrae-plugin/packages/cli/bin/lazytrae.js",
+  "runtime_path": "/usr/local/bin/node",
+  "release_metadata": {
+    "1.0.3-01bcf33d0450": {
+      "entrypoint": "lazytrae-plugin/packages/cli/bin/lazytrae.js",
+      "runtime_path": "/usr/local/bin/node"
+    }
+  },
+  "updated_at": "2026-08-03T00:00:00.000Z"
+}

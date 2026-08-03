@@ -1,0 +1,73 @@
+{
+  "$schema": "lazy-harness-lifecycle.v2.schema.json",
+  "schema_version": 2,
+  "receipt_id": "lazytrae-1-0-3-01bcf33d0450",
+  "product": "LazyTrae",
+  "origin": "https://github.com/elvinzhao10/LazyTrae.git",
+  "commit_sha": "01bcf33d0450fc555b6cea15900829144d969fae",
+  "manifest": {
+    "path": "releases/1.0.3-01bcf33d0450/lazytrae-plugin/packages/cli/package.json",
+    "version": "1.0.3",
+    "sha256": "df8800e4abda15e20b2e7c4adedcf8e03a1a15051af37681668a2198e1998060",
+    "digests": [
+      {
+        "path": "releases/1.0.3-01bcf33d0450/lazytrae-plugin/packages/cli/package.json",
+        "sha256": "df8800e4abda15e20b2e7c4adedcf8e03a1a15051af37681668a2198e1998060"
+      }
+    ]
+  },
+  "layout": {
+    "install_root": "/home/example/.local/share/lazyseries",
+    "product_root": "/home/example/.local/share/lazyseries/LazyTrae",
+    "releases": "releases/",
+    "active": "active.json",
+    "launcher": "launcher.js",
+    "receipts": "receipts/",
+    "staging": "staging/",
+    "locks": "locks/",
+    "rollback": "rollback/"
+  },
+  "release": {
+    "id": "1.0.3-01bcf33d0450",
+    "path": "releases/1.0.3-01bcf33d0450"
+  },
+  "runtime": {
+    "path": "/usr/local/bin/node",
+    "fingerprint": {
+      "realpath": "/usr/local/bin/node",
+      "version": "v24.14.0",
+      "sha256": "9e831e9b13aa47c5e5eaa3904d232aa527124e8abba7ca5d72b67b46cfb10ae8"
+    },
+    "ownership": "external-prerequisite"
+  },
+  "ownership_policy": {
+    "scope": "product-root-only",
+    "owned_path_base": "product_root",
+    "cross_product_ownership": "forbidden",
+    "host_or_global_ownership": "forbidden",
+    "symlink_ownership": "forbidden"
+  },
+  "created_files_scope": "release-only",
+  "created_files": [
+    {
+      "path": "releases/1.0.3-01bcf33d0450",
+      "type": "directory",
+      "mode": "0755",
+      "sha256": null
+    },
+    {
+      "path": "releases/1.0.3-01bcf33d0450/lazytrae-plugin/packages/cli/package.json",
+      "type": "file",
+      "mode": "0644",
+      "sha256": "df8800e4abda15e20b2e7c4adedcf8e03a1a15051af37681668a2198e1998060"
+    }
+  ],
+  "registered_project_declarations": [],
+  "receipt_path": "receipts/lazytrae-1-0-3-01bcf33d0450.json",
+  "active_release": "1.0.3-01bcf33d0450",
+  "previous_release": null,
+  "host_evidence": {
+    "status": "pending",
+    "observation_receipt": null
+  }
+}

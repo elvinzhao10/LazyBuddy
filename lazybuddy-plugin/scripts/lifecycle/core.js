@@ -13,7 +13,7 @@ const {
 const { contained } = require('./paths');
 const { ORIGINS, verifyProjectDeclarations } = require('./ownership');
 const { preparePromotion, receiptFor } = require('./receipt');
-const { LAUNCHER, installLauncher, readActive, writeActive } = require('./state');
+const { LAUNCHER, installLauncher, readActive, restoreLauncher, writeActive } = require('./state');
 
 function releaseId(version, commitSha) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !/^[0-9a-f]{40}$/.test(commitSha)) {
@@ -48,29 +48,42 @@ function promoteRelease(paths, options) {
     throw new LifecycleError('CROSS_DEVICE', 'staging and releases must share a filesystem');
   }
   const prepared = preparePromotion(paths, options, active ? active.active_release : null);
-  try {
-    fs.renameSync(options.stagingPath, target);
-  } catch (error) {
-    if (error && error.code === 'EXDEV') throw new LifecycleError('CROSS_DEVICE', 'cross-filesystem promotion refused', error);
-    throw error;
-  }
   const receipt = prepared.receipt;
   const receiptPath = path.join(paths.productRoot, receipt.receipt_path);
-  atomicJson(paths.productRoot, receiptPath, receipt, 0o600);
-  installLauncher(paths);
-  writeActive(paths, {
-    schema_version: 1,
-    product: paths.product,
-    active_release: options.releaseId,
-    previous_release: active ? active.active_release : null,
-    entrypoint: prepared.entrypoint,
-    runtime_path: options.runtimePath,
-    release_metadata: {
-      ...(active ? active.release_metadata : {}),
-      [options.releaseId]: { entrypoint: prepared.entrypoint, runtime_path: options.runtimePath },
-    },
-    updated_at: new Date().toISOString(),
-  });
+  if (fs.existsSync(receiptPath)) throw new LifecycleError('OWNERSHIP_REFUSED', 'immutable receipt already exists');
+  let targetInstalled = false;
+  let receiptInstalled = false;
+  let launcherInstallation = null;
+  try {
+    fs.renameSync(options.stagingPath, target);
+    targetInstalled = true;
+    atomicJson(paths.productRoot, receiptPath, receipt, 0o600);
+    receiptInstalled = true;
+    launcherInstallation = installLauncher(paths);
+    writeActive(paths, {
+      $schema: 'lazy-harness-active.v2.schema.json',
+      schema_version: 2,
+      product: paths.product,
+      active_release: options.releaseId,
+      previous_release: active ? active.active_release : null,
+      entrypoint: prepared.entrypoint,
+      runtime_path: options.runtimePath,
+      release_metadata: {
+        ...(active ? active.release_metadata : {}),
+        [options.releaseId]: { entrypoint: prepared.entrypoint, runtime_path: options.runtimePath },
+      },
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (error && error.code === 'EXDEV') throw new LifecycleError('CROSS_DEVICE', 'cross-filesystem promotion refused', error);
+    if (launcherInstallation !== null) restoreLauncher(paths, launcherInstallation);
+    if (receiptInstalled) fs.unlinkSync(receiptPath);
+    if (targetInstalled) {
+      removeInventory(target, prepared.stagedInventory);
+      fs.rmdirSync(target);
+    }
+    throw error;
+  }
   return { releaseId: options.releaseId, receiptPath };
 }
 
