@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "source_manifest": {
+    "inventory": "sorted recursive regular files from neutral source roots",
+    "formats": [
+      "json",
+      "text"
+    ],
+    "destination_rule": "normalized relative paths only",
+    "compilation": "complete temporary tree before destination mutation"
+  },
+  "receipt": {
+    "identity": [
+      "owner",
+      "manifest_sha256"
+    ],
+    "per_file": [
+      "path",
+      "format",
+      "mode",
+      "base_sha256",
+      "base_base64",
+      "output_sha256",
+      "caller_modified"
+    ]
+  },
+  "update": {
+    "clean": "replace from the new compiled source",
+    "caller_only": "preserve caller bytes",
+    "disjoint": "merge JSON properties or distinct text lines",
+    "conflict": "refuse before mutation",
+    "unreceipted": "refuse adoption",
+    "orphan_or_stale": "refuse generation"
+  },
+  "filesystem": {
+    "linked_or_escaping": "refuse",
+    "transaction_failure": "restore every original byte",
+    "uninstall": "delete only unmodified exact receipt outputs"
+  }
+}
