@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LazyBuddy WorkBuddy Marketplace Full-Plugin Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "type", "source", "host", "build", "session_id", "observed_at", "capabilities"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "type": { "const": "workbuddy-marketplace-full-plugin" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route", "release_root", "manifest", "manifest_sha256", "plugin", "version"],
+      "properties": {
+        "route": { "const": "workbuddy-marketplace" },
+        "release_root": { "type": "string", "minLength": 2 },
+        "manifest": { "const": "lazybuddy-plugin/.workbuddy-plugin/plugin.json" },
+        "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "plugin": { "const": "lazybuddy" },
+        "version": { "const": "1.0.3" }
+      }
+    },
+    "host": { "const": "workbuddy" },
+    "build": { "$ref": "#/$defs/id" },
+    "session_id": { "$ref": "#/$defs/id" },
+    "observed_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skill", "command", "agent", "hook", "mcp"],
+      "properties": {
+        "skill": { "$ref": "#/$defs/loaded" },
+        "command": { "$ref": "#/$defs/loaded" },
+        "agent": { "$ref": "#/$defs/loaded" },
+        "hook": { "$ref": "#/$defs/loaded" },
+        "mcp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["run-ledger", "verification", "status-dashboard", "context-graph", "code-intel", "docs"],
+          "properties": {
+            "run-ledger": { "const": "connected" },
+            "verification": { "const": "connected" },
+            "status-dashboard": { "const": "connected" },
+            "context-graph": { "const": "connected" },
+            "code-intel": { "const": "connected" },
+            "docs": { "const": "connected" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:+-]{2,127}$" },
+    "loaded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "status": { "const": "loaded" }
+      }
+    }
+  }
+}

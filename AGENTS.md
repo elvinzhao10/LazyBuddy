@@ -75,9 +75,9 @@ When the user types `onboard`:
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. None of those labels proves the current build:
+available**. WorkBuddy uses the nested `.workbuddy-plugin/plugin.json` as its
+default marketplace full-plugin route. The `manual-skills-mcp-fallback` is a
+recovery-only route. None of those labels proves the current build:
 without current observation, **HOST READINESS: PENDING**.
 
 The supplied macOS QA dated 2026-07-18 observed CodeBuddy IDE full-plugin
@@ -93,8 +93,8 @@ that tested build; the CodeBuddy exact host version/build was not recorded.
 | --- | --- | --- |
 | **CodeBuddy IDE** | When the CLI is available (`codebuddy`), use the same user-scope release-root marketplace route as CodeBuddy CLI. The desktop GUI route is only an observed-build alternative; the supplied GUI add-local-directory flow failed. | Use the CLI marketplace handoff below, then inspect the IDE's fresh session. If the CLI is unavailable, record that limitation and use the Skills/manual-MCP fallback. |
 | **CodeBuddy CLI** | The release-root `.codebuddy-plugin/marketplace.json` and package checks. Use the exact local marketplace commands below; `--plugin-dir` is development/testing only and never persistent. | Use the three separate CodeBuddy handoff actions below. After installation and a fresh session inspect one real Skill/command and all six MCP connections. |
-| **WorkBuddy fallback** | Skills import/copy from `lazybuddy-plugin/skills/` only, plus six individual manual local MCP connectors. | After approval, import Skills and add each connector manually in Settings. Observe one imported Skill and all six connector statuses. Unless a full plugin session is actually observed, do not claim that files or load-check output loaded commands, agents, hooks, or MCP. |
-| **WorkBuddy full plugin** | Historical observation only; no supported public installation contract was verified. | Do not reproduce undocumented host-internal changes. Use the Skills/manual-MCP fallback and keep unsupported capabilities pending. |
+| **WorkBuddy full plugin** | The active release's `lazybuddy-plugin/.workbuddy-plugin/plugin.json`, declaring Skills, commands, agents, hooks, and `.mcp.json`. | Use the marketplace/plugin surface exposed by the current build. Keep readiness pending until a current receipt confirms one loaded Skill, command, agent, hook, and all six MCP servers in the same build/session. |
+| **WorkBuddy recovery fallback** | Skills import/copy from `lazybuddy-plugin/skills/` only, plus six individual manual local MCP connectors. | Use only after the full-plugin route is removed with receipt-scoped ownership. Observe one imported Skill and all six connector statuses; commands, agents, and hooks remain excluded. |
 
 ## CodeBuddy local marketplace handoff
 
@@ -155,11 +155,13 @@ numbered item is a separate action:
    calls to all six MCP servers. Files, cache entries, and connector counts are
    not substitutes for those calls.
 
-## WorkBuddy observed-build boundary
+## WorkBuddy marketplace full-plugin boundary
 
-The supplied macOS WorkBuddy build did **not** complete through its GUI Install
-action: it hung in an orphaned `plugin validate`. Do not click that action or
-direct a user to it.
+The nested `.workbuddy-plugin/plugin.json` remains the default installation
+source even when a public manifest schema is unavailable. Do not mutate or
+inspect WorkBuddy's private registries to reproduce installation. Use only the
+marketplace/plugin action exposed by the current host build, one approved host
+action at a time.
 
 The agent may render/check package inputs without changing WorkBuddy:
 
@@ -169,10 +171,11 @@ bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
 ```
 
 This preflight is read-only and prints `HOST_PREPARATION=not-applied`,
-`HOST_MUTATION=none`, and `HOST_READINESS=pending`; `--apply` refuses. The
-supplied QA is feedback about one build, not authorization to reproduce
-undocumented host state. Use the Skills/manual-MCP fallback. It provides Skills
-plus six connectors only, never commands, agents, or hooks.
+`HOST_MUTATION=none`, and `HOST_READINESS=pending`; `--apply` refuses. It is a
+package check, not an installer and not host proof. Durable `status --host
+workbuddy` emits the exact marketplace receipt template. Only a receipt bound
+to the active source/version and current build/session, with one loaded Skill,
+command, agent, hook, and all six MCP connections, may report host ready.
 
 ## CodeBuddy project-local configuration
 

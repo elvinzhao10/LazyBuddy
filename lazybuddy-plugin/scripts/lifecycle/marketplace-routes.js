@@ -121,7 +121,11 @@ function validateMarketplaceRoutes(releaseRoot) {
   return {
     version: policy.version,
     codebuddy: { plugin: policy.identity.codebuddy_install_id, payload_inventory: payload.map((entryValue) => entryValue.path) },
-    workbuddy: { plugin: policy.identity.plugin, payload_inventory: payload.map((entryValue) => entryValue.path) },
+    workbuddy: {
+      plugin: policy.identity.plugin,
+      manifest_sha256: policy.artifacts['lazybuddy-plugin/.workbuddy-plugin/plugin.json'],
+      payload_inventory: payload.map((entryValue) => entryValue.path),
+    },
   };
 }
 

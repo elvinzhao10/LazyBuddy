@@ -24,9 +24,9 @@ connections. Without observation, **HOST READINESS: PENDING**.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback.
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route. The `manual-skills-mcp-fallback` is recovery
+only.
 
 ## What each host needs
 
@@ -34,16 +34,16 @@ supported local fallback.
 | --- | --- | --- | --- |
 | **CodeBuddy IDE** | When the CLI is available (`codebuddy`), use the user-scope release-root marketplace route shared with CodeBuddy CLI. The GUI route is only an observed-build alternative; the supplied GUI Add local directory flow failed. | Public Skills import plus manual MCP JSON when the CLI is unavailable. It excludes commands, agents, and hooks. | New-session Skill/command appropriate to the chosen route and all six MCP connections. |
 | **CodeBuddy CLI** | Run durable `status --route codebuddy-marketplace`, then use its active durable release root with `codebuddy plugin marketplace add "<active-durable-release-root>"`; wait before `codebuddy plugin install lazybuddy@lazybuddy`. | Inside a CodeBuddy session, the interactive `/plugin` menu provides the same route. `--plugin-dir` is development/testing only, never persistent. | Fresh-session Skill/command and all six MCP connections. |
-| **WorkBuddy** | Historical full-plugin observation only; no supported public installation contract was verified. | Skills-only import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | One imported Skill plus every connector. The GUI Install action is broken in the supplied build. |
+| **WorkBuddy** | The active release's `.workbuddy-plugin/plugin.json` marketplace source, declaring Skills, commands, agents, hooks, and six MCP servers. | Recovery-only Skills import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | A current source/version/build/session receipt with one loaded Skill, command, agent, hook, and all six MCP connections. |
 
 The supplied macOS QA dated 2026-07-18 inspected WorkBuddy v5.2.6 on macOS
 with LazyBuddy `v1.0.3`; the CodeBuddy exact host version/build was not recorded.
 For CodeBuddy IDE,
 prefer the CLI marketplace route whenever available; the GUI local-directory
-marketplace is only a fallback observed-build alternative. In WorkBuddy, do not
-use the supplied GUI Install action: the supplied WorkBuddy v5.2.6 macOS QA observed success
-after undocumented host-internal changes. That is feedback about one build,
-not an installation route. Use the supported fallback. Fully restart and
+marketplace is only a fallback observed-build alternative. In WorkBuddy, use
+only the marketplace/plugin action exposed by the current build and never
+inspect or mutate private registries. Missing public schema documentation does
+not demote the manifest route. Fully restart and
 verify a fresh session as later actions. If the required control is unavailable, record the exact
 limitation and retain **HOST READINESS: PENDING**. The fallback's absolute
 six-launcher JSON and explicit project context are in [Host routes](reference/host-routes.md#manual-connector-specification).

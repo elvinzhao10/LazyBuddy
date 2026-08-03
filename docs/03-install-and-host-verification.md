@@ -36,9 +36,9 @@ PENDING**.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. Package checks never upgrade any route to host proof.
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route. The `manual-skills-mcp-fallback` is recovery
+only. Package checks never upgrade any route to host proof.
 
 ## Copyable versus observed state
 
@@ -72,10 +72,9 @@ Inside a CodeBuddy session, the interactive `/plugin` menu is equivalent; do
 not use the slash forms as terminal commands. CodeBuddy IDE uses that same
 user-scope CLI marketplace route whenever the CLI is available; its supplied
 GUI Add local directory flow failed. If the CLI is unavailable, use the public
-Skills import plus manual MCP JSON fallback. Historical WorkBuddy QA reported
-full-plugin behavior after undocumented host-internal changes, but that is not
-an installation route. The supported local fallback remains Skills-only
-import plus six manual connectors. The fallback excludes commands, agents, and
+Skills import plus manual MCP JSON fallback. WorkBuddy uses the active
+release's `.workbuddy-plugin/plugin.json` marketplace source. The recovery-only
+fallback remains Skills-only import plus six manual connectors and excludes commands, agents, and
 hooks. Full plugin/manual coexistence is unsupported: stop the session, remove
 only old LazyBuddy entries through the host UI, choose one route, start a new
 session, and verify it.
@@ -86,12 +85,11 @@ for discovery, install as a separate action, fully restart, then verify a fresh
 session. The supplied GUI flow failed, so prefer the CLI route and retain
 **HOST READINESS: PENDING** until observed.
 
-### WorkBuddy observed-build boundary
+### WorkBuddy marketplace full-plugin boundary
 
-The supplied WorkBuddy GUI Install action hung in an orphaned `plugin
-validate`. Do not click that action or direct users to it. The only supported
-local route is the Skills/manual-MCP fallback. This package preflight remains
-read-only:
+The nested `.workbuddy-plugin/plugin.json` remains the default marketplace
+source even without a public manifest schema. Never inspect or mutate private
+WorkBuddy registries. This package preflight remains read-only:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \

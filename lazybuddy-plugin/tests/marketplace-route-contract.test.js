@@ -53,6 +53,24 @@ test('validates exact marketplace identities and byte-equivalent canonical paylo
   assert.ok(result.codebuddy.payload_inventory.includes('mcp/run-ledger/server.sh'));
 });
 
+test('publishes an exact WorkBuddy full-plugin receipt schema', () => {
+  // Given: the checked-in WorkBuddy marketplace receipt schema.
+  const schema = JSON.parse(fs.readFileSync(
+    path.join(PLUGIN_ROOT, 'contracts', 'workbuddy-marketplace-receipt.v1.schema.json'),
+    'utf8',
+  ));
+
+  // When: a consumer enumerates its required capability proof.
+  const capabilities = schema.properties.capabilities;
+  const mcp = capabilities.properties.mcp;
+
+  // Then: every full-plugin surface and all six MCP servers are mandatory.
+  assert.deepEqual(capabilities.required, ['skill', 'command', 'agent', 'hook', 'mcp']);
+  assert.deepEqual(mcp.required, ['run-ledger', 'verification', 'status-dashboard', 'context-graph', 'code-intel', 'docs']);
+  assert.equal(schema.properties.source.properties.route.const, 'workbuddy-marketplace');
+  assert.equal(schema.properties.type.const, 'workbuddy-marketplace-full-plugin');
+});
+
 test('refuses altered marketplace identity and host-manifest version independently', (t) => {
   // Given: two valid release fixtures with one contract-bearing field changed in each.
   const identityRoot = releaseFixture();

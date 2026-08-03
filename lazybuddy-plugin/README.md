@@ -53,20 +53,17 @@ caller workspace files.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. None is current host proof until observed.
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route. `manual-skills-mcp-fallback` is recovery-only.
+None is current host proof until observed.
 
 ## Quick Start
 
 `.codebuddy-plugin/plugin.json` is the documented CodeBuddy host entry point.
-`.workbuddy-plugin/plugin.json` is compatibility metadata. Supplied macOS QA
-dated 2026-07-18 observed CodeBuddy IDE full-plugin loading through the
-CLI-backed user-scope marketplace route. It inspected WorkBuddy v5.2.6 on
-macOS and reported full-plugin behavior after undocumented host-internal
-changes. That feedback is not an installation route. The GUI flows failed in
-that tested build; Skills import/copy plus six individual manual local MCP
-connectors remains the supported fallback.
+`.workbuddy-plugin/plugin.json` is the WorkBuddy marketplace source for Skills,
+commands, agents, hooks, and all six MCP servers. Package metadata remains
+pending until current build/session evidence is observed. Skills import/copy
+plus six individual manual local MCP connectors is recovery-only.
 
 1. **Onboard** — bootstrap the durable release, open or link that active
    release in the selected host, and type `onboard` after providing the GitHub
@@ -159,11 +156,11 @@ six compatible local MCP connectors manually. For the observed GUI alternative,
 add the release root, wait for discovery, install separately, fully restart,
 and verify a fresh session.
 
-### WorkBuddy observed-build boundary
+### WorkBuddy marketplace full-plugin boundary
 
-The supplied WorkBuddy GUI Install action hung in an orphaned `plugin
-validate`. Do not click that action or direct users to it. This package
-preflight remains read-only:
+The nested `.workbuddy-plugin/plugin.json` remains the default marketplace
+source even without a public manifest schema. Never inspect or mutate private
+WorkBuddy registries. This package preflight remains read-only:
 
 ```bash
 bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
@@ -171,10 +168,10 @@ bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
-`HOST_READINESS=pending`; `--apply` refuses. Historical QA is observed behavior
-only and never permission to reproduce undocumented host state. Use the
-Skills/manual-MCP fallback, which provides Skills plus six connectors only and
-excludes commands, agents, and hooks.
+`HOST_READINESS=pending`; `--apply` refuses. Durable `status --host workbuddy`
+emits exact current-session, removal, and recovery receipt templates. The
+Skills/manual-MCP fallback is recovery-only and excludes commands, agents, and
+hooks.
 
 For the fallback, derive a non-mutating host-settings copy from `.mcp.json`: replace
 `${CODEBUDDY_PLUGIN_ROOT}` with the absolute plugin root and
@@ -431,10 +428,9 @@ MIT — see the package [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ---
 
-_This is the installable CodeBuddy package for LazyBuddy. `.workbuddy-plugin` is
-compatibility metadata, not a direct-folder WorkBuddy installer. WorkBuddy
-v5.2.6 supplied historical feedback after undocumented host-internal changes;
-that is not an installation contract. Use the verified local `skills/` import
-plus manual MCP fallback. The repository-local `.workbuddy/` directory is
+_This is the installable CodeBuddy and WorkBuddy package for LazyBuddy.
+`.workbuddy-plugin/plugin.json` is the WorkBuddy marketplace source, not proof
+that a host loaded it. Use the local `skills/` import plus manual MCP only as a
+receipt-scoped recovery route. The repository-local `.workbuddy/` directory is
 host-managed development state and is intentionally not part of the release
 package._

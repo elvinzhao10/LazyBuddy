@@ -5,12 +5,11 @@
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
 **CodeBuddy CLI**, and **WorkBuddy**. In the supplied macOS QA dated
 2026-07-18, CodeBuddy IDE loaded the full plugin through the CLI-backed
-user-scope marketplace route. WorkBuddy v5.2.6 supplied historical feedback
-about full-plugin behavior after undocumented host-internal changes. That is
-not an installation route. The GUI flows failed in that tested build; the
-CodeBuddy exact host version/build was not recorded. These are build-specific
-observations, while
-Skills/manual-MCP is the supported fallback.
+user-scope marketplace route. WorkBuddy uses the nested
+`.workbuddy-plugin/plugin.json` as its default marketplace full-plugin source;
+historical observations do not replace current build/session evidence. The
+CodeBuddy exact host version/build was not recorded. Skills/manual-MCP remains
+a recovery-only route.
 It provides structured workflows for planning, implementation, verification,
 review, and bounded long-running work.
 
@@ -198,9 +197,9 @@ and every expected MCP connection; without observation it stays **pending**.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. If Computer Use is unavailable, a user-pasted
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route; `manual-skills-mcp-fallback` is recovery-only.
+If Computer Use is unavailable, a user-pasted
 verbatim status or screenshot can provide observation; otherwise **HOST
 READINESS: PENDING**.
 
@@ -229,14 +228,12 @@ the GUI flow is only an observed-build alternative and must be inspected before
 installation. If selected, add the release root, wait for discovery, install
 separately, fully restart the IDE, and verify a fresh session.
 
-### WorkBuddy observed-build route
+### WorkBuddy marketplace full-plugin route
 
-The supplied WorkBuddy v5.2.6 macOS QA reported full-plugin behavior after
-undocumented host-internal changes and one GUI binding. That is historical,
-observed-build feedback only. LazyBuddy v1.0.3 does not endorse, automate, or
-document installation through private WorkBuddy state. The supplied GUI
-Install action also hung in an orphaned `plugin validate`, so do not direct a
-user to it.
+The active release's `lazybuddy-plugin/.workbuddy-plugin/plugin.json` is the
+default marketplace source for Skills, commands, agents, hooks, and all six MCP
+servers. Do not inspect or mutate private WorkBuddy state. Use only the
+marketplace/plugin action exposed by the current build.
 
 This read-only package preflight remains safe:
 
@@ -247,8 +244,9 @@ bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
 `HOST_READINESS=pending`. `--apply` refuses. Treat that result as package
-evidence only and use the supported Skills/manual-MCP fallback. A current host
-remains **HOST READINESS: PENDING** until the fallback is observed.
+evidence only. Durable `status --host workbuddy` emits exact observation,
+removal, and recovery receipt templates; only current full-plugin evidence can
+promote host readiness. The Skills/manual-MCP route is recovery-only.
 
 The fallback for either desktop host is Skills-only import plus six individual
 manual local MCP connectors. It excludes commands, Agents, and hooks. Its exact

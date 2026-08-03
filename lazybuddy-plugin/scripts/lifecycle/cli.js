@@ -132,13 +132,19 @@ function status(options, paths) {
   }
   receiptFor(paths, current.extra.release_id);
   const releaseRoot = path.join(paths.releases, current.extra.release_id);
-  validateMarketplaceRoutes(releaseRoot);
+  const marketplace = validateMarketplaceRoutes(releaseRoot);
   return {
     code: 0,
     output: envelope(options, {
       ...current,
-      hostReadiness: parseObservation(options.observationReceipt, selection.host),
-      extra: { ...current.extra, host_handoff: renderHandoff(selection.route, releaseRoot, options.projectRoot) },
+      hostReadiness: parseObservation(options.observationReceipt, selection.host, {
+        route: selection.route,
+        releaseRoot,
+        manifestSha256: marketplace.workbuddy.manifest_sha256,
+        build: options.hostBuild,
+        session: options.hostSession,
+      }),
+      extra: { ...current.extra, host_handoff: renderHandoff(selection.route, releaseRoot, options.projectRoot, marketplace) },
     }),
   };
 }
