@@ -16,7 +16,6 @@ disallowedTools:
 skills:
   - init-deep
 memory: false
-isolation: true
 ---
 
 # lazybuddy-context-indexer (Context Indexer)

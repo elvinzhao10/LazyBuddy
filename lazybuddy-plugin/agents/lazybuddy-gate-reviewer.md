@@ -17,7 +17,6 @@ skills:
   - remove-ai-slops
   - programming
 memory: false
-isolation: true
 ---
 
 # lazybuddy-gate-reviewer (Gate Reviewer)

@@ -17,7 +17,6 @@ skills:
   - ulw-loop
   - ultrawork
 memory: false
-isolation: true
 ---
 
 # lazybuddy-qa-executor (QA Executor)

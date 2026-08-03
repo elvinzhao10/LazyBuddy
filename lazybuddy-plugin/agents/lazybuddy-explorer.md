@@ -15,7 +15,6 @@ disallowedTools:
 skills:
   - init-deep
 memory: false
-isolation: true
 ---
 
 # lazybuddy-explorer

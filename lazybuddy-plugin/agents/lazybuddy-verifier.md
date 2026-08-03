@@ -16,7 +16,6 @@ skills:
   - verifier
   - ulw-loop
 memory: false
-isolation: true
 ---
 
 # lazybuddy-verifier (Oracle)

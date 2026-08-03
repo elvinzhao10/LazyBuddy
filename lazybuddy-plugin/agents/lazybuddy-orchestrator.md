@@ -22,7 +22,7 @@ skills:
   - start-work
   - ulw-loop
 memory: true
-isolation: false
+isolation: worktree
 ---
 
 # lazybuddy-orchestrator (Sisyphus)
