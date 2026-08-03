@@ -211,4 +211,15 @@ function ingestObservation(options) {
   return record;
 }
 
-module.exports = { SURFACES, TASK_STATUSES, createTemplate, ingestObservation };
+module.exports = {
+  SURFACES,
+  TASK_STATUSES,
+  createTemplate,
+  ingestObservation,
+  marketplaceIdentity,
+  timestamp,
+  validateMarketplace,
+  validateWorkspace,
+  workspaceFor,
+  writeOutput,
+};

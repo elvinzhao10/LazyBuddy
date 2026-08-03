@@ -151,6 +151,29 @@ non-promoting: host readiness stays pending until the normal fresh-session
 host verification completes. Multiple workspace roots require an explicit
 primary root, and marketplace version, root, and fingerprint are part of the
 freshness boundary.
+
+Generate the companion MCP, preview, artifact, and checkpoint descriptor from
+that pending native template without contacting the host:
+
+```bash
+node lazybuddy-plugin/scripts/lazybuddy-codebuddy-ide-surfaces.js evidence-template \
+  --template "<pending-receipt.json>" \
+  --output "<evidence-template.json>" \
+  --json
+```
+
+`evidence-observe --template <evidence-template.json> --observation
+<sanitized-evidence-observation.json> --output <evidence-receipt.json> --json`
+accepts only current, marketplace/workspace-bound evidence. The descriptor
+lists `openFile`, `openDiff`, and `close_tab` as documented invocation surfaces
+and keeps the package invocation status `not-performed`; diagnostics and all
+other surfaces are observation-only. Diagnostics must be current and
+read-only, preview errors require verification-evidence digests, and every
+artifact/file/change entry requires a content digest. Unsupported MCP OAuth,
+Sampling, Prompts, or Resources capability remains explicitly `unavailable`.
+Secret material is rejected. Native checkpoints cannot cover external files
+or advance the run ledger, and every receipt remains non-promoting.
+
 `.codebuddy/settings.json` is the shareable non-secret project scope;
 `.codebuddy/settings.local.json` is local/machine scope and must remain ignored
 and unstaged; secrets must never be committed. Repeating safe package checks

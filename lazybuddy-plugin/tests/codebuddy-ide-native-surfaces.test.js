@@ -72,6 +72,62 @@ function errorCode(result) {
   return JSON.parse(result.stderr).error.code;
 }
 
+function evidenceFixture(t) {
+  const fixture = nativeFixture(t);
+  const evidenceTemplatePath = path.join(fixture.sandbox, 'evidence-template.json');
+  const evidenceObservationPath = path.join(fixture.sandbox, 'evidence-observation.json');
+  const evidenceReceiptPath = path.join(fixture.sandbox, 'evidence-receipt.json');
+  const template = output(command([
+    'evidence-template', '--template', fixture.pendingPath, '--output', evidenceTemplatePath,
+    '--generated-at', '2026-08-03T10:01:00Z', '--json',
+  ]));
+  const digest = 'c'.repeat(64);
+  const surface = (surface_id, status, details) => ({
+    surface_id,
+    native_mode: template.surfaces.find((item) => item.surface_id === surface_id).native_mode,
+    status,
+    evidence_digest: digest,
+    details,
+  });
+  const observation = {
+    schema_version: 1,
+    record_type: 'codebuddy-ide-evidence-observation',
+    observation_id: 'obs:ide:evidence:001',
+    session_id: 'session:evidence:001',
+    observed_at: '2026-08-03T10:05:00Z',
+    expires_at: '2026-08-03T11:05:00Z',
+    marketplace: template.marketplace,
+    workspace: template.workspace,
+    surfaces: [
+      surface('openFile', 'observed', { contract: 'documented', invocation: 'not-performed' }),
+      surface('openDiff', 'observed', { contract: 'documented', invocation: 'not-performed' }),
+      surface('getDiagnostics', 'observed', { captured_at: '2026-08-03T10:06:00Z', root: fixture.projectRoot, read_only: true }),
+      surface('close_tab', 'observed', { contract: 'documented', invocation: 'not-performed' }),
+      surface('oauth', 'unavailable', { availability: 'unavailable', reason_code: 'HOST_UNSUPPORTED' }),
+      surface('roots', 'observed', { roots: [fixture.projectRoot] }),
+      surface('sampling', 'unavailable', { availability: 'unavailable', reason_code: 'HOST_UNSUPPORTED' }),
+      surface('prompts', 'unavailable', { availability: 'unavailable', reason_code: 'HOST_UNSUPPORTED' }),
+      surface('resources', 'observed', { availability: 'available' }),
+      surface('browser-preview', 'observed', { preview_id: 'preview:001' }),
+      surface('browser-error-feedback', 'observed', { errors: [{ error_digest: 'd'.repeat(64), verification_evidence_digest: 'e'.repeat(64) }] }),
+      surface('artifacts', 'observed', { entries: [{ entry_id: 'artifact:001', relative_path: 'artifacts/report.json', digest }] }),
+      surface('files', 'observed', { entries: [{ entry_id: 'file:001', relative_path: 'src/app.js', digest }] }),
+      surface('changes', 'observed', { entries: [{ entry_id: 'change:001', relative_path: 'src/app.js', digest }] }),
+      surface('native-checkpoint-restore', 'observed', { checkpoint_id: 'checkpoint:001', scope_root: fixture.projectRoot, external_files: false, ledger_effect: 'none' }),
+    ],
+  };
+  return { ...fixture, evidenceTemplatePath, evidenceObservationPath, evidenceReceiptPath, template, observation };
+}
+
+function observeEvidence(fixture, now = '2026-08-03T10:10:00Z') {
+  fs.writeFileSync(fixture.evidenceObservationPath, `${JSON.stringify(fixture.observation)}\n`);
+  return command([
+    'evidence-observe', '--template', fixture.evidenceTemplatePath,
+    '--observation', fixture.evidenceObservationPath, '--output', fixture.evidenceReceiptPath,
+    '--now', now, '--json',
+  ]);
+}
+
 test('CodeBuddy IDE keeps the CLI-backed marketplace as its default route', () => {
   // Given: the CodeBuddy IDE host identity.
   // When: lifecycle status selects the default installation route.
@@ -239,4 +295,164 @@ test('observation refuses February 30 instead of normalizing it as current', (t)
   // Then: the command rejects it as malformed and emits no current receipt.
   assert.equal(errorCode(result), 'NATIVE_OBSERVATION_INVALID');
   assert.equal(fs.existsSync(fixture.observedPath), false);
+});
+
+test('IDE evidence template describes every native MCP, preview, artifact, and checkpoint surface', (t) => {
+  // Given: the marketplace-bound pending IDE template from the native plan/task surface.
+  const fixture = nativeFixture(t);
+  const evidenceTemplatePath = path.join(fixture.sandbox, 'evidence-template.json');
+
+  // When: a Todo16 evidence descriptor is requested without invoking the live host.
+  const descriptor = output(command([
+    'evidence-template', '--template', fixture.pendingPath, '--output', evidenceTemplatePath,
+    '--generated-at', '2026-08-03T10:01:00Z', '--json',
+  ]));
+
+  // Then: every requested surface is pending with an explicit native mode.
+  assert.equal(descriptor.record_type, 'codebuddy-ide-evidence-template');
+  assert.deepEqual(descriptor.surfaces.map(({ surface_id, native_mode, status }) => ({ surface_id, native_mode, status })), [
+    { surface_id: 'openFile', native_mode: 'invoke-documented', status: 'pending' },
+    { surface_id: 'openDiff', native_mode: 'invoke-documented', status: 'pending' },
+    { surface_id: 'getDiagnostics', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'close_tab', native_mode: 'invoke-documented', status: 'pending' },
+    { surface_id: 'oauth', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'roots', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'sampling', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'prompts', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'resources', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'browser-preview', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'browser-error-feedback', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'artifacts', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'files', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'changes', native_mode: 'observe', status: 'pending' },
+    { surface_id: 'native-checkpoint-restore', native_mode: 'invoke-documented', status: 'pending' },
+  ]);
+  assert.equal(descriptor.invocation, 'not-performed');
+  assert.equal(descriptor.host_readiness.status, 'pending');
+});
+
+test('IDE evidence observation accepts sanitized native receipts without advancing the ledger', (t) => {
+  // Given: a current sanitized MCP, preview, artifact, and checkpoint observation.
+  const fixture = evidenceFixture(t);
+
+  // When: the observation is ingested at the descriptor boundary.
+  const receipt = output(observeEvidence(fixture));
+
+  // Then: observed and typed-unavailable surfaces remain evidence-only.
+  assert.equal(receipt.status, 'observed');
+  assert.equal(receipt.host_readiness.status, 'pending');
+  assert.equal(receipt.promotion, 'prohibited');
+  assert.equal(receipt.ledger_effect, 'none');
+  assert.equal(receipt.surfaces.find((item) => item.surface_id === 'getDiagnostics').details.read_only, true);
+  assert.equal(receipt.surfaces.find((item) => item.surface_id === 'sampling').status, 'unavailable');
+  assert.equal(JSON.stringify(receipt).includes('token'), false);
+});
+
+test('IDE evidence observation rejects OAuth secret material', (t) => {
+  // Given: an OAuth observation carrying secret material.
+  const fixture = evidenceFixture(t);
+  fixture.observation.surfaces.find((item) => item.surface_id === 'oauth').details.access_token = 'secret-value';
+
+  // When: the secret-bearing observation crosses the receipt boundary.
+  const result = observeEvidence(fixture);
+
+  // Then: serialization fails closed without a receipt.
+  assert.equal(errorCode(result), 'SECRET_MATERIAL_REJECTED');
+  assert.equal(fs.existsSync(fixture.evidenceReceiptPath), false);
+});
+
+test('IDE evidence observation rejects diagnostics outside the authorized root', (t) => {
+  // Given: diagnostics attributed to a directory outside the selected workspace.
+  const fixture = evidenceFixture(t);
+  fixture.observation.surfaces.find((item) => item.surface_id === 'getDiagnostics').details.root = fixture.sandbox;
+
+  // When: the unauthorized root crosses the receipt boundary.
+  const result = observeEvidence(fixture);
+
+  // Then: the receipt is rejected as unauthorized.
+  assert.equal(errorCode(result), 'UNAUTHORIZED_ROOT');
+});
+
+test('IDE evidence observation rejects stale diagnostics', (t) => {
+  // Given: diagnostics captured before the current host observation.
+  const fixture = evidenceFixture(t);
+  fixture.observation.surfaces.find((item) => item.surface_id === 'getDiagnostics').details.captured_at = '2026-08-03T09:00:00Z';
+
+  // When: stale diagnostics cross the receipt boundary.
+  const result = observeEvidence(fixture);
+
+  // Then: stale read-only data cannot become current evidence.
+  assert.equal(errorCode(result), 'STALE_DIAGNOSTIC');
+});
+
+test('IDE evidence observation rejects external-file checkpoint claims', (t) => {
+  // Given: a UI checkpoint claiming coverage of external files and ledger progress.
+  const fixture = evidenceFixture(t);
+  const checkpoint = fixture.observation.surfaces.find((item) => item.surface_id === 'native-checkpoint-restore');
+  checkpoint.details.external_files = true;
+  checkpoint.details.ledger_effect = 'complete';
+
+  // When: the overbroad checkpoint crosses the receipt boundary.
+  const result = observeEvidence(fixture);
+
+  // Then: native UI state cannot claim external coverage or canonical completion.
+  assert.equal(errorCode(result), 'CHECKPOINT_SCOPE_INVALID');
+});
+
+test('IDE evidence observation rejects artifacts without a digest', (t) => {
+  // Given: artifact metadata with no content digest.
+  const fixture = evidenceFixture(t);
+  delete fixture.observation.surfaces.find((item) => item.surface_id === 'artifacts').details.entries[0].digest;
+
+  // When: incomplete artifact evidence crosses the receipt boundary.
+  const result = observeEvidence(fixture);
+
+  // Then: the artifact cannot be accepted as evidence.
+  assert.equal(errorCode(result), 'ARTIFACT_EVIDENCE_INVALID');
+});
+
+test('IDE evidence observation types unsupported MCP but rejects an unavailable preview UI', (t) => {
+  // Given: unsupported MCP features and an unavailable browser preview surface.
+  const fixture = evidenceFixture(t);
+  const preview = fixture.observation.surfaces.find((item) => item.surface_id === 'browser-preview');
+  preview.status = 'unavailable';
+  preview.details = { availability: 'unavailable', reason_code: 'UI_UNAVAILABLE' };
+
+  // When: unavailable UI is presented as the happy observation receipt.
+  const result = observeEvidence(fixture);
+
+  // Then: optional MCP remains typed unavailable, while required preview proof fails.
+  assert.equal(fixture.observation.surfaces.find((item) => item.surface_id === 'sampling').status, 'unavailable');
+  assert.equal(errorCode(result), 'UI_SURFACE_UNAVAILABLE');
+});
+
+test('IDE checkpoint evidence cannot mutate a canonical run ledger', (t) => {
+  // Given: a canonical ledger file under the selected project root.
+  const fixture = evidenceFixture(t);
+  const ledger = path.join(fixture.projectRoot, '.lazybuddy', 'runs', 'run-001', 'state.json');
+  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  fs.writeFileSync(ledger, '{"status":"active"}\n');
+  const before = fs.readFileSync(ledger);
+
+  // When: a native checkpoint observation is accepted.
+  output(observeEvidence(fixture));
+
+  // Then: the canonical ledger remains byte-identical.
+  assert.deepEqual(fs.readFileSync(ledger), before);
+});
+
+test('failed repeated IDE evidence ingestion preserves the prior atomic receipt', (t) => {
+  // Given: one accepted receipt followed by secret-bearing evidence.
+  const fixture = evidenceFixture(t);
+  output(observeEvidence(fixture));
+  const before = fs.readFileSync(fixture.evidenceReceiptPath);
+  fixture.observation.surfaces.find((item) => item.surface_id === 'oauth').details.client_secret = 'hidden-value';
+
+  // When: the invalid repeated observation is rejected.
+  const result = observeEvidence(fixture);
+
+  // Then: the prior receipt stays byte-identical and contains no secret.
+  assert.equal(errorCode(result), 'SECRET_MATERIAL_REJECTED');
+  assert.deepEqual(fs.readFileSync(fixture.evidenceReceiptPath), before);
+  assert.equal(fs.readFileSync(fixture.evidenceReceiptPath, 'utf8').includes('hidden-value'), false);
 });

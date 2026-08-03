@@ -3,6 +3,7 @@
 
 const { LifecycleError } = require('./lifecycle/errors');
 const { createTemplate, ingestObservation } = require('./lifecycle/codebuddy-ide-surfaces');
+const { createEvidenceTemplate, ingestEvidenceObservation } = require('./lifecycle/codebuddy-ide-evidence');
 
 const VALUE_FLAGS = new Set([
   '--branch', '--generated-at', '--marketplace', '--now', '--observation', '--output', '--primary-root', '--project-root', '--template',
@@ -10,7 +11,9 @@ const VALUE_FLAGS = new Set([
 
 function parse(argv) {
   const command = argv[0];
-  if (!['template', 'observe'].includes(command)) throw new LifecycleError('INVALID_ARGUMENT', 'command must be template or observe');
+  if (!['template', 'observe', 'evidence-template', 'evidence-observe'].includes(command)) {
+    throw new LifecycleError('INVALID_ARGUMENT', 'command must be template, observe, evidence-template, or evidence-observe');
+  }
   const options = { command, projectRoots: [], json: false };
   for (let index = 1; index < argv.length; index += 1) {
     const flag = argv[index];
@@ -30,22 +33,25 @@ function parse(argv) {
     }
     index += 1;
   }
-  const required = command === 'template'
-    ? ['branch', 'marketplace', 'output']
-    : ['observation', 'output', 'template'];
+  const required = command === 'template' ? ['branch', 'marketplace', 'output']
+    : command === 'evidence-template' ? ['output', 'template']
+      : ['observation', 'output', 'template'];
   const missing = required.filter(key => options[key] === undefined);
   if (missing.length > 0 || (command === 'template' && options.projectRoots.length === 0)) {
     throw new LifecycleError('INVALID_ARGUMENT', `${command} is missing required options`);
   }
-  if (command === 'template' && options.generatedAt === undefined) options.generatedAt = new Date().toISOString();
-  if (command === 'observe' && options.now === undefined) options.now = new Date().toISOString();
+  if (['template', 'evidence-template'].includes(command) && options.generatedAt === undefined) options.generatedAt = new Date().toISOString();
+  if (['observe', 'evidence-observe'].includes(command) && options.now === undefined) options.now = new Date().toISOString();
   return options;
 }
 
 function run(argv) {
   try {
     const options = parse(argv);
-    const result = options.command === 'template' ? createTemplate(options) : ingestObservation(options);
+    const result = options.command === 'template' ? createTemplate(options)
+      : options.command === 'observe' ? ingestObservation(options)
+        : options.command === 'evidence-template' ? createEvidenceTemplate(options)
+          : ingestEvidenceObservation(options);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return 0;
   } catch (error) {
