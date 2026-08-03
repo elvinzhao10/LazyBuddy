@@ -165,12 +165,13 @@ function validateOnboardingReceipt(value, { now = new Date().toISOString() } = {
   text(value.receipt_id, 'receipt_id', ID);
   oneOf(value.status, ['pending', 'observed', 'unsupported'], 'status');
   timestamp(value.generated_at, 'generated_at');
-  if (value.status === 'pending') {
-    if (value.current_host_evidence !== null || value.surface.freshness.status !== 'pending') fail('pending receipt cannot claim current host evidence');
-  } else {
+  if (value.status === 'observed') {
+    if (value.surface.freshness.status !== 'current') fail('observed receipt requires current freshness');
     exactKeys(value.current_host_evidence, ['observation_id', 'sha256'], [], 'current_host_evidence');
     text(value.current_host_evidence.observation_id, 'current_host_evidence.observation_id', ID);
     text(value.current_host_evidence.sha256, 'current_host_evidence.sha256', SHA256);
+  } else if (value.current_host_evidence !== null || value.surface.freshness.status !== 'pending') {
+    fail(`${value.status} receipt cannot claim current host evidence`);
   }
   return value;
 }

@@ -101,3 +101,23 @@ test('six package-generated onboarding templates remain pending', () => {
   assert.ok(receipts.every(receipt => validateOnboardingReceipt(receipt, { now: '2026-08-03T10:00:00Z' }).status === 'pending'));
   assert.ok(receipts.every(receipt => receipt.current_host_evidence === null));
 });
+
+test('receipt promotion requires current freshness and unsupported remains evidence-free', () => {
+  // Given: a forged observed promotion and an explicit unsupported receipt.
+  const forged = fixture('forged-observed-pending-freshness.json');
+  const unsupported = fixture('unsupported-onboarding-receipt.json');
+  const schema = JSON.parse(fs.readFileSync(path.join(contractRoot, 'lazyseries-onboarding-receipt.v1.schema.json'), 'utf8'));
+
+  // When/Then: promotion fails while unsupported remains a coherent evidence-free state.
+  assert.throws(() => validateOnboardingReceipt(forged, { now: '2026-08-03T10:00:00Z' }), /current freshness/i);
+  const parsed = validateOnboardingReceipt(unsupported, { now: '2026-08-03T10:00:00Z' });
+  assert.equal(parsed.status, 'unsupported');
+  assert.equal(parsed.current_host_evidence, null);
+  assert.equal(parsed.surface.freshness.status, 'pending');
+  assert.deepEqual(schema.allOf[0].if.properties.status, { const: 'observed' });
+  assert.equal(schema.allOf[0].then.properties.surface.properties.freshness.properties.status.const, 'current');
+  assert.equal(schema.allOf[0].then.properties.current_host_evidence.type, 'object');
+  assert.deepEqual(schema.allOf[1].if.properties.status.enum, ['pending', 'unsupported']);
+  assert.equal(schema.allOf[1].then.properties.surface.properties.freshness.properties.status.const, 'pending');
+  assert.equal(schema.allOf[1].then.properties.current_host_evidence.type, 'null');
+});
