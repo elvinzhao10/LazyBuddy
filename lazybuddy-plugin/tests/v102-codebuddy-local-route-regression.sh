@@ -180,12 +180,12 @@ PY
 if env CODEBUDDY_PLUGIN_ROOT="$CUSTOM_SKILLS_ROOT/lazybuddy-plugin" \
     LAZYBUDDY_MARKETPLACE_FILE="$CUSTOM_SKILLS_ROOT/.codebuddy-plugin/marketplace.json" \
     bash "$CUSTOM_SKILLS_ROOT/lazybuddy-plugin/scripts/lazybuddy-load-check.sh" \
-    >"$TMP/custom-skills.out" 2>&1 \
-    && grep -Fq 'PASS CodeBuddy manifest skills: declared' "$TMP/custom-skills.out" \
-    && grep -Fq 'PASS skills: 14/14' "$TMP/custom-skills.out"; then
-    pass 'declared custom skills directory passes package readiness'
+    >"$TMP/custom-skills.out" 2>&1; then
+    fail 'altered nested CodeBuddy manifest is rejected'
+elif grep -Fq 'MARKETPLACE_IDENTITY_INVALID' "$TMP/custom-skills.out"; then
+    pass 'altered nested CodeBuddy manifest is rejected'
 else
-    fail 'declared custom skills directory passes package readiness'
+    fail 'altered nested CodeBuddy manifest is rejected with a route-contract error'
 fi
 
 if python3 - "$CUSTOM_SKILLS_ROOT/lazybuddy-plugin/.workbuddy-plugin/plugin.json" <<'PY'

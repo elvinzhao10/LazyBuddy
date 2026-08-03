@@ -3,7 +3,7 @@
 const { LifecycleError } = require('./errors');
 
 const COMMANDS = new Set(['onboard', 'update', 'status', 'offboard', 'recover-bootstrap-lock']);
-const VALUE_FLAGS = new Set(['--install-root', '--project', '--source', '--confirm-revision', '--observation-receipt']);
+const VALUE_FLAGS = new Set(['--install-root', '--project', '--source', '--confirm-revision', '--observation-receipt', '--host']);
 const BOOLEAN_FLAGS = new Set(['--json', '--yes']);
 const ROUTE_FLAG = '--route';
 
@@ -25,6 +25,7 @@ Common options:
   --json
 
 Status options:
+  --host <codebuddy-ide|workbuddy>
   --route <codebuddy-marketplace|workbuddy-full-plugin|manual-skills-mcp-fallback>
   --observation-receipt <absolute-path>
 
@@ -79,10 +80,16 @@ function parseArgs(argv) {
     throw new LifecycleError('INVALID_ARGUMENT', '--confirm-revision applies only to update');
   }
   if ((options.routes.length > 0 || options.observationReceipt) && command !== 'status') {
-    throw new LifecycleError('INVALID_ARGUMENT', '--route and --observation-receipt apply only to status');
+    throw new LifecycleError('INVALID_ARGUMENT', '--host, --route, and --observation-receipt apply only to status');
   }
-  if (options.observationReceipt && options.routes.length === 0) {
-    throw new LifecycleError('INVALID_ARGUMENT', '--observation-receipt requires one selected --route');
+  if (options.host && !['codebuddy-ide', 'workbuddy'].includes(options.host)) {
+    throw new LifecycleError('INVALID_ARGUMENT', `unsupported marketplace host: ${options.host}`);
+  }
+  if (options.host && command !== 'status') {
+    throw new LifecycleError('INVALID_ARGUMENT', '--host applies only to status');
+  }
+  if (options.observationReceipt && options.routes.length === 0 && !options.host) {
+    throw new LifecycleError('INVALID_ARGUMENT', '--observation-receipt requires --host or one selected --route');
   }
   if (options.yes && !['offboard', 'recover-bootstrap-lock'].includes(command)) {
     throw new LifecycleError('INVALID_ARGUMENT', '--yes applies only to offboard or recover-bootstrap-lock');

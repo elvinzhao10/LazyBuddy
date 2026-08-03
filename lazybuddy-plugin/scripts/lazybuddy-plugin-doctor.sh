@@ -244,6 +244,13 @@ else
     check "Host/marketplace version agreement" "$agreement"
 fi
 
+if route_contract=$(node "${PLUGIN_ROOT}/scripts/lazybuddy-marketplace-route-check.js" "$PROJECT_ROOT" 2>&1); then
+    check "Marketplace route contract" ok
+    echo "  [INFO] Marketplace routes: $route_contract"
+else
+    check "Marketplace route contract" "$route_contract"
+fi
+
 if [ "$DOCTOR_HOST" = "codebuddy-ide" ] || [ "$DOCTOR_HOST" = "workbuddy" ]; then
     echo "  [SKIP] CodeBuddy manifest validator — CLI-only validator not applicable to ${DOCTOR_HOST}"
 elif command -v codebuddy >/dev/null 2>&1; then

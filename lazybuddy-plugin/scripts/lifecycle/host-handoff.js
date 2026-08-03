@@ -3,6 +3,11 @@
 const path = require('node:path');
 const { LifecycleError } = require('./errors');
 const { safeFile } = require('./files');
+const {
+  defaultRouteForHost,
+  fallbackPolicy,
+  validateMarketplaceRoutes,
+} = require('./marketplace-routes');
 
 const CONNECTORS = Object.freeze([
   'run-ledger',
@@ -21,7 +26,7 @@ const OBSERVATION_KEYS = ['artifact', 'host', 'observed_at', 'type'];
 
 function routeSelection(routes) {
   const selected = [...new Set(routes)].sort();
-  const hasFull = selected.includes('workbuddy-full-plugin');
+  const hasFull = selected.includes('workbuddy-full-plugin') || selected.includes('codebuddy-marketplace');
   const hasFallback = selected.includes('manual-skills-mcp-fallback');
   if (hasFull && hasFallback) {
     return {
@@ -89,7 +94,7 @@ function renderHandoff(route, releaseRoot, projectRoot) {
   if (route === 'workbuddy-full-plugin') {
     return {
       ...base,
-      expected_artifacts: { plugin: 'already-host-installed', version: '1.0.3' },
+      expected_artifacts: { plugin: 'lazybuddy', version: '1.0.3' },
       preflight: { status: 'package-ready', full_plugin: 'user-observed-only' },
       next_action: { kind: 'gui', instruction: 'Open Skills → Plugins and inspect LazyBuddy in the current WorkBuddy session.' },
     };
@@ -97,10 +102,17 @@ function renderHandoff(route, releaseRoot, projectRoot) {
   return {
     ...base,
     expected_artifacts: { skills: path.join(releaseRoot, 'lazybuddy-plugin', 'skills') },
+    recovery: fallbackPolicy(),
     degraded: { status: 'manual-skills-mcp-fallback', excludes: ['commands', 'agents', 'hooks'] },
     manual_mcp: { connectors: CONNECTORS.map((name) => connector(name, releaseRoot, projectRoot)) },
     next_action: { kind: 'gui', instruction: 'Open Skills and import the LazyBuddy skills directory.' },
   };
 }
 
-module.exports = { parseObservation, renderHandoff, routeSelection };
+module.exports = {
+  defaultRouteForHost,
+  parseObservation,
+  renderHandoff,
+  routeSelection,
+  validateMarketplaceRoutes,
+};

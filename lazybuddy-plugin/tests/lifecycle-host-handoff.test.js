@@ -33,19 +33,12 @@ function fixture() {
   const projectRoot = path.join(sandbox, 'project root');
   const sourceRoot = path.join(sandbox, 'source checkout');
   const packageRoot = path.join(sourceRoot, 'lazybuddy-plugin');
-  fs.mkdirSync(path.join(packageRoot, 'scripts'), { recursive: true });
-  fs.mkdirSync(path.join(packageRoot, '.codebuddy-plugin'), { recursive: true });
+  fs.cpSync(PLUGIN_ROOT, packageRoot, { recursive: true });
   fs.mkdirSync(path.join(sourceRoot, '.codebuddy-plugin'), { recursive: true });
-  fs.cpSync(path.join(PLUGIN_ROOT, 'scripts', 'lifecycle'), path.join(packageRoot, 'scripts', 'lifecycle'), { recursive: true });
-  fs.copyFileSync(CLI, path.join(packageRoot, 'scripts', 'lazybuddy-lifecycle.js'));
-  fs.writeFileSync(path.join(packageRoot, '.codebuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.0.3"}\n');
-  fs.writeFileSync(path.join(sourceRoot, '.codebuddy-plugin', 'marketplace.json'), '{"name":"lazybuddy","plugins":[{"name":"lazybuddy","source":"./lazybuddy-plugin","version":"1.0.3"}]}\n');
-  for (const name of SERVERS) {
-    const server = path.join(packageRoot, 'mcp', name, 'server.sh');
-    fs.mkdirSync(path.dirname(server), { recursive: true });
-    fs.writeFileSync(server, '#!/usr/bin/env bash\n');
-    fs.chmodSync(server, 0o755);
-  }
+  fs.copyFileSync(
+    path.join(PLUGIN_ROOT, '..', '.codebuddy-plugin', 'marketplace.json'),
+    path.join(sourceRoot, '.codebuddy-plugin', 'marketplace.json'),
+  );
   fs.mkdirSync(projectRoot);
   const paths = prepareProductRoot({ installRoot, product: 'LazyBuddy' });
   const commitSha = 'a'.repeat(40);
@@ -86,13 +79,30 @@ test('status renders receipt-verified CodeBuddy and WorkBuddy handoffs without h
   assert.equal(codebuddy.host_handoff.namespace, 'lazybuddy');
   assert.equal(codebuddy.host_handoff.route, 'codebuddy-marketplace');
   assert.match(codebuddy.host_handoff.next_action.command, /^codebuddy plugin marketplace add /);
-  assert.equal(full.host_handoff.expected_artifacts.plugin, 'already-host-installed');
+  assert.equal(full.host_handoff.expected_artifacts.plugin, 'lazybuddy');
   assert.equal(full.host_handoff.host_mutation, 'none');
   assert.equal(full.host_readiness.status, 'pending');
   assert.deepEqual(fallback.host_handoff.manual_mcp.connectors.map((item) => item.name), SERVERS);
   assert.deepEqual(fallback.host_handoff.degraded.excludes, ['commands', 'agents', 'hooks']);
   for (const output of [codebuddy, full, fallback]) assert.equal(JSON.stringify(output).includes('.workbuddy'), false);
   assert.equal(fs.readFileSync(privateFile, 'utf8'), '{"caller":"owned"}\n');
+});
+
+test('status selects each marketplace plugin route by host when no route override is provided', (t) => {
+  // Given: one receipt-verified durable release for each full-plugin host.
+  const f = fixture();
+  t.after(() => fs.rmSync(f.sandbox, { recursive: true }));
+  const options = { cli: f.paths.launcher, cwd: f.sandbox };
+
+  // When: status is invoked with only the host identity.
+  const codebuddy = json(command(args(f, [], ['--host', 'codebuddy-ide']), options));
+  const workbuddy = json(command(args(f, [], ['--host', 'workbuddy']), options));
+
+  // Then: both hosts select their full marketplace plugin route by default.
+  assert.equal(codebuddy.host_handoff.route, 'codebuddy-marketplace');
+  assert.equal(codebuddy.host_handoff.expected_artifacts.plugin, 'lazybuddy@lazybuddy');
+  assert.equal(workbuddy.host_handoff.route, 'workbuddy-full-plugin');
+  assert.equal(workbuddy.host_handoff.expected_artifacts.plugin, 'lazybuddy');
 });
 
 test('parseObservation preserves a current matching observation at an injected time', (t) => {

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# noqa: SIZE_OK - standalone package-readiness gate remains self-contained in installed plugins.
 set -euo pipefail
 
 reject_symlinked_path_components() {
@@ -110,6 +111,17 @@ if not os.path.exists(code_manifest_path) and not os.path.exists(work_manifest_p
     print("PACKAGE_READINESS=degraded")
     print("Package readiness is degraded; host activation and runtime loading are unchecked.")
     sys.exit(0)
+
+route_check = subprocess.run(
+    ["node", os.path.join(root, "scripts", "lazybuddy-marketplace-route-check.js"), os.path.dirname(root)],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+if route_check.returncode == 0:
+    result("PASS", "marketplace route contract", "CodeBuddy IDE and WorkBuddy marketplace defaults")
+else:
+    result("FAIL", "marketplace route contract", route_check.stderr.strip())
 
 for legal_name in ("LICENSE", "NOTICE"):
     legal_path = os.path.join(root, legal_name)
