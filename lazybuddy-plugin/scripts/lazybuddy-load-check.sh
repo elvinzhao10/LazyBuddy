@@ -290,7 +290,7 @@ hooks = load_json(os.path.join(root, "hooks", "hooks.json"), "hooks configuratio
 if hooks is not None:
     actual = hooks.get("hooks")
     count = len(actual) if isinstance(actual, dict) else -1
-    result("PASS" if count == 12 else "FAIL", "hooks", f"{count}/12")
+    result("PASS" if count == 25 else "FAIL", "hooks", f"{count}/25")
 
 mcp = load_json(os.path.join(root, ".mcp.json"), "MCP configuration")
 if mcp is not None:

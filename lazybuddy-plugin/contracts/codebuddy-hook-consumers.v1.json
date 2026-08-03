@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "boundary": {
+    "required_common_fields": ["session_id", "cwd", "permission_mode", "hook_event_name"],
+    "omitted_common_fields": ["transcript_path"],
+    "max_payload_bytes": 65536,
+    "timeout_seconds": 5,
+    "exit_codes": { "accepted": 0, "rejected": 65, "internal_error": 70 },
+    "active_statuses": ["active", "paused", "created", "planning", "executing", "blocked", "verifying", "reviewing"]
+  },
+  "events": {
+    "SessionStart": { "consumer": "session-bootstrap", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "UserPromptSubmit": { "consumer": "adaptive-intake", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "PreToolUse": { "consumer": "tool-permission-policy", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "PostToolUse": { "consumer": "run-event-ledger", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "PostToolUseFailure": { "consumer": "failure-recovery", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "PreCompact": { "consumer": "context-checkpoint", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "Stop": { "consumer": "completion-gate", "mode": "concrete", "completion_authority": true, "invalidates": [] },
+    "StopFailure": { "consumer": "stop-recovery", "mode": "advisory", "completion_authority": false, "invalidates": [] },
+    "TaskCreated": { "consumer": "task-ledger", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "TaskCompleted": { "consumer": "task-progress", "mode": "concrete", "completion_authority": true, "invalidates": [] },
+    "SubagentStart": { "consumer": "subagent-ledger", "mode": "concrete", "completion_authority": false, "invalidates": [] },
+    "SubagentStop": { "consumer": "executor-evidence-gate", "mode": "concrete", "completion_authority": true, "invalidates": [] },
+    "PermissionRequest": { "consumer": "permission-audit", "mode": "advisory", "completion_authority": false, "invalidates": [] },
+    "PermissionDenied": { "consumer": "permission-audit", "mode": "advisory", "completion_authority": false, "invalidates": [] },
+    "Notification": { "consumer": "notification-audit", "mode": "advisory", "completion_authority": false, "invalidates": [] },
+    "PostCompact": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["context", "verification"] },
+    "SessionEnd": { "consumer": "session-audit", "mode": "advisory", "completion_authority": false, "invalidates": [] },
+    "InstructionsLoaded": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["instructions", "verification"] },
+    "ConfigChange": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["configuration", "verification"] },
+    "CwdChanged": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["cwd", "verification"] },
+    "FileChanged": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["files", "verification"] },
+    "WorktreeCreate": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["worktree", "verification"] },
+    "WorktreeRemove": { "consumer": "evidence-invalidation", "mode": "concrete", "completion_authority": false, "invalidates": ["worktree", "verification"] },
+    "Elicitation": { "consumer": "interaction-audit", "mode": "advisory", "completion_authority": false, "invalidates": [] },
+    "ElicitationResult": { "consumer": "interaction-audit", "mode": "advisory", "completion_authority": false, "invalidates": [] }
+  }
+}

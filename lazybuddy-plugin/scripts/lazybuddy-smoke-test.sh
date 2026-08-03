@@ -88,10 +88,10 @@ for cmd_file in "${PLUGIN_ROOT}"/commands/*.md; do
     fi
 done
 
-# 3. Check hooks.json has the 12 expected event types
+# 3. Check hooks.json has the 25 expected event types
 HOOKS_FILE="${PLUGIN_ROOT}/hooks/hooks.json"
 if [ -f "$HOOKS_FILE" ]; then
-    EXPECTED_EVENTS="SessionStart UserPromptSubmit PreToolUse PostToolUse PostToolUseFailure PreCompact Stop StopFailure TaskCreated TaskCompleted SubagentStart SubagentStop"
+    EXPECTED_EVENTS="SessionStart UserPromptSubmit PreToolUse PostToolUse PostToolUseFailure PreCompact Stop StopFailure TaskCreated TaskCompleted SubagentStart SubagentStop PermissionRequest PermissionDenied Notification PostCompact SessionEnd InstructionsLoaded ConfigChange CwdChanged FileChanged WorktreeCreate WorktreeRemove Elicitation ElicitationResult"
     for event in $EXPECTED_EVENTS; do
         if grep -q "\"${event}\"" "$HOOKS_FILE"; then
             check "Hooks: ${event} event type present" ok

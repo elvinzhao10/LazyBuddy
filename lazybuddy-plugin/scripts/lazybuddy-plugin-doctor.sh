@@ -419,6 +419,19 @@ expected_events = [
     "TaskCompleted",
     "SubagentStart",
     "SubagentStop",
+    "PermissionRequest",
+    "PermissionDenied",
+    "Notification",
+    "PostCompact",
+    "SessionEnd",
+    "InstructionsLoaded",
+    "ConfigChange",
+    "CwdChanged",
+    "FileChanged",
+    "WorktreeCreate",
+    "WorktreeRemove",
+    "Elicitation",
+    "ElicitationResult",
 ]
 errors = []
 
@@ -480,8 +493,8 @@ for event in expected_events:
     if len(event_targets) != 1:
         errors.append(f"{event} has {len(event_targets)} command targets, expected 1")
 
-if len(targets) != 12:
-    errors.append(f"hook command target count is {len(targets)}, expected 12")
+if len(targets) != 25:
+    errors.append(f"hook command target count is {len(targets)}, expected 25")
 
 if errors:
     print("; ".join(errors))
@@ -489,9 +502,9 @@ if errors:
 print("ok")
 PY
 ); then
-    check "Hook command targets (12 executable)" ok
+    check "Hook command targets (25 executable)" ok
 else
-    check "Hook command targets (12 executable)" "${hook_result}"
+    check "Hook command targets (25 executable)" "${hook_result}"
 fi
 
 if mcp_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
