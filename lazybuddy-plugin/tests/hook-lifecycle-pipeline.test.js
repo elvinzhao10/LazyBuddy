@@ -201,3 +201,34 @@ test('rejects malformed oversized secret missing-common and stale-cwd payloads w
     assert.equal(JSON.parse(result.stderr).reason, reason);
   }
 });
+
+test('rejects added events that omit their required event-specific fields', () => {
+  // Given: valid added-event fixtures with their event-specific data removed.
+  const { projectDir } = setupProject();
+  const required = {
+    PermissionRequest: ['request_id', 'tool_name'],
+    PermissionDenied: ['request_id', 'tool_name'],
+    Notification: ['notification_type'],
+    PostCompact: ['trigger'],
+    SessionEnd: ['reason'],
+    InstructionsLoaded: ['source'],
+    ConfigChange: ['source'],
+    CwdChanged: ['new_cwd'],
+    FileChanged: ['file_path', 'change_type'],
+    WorktreeCreate: ['worktree_path'],
+    WorktreeRemove: ['worktree_path'],
+    Elicitation: ['request_id', 'server_name'],
+    ElicitationResult: ['request_id', 'status'],
+  };
+
+  // When/Then: each missing field fails through the real dispatcher with one typed reason.
+  for (const [event, fields] of Object.entries(required)) {
+    for (const field of fields) {
+      const payload = fixture(event, projectDir);
+      delete payload[field];
+      const result = dispatch(event, payload, projectDir);
+      assert.notEqual(result.status, 0, `${event}.${field} unexpectedly passed`);
+      assert.equal(JSON.parse(result.stderr).reason, 'missing_event_field');
+    }
+  }
+});

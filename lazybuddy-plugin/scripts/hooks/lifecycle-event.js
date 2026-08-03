@@ -179,6 +179,9 @@ function processEvent(input, expectedEvent) {
   const { cwd, projectRoot } = resolveProject(payload);
   const consumer = CONTRACT.events[event];
   if (!consumer || consumer.completion_authority !== false) reject('invalid_consumer', event);
+  for (const field of consumer.required_fields) {
+    if (typeof payload[field] !== 'string' || payload[field].length === 0) reject('missing_event_field', `${event}.${field} is required`);
+  }
   const normalizedPayload = normalizePayload(event, payload, projectRoot);
   const identity = JSON.stringify({ session_id: sessionId, event, cwd, payload: normalizedPayload, delivery_id: payload.event_id || payload.delivery_id || null });
   const eventId = `evt:${digest(identity)}`;
