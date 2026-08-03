@@ -175,13 +175,29 @@ def detected_lsp(project_root: Path) -> dict[str, LspDeclaration]:
     return detected
 
 
+def lsp_cache_path(plugin_data: Path) -> Path:
+    cache_root = plugin_data / "cache"
+    lsp_root = cache_root / "lsp"
+    if cache_root.is_symlink() or lsp_root.is_symlink():
+        raise ProfileError("LSP cache path must not contain symlinks")
+    return lsp_root / ".lsp.json"
+
+
 def write_lsp_cache(plugin_data: Path, declarations: dict[str, LspDeclaration]) -> Path:
-    target = plugin_data / "cache" / "lsp" / ".lsp.json"
+    target = lsp_cache_path(plugin_data)
     target.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     temporary = target.with_suffix(".tmp")
     temporary.write_text(json.dumps(declarations, indent=2) + "\n", encoding="utf-8")
     os.replace(temporary, target)
     return target
+
+
+def clear_lsp_cache(plugin_data: Path) -> None:
+    target = lsp_cache_path(plugin_data)
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.exists():
+        raise ProfileError("detected LSP cache must be a regular file")
 
 
 def run(arguments: argparse.Namespace) -> int:
@@ -206,6 +222,18 @@ def run(arguments: argparse.Namespace) -> int:
 
     declarations = load_declarations(plugin_root)
     profile = render_profile(declarations, selected, plugin_root, project_root, plugin_data, mode)
+
+    lsp_state = None
+    if arguments.detect_lsp:
+        lsp = detected_lsp(project_root)
+        if lsp:
+            if not plugin_data.is_dir():
+                raise ProfileError("plugin data must exist before writing detected LSP cache")
+            lsp_state = f"LSP_STATE=detected path={write_lsp_cache(plugin_data, lsp)}"
+        else:
+            clear_lsp_cache(plugin_data)
+            lsp_state = "LSP_STATE=unavailable"
+
     print(f"PROFILE_MODE={mode}")
     print("SELECTED_SERVERS=" + ",".join(selected))
     if requested is not None:
@@ -213,14 +241,8 @@ def run(arguments: argparse.Namespace) -> int:
         print(f"MCP_PROFILE_AVAILABLE server={requested} mode={mode} loading={loading}")
     print("MCP_PROFILE_JSON=" + json.dumps(profile, separators=(",", ":")))
 
-    if arguments.detect_lsp:
-        lsp = detected_lsp(project_root)
-        if lsp:
-            if not plugin_data.is_dir():
-                raise ProfileError("plugin data must exist before writing detected LSP cache")
-            print(f"LSP_STATE=detected path={write_lsp_cache(plugin_data, lsp)}")
-        else:
-            print("LSP_STATE=unavailable")
+    if lsp_state is not None:
+        print(lsp_state)
     print("NETWORK=not-used")
     print("RUNTIME_INSTALL=none")
     return 0

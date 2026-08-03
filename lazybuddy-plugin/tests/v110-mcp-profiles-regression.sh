@@ -134,6 +134,30 @@ else
     fail_case 'detected PATH LSP command exits zero'
 fi
 
+if PATH="/usr/bin:/bin" python3 "$PROFILE" --mode assisted --project-dir "$PROJECT" --plugin-data "$PLUGIN_DATA" --detect-lsp > "$TMP/lsp-stale.out" 2> "$TMP/lsp-stale.err"; then
+    if grep -Fq 'LSP_STATE=unavailable' "$TMP/lsp-stale.out" && [ ! -e "$PLUGIN_DATA/cache/lsp/.lsp.json" ]; then
+        pass_case 'unavailable LSP removes a stale detected-only descriptor'
+    else
+        fail_case 'unavailable LSP removes a stale detected-only descriptor'
+    fi
+else
+    fail_case 'stale detected-only LSP cleanup is a bounded non-error'
+fi
+
+SYMLINK_DATA="$TMP/symlink-data"
+OUTSIDE_CACHE="$TMP/outside-cache"
+mkdir -p "$SYMLINK_DATA" "$OUTSIDE_CACHE/lsp"
+printf 'preserve\n' > "$OUTSIDE_CACHE/lsp/.lsp.json"
+ln -s "$OUTSIDE_CACHE" "$SYMLINK_DATA/cache"
+if PATH="/usr/bin:/bin" python3 "$PROFILE" --mode assisted --project-dir "$PROJECT" --plugin-data "$SYMLINK_DATA" --detect-lsp > "$TMP/lsp-symlink.out" 2> "$TMP/lsp-symlink.err"; then
+    fail_case 'symlinked LSP cache is rejected without misleading output'
+elif [ "$?" -eq 2 ] && [ ! -s "$TMP/lsp-symlink.out" ] && grep -Fxq 'preserve' "$OUTSIDE_CACHE/lsp/.lsp.json" \
+    && grep -Fq 'LSP cache path must not contain symlinks' "$TMP/lsp-symlink.err"; then
+    pass_case 'symlinked LSP cache is rejected without misleading output'
+else
+    fail_case 'symlinked LSP cache is rejected without misleading output'
+fi
+
 MISSING_DATA="$TMP/missing-data"
 if PATH="/usr/bin:/bin" python3 "$PROFILE" --mode assisted --project-dir "$PROJECT" --plugin-data "$MISSING_DATA" --detect-lsp > "$TMP/lsp-missing.out" 2> "$TMP/lsp-missing.err"; then
     if grep -Fq 'LSP_STATE=unavailable' "$TMP/lsp-missing.out" && [ ! -e "$MISSING_DATA" ]; then
