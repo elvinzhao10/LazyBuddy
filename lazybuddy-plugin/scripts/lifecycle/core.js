@@ -13,7 +13,14 @@ const {
 const { contained } = require('./paths');
 const { ORIGINS, verifyProjectDeclarations } = require('./ownership');
 const { preparePromotion, receiptFor } = require('./receipt');
-const { LAUNCHER, installLauncher, readActive, restoreLauncher, writeActive } = require('./state');
+const {
+  LAUNCHER,
+  LEGACY_LAUNCHER_V1,
+  installLauncher,
+  readActive,
+  restoreLauncher,
+  writeActive,
+} = require('./state');
 
 function releaseId(version, commitSha) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !/^[0-9a-f]{40}$/.test(commitSha)) {
@@ -168,7 +175,10 @@ function offboardProduct(paths, confirmation) {
       || JSON.stringify(releaseIds) !== JSON.stringify(releaseNames)) throw new Error('unknown release content');
     const expectedRoot = new Set(['active.json', 'launcher.js', 'locks', 'receipts', 'releases', 'rollback', 'staging']);
     if (fs.readdirSync(paths.productRoot).some((name) => !expectedRoot.has(name))) throw new Error('unknown product content');
-    if (!safeFile(paths.launcher).bytes.equals(Buffer.from(LAUNCHER))) throw new Error('launcher changed');
+    const launcher = safeFile(paths.launcher).bytes;
+    if (!launcher.equals(Buffer.from(LAUNCHER)) && !launcher.equals(Buffer.from(LEGACY_LAUNCHER_V1))) {
+      throw new Error('launcher changed');
+    }
     if (fs.readdirSync(paths.locks).length !== 0) throw new Error('unknown lock content');
     const rollbackNames = fs.readdirSync(paths.rollback);
     if (rollbackNames.some((name) => name !== 'retained.json')) throw new Error('unknown rollback content');

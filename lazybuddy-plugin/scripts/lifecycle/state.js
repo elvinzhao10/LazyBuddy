@@ -8,6 +8,7 @@ const { LifecycleError, workspacePreserved } = require('./errors');
 const { atomicJson, readJson, safeFile } = require('./files');
 const { LAUNCHER, LEGACY_LAUNCHER_V1, installLauncher, restoreLauncher } = require('./launcher');
 const { ownedRelativePath } = require('./ownership');
+const { receiptFor } = require('./receipt');
 
 function acquireLock(paths, operation, productIdentity, lockPath = paths.lock, lockKind = null) {
   const record = {
@@ -187,6 +188,7 @@ function writeActive(paths, active) {
 function recoveryReport(paths) {
   const issues = [];
   let activeState = null;
+  let retainedRelease = null;
   try {
     fs.lstatSync(paths.bootstrapLock);
     issues.push({
@@ -212,9 +214,22 @@ function recoveryReport(paths) {
   if (fs.existsSync(paths.staging) && fs.readdirSync(paths.staging).length > 0) {
     issues.push({ code: 'STAGING_PRESENT', path: paths.staging });
   }
+  if (fs.existsSync(paths.rollbackMarker)) {
+    try {
+      const marker = readJson(paths.rollbackMarker, 'UNSAFE_ROLLBACK');
+      if (JSON.stringify(Object.keys(marker).sort()) !== JSON.stringify(['release_id'])
+        || typeof marker.release_id !== 'string') {
+        throw new LifecycleError('UNSAFE_ROLLBACK', 'rollback retention marker is malformed');
+      }
+      receiptFor(paths, marker.release_id);
+      retainedRelease = marker.release_id;
+    } catch (error) {
+      issues.push({ code: 'UNSAFE_ROLLBACK', path: paths.rollbackMarker });
+    }
+  }
   if (fs.existsSync(paths.releases)) {
     const referenced = new Set(activeState
-      ? [activeState.active_release, activeState.previous_release].filter(Boolean)
+      ? [activeState.active_release, activeState.previous_release, retainedRelease].filter(Boolean)
       : []);
     for (const name of fs.readdirSync(paths.releases)) {
       if (!referenced.has(name)) issues.push({ code: 'ORPHAN_RELEASE', path: path.join(paths.releases, name) });

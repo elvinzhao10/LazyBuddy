@@ -13,6 +13,7 @@ const {
   prepareProductRoot,
   promoteRelease,
   readActive,
+  recoveryReport,
   rollbackRelease,
   stageRelease,
 } = require('../scripts/lifecycle');
@@ -125,6 +126,36 @@ test('mixed v1 and v2 releases boot, roll back, and offboard without rewriting v
   assert.deepEqual(fs.readFileSync(first.receiptPath), v1Bytes);
   offboardProduct(f.paths, 'offboard-product');
   assert.equal(fs.existsSync(f.paths.productRoot), false);
+});
+
+test('v1-only offboard accepts the immutable legacy launcher without rewriting its receipt', () => {
+  // Given: an exact installation copied from the v1 lifecycle writer.
+  const f = fixture();
+  const promoted = promote(f, 'a');
+  downgradeToV1(f, promoted);
+  const receiptBefore = fs.readFileSync(promoted.receiptPath);
+
+  // When: confirmed offboard verifies the copied installation.
+  offboardProduct(f.paths, 'offboard-product');
+
+  // Then: the legacy evidence was accepted as-is and only the owned product root was removed.
+  assert.equal(receiptBefore.includes(Buffer.from('lazy-harness-lifecycle.v1.schema.json')), true);
+  assert.equal(fs.existsSync(f.paths.productRoot), false);
+});
+
+test('rollback retention is recovery-clean until explicitly pruned', () => {
+  // Given: a v1 release upgraded to v2 and then selected by rollback.
+  const f = fixture();
+  const first = promote(f, 'a');
+  downgradeToV1(f, first);
+  promote(f, 'b');
+  rollbackRelease(f.paths);
+
+  // When: recovery inventories active and retained rollback releases.
+  const recovery = recoveryReport(f.paths);
+
+  // Then: the deliberate rollback retention is not misclassified as an orphan.
+  assert.deepEqual(recovery.issues, []);
 });
 
 test('unknown and schema-tampered active or receipt versions refuse without mutation', () => {
