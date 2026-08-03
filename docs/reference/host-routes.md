@@ -123,6 +123,32 @@ The CodeBuddy handoff has three separate future user actions:
    then inspect one real Skill/command plus all six MCP connections.
 
 Do not combine these actions or claim host readiness from marketplace JSON.
+
+### CodeBuddy IDE native plan and task observations
+
+The CLI-backed user-scope marketplace remains the default CodeBuddy IDE
+installation route. After installation, the package can generate a pending
+native-surface template without reading private IDE state:
+
+```bash
+node lazybuddy-plugin/scripts/lazybuddy-codebuddy-ide-surfaces.js template \
+  --project-root "<workspace-root>" \
+  --primary-root "<workspace-root>" \
+  --branch "<branch>" \
+  --marketplace "<release-root>/.codebuddy-plugin/marketplace.json" \
+  --output "<pending-receipt.json>" \
+  --json
+```
+
+Use `observe --template <pending-receipt.json> --observation
+<sanitized-host-observation.json> --output <observed-receipt.json> --json` to
+ingest a current observation. The record covers `.codebuddy/plans`, Plan
+Design/Todo, workspace-grouped tasks, queue/parallel status, Skill management,
+automation status, primary root/branch, and task continuation. It remains
+non-promoting: host readiness stays pending until the normal fresh-session
+host verification completes. Multiple workspace roots require an explicit
+primary root, and marketplace version, root, and fingerprint are part of the
+freshness boundary.
 `.codebuddy/settings.json` is the shareable non-secret project scope;
 `.codebuddy/settings.local.json` is local/machine scope and must remain ignored
 and unstaged; secrets must never be committed. Repeating safe package checks
