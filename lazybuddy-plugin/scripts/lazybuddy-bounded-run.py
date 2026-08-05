@@ -191,11 +191,15 @@ def drain_process(
                 raise OSError(f"{name} pipe unavailable")
             selector.register(stream, selectors.EVENT_READ, (name, target))
         while selector.get_map() or process.poll() is None:
-            if cancel_signal_received or (cancel_file is not None and cancel_file.exists()):
+            child_exited = process.poll() is not None
+            if not child_exited and (cancel_signal_received or (cancel_file is not None and cancel_file.exists())):
                 return "cancelled"
-            if time.monotonic() >= deadline:
+            if not child_exited and time.monotonic() >= deadline:
                 return "timeout"
-            for key, _mask in selector.select(min(0.05, max(0.0, deadline - time.monotonic()))):
+            ready = selector.select(0 if child_exited else min(0.05, max(0.0, deadline - time.monotonic())))
+            if child_exited and selector.get_map() and not ready:
+                return "complete-open-streams"
+            for key, _mask in ready:
                 name, target = key.data
                 chunk = os.read(key.fileobj.fileno(), READ_BYTES)
                 if not chunk:
@@ -300,6 +304,8 @@ def main() -> int:
         else:
             result = {"status": "fail", "reason": f"exit_{process.returncode}", "tail": tail}
             exit_code, event = process.returncode if process.returncode > 0 else 1, "FAIL"
+        if cleanup is not None:
+            result["cleanup"] = cleanup
         if explicit_artifacts:
             result["artifacts"] = artifacts
             result["executable"] = fingerprint

@@ -24,7 +24,7 @@ printf 'spaces ; $(touch /private/tmp/todo13-injected) `false`\n' > "$TMP/prompt
 
 cat > "$TMP/fake-codebuddy" <<'PY'
 #!/usr/bin/env python3
-import json, os, pathlib, sys, time
+import json, os, pathlib, subprocess, sys, time
 pathlib.Path(os.environ["ARGV_LOG"]).write_text(json.dumps(sys.argv[1:]), encoding="utf-8")
 mode = os.environ.get("FAKE_MODE", "json")
 if mode == "json":
@@ -45,6 +45,9 @@ elif mode == "nested-schema":
     print(json.dumps({"session_id":"session-nested-schema","result":"wrong","structured_output":{"answer":""}}))
 elif mode == "integer-float":
     print('{"session_id":"session-integer-float","result":"ok","structured_output":{"answer":1.0}}')
+elif mode == "exited-parent-open-pipes":
+    subprocess.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
+    print(json.dumps({"session_id":"session-exited-parent","result":"ok","structured_output":{"answer":"safe"}}))
 elif mode == "nan":
     print('{"session_id":"session-nan","result":"misleading success","structured_output":{"answer":NaN}}')
 elif mode == "enum-bool-top":
@@ -90,6 +93,21 @@ PY
 test ! -e /private/tmp/todo13-injected || fail 'prompt metacharacters executed'
 test ! -e /private/tmp/todo13-output-injected || fail 'output prompt injection executed'
 pass 'text/json exact argv preserves spaces, metacharacters, schema and unknown fields'
+
+ARGV_LOG="$TMP/exited-parent-argv.json" FAKE_MODE=exited-parent-open-pipes python3 "$RUNNER" \
+  --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
+  --input-file "$TMP/prompt.txt" --input-format text --output-format json \
+  --json-schema-file "$TMP/schema.json" --max-turns 3 --timeout 1 \
+  --mcp-config "$TMP/mcp config.json" --permission-mode default \
+  --subagent-permission-mode default --result-file "$TMP/exited-parent-result.json" \
+  --stdout-file "$TMP/exited-parent.stdout" --stderr-file "$TMP/exited-parent.stderr"
+python3 - "$TMP/exited-parent-result.json" <<'PY'
+import json, pathlib, sys
+result=json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert result['status']=='pass' and result['session_id']=='session-exited-parent', result
+assert result['bounded']['cleanup']['process_group_terminated'] is True, result
+PY
+pass 'direct child exit wins over inherited open pipes and cleans its process group'
 
 printf '{"type":"user","message":{"role":"user","content":"hello"}}\n' > "$TMP/input.jsonl"
 ARGV_LOG="$TMP/stream-argv.json" FAKE_MODE=stream python3 "$RUNNER" \
