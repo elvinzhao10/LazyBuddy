@@ -22,6 +22,37 @@ printf '{"mcpServers":{}}\n' > "$TMP/mcp config.json"
 printf '{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"]}\n' > "$TMP/schema.json"
 printf 'spaces ; $(touch /private/tmp/todo13-injected) `false`\n' > "$TMP/prompt.txt"
 
+python3 - "$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py" <<'PY'
+import importlib.util, sys
+from unittest import mock
+
+spec=importlib.util.spec_from_file_location("bounded_processgroup_probe", sys.argv[1])
+assert spec is not None and spec.loader is not None
+module=importlib.util.module_from_spec(spec)
+sys.modules[spec.name]=module
+spec.loader.exec_module(module)
+
+class FinishedProcess:
+    pid=424242
+    @staticmethod
+    def wait(timeout): return 0
+
+permission_race=PermissionError(1, "operation not permitted")
+with mock.patch.object(module, "descendant_records", return_value=()), \
+     mock.patch.object(module, "process_records", return_value={}), \
+     mock.patch.object(module.os, "killpg", side_effect=[permission_race, ProcessLookupError()]):
+    cleanup=module.terminate_owned_group(FinishedProcess())
+assert cleanup == {"process_group_terminated":True,"detectable_descendants_remaining":False,"detectable_descendant_pids":[]}, cleanup
+
+owned_child=module.ProcessRecord(424243,1,424242,"S","owned-start")
+with mock.patch.object(module, "descendant_records", return_value=(owned_child,)), \
+     mock.patch.object(module, "process_records", return_value={owned_child.pid:owned_child}), \
+     mock.patch.object(module.os, "killpg", side_effect=permission_race):
+    cleanup=module.terminate_owned_group(FinishedProcess())
+assert cleanup == {"process_group_terminated":False,"detectable_descendants_remaining":True,"detectable_descendant_pids":[owned_child.pid]}, cleanup
+PY
+pass 'process-group permission race retries and persistent denial fails closed'
+
 cat > "$TMP/fake-codebuddy" <<'PY'
 #!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys, time

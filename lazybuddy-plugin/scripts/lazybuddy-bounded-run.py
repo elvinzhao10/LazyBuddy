@@ -123,6 +123,7 @@ def is_same_process(record: ProcessRecord, records: dict[int, ProcessRecord]) ->
 
 def terminate_owned_group(process: subprocess.Popen[bytes]) -> dict[str, object]:
     inspection_failed = False
+    signal_refused = False
     try:
         descendants = descendant_records(process.pid)
     except (OSError, subprocess.SubprocessError):
@@ -133,6 +134,8 @@ def terminate_owned_group(process: subprocess.Popen[bytes]) -> dict[str, object]
             os.killpg(process.pid, group_signal)
         except ProcessLookupError:
             pass
+        except PermissionError:
+            signal_refused = True
         try:
             process.wait(timeout=wait_seconds)
         except subprocess.TimeoutExpired:
@@ -142,11 +145,18 @@ def terminate_owned_group(process: subprocess.Popen[bytes]) -> dict[str, object]
     except (OSError, subprocess.SubprocessError):
         current_records = {}
         inspection_failed = True
-    remaining = [record.pid for record in descendants if is_same_process(record, current_records)]
+    remaining_records = {
+        record.pid: record for record in descendants if is_same_process(record, current_records)
+    }
+    group_remaining = {
+        record.pid: record for record in current_records.values()
+        if record.group_id == process.pid and not record.state.startswith("Z")
+    }
+    remaining_records.update(group_remaining)
     return {
-        "process_group_terminated": True,
-        "detectable_descendants_remaining": inspection_failed or bool(remaining),
-        "detectable_descendant_pids": sorted(remaining),
+        "process_group_terminated": not group_remaining and not (signal_refused and inspection_failed),
+        "detectable_descendants_remaining": inspection_failed or bool(remaining_records),
+        "detectable_descendant_pids": sorted(remaining_records),
     }
 
 
@@ -288,6 +298,9 @@ def main() -> int:
             current_fingerprint = {}
         if current_fingerprint != fingerprint:
             result: dict[str, object] = {"status": "unavailable", "reason": "executable_changed", "tail": tail}
+            exit_code, event = 125, "FAIL"
+        elif outcome == "complete-open-streams" and cleanup is not None and cleanup["process_group_terminated"] is not True:
+            result = {"status": "unavailable", "reason": "process_cleanup_failed", "tail": tail, "cleanup": cleanup}
             exit_code, event = 125, "FAIL"
         elif outcome == "cancelled":
             result = {"status": "cancelled", "reason": "cancellation_requested", "tail": tail, "cleanup": cleanup}
