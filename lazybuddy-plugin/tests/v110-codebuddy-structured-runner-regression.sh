@@ -43,6 +43,8 @@ elif mode == "schema":
     print(json.dumps({"session_id":"session-schema","result":"wrong","structured_output":{"answer":7}}))
 elif mode == "nested-schema":
     print(json.dumps({"session_id":"session-nested-schema","result":"wrong","structured_output":{"answer":""}}))
+elif mode == "integer-float":
+    print('{"session_id":"session-integer-float","result":"ok","structured_output":{"answer":1.0}}')
 elif mode == "nan":
     print('{"session_id":"session-nan","result":"misleading success","structured_output":{"answer":NaN}}')
 elif mode == "enum-bool-top":
@@ -135,7 +137,6 @@ test ! -e "$TMP/bypass-argv.json" || fail 'permission bypass reached CodeBuddy s
 pass 'malformed stream input and bypass permission profile fail before launch'
 
 printf '{"type":"object","properties":{"answer":{"type":"string","minLength":1}},"required":["answer"]}\n' > "$TMP/nested-schema.json"
-rm -f "$TMP/nested-schema-argv.json"
 if ARGV_LOG="$TMP/nested-schema-argv.json" FAKE_MODE=nested-schema python3 "$RUNNER" \
   --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
   --input-file "$TMP/prompt.txt" --input-format text --output-format json \
@@ -143,15 +144,30 @@ if ARGV_LOG="$TMP/nested-schema-argv.json" FAKE_MODE=nested-schema python3 "$RUN
   --mcp-config "$TMP/mcp config.json" --permission-mode default \
   --subagent-permission-mode default --result-file "$TMP/nested-schema-result.json" \
   --stdout-file "$TMP/nested-schema.stdout" --stderr-file "$TMP/nested-schema.stderr"; then
-  fail 'nested unsupported schema unexpectedly succeeded'
+  fail 'nested minLength violation unexpectedly succeeded'
 fi
 python3 - "$TMP/nested-schema-result.json" <<'PY'
 import json, pathlib, sys
 result=json.loads(pathlib.Path(sys.argv[1]).read_text())
-assert result['reason']=='unsupported_json_schema'
+assert result['reason']=='schema_mismatch', result
 PY
-test ! -e "$TMP/nested-schema-argv.json" || fail 'nested unsupported schema reached CodeBuddy subprocess'
-pass 'nested unsupported schema fails closed before launch'
+test -e "$TMP/nested-schema-argv.json" || fail 'nested minLength schema did not reach CodeBuddy subprocess'
+pass 'nested minLength is enforced by the schema engine'
+
+printf '{"type":"object","properties":{"answer":{"type":"integer"}},"required":["answer"]}\n' > "$TMP/integer-schema.json"
+ARGV_LOG="$TMP/integer-float-argv.json" FAKE_MODE=integer-float python3 "$RUNNER" \
+  --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
+  --input-file "$TMP/prompt.txt" --input-format text --output-format json \
+  --json-schema-file "$TMP/integer-schema.json" --max-turns 3 --timeout 3 \
+  --mcp-config "$TMP/mcp config.json" --permission-mode default \
+  --subagent-permission-mode default --result-file "$TMP/integer-float-result.json" \
+  --stdout-file "$TMP/integer-float.stdout" --stderr-file "$TMP/integer-float.stderr"
+python3 - "$TMP/integer-float-result.json" <<'PY'
+import json, pathlib, sys
+result=json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert result['status']=='pass' and result['session_id']=='session-integer-float', result
+PY
+pass 'JSON number 1.0 satisfies integer schema semantics'
 
 printf '{"type":"object","properties":{"answer":{"type":"number"}},"required":["answer"]}\n' > "$TMP/number-schema.json"
 if ARGV_LOG="$TMP/nan-argv.json" FAKE_MODE=nan python3 "$RUNNER" \
@@ -277,6 +293,39 @@ assert state['runtime_fingerprints'][0]['host']=='codebuddy-cli'
 PY
 pass 'successful exact session ID is persisted through existing runtime binding state'
 cp "$TMP/fake-codebuddy" "$TMP/fake-codebuddy.bound"
+
+cp "$STATE" "$TMP/nested-state-before.json"
+if ARGV_LOG="$TMP/nested-bound-argv.json" FAKE_MODE=nested-schema python3 "$RUNNER" \
+  --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
+  --input-file "$TMP/prompt.txt" --input-format text --output-format json \
+  --json-schema-file "$TMP/nested-schema.json" --max-turns 3 --timeout 3 \
+  --mcp-config "$TMP/mcp config.json" --permission-mode default \
+  --subagent-permission-mode default --state-file "$STATE" \
+  --binding-root "$PLUGIN_ROOT" --asset-file "$PLUGIN_ROOT/asset-source-manifest.v1.json" \
+  --probe-file "$PLUGIN_ROOT/README.md" --result-file "$TMP/nested-bound-result.json" \
+  --stdout-file "$TMP/nested-bound.stdout" --stderr-file "$TMP/nested-bound.stderr"; then
+  fail 'nested minLength failure persisted a session'
+fi
+cmp "$TMP/nested-state-before.json" "$STATE" || fail 'nested minLength failure mutated session state'
+pass 'nested minLength failure does not persist a session'
+
+CWD="$TMP/project with spaces" bash "$PLUGIN_ROOT/scripts/state/create-run.sh" todo13integer 'integer schema' >/dev/null
+INTEGER_STATE="$TMP/project with spaces/.lazybuddy/runs/todo13integer/state.json"
+ARGV_LOG="$TMP/integer-bound-argv.json" FAKE_MODE=integer-float python3 "$RUNNER" \
+  --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
+  --input-file "$TMP/prompt.txt" --input-format text --output-format json \
+  --json-schema-file "$TMP/integer-schema.json" --max-turns 3 --timeout 3 \
+  --mcp-config "$TMP/mcp config.json" --permission-mode default \
+  --subagent-permission-mode default --state-file "$INTEGER_STATE" \
+  --binding-root "$PLUGIN_ROOT" --asset-file "$PLUGIN_ROOT/asset-source-manifest.v1.json" \
+  --probe-file "$PLUGIN_ROOT/README.md" --result-file "$TMP/integer-bound-result.json" \
+  --stdout-file "$TMP/integer-bound.stdout" --stderr-file "$TMP/integer-bound.stderr"
+python3 - "$INTEGER_STATE" <<'PY'
+import json, pathlib, sys
+state=json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert state['session_ids']==['session-integer-float'], state
+PY
+pass 'successful JSON 1.0 integer validation persists its exact session ID'
 
 printf '{"enum":[1]}\n' > "$TMP/enum-bool-top-schema.json"
 printf '{"const":1}\n' > "$TMP/const-bool-top-schema.json"

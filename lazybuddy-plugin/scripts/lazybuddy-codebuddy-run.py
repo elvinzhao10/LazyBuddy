@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,8 +19,6 @@ from typing import Final, TypeAlias
 
 JSONValue: TypeAlias = str | int | float | bool | None | list["JSONValue"] | dict[str, "JSONValue"]
 SAFE_PERMISSION_MODES: Final = ("default", "acceptEdits", "auto", "dontAsk", "plan")
-SUPPORTED_SCHEMA_KEYS: Final = {"$schema", "title", "description", "type", "properties", "required", "additionalProperties", "items", "enum", "const", "oneOf", "allOf"}
-SCHEMA_TYPES: Final = {"object", "array", "string", "integer", "number", "boolean", "null"}
 
 
 class AdapterError(Exception):
@@ -28,20 +27,16 @@ class AdapterError(Exception):
         self.reason = reason
 
 
+class NonFiniteJsonError(ValueError):
+    pass
+
+
 def reject_constant(_value: str) -> None:
-    raise ValueError("non-finite JSON constant")
+    raise NonFiniteJsonError
 
 
 def strict_json(text: str) -> JSONValue:
     return json.loads(text, parse_constant=reject_constant)
-
-
-def json_equal(left: JSONValue, right: JSONValue) -> bool:
-    if isinstance(left, bool) or isinstance(right, bool): return type(left) is type(right) and left == right
-    if isinstance(left, (int, float)) and isinstance(right, (int, float)): return left == right
-    if isinstance(left, list) and isinstance(right, list): return len(left) == len(right) and all(json_equal(a, b) for a, b in zip(left, right))
-    if isinstance(left, dict) and isinstance(right, dict): return left.keys() == right.keys() and all(json_equal(left[key], right[key]) for key in left)
-    return type(left) is type(right) and left == right
 
 
 def read_json(path: Path, reason: str) -> JSONValue:
@@ -61,53 +56,33 @@ def validate_stream_input(path: Path) -> None:
         raise AdapterError("malformed_stream_input")
 
 
+def schema_result(action: str, schema: dict[str, JSONValue], value: JSONValue | None = None) -> str:
+    node = shutil.which("node")
+    if node is None:
+        raise AdapterError("schema_validator_unavailable")
+    helper = Path(__file__).resolve().parent.parent / "tooling" / "validate-codebuddy-schema.js"
+    request: dict[str, JSONValue] = {"action": action, "schema": schema}
+    if action == "validate":
+        request["value"] = value
+    try:
+        completed = subprocess.run(
+            [node, str(helper)], input=json.dumps(request, allow_nan=False), capture_output=True,
+            text=True, check=False, timeout=10,
+        )
+        response = strict_json(completed.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        raise AdapterError("schema_validator_failed") from error
+    if not isinstance(response, dict) or not isinstance(response.get("status"), str):
+        raise AdapterError("schema_validator_failed")
+    return response["status"]
+
+
 def schema_object(value: JSONValue) -> dict[str, JSONValue]:
-    if not isinstance(value, dict): raise AdapterError("invalid_json_schema")
-    if set(value) - SUPPORTED_SCHEMA_KEYS: raise AdapterError("unsupported_json_schema")
-    if any(key in value and not isinstance(value[key], str) for key in ("$schema", "title", "description")): raise AdapterError("invalid_json_schema")
-    expected = value.get("type"); required = value.get("required", []); properties = value.get("properties", {})
-    if expected is not None and (not isinstance(expected, str) or expected not in SCHEMA_TYPES): raise AdapterError("invalid_json_schema")
-    if not isinstance(required, list) or any(not isinstance(name, str) for name in required) or len({name for name in required if isinstance(name, str)}) != len(required): raise AdapterError("invalid_json_schema")
-    if not isinstance(properties, dict) or any(not isinstance(name, str) or not isinstance(child, dict) for name, child in properties.items()): raise AdapterError("invalid_json_schema")
-    for child in properties.values(): schema_object(child)
-    if "additionalProperties" in value and not isinstance(value["additionalProperties"], bool): raise AdapterError("invalid_json_schema")
-    if "items" in value and not isinstance(value["items"], dict): raise AdapterError("invalid_json_schema")
-    if "items" in value: schema_object(value["items"])
-    for key in ("oneOf", "allOf"):
-        if key in value: candidates = value[key]
-        if key in value and (not isinstance(candidates, list) or any(not isinstance(candidate, dict) for candidate in candidates)): raise AdapterError("invalid_json_schema")
-        if key in value: [schema_object(candidate) for candidate in candidates]
-    if "enum" in value and (not isinstance(value["enum"], list) or not value["enum"]): raise AdapterError("invalid_json_schema")
+    if not isinstance(value, dict):
+        raise AdapterError("invalid_json_schema")
+    if schema_result("compile", value) != "valid":
+        raise AdapterError("invalid_json_schema")
     return value
-
-
-def validate_schema(value: JSONValue, schema: dict[str, JSONValue]) -> bool:
-    if "const" in schema and not json_equal(value, schema["const"]): return False
-    enum = schema.get("enum")
-    if enum is not None and not any(json_equal(value, candidate) for candidate in enum): return False
-    one_of = schema.get("oneOf")
-    if one_of is not None:
-        matches = 0
-        for candidate in one_of:
-            if validate_schema(value, candidate): matches += 1
-        if matches != 1: return False
-    all_of = schema.get("allOf")
-    if all_of is not None:
-        if any(not validate_schema(value, candidate) for candidate in all_of): return False
-    expected = schema.get("type")
-    type_matches = {"object": isinstance(value, dict), "array": isinstance(value, list), "string": isinstance(value, str), "integer": isinstance(value, int) and not isinstance(value, bool), "number": isinstance(value, (int, float)) and not isinstance(value, bool), "boolean": isinstance(value, bool), "null": value is None}
-    if expected is not None and not type_matches.get(expected, False): return False
-    if isinstance(value, dict):
-        required = schema.get("required", [])
-        properties = schema.get("properties", {})
-        if any(name not in value for name in required): return False
-        for name, child_schema in properties.items():
-            if name in value and not validate_schema(value[name], child_schema): return False
-        if schema.get("additionalProperties") is False and any(name not in properties for name in value): return False
-    if isinstance(value, list) and "items" in schema:
-        item_schema = schema["items"]
-        if any(not validate_schema(item, item_schema) for item in value): return False
-    return True
 
 
 def nonempty_string(value: JSONValue | None) -> str | None:
@@ -151,7 +126,7 @@ def parse_output(path: Path, output_format: str, schema: dict[str, JSONValue] | 
     turns = response.get("num_turns", response.get("turns"))
     if isinstance(turns, int) and turns > max_turns: raise AdapterError("turn_exhaustion")
     structured = response.get("structured_output")
-    if schema is not None and (structured is None or not validate_schema(structured, schema)): raise AdapterError("schema_mismatch")
+    if schema is not None and (structured is None or schema_result("validate", schema, structured) != "valid"): raise AdapterError("schema_mismatch")
     parsed: dict[str, JSONValue] = {"status": "pass", "session_id": session_id, "response": response}
     if events is not None:
         parsed["events"] = events
