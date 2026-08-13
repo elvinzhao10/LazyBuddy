@@ -6,7 +6,6 @@ import argparse
 import hashlib
 import json
 import os
-import selectors
 import shutil
 import signal
 import subprocess
@@ -15,8 +14,21 @@ import tempfile
 import time
 from contextlib import ExitStack
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import BinaryIO, Final
+from typing import Final, assert_never
+
+from lazybuddy_process_lifecycle import (
+    CleanupReceipt,
+    CleanupStatus,
+    InspectionAvailable,
+    InspectionResult,
+    InspectionUnavailable,
+    OwnershipTracker,
+    ProcessRecord,
+    SignalResult,
+    cleanup_owned_processes,
+)
 
 
 DEFAULT_OUTPUT_CAP: Final = 1024 * 1024
@@ -40,7 +52,17 @@ def emit(status: str, label: str) -> None:
 
 
 def write_result(path: Path, result: dict[str, object]) -> None:
-    path.write_text(json.dumps(result, ensure_ascii=False) + "\n", encoding="utf-8")
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(result, ensure_ascii=False) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    except OSError:
+        temporary_path.unlink(missing_ok=True)
+        raise
 
 
 def has_linked_component(path: Path) -> bool:
@@ -64,15 +86,6 @@ def normalize_macos_temp_alias(path: Path) -> Path:
         if alias.is_symlink() and alias.resolve(strict=True) == target:
             return target / relative
     return path
-
-
-@dataclass(frozen=True)
-class ProcessRecord:
-    pid: int
-    parent_pid: int
-    group_id: int
-    state: str
-    started: str
 
 
 def process_records() -> dict[int, ProcessRecord]:
@@ -102,62 +115,23 @@ def process_records() -> dict[int, ProcessRecord]:
     return records
 
 
-def descendant_records(root_pid: int) -> tuple[ProcessRecord, ...]:
-    records = process_records()
-    children: dict[int, list[ProcessRecord]] = {}
-    for record in records.values():
-        children.setdefault(record.parent_pid, []).append(record)
-    descendants: list[ProcessRecord] = []
-    pending = list(children.get(root_pid, []))
-    while pending:
-        record = pending.pop()
-        descendants.append(record)
-        pending.extend(children.get(record.pid, []))
-    return tuple(descendants)
-
-
-def is_same_process(record: ProcessRecord, records: dict[int, ProcessRecord]) -> bool:
-    current = records.get(record.pid)
-    return current is not None and not current.state.startswith("Z") and current.started == record.started
-
-
-def terminate_owned_group(process: subprocess.Popen[bytes]) -> dict[str, object]:
-    inspection_failed = False
-    signal_refused = False
+def inspect_processes() -> InspectionResult:
     try:
-        descendants = descendant_records(process.pid)
-    except (OSError, subprocess.SubprocessError):
-        descendants = ()
-        inspection_failed = True
-    for group_signal, wait_seconds in ((signal.SIGTERM, 0.2), (signal.SIGKILL, 1.0)):
-        try:
-            os.killpg(process.pid, group_signal)
-        except ProcessLookupError:
-            pass
-        except PermissionError:
-            signal_refused = True
-        try:
-            process.wait(timeout=wait_seconds)
-        except subprocess.TimeoutExpired:
-            pass
+        return InspectionAvailable(tuple(process_records().values()))
+    except (OSError, subprocess.SubprocessError) as error:
+        return InspectionUnavailable(str(error))
+
+
+def signal_owned_group(group_id: int, signal_number: int) -> SignalResult:
     try:
-        current_records = process_records()
-    except (OSError, subprocess.SubprocessError):
-        current_records = {}
-        inspection_failed = True
-    remaining_records = {
-        record.pid: record for record in descendants if is_same_process(record, current_records)
-    }
-    group_remaining = {
-        record.pid: record for record in current_records.values()
-        if record.group_id == process.pid and not record.state.startswith("Z")
-    }
-    remaining_records.update(group_remaining)
-    return {
-        "process_group_terminated": not group_remaining and not (signal_refused and inspection_failed),
-        "detectable_descendants_remaining": inspection_failed or bool(remaining_records),
-        "detectable_descendant_pids": sorted(remaining_records),
-    }
+        os.killpg(group_id, signal_number)
+    except ProcessLookupError:
+        return SignalResult.not_found()
+    except PermissionError as error:
+        return SignalResult.refused(str(error))
+    except OSError as error:
+        return SignalResult.refused(str(error))
+    return SignalResult.sent()
 
 
 def file_digest(path: Path) -> str:
@@ -188,43 +162,68 @@ def signal_cancel(_number: int, _frame: object) -> None:
     cancel_signal_received = True
 
 
-def drain_process(
-    process: subprocess.Popen[bytes], outputs: tuple[BinaryIO, BinaryIO],
-    deadline: float, output_cap: int, cancel_file: Path | None,
-) -> str:
-    counts = {"stdout": 0, "stderr": 0}
-    selector = selectors.DefaultSelector()
-    streams = (("stdout", process.stdout, outputs[0]), ("stderr", process.stderr, outputs[1]))
-    try:
-        for name, stream, target in streams:
-            if stream is None:
-                raise OSError(f"{name} pipe unavailable")
-            selector.register(stream, selectors.EVENT_READ, (name, target))
-        while selector.get_map() or process.poll() is None:
-            child_exited = process.poll() is not None
-            if not child_exited and (cancel_signal_received or (cancel_file is not None and cancel_file.exists())):
-                return "cancelled"
-            if not child_exited and time.monotonic() >= deadline:
-                return "timeout"
-            ready = selector.select(0 if child_exited else min(0.05, max(0.0, deadline - time.monotonic())))
-            if child_exited and selector.get_map() and not ready:
-                return "complete-open-streams"
-            for key, _mask in ready:
-                name, target = key.data
-                chunk = os.read(key.fileobj.fileno(), READ_BYTES)
-                if not chunk:
-                    selector.unregister(key.fileobj)
-                    continue
-                counts[name] += len(chunk)
-                remaining = max(0, output_cap - (counts[name] - len(chunk)))
-                target.write(chunk[:remaining])
-                target.flush()
-                if counts[name] > output_cap:
-                    return "output-limit"
-        process.wait(timeout=1)
-        return "complete"
-    finally:
-        selector.close()
+class ChildStatus(StrEnum):
+    EXITED = "exited"
+    CANCELLED = "cancelled"
+    TIMEOUT = "timeout"
+    OUTPUT_LIMIT = "output-limit"
+
+
+@dataclass(frozen=True, slots=True)
+class ChildOutcome:
+    status: ChildStatus
+    returncode: int | None
+    tracker: OwnershipTracker
+
+
+def output_within_cap(paths: tuple[Path, Path], output_cap: int) -> bool:
+    return all(path.stat().st_size <= output_cap for path in paths)
+
+
+def enforce_output_cap(paths: tuple[Path, Path], output_cap: int) -> None:
+    for path in paths:
+        if path.stat().st_size > output_cap:
+            with path.open("r+b") as handle:
+                handle.truncate(output_cap)
+
+
+def establish_tracker(process: subprocess.Popen[bytes]) -> OwnershipTracker:
+    inspection = inspect_processes()
+    match inspection:
+        case InspectionUnavailable(reason=reason):
+            placeholder = ProcessRecord(process.pid, 0, process.pid, "?", "unobserved")
+            return OwnershipTracker(placeholder, (placeholder,), reason)
+        case InspectionAvailable(records=records):
+            root = next((record for record in records if record.pid == process.pid), None)
+            if root is None:
+                placeholder = ProcessRecord(process.pid, 0, process.pid, "?", "unobserved")
+                return OwnershipTracker(placeholder, (placeholder,), "direct child identity unavailable")
+            return OwnershipTracker.establish(root, inspection)
+        case unreachable:
+            assert_never(unreachable)
+
+
+def wait_for_child(
+    process: subprocess.Popen[bytes],
+    tracker: OwnershipTracker,
+    output_paths: tuple[Path, Path],
+    deadline: float,
+    output_cap: int,
+    cancel_file: Path | None,
+) -> ChildOutcome:
+    current_tracker = tracker
+    while True:
+        returncode = process.poll()
+        if not output_within_cap(output_paths, output_cap):
+            return ChildOutcome(ChildStatus.OUTPUT_LIMIT, returncode, current_tracker)
+        if returncode is not None:
+            return ChildOutcome(ChildStatus.EXITED, returncode, current_tracker)
+        if cancel_signal_received or (cancel_file is not None and cancel_file.exists()):
+            return ChildOutcome(ChildStatus.CANCELLED, None, current_tracker)
+        if time.monotonic() >= deadline:
+            return ChildOutcome(ChildStatus.TIMEOUT, None, current_tracker)
+        current_tracker = current_tracker.observe(inspect_processes())
+        time.sleep(min(0.02, max(0.0, deadline - time.monotonic())))
 
 
 def output_tail(stdout_path: Path, stderr_path: Path) -> str:
@@ -279,16 +278,41 @@ def main() -> int:
             try:
                 process = subprocess.Popen(
                     args.command[1:], cwd=working_directory, stdin=stdin_handle,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
+                    stdout=stdout_handle, stderr=stderr_handle, start_new_session=True,
                 )
             except OSError as error:
                 write_result(args.result_file, {"status": "unavailable", "reason": "launch_error", "tail": str(error)[-TAIL_BYTES:]})
                 emit("FAIL", args.label)
                 return 125
-            outcome = drain_process(process, (stdout_handle, stderr_handle), time.monotonic() + args.timeout, args.max_output_bytes, args.cancel_file)
-        cleanup: dict[str, object] | None = None
-        if outcome != "complete":
-            cleanup = terminate_owned_group(process)
+            tracker = establish_tracker(process)
+            child = wait_for_child(
+                process,
+                tracker,
+                (stdout_path, stderr_path),
+                time.monotonic() + args.timeout,
+                args.max_output_bytes,
+                args.cancel_file,
+            )
+        cleanup_receipt = cleanup_owned_processes(child.tracker, inspect_processes, signal_owned_group)
+        cleanup: dict[str, object] = cleanup_receipt.as_json()
+        cleanup["process_group_terminated"] = cleanup_receipt.status is CleanupStatus.VERIFIED_ABSENT
+        cleanup["detectable_descendants_remaining"] = cleanup_receipt.status is not CleanupStatus.VERIFIED_ABSENT
+        cleanup["detectable_descendant_pids"] = list(cleanup_receipt.tracked_pids)
+        if child.status is not ChildStatus.EXITED and cleanup_receipt.status is CleanupStatus.VERIFIED_ABSENT:
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                cleanup_receipt = CleanupReceipt(
+                    CleanupStatus.VERIFIED_REMAINING,
+                    cleanup_receipt.tracked_pids,
+                    "direct child was not reaped after verified cleanup",
+                )
+                cleanup = cleanup_receipt.as_json()
+                cleanup["process_group_terminated"] = False
+                cleanup["detectable_descendants_remaining"] = True
+                cleanup["detectable_descendant_pids"] = list(cleanup_receipt.tracked_pids)
+        output_complete = output_within_cap((stdout_path, stderr_path), args.max_output_bytes)
+        enforce_output_cap((stdout_path, stderr_path), args.max_output_bytes)
         tail = output_tail(stdout_path, stderr_path)
         if explicit_artifacts:
             artifacts = {"cwd": str(args.cwd_file), "stdin": str(stdin_path), "stdout": str(stdout_path), "stderr": str(stderr_path)}
@@ -296,37 +320,44 @@ def main() -> int:
             current_fingerprint = executable_fingerprint(args.command[1], working_directory)
         except (OSError, ValueError):
             current_fingerprint = {}
-        if current_fingerprint != fingerprint:
+        if cleanup_receipt.status is not CleanupStatus.VERIFIED_ABSENT:
+            result: dict[str, object] = {"status": "unavailable", "reason": "process_cleanup_failed", "tail": tail, "cleanup": cleanup}
+            exit_code, event = 125, "FAIL"
+        elif current_fingerprint != fingerprint:
             result: dict[str, object] = {"status": "unavailable", "reason": "executable_changed", "tail": tail}
             exit_code, event = 125, "FAIL"
-        elif outcome == "complete-open-streams" and cleanup is not None and cleanup["process_group_terminated"] is not True:
-            result = {"status": "unavailable", "reason": "process_cleanup_failed", "tail": tail, "cleanup": cleanup}
-            exit_code, event = 125, "FAIL"
-        elif outcome == "cancelled":
-            result = {"status": "cancelled", "reason": "cancellation_requested", "tail": tail, "cleanup": cleanup}
-            exit_code, event = 130, "CANCELLED"
-        elif outcome == "timeout":
-            result = {"status": "timeout", "reason": "deadline_exceeded", "tail": tail, "cleanup": cleanup}
-            exit_code, event = 124, "TIMEOUT"
-        elif outcome == "output-limit":
+        elif not output_complete or child.status is ChildStatus.OUTPUT_LIMIT:
             result = {"status": "fail", "reason": "output_limit_exceeded", "tail": tail, "cleanup": cleanup}
             exit_code, event = 1, "FAIL"
-        elif process.returncode == 0:
+        elif child.status is ChildStatus.CANCELLED:
+            result = {"status": "cancelled", "reason": "cancellation_requested", "tail": tail, "cleanup": cleanup}
+            exit_code, event = 130, "CANCELLED"
+        elif child.status is ChildStatus.TIMEOUT:
+            result = {"status": "timeout", "reason": "deadline_exceeded", "tail": tail, "cleanup": cleanup}
+            exit_code, event = 124, "TIMEOUT"
+        elif child.status is ChildStatus.EXITED and child.returncode == 0:
             result = {"status": "pass", "reason": "ok", "tail": tail}
             exit_code, event = 0, "PASS"
+        elif child.status is ChildStatus.EXITED:
+            returncode = child.returncode if child.returncode is not None else 1
+            result = {"status": "fail", "reason": f"exit_{returncode}", "tail": tail}
+            exit_code, event = returncode if returncode > 0 else 1, "FAIL"
         else:
-            result = {"status": "fail", "reason": f"exit_{process.returncode}", "tail": tail}
-            exit_code, event = process.returncode if process.returncode > 0 else 1, "FAIL"
-        if cleanup is not None:
-            result["cleanup"] = cleanup
+            result = {"status": "unavailable", "reason": "invalid_lifecycle_state", "tail": tail}
+            exit_code, event = 125, "FAIL"
+        result["cleanup"] = cleanup
         if explicit_artifacts:
             result["artifacts"] = artifacts
             result["executable"] = fingerprint
         write_result(args.result_file, result)
         emit(event, args.label)
-        if cleanup is not None:
-            detectable = str(cleanup["detectable_descendants_remaining"]).lower()
-            print(f"CLEANUP: {args.label} detectable_descendants_remaining={detectable}", file=sys.stderr, flush=True)
+        detectable = str(cleanup["detectable_descendants_remaining"]).lower()
+        print(
+            f"CLEANUP: {args.label} status={cleanup_receipt.status.value} "
+            f"detectable_descendants_remaining={detectable}",
+            file=sys.stderr,
+            flush=True,
+        )
         return exit_code
 
 

@@ -4,7 +4,16 @@ set -euo pipefail
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 RUNNER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-run.py"
 TMP=$(mktemp -d /private/tmp/lazybuddy-codebuddy-runner.XXXXXX)
-trap 'rm -rf "$TMP"' EXIT
+cleanup() {
+  local rc=$?
+  if [ "${PRESERVE_TODO13_TMP:-0}" = 1 ]; then
+    printf 'PRESERVED_TMP: %s\n' "$TMP" >&2
+  else
+    rm -rf "$TMP"
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
@@ -22,36 +31,9 @@ printf '{"mcpServers":{}}\n' > "$TMP/mcp config.json"
 printf '{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"]}\n' > "$TMP/schema.json"
 printf 'spaces ; $(touch /private/tmp/todo13-injected) `false`\n' > "$TMP/prompt.txt"
 
-python3 - "$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py" <<'PY'
-import importlib.util, sys
-from unittest import mock
-
-spec=importlib.util.spec_from_file_location("bounded_processgroup_probe", sys.argv[1])
-assert spec is not None and spec.loader is not None
-module=importlib.util.module_from_spec(spec)
-sys.modules[spec.name]=module
-spec.loader.exec_module(module)
-
-class FinishedProcess:
-    pid=424242
-    @staticmethod
-    def wait(timeout): return 0
-
-permission_race=PermissionError(1, "operation not permitted")
-with mock.patch.object(module, "descendant_records", return_value=()), \
-     mock.patch.object(module, "process_records", return_value={}), \
-     mock.patch.object(module.os, "killpg", side_effect=[permission_race, ProcessLookupError()]):
-    cleanup=module.terminate_owned_group(FinishedProcess())
-assert cleanup == {"process_group_terminated":True,"detectable_descendants_remaining":False,"detectable_descendant_pids":[]}, cleanup
-
-owned_child=module.ProcessRecord(424243,1,424242,"S","owned-start")
-with mock.patch.object(module, "descendant_records", return_value=(owned_child,)), \
-     mock.patch.object(module, "process_records", return_value={owned_child.pid:owned_child}), \
-     mock.patch.object(module.os, "killpg", side_effect=permission_race):
-    cleanup=module.terminate_owned_group(FinishedProcess())
-assert cleanup == {"process_group_terminated":False,"detectable_descendants_remaining":True,"detectable_descendant_pids":[owned_child.pid]}, cleanup
-PY
-pass 'process-group permission race retries and persistent denial fails closed'
+python3 "$PLUGIN_ROOT/tests/bounded-lifecycle-state-machine-regression.py" \
+  "$PLUGIN_ROOT/scripts/lazybuddy_process_lifecycle.py"
+pass 'typed lifecycle decisions fail closed for inspection, identity, survivor and signal outcomes'
 
 cat > "$TMP/fake-codebuddy" <<'PY'
 #!/usr/bin/env python3
@@ -79,6 +61,8 @@ elif mode == "integer-float":
 elif mode == "exited-parent-open-pipes":
     subprocess.Popen([sys.executable, "-c", "import time; time.sleep(10)"])
     print(json.dumps({"session_id":"session-exited-parent","result":"ok","structured_output":{"answer":"safe"}}))
+elif mode == "output-limit":
+    sys.stdout.write("x" * 4096)
 elif mode == "nan":
     print('{"session_id":"session-nan","result":"misleading success","structured_output":{"answer":NaN}}')
 elif mode == "enum-bool-top":
@@ -136,9 +120,26 @@ python3 - "$TMP/exited-parent-result.json" <<'PY'
 import json, pathlib, sys
 result=json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert result['status']=='pass' and result['session_id']=='session-exited-parent', result
-assert result['bounded']['cleanup']['process_group_terminated'] is True, result
+assert result['bounded']['cleanup']['status'] == 'verified-absent', result
 PY
 pass 'direct child exit wins over inherited open pipes and cleans its process group'
+
+if ARGV_LOG="$TMP/output-limit-argv.json" FAKE_MODE=output-limit python3 \
+  "$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py" --label output-limit --timeout 3 \
+  --max-output-bytes 100 --result-file "$TMP/output-limit-bounded.json" \
+  --cwd "$TMP/project with spaces" --cwd-file "$TMP/output-limit.cwd" \
+  --stdin-file "$TMP/prompt.txt" --stdout-file "$TMP/output-limit.stdout" \
+  --stderr-file "$TMP/output-limit.stderr" -- "$TMP/fake-codebuddy"; then
+  fail 'output-cap violation unexpectedly succeeded'
+fi
+python3 - "$TMP/output-limit-bounded.json" "$TMP/output-limit.stdout" <<'PY'
+import json, pathlib, sys
+result=json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert result['status']=='fail' and result['reason']=='output_limit_exceeded', result
+assert result['cleanup']['status']=='verified-absent', result
+assert pathlib.Path(sys.argv[2]).stat().st_size == 100
+PY
+pass 'direct artifact capture enforces the exact output cap and writes a typed receipt'
 
 printf '{"type":"user","message":{"role":"user","content":"hello"}}\n' > "$TMP/input.jsonl"
 ARGV_LOG="$TMP/stream-argv.json" FAKE_MODE=stream python3 "$RUNNER" \
