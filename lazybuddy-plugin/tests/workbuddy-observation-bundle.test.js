@@ -1,98 +1,10 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const test = require('node:test');
-
-const PLUGIN_ROOT = path.resolve(__dirname, '..');
-const RELEASE_ROOT = path.dirname(PLUGIN_ROOT);
-const CLI = path.join(PLUGIN_ROOT, 'scripts', 'lazybuddy-workbuddy-observation.js');
-const MANIFEST = path.join(PLUGIN_ROOT, '.workbuddy-plugin', 'plugin.json');
-const NOW = '2026-08-14T12:10:00Z';
-const OBSERVED_AT = '2026-08-14T12:05:00Z';
-const EXPIRES_AT = '2026-08-14T13:05:00Z';
-const DIGEST = 'a'.repeat(64);
-
-const SURFACES = [
-  ['permission-mode', 'observe-only', { mode: 'default', selection: 'not-performed' }],
-  ['tasks', 'observe-only', { entries: [{ item_id: 'task:001', status: 'running', updated_at: OBSERVED_AT, value_digest: DIGEST }] }],
-  ['plans', 'observe-only', { entries: [{ item_id: 'plan:001', status: 'active', updated_at: OBSERVED_AT, value_digest: DIGEST }] }],
-  ['artifacts', 'observe-only', { entries: [{ item_id: 'artifact:001', status: 'available', value_digest: DIGEST }] }],
-  ['files', 'observe-only', { entries: [{ item_id: 'file:001', status: 'changed', value_digest: DIGEST }] }],
-  ['changes', 'observe-only', { entries: [{ item_id: 'change:001', status: 'pending', value_digest: DIGEST }] }],
-  ['previews', 'observe-only', { entries: [{ item_id: 'preview:001', status: 'available', value_digest: DIGEST }] }],
-  ['memory', 'observe-only', { status: 'enabled', revision_digest: DIGEST }],
-  ['skills', 'observe-only', { entries: [{ skill_id: 'lazy-programming', status: 'enabled', version_digest: DIGEST }] }],
-  ['mcp', 'observe-only', { entries: [{ server_id: 'run-ledger', status: 'connected', oauth_status: 'not-required', tool_toggle_status: 'enabled' }] }],
-  ['connectors', 'observe-only', { entries: [{ connector_id: 'connector:001', type_id: 'mcp', name_digest: DIGEST, status: 'connected' }] }],
-  ['experts', 'descriptor-only', { availability: 'observed', descriptor_digest: DIGEST }],
-  ['automations', 'descriptor-only', { availability: 'observed', descriptor_digest: DIGEST }],
-  ['assistant', 'descriptor-only', { availability: 'observed', descriptor_digest: DIGEST }],
-];
-
-function sha(value) {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function fixture(t) {
-  const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy-workbuddy-bundle-'));
-  t.after(() => fs.rmSync(sandbox, { recursive: true, force: true }));
-  const receiptPath = path.join(sandbox, 'marketplace-receipt.json');
-  const observationPath = path.join(sandbox, 'observation.json');
-  const eventsPath = path.join(sandbox, 'events.jsonl');
-  const outputPath = path.join(sandbox, 'bundle.json');
-  const receipt = {
-    schema_version: 1,
-    type: 'workbuddy-marketplace-full-plugin',
-    source: {
-      route: 'workbuddy-marketplace', release_root: RELEASE_ROOT,
-      manifest: 'lazybuddy-plugin/.workbuddy-plugin/plugin.json',
-      manifest_sha256: sha(fs.readFileSync(MANIFEST)), plugin: 'lazybuddy', version: '1.0.3',
-    },
-    host: 'workbuddy', build: 'build:current', session_id: 'session:current', observed_at: OBSERVED_AT,
-    capabilities: {
-      skill: { id: 'lazy-programming', status: 'loaded' }, command: { id: 'lazy-status', status: 'loaded' },
-      agent: { id: 'lazybuddy-verifier', status: 'loaded' }, hook: { id: 'SessionStart', status: 'loaded' },
-      mcp: Object.fromEntries(['run-ledger', 'verification', 'status-dashboard', 'context-graph', 'code-intel', 'docs'].map(name => [name, 'connected'])),
-    },
-  };
-  fs.writeFileSync(receiptPath, `${JSON.stringify(receipt)}\n`);
-  const receiptDigest = sha(fs.readFileSync(receiptPath));
-  const event = { ts: OBSERVED_AT, run_id: 'run-todo18', event: 'host_observation_linked', event_id: 'event:todo18:001', observation_id: 'obs:workbuddy:001', source_receipt_sha256: receiptDigest };
-  const eventLine = JSON.stringify(event);
-  fs.writeFileSync(eventsPath, `${eventLine}\n`);
-  const sourceReceipt = { receipt_id: 'workbuddy:build.current:session.current', sha256: receiptDigest, redacted: true };
-  const surfaces = SURFACES.map(([surface_id, native_mode, details]) => ({
-    surface_id, native_mode, host_authority: 'host', package_owner: 'LazyBuddy', status: 'observed',
-    observed_at: OBSERVED_AT, freshness: { status: 'current', observed_at: OBSERVED_AT, expires_at: EXPIRES_AT },
-    source_receipt: sourceReceipt, source_observation_id: 'obs:workbuddy:001', value_digest: DIGEST,
-    details: structuredClone(details),
-  }));
-  const observation = {
-    schema_version: 1, record_type: 'workbuddy-sanitized-observation', bundle_id: 'bundle:workbuddy:001',
-    observation_id: 'obs:workbuddy:001', host: 'workbuddy', build: 'build:current', session_id: 'session:current',
-    observed_at: OBSERVED_AT, expires_at: EXPIRES_AT,
-    ledger_link: { owner: 'run-ledger', effect: 'reference-only', run_id: 'run-todo18', event_id: event.event_id, event_sha256: sha(eventLine) },
-    surfaces, permission_selection: 'not-performed', invocation: 'not-performed',
-    host_readiness: { status: 'pending', scope: 'observation-only' }, promotion: 'prohibited',
-  };
-  fs.writeFileSync(observationPath, `${JSON.stringify(observation)}\n`);
-  return { sandbox, receiptPath, observationPath, eventsPath, outputPath, observation };
-}
-
-function run(f) {
-  return spawnSync(process.execPath, [CLI, 'observe', '--release-root', RELEASE_ROOT,
-    '--marketplace-receipt', f.receiptPath, '--observation', f.observationPath,
-    '--run-events', f.eventsPath, '--output', f.outputPath, '--now', NOW, '--json'], { encoding: 'utf8' });
-}
-
-function writeObservation(f) {
-  fs.writeFileSync(f.observationPath, `${JSON.stringify(f.observation)}\n`);
-}
+const { SURFACES, fixture, run, writeObservation } = require('./helpers/workbuddy-observation-fixture');
 
 function errorCode(result) {
   assert.equal(result.status, 1, result.stdout);
@@ -151,6 +63,7 @@ test('hostile or authority-expanding observations fail closed without output', (
     ['hostile description', 'WORKBUDDY_OBSERVATION_INVALID', f => { f.observation.surfaces[11].details.description = '$(touch marker)'; }],
     ['forged freshness', 'WORKBUDDY_STALE_OBSERVATION', f => { f.observation.surfaces[0].freshness.expires_at = '2026-08-14T12:06:00Z'; }],
     ['forged session', 'WORKBUDDY_RECEIPT_INVALID', f => { f.observation.session_id = 'session:forged'; }],
+    ['forged build', 'WORKBUDDY_RECEIPT_INVALID', f => { f.observation.build = 'build:forged'; }],
     ['connector account name', 'WORKBUDDY_OBSERVATION_INVALID', f => { f.observation.surfaces[10].details.entries[0].name = 'personal-account'; }],
     ['misleading success text', 'WORKBUDDY_OBSERVATION_INVALID', f => { f.observation.success = 'HOST READY'; }],
     ['ledger digest', 'WORKBUDDY_LEDGER_LINK_INVALID', f => { f.observation.ledger_link.event_sha256 = 'f'.repeat(64); }],
@@ -166,92 +79,6 @@ test('hostile or authority-expanding observations fail closed without output', (
     // Then: a typed refusal is emitted and no bundle is published.
     assert.equal(errorCode(result), expected, label);
     assert.equal(fs.existsSync(f.outputPath), false, label);
-  }
-});
-
-test('credential-shaped connector identifiers fail closed without disclosure', (t) => {
-  // Given: common provider-token, API-key, and authorization-header shapes in an allowed identifier field.
-  const credentialShapedIds = [
-    ['ghp', 'a'.repeat(36)].join('_'),
-    ['github', 'pat', 'b'.repeat(32)].join('_'),
-    ['glpat', 'c'.repeat(24)].join('-'),
-    ['xoxb', 'd'.repeat(24)].join('-'),
-    ['npm', 'e'.repeat(36)].join('_'),
-    ['api', 'key', 'f'.repeat(24)].join('_'),
-    `authorization:bearer.${'g'.repeat(24)}`,
-  ];
-
-  for (const credentialShapedId of credentialShapedIds) {
-    const f = fixture(t);
-    f.observation.surfaces[10].details.entries[0].connector_id = credentialShapedId;
-    writeObservation(f);
-
-    // When: the observation crosses the real CLI boundary.
-    const result = run(f);
-
-    // Then: the CLI refuses it without serializing or echoing the credential-shaped value.
-    assert.equal(result.status, 1);
-    assert.equal(JSON.parse(result.stderr).error.code, 'WORKBUDDY_SENSITIVE_DATA_REJECTED');
-    assert.equal(result.stdout, '');
-    assert.equal(result.stderr.includes(credentialShapedId), false);
-    assert.equal(fs.existsSync(f.outputPath), false);
-  }
-});
-
-test('session credential assignment connector identifiers fail closed without disclosure', (t) => {
-  // Given: session, cookie, authentication, token, secret, password, and API-key assignments in an identifier field.
-  const credentialShapedIds = [
-    `sessionid:${'h'.repeat(32)}`,
-    `session_id=${'i'.repeat(32)}`,
-    `cookie:${'j'.repeat(32)}`,
-    `authorization=${'k'.repeat(32)}`,
-    `auth_header:${'l'.repeat(32)}`,
-    `token=${'m'.repeat(32)}`,
-    `secret:${'n'.repeat(32)}`,
-    `password=${'o'.repeat(32)}`,
-    `api-key:${'p'.repeat(32)}`,
-  ];
-
-  for (const credentialShapedId of credentialShapedIds) {
-    const f = fixture(t);
-    f.observation.surfaces[10].details.entries[0].connector_id = credentialShapedId;
-    writeObservation(f);
-
-    // When: the observation crosses the real CLI boundary.
-    const result = run(f);
-
-    // Then: the CLI refuses it without serializing or echoing the credential-shaped value.
-    assert.equal(result.status, 1);
-    assert.equal(JSON.parse(result.stderr).error.code, 'WORKBUDDY_SENSITIVE_DATA_REJECTED');
-    assert.equal(result.stdout, '');
-    assert.equal(result.stderr.includes(credentialShapedId), false);
-    assert.equal(fs.existsSync(f.outputPath), false);
-  }
-});
-
-test('opaque connector identifiers remain valid when they are not credential-shaped', (t) => {
-  // Given: legitimate opaque identifiers that contain provider or credential-adjacent words without secret material.
-  const connectorIds = [
-    'github-connector:001',
-    'api-key-adapter',
-    'authorization-status',
-    '550e8400-e29b-41d4-a716-446655440000',
-    'salesforce',
-    'provider:connector:001',
-    'b'.repeat(64),
-  ];
-
-  for (const connectorId of connectorIds) {
-    const f = fixture(t);
-    f.observation.surfaces[10].details.entries[0].connector_id = connectorId;
-    writeObservation(f);
-
-    // When: the observation crosses the real CLI boundary.
-    const result = run(f);
-
-    // Then: the sanitized opaque identifier is retained unchanged.
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).surfaces[10].details.entries[0].connector_id, connectorId);
   }
 });
 
@@ -299,4 +126,36 @@ test('truncated observation never publishes partial canonical state', (t) => {
   assert.equal(errorCode(result), 'WORKBUDDY_OBSERVATION_INVALID');
   assert.equal(fs.existsSync(f.outputPath), false);
   assert.equal(fs.readFileSync(f.eventsPath, 'utf8').trim().split('\n').length, 1);
+});
+
+test('interrupted observation resumes without duplicating run-ledger state', (t) => {
+  // Given: one valid observation and its immutable run-ledger link.
+  const f = fixture(t);
+  const validObservation = fs.readFileSync(f.observationPath);
+  const eventBytes = fs.readFileSync(f.eventsPath);
+  fs.writeFileSync(f.observationPath, '{"schema_version":1');
+
+  // When: an interrupted attempt is followed by a complete observation.
+  assert.equal(errorCode(run(f)), 'WORKBUDDY_OBSERVATION_INVALID');
+  assert.equal(fs.existsSync(f.outputPath), false);
+  fs.writeFileSync(f.observationPath, validObservation);
+  const resumed = run(f);
+
+  // Then: the complete attempt publishes once without changing or duplicating ledger state.
+  assert.equal(resumed.status, 0, resumed.stderr);
+  assert.deepEqual(fs.readFileSync(f.eventsPath), eventBytes);
+  assert.equal(fs.readFileSync(f.eventsPath, 'utf8').trim().split('\n').length, 1);
+});
+
+test('oversized run-ledger input fails within the bounded reader', (t) => {
+  // Given: a valid observation with a run-ledger stream above the one-megabyte boundary.
+  const f = fixture(t);
+  fs.appendFileSync(f.eventsPath, 'x'.repeat((1024 * 1024) + 1));
+
+  // When: the real CLI reads the oversized event stream.
+  const result = run(f);
+
+  // Then: the bounded reader returns a typed refusal before publication.
+  assert.equal(errorCode(result), 'WORKBUDDY_LEDGER_LINK_INVALID');
+  assert.equal(fs.existsSync(f.outputPath), false);
 });

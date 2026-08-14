@@ -25,7 +25,7 @@ timestamps, matching build/session and Todo 17 receipt digest, and one exact
 | Memory | `observe-only` | enabled/disabled/unknown and revision digest; never memory text |
 | Skills | `observe-only` | Opaque Skill ID, enabled state, version digest |
 | MCP | `observe-only` | Opaque server ID, connection state, OAuth status, tool-toggle status |
-| Connectors | `observe-only` | Opaque Connector ID, type ID, name digest, connection status only |
+| Connectors | `observe-only` | Adapter-issued `connector:redacted:v1:<64-lowercase-hex>` reference, type ID, name digest, connection status only |
 | Experts, Automations, Assistant | `descriptor-only` | availability plus descriptor digest; no action or invocation field |
 
 Every surface repeats `host_authority: host`, `package_owner: LazyBuddy`, its
@@ -41,6 +41,18 @@ PII-bearing Connector names, action or remote-invocation claims, unknown
 surfaces, duplicate Connector IDs, stale task/plan observations, and package
 readiness promotion. Inputs and output parents must be real, non-symlinked
 filesystem objects.
+
+## Connector reference contract
+
+`connectors[].connector_id` is not a raw WorkBuddy, provider, account, or
+workspace identifier. It is an adapter-issued, non-reversible reference with
+the exact grammar `connector:redacted:v1:<64-lowercase-hex>`. The host adapter
+must create that reference before the observation reaches this package, using
+a versioned keyed digest or adapter-held random reference. Raw identity,
+raw-to-reference mappings, keys, and reversible material remain host-owned and
+must not enter the observation, receipt, run ledger, stdout, stderr, or package
+state. This package validates and persists an already-redacted reference; it
+does not hash raw IDs, manage keys, decode values, or provide a raw-ID fallback.
 
 ## Real CLI
 

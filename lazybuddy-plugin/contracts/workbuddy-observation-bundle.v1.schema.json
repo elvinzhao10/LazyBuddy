@@ -46,7 +46,41 @@
           "source_observation_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
           "value_digest": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/sha256" },
           "details": { "type": "object" }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": ["surface_id"],
+              "properties": { "surface_id": { "const": "connectors" } }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["entries"],
+                  "properties": {
+                    "entries": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["connector_id", "type_id", "name_digest", "status"],
+                        "properties": {
+                          "connector_id": { "type": "string", "pattern": "^connector:redacted:v1:[0-9a-f]{64}$" },
+                          "type_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+                          "name_digest": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/sha256" },
+                          "status": { "enum": ["connected", "disabled", "disconnected", "error"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "permission_selection": { "const": "not-performed" },

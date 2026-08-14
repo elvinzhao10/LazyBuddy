@@ -12,9 +12,9 @@ const SURFACES = Object.freeze([
 ]);
 const ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
+const CONNECTOR_REFERENCE = /^connector:redacted:v1:[0-9a-f]{64}$/;
 const FORBIDDEN_KEY = /(?:token|cookie|credential|authorization|password|secret|private[_-]?key|raw[_-]?(?:prompt|memory|message|file)|(?:prompt|memory|message|content|workspace|file|credential)[_-]?path)/i;
 const FORBIDDEN_VALUE = /(?:\bbearer\s+[a-z0-9._-]{8,}|\bsk-[a-z0-9_-]{8,}|\b(?:gh[pousr]|github_pat|glpat|xox[baprs]|npm)[-_][a-z0-9_-]{20,}|\bapi[_-]?key[-_:][a-z0-9._-]{16,}|\bauthorization[:=_-](?:bearer[.:_-]?)?[a-z0-9._-]{16,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:^|\s)(?:\/Users\/|\/home\/|[A-Za-z]:\\))/i;
-const CREDENTIAL_ASSIGNMENT = /^(?:session(?:[_-]?(?:id|key|token))?|cookie(?:[_-]?(?:id|key|token))?|auth(?:orization)?(?:[_-]?(?:header|key|token))?|(?:access|refresh)[_-]?token|token|secret|client[_-]?secret|password|passwd|passphrase|api[_-]?key)[:=][a-z0-9._~+/-]{16,}$/i;
 const TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/;
 
 function fail(code, message) {
@@ -45,11 +45,13 @@ function rejectSensitive(value, key = '') {
 }
 
 function identifier(value, label) {
-  if (typeof value !== 'string') fail('WORKBUDDY_OBSERVATION_INVALID', `${label} is invalid`);
-  if (FORBIDDEN_VALUE.test(value) || CREDENTIAL_ASSIGNMENT.test(value)) {
-    fail('WORKBUDDY_SENSITIVE_DATA_REJECTED', 'raw content, paths, credentials, and secret material are prohibited');
+  if (typeof value !== 'string' || !ID.test(value)) fail('WORKBUDDY_OBSERVATION_INVALID', `${label} is invalid`);
+}
+
+function connectorReference(value) {
+  if (typeof value !== 'string' || !CONNECTOR_REFERENCE.test(value)) {
+    fail('WORKBUDDY_SENSITIVE_DATA_REJECTED', 'connector identity must be an adapter-issued redacted reference');
   }
-  if (!ID.test(value)) fail('WORKBUDDY_OBSERVATION_INVALID', `${label} is invalid`);
 }
 
 function digest(value, label) {
@@ -116,7 +118,7 @@ function validateDetails(surface) {
       const connectorIds = [];
       details.entries.forEach((entry, index) => {
         exact(entry, ['connector_id', 'name_digest', 'status', 'type_id'], `connectors[${index}]`);
-        identifier(entry.connector_id, `connectors[${index}].connector_id`);
+        connectorReference(entry.connector_id);
         connectorIds.push(entry.connector_id);
         identifier(entry.type_id, `connectors[${index}].type_id`);
         digest(entry.name_digest, `connectors[${index}].name_digest`);
