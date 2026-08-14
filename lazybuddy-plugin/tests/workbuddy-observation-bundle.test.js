@@ -169,6 +169,53 @@ test('hostile or authority-expanding observations fail closed without output', (
   }
 });
 
+test('credential-shaped connector identifiers fail closed without disclosure', (t) => {
+  // Given: common provider-token, API-key, and authorization-header shapes in an allowed identifier field.
+  const credentialShapedIds = [
+    ['ghp', 'a'.repeat(36)].join('_'),
+    ['github', 'pat', 'b'.repeat(32)].join('_'),
+    ['glpat', 'c'.repeat(24)].join('-'),
+    ['xoxb', 'd'.repeat(24)].join('-'),
+    ['npm', 'e'.repeat(36)].join('_'),
+    ['api', 'key', 'f'.repeat(24)].join('_'),
+    `authorization:bearer.${'g'.repeat(24)}`,
+  ];
+
+  for (const credentialShapedId of credentialShapedIds) {
+    const f = fixture(t);
+    f.observation.surfaces[10].details.entries[0].connector_id = credentialShapedId;
+    writeObservation(f);
+
+    // When: the observation crosses the real CLI boundary.
+    const result = run(f);
+
+    // Then: the CLI refuses it without serializing or echoing the credential-shaped value.
+    assert.equal(result.status, 1);
+    assert.equal(JSON.parse(result.stderr).error.code, 'WORKBUDDY_SENSITIVE_DATA_REJECTED');
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr.includes(credentialShapedId), false);
+    assert.equal(fs.existsSync(f.outputPath), false);
+  }
+});
+
+test('opaque connector identifiers remain valid when they are not credential-shaped', (t) => {
+  // Given: legitimate opaque identifiers that contain provider or credential-adjacent words without secret material.
+  const connectorIds = ['github-connector:001', 'api-key-adapter', 'authorization-status'];
+
+  for (const connectorId of connectorIds) {
+    const f = fixture(t);
+    f.observation.surfaces[10].details.entries[0].connector_id = connectorId;
+    writeObservation(f);
+
+    // When: the observation crosses the real CLI boundary.
+    const result = run(f);
+
+    // Then: the sanitized opaque identifier is retained unchanged.
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).surfaces[10].details.entries[0].connector_id, connectorId);
+  }
+});
+
 test('immutable output refuses stale overwrite and preserves prior bytes', (t) => {
   // Given: one successfully published observation bundle.
   const f = fixture(t);

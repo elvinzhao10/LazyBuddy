@@ -13,7 +13,7 @@ const SURFACES = Object.freeze([
 const ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const FORBIDDEN_KEY = /(?:token|cookie|credential|authorization|password|secret|private[_-]?key|raw[_-]?(?:prompt|memory|message|file)|(?:prompt|memory|message|content|workspace|file|credential)[_-]?path)/i;
-const FORBIDDEN_VALUE = /(?:\bbearer\s+[a-z0-9._-]{8,}|\bsk-[a-z0-9_-]{8,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:^|\s)(?:\/Users\/|\/home\/|[A-Za-z]:\\))/i;
+const FORBIDDEN_VALUE = /(?:\bbearer\s+[a-z0-9._-]{8,}|\bsk-[a-z0-9_-]{8,}|\b(?:gh[pousr]|github_pat|glpat|xox[baprs]|npm)[-_][a-z0-9_-]{20,}|\bapi[_-]?key[-_:][a-z0-9._-]{16,}|\bauthorization[:=_-](?:bearer[.:_-]?)?[a-z0-9._-]{16,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:^|\s)(?:\/Users\/|\/home\/|[A-Za-z]:\\))/i;
 const TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/;
 
 function fail(code, message) {
