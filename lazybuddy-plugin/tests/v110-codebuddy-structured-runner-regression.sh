@@ -35,6 +35,10 @@ python3 "$PLUGIN_ROOT/tests/bounded-lifecycle-state-machine-regression.py" \
   "$PLUGIN_ROOT/scripts/lazybuddy_process_lifecycle.py"
 pass 'typed lifecycle decisions fail closed for inspection, identity, survivor and signal outcomes'
 
+python3 "$PLUGIN_ROOT/tests/bounded-launch-supervisor-regression.py" \
+  "$PLUGIN_ROOT/scripts/lazybuddy_launch_supervisor.py"
+pass 'bounded launch supervisor publishes atomic status and requires verified group teardown'
+
 cat > "$TMP/fake-codebuddy" <<'PY'
 #!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys, time
@@ -79,6 +83,10 @@ elif mode == "nonzero":
     print(json.dumps({"session_id":"session-nonzero","result":"misleading success"}))
     raise SystemExit(9)
 elif mode == "hang":
+    time.sleep(10)
+elif mode == "escaped-descendant":
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(3)"], start_new_session=True)
+    pathlib.Path(os.environ["ESCAPED_PID_FILE"]).write_text(str(child.pid), encoding="utf-8")
     time.sleep(10)
 elif mode == "spoof":
     pathlib.Path(sys.argv[0]).write_text(pathlib.Path(sys.argv[0]).read_text()+"\n# changed\n")
@@ -462,6 +470,38 @@ PY
 done
 cmp "$TMP/state-before-failures.json" "$STATE" || fail 'cancelled invocation persisted session state'
 pass 'repeated cancellation terminates bounded invocations without persisting a session'
+
+ESCAPED_PID_FILE="$TMP/escaped-descendant.pid"
+if ARGV_LOG="$TMP/escaped-argv.json" ESCAPED_PID_FILE="$ESCAPED_PID_FILE" \
+  FAKE_MODE=escaped-descendant python3 "$RUNNER" \
+  --binary "$TMP/fake-codebuddy" --cwd "$TMP/project with spaces" \
+  --input-file "$TMP/prompt.txt" --input-format text --output-format json \
+  --max-turns 3 --timeout 1 --mcp-config "$TMP/mcp config.json" \
+  --permission-mode default --subagent-permission-mode default \
+  --result-file "$TMP/escaped-result.json" --stdout-file "$TMP/escaped.stdout" \
+  --stderr-file "$TMP/escaped.stderr"; then
+  fail 'escaped descendant unexpectedly succeeded'
+fi
+python3 - "$TMP/escaped-result.json" "$ESCAPED_PID_FILE" <<'PY'
+import json, pathlib, subprocess, sys, time
+result=json.loads(pathlib.Path(sys.argv[1]).read_text())
+pid=int(pathlib.Path(sys.argv[2]).read_text())
+assert result['status']=='unavailable' and result['reason']=='process_cleanup_failed', result
+assert result['bounded']['cleanup']['status']=='verified-remaining', result
+assert result['bounded']['cleanup']['supervisor_teardown']=='verified-absent', result
+observed=subprocess.run(['/bin/ps','-p',str(pid),'-o','stat='],check=False,capture_output=True,text=True).stdout.strip()
+assert observed and not observed.startswith('Z'), observed
+deadline=time.monotonic()+5
+while time.monotonic()<deadline:
+    observed=subprocess.run(['/bin/ps','-p',str(pid),'-o','stat='],check=False,capture_output=True,text=True).stdout.strip()
+    if not observed or observed.startswith('Z'):
+        break
+    time.sleep(0.02)
+else:
+    raise AssertionError('escaped test descendant did not finish its bounded self-cleanup')
+PY
+cmp "$TMP/state-before-failures.json" "$STATE" || fail 'escaped lifecycle failure persisted session state'
+pass 'escaped descendant is never signalled while the owned supervisor group is torn down'
 
 printf 'dirty\n' >> "$TMP/project with spaces/tracked.txt"
 if ARGV_LOG="$TMP/stale-argv.json" python3 "$RUNNER" \

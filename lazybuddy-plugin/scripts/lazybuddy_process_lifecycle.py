@@ -96,6 +96,12 @@ class OwnershipTracker:
                 return OwnershipTracker(self.root, self.tracked, self.inspection_problem or reason)
             case InspectionAvailable(records=values):
                 tracked = {record.pid: record for record in self.tracked}
+                observed_root = next((record for record in values if record.pid == self.root.pid), None)
+                root_continuous = (
+                    observed_root is not None
+                    and observed_root.started == self.root.started
+                    and observed_root.group_id == self.root.group_id
+                )
                 children: dict[int, list[ProcessRecord]] = {}
                 for record in values:
                     children.setdefault(record.parent_pid, []).append(record)
@@ -109,9 +115,10 @@ class OwnershipTracker:
                     for child in children.get(parent, []):
                         tracked.setdefault(child.pid, child)
                         pending.append(child.pid)
-                for record in values:
-                    if record.group_id == self.root.group_id:
-                        tracked.setdefault(record.pid, record)
+                if root_continuous:
+                    for record in values:
+                        if record.group_id == self.root.group_id:
+                            tracked.setdefault(record.pid, record)
                 return OwnershipTracker(
                     root=self.root,
                     tracked=tuple(sorted(tracked.values(), key=lambda item: item.pid)),
@@ -128,11 +135,12 @@ GroupSignaler: TypeAlias = Callable[[int, int], SignalResult]
 def _current_owned(
     tracker: OwnershipTracker,
     inspection: InspectionAvailable,
-) -> tuple[tuple[ProcessRecord, ...], bool, bool]:
+) -> tuple[tuple[ProcessRecord, ...], bool, bool, bool]:
     current = {record.pid: record for record in inspection.records if not record.state.startswith("Z")}
     owned: list[ProcessRecord] = []
     escaped = False
     identity_changed = False
+    foreign_group_member = False
     for tracked in tracker.tracked:
         observed = current.get(tracked.pid)
         if observed is None:
@@ -143,7 +151,12 @@ def _current_owned(
             owned.append(observed)
         else:
             escaped = True
-    return tuple(owned), escaped, identity_changed
+    tracked_pids = {record.pid for record in tracker.tracked}
+    foreign_group_member = any(
+        record.group_id == tracker.root.group_id and record.pid not in tracked_pids
+        for record in current.values()
+    )
+    return tuple(owned), escaped, identity_changed, foreign_group_member
 
 
 def _receipt(
@@ -169,12 +182,14 @@ def cleanup_owned_processes(
                 return _receipt(CleanupStatus.INSPECTION_UNAVAILABLE, tracker, reason)
             case InspectionAvailable():
                 tracker = tracker.observe(inspection)
-                owned, escaped, identity_changed = _current_owned(tracker, inspection)
+                owned, escaped, identity_changed, foreign_group_member = _current_owned(tracker, inspection)
             case unreachable:
                 assert_never(unreachable)
         if identity_changed:
             return _receipt(CleanupStatus.IDENTITY_CHANGED, tracker, "tracked PID start identity changed")
-        if escaped:
+        if foreign_group_member:
+            return _receipt(CleanupStatus.IDENTITY_CHANGED, tracker, "untracked process occupies owned group identity")
+        if escaped and not owned:
             return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "tracked descendant left owned group")
         if not owned:
             return _receipt(CleanupStatus.VERIFIED_ABSENT, tracker)
@@ -194,11 +209,13 @@ def cleanup_owned_processes(
                 return _receipt(CleanupStatus.INSPECTION_UNAVAILABLE, tracker, reason)
             case InspectionAvailable():
                 tracker = tracker.observe(post_signal)
-                remaining, escaped, identity_changed = _current_owned(tracker, post_signal)
+                remaining, escaped, identity_changed, foreign_group_member = _current_owned(tracker, post_signal)
             case unreachable:
                 assert_never(unreachable)
         if identity_changed:
             return _receipt(CleanupStatus.IDENTITY_CHANGED, tracker, "tracked PID start identity changed")
+        if foreign_group_member:
+            return _receipt(CleanupStatus.IDENTITY_CHANGED, tracker, "untracked process occupies owned group identity")
         if escaped:
             return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "tracked descendant left owned group")
         if not remaining:

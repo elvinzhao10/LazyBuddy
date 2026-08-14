@@ -33,6 +33,8 @@ root = record(4100, 1, 4100, "root-start")
 child = record(4101, 4100, 4100, "child-start")
 escaped = record(4101, 1, 5100, "child-start")
 reused = record(4101, 1, 4100, "new-start")
+foreign_group_member = record(9999, 1, 4100, "foreign-start")
+orphaned_owned_member = record(4102, 1, 4100, "orphan-start")
 
 
 def available(*records):
@@ -103,6 +105,23 @@ cleanup_case("tracked descendant escaped PGID", (available(escaped),), (), "veri
 cleanup_case("missing process inspection", (unavailable("ps-missing"),), (), "inspection-unavailable", [])
 cleanup_case("malformed process inspection", (unavailable("ps-malformed"),), (), "inspection-unavailable", [])
 cleanup_case("timed-out process inspection", (unavailable("ps-timeout"),), (), "inspection-unavailable", [])
+
+foreign_tracker = runner.OwnershipTracker.establish(root, available(root, child))
+foreign_signaler = RecordingSignaler()
+foreign_receipt = runner.cleanup_owned_processes(
+    foreign_tracker,
+    SequenceInspector(available(foreign_group_member)),
+    foreign_signaler,
+)
+assert foreign_receipt.status.value == "identity-changed", foreign_receipt
+assert foreign_receipt.tracked_pids == (4100, 4101), foreign_receipt
+assert foreign_signaler.groups == [], foreign_signaler.groups
+print("PASS: never-descended recycled PGID fails closed without signalling")
+
+continuous_tracker = runner.OwnershipTracker.establish(root, available(root, child))
+continuous_tracker = continuous_tracker.observe(available(root, orphaned_owned_member))
+assert tuple(item.pid for item in continuous_tracker.tracked) == (4100, 4101, 4102), continuous_tracker
+print("PASS: stable live group leader keeps orphaned invocation member observable")
 
 assert runner.persistence_allowed(0, True, True, True, runner.CleanupStatus.VERIFIED_ABSENT)
 for status in (

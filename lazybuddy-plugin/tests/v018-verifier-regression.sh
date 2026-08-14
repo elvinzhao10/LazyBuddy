@@ -199,77 +199,77 @@ python3 - "$TMP/fast.json" <<'PY'
 import json
 import sys
 
-assert json.load(open(sys.argv[1], encoding="utf-8")) == {"status": "pass", "reason": "ok", "tail": ""}
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+assert payload["status"] == "pass" and payload["reason"] == "ok" and payload["tail"] == ""
+assert payload["cleanup"]["status"] == "verified-absent"
 PY
 grep -q '^PASS: fast$' "$TMP/fast.stderr" && pass "fast trusted command succeeds" || fail "fast trusted command result"
 
 # Given a trusted process inspector that executes but reports failure, cleanup
 # must treat inspection as unavailable instead of interpreting empty output as
 # proof that no descendants remain.
-python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" <<'PY'
+python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" "$FIXTURE/scripts/lazybuddy_process_lifecycle.py" <<'PY'
 import importlib.util
+import importlib
 import subprocess
 import sys
 from unittest import mock
 
 module_path = sys.argv[1]
+sys.path.insert(0, str(__import__('pathlib').Path(sys.argv[2]).parent))
 spec = importlib.util.spec_from_file_location("lazybuddy_bounded_run", module_path)
 assert spec is not None and spec.loader is not None
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
+process_module = importlib.import_module("lazybuddy_bounded_process")
+lifecycle_module = importlib.import_module("lazybuddy_process_lifecycle")
 
 failed_snapshot = subprocess.CompletedProcess(["/bin/ps"], 1, stdout="", stderr="inspection failed")
-with mock.patch.object(module.subprocess, "run", return_value=failed_snapshot):
+with mock.patch.object(process_module.subprocess, "run", return_value=failed_snapshot):
     try:
-        module.process_records()
+        process_module.process_records()
     except subprocess.CalledProcessError:
         pass
     else:
         raise AssertionError("nonzero ps exit was treated as an empty successful snapshot")
 
 invalid_snapshot = subprocess.CompletedProcess(["/bin/ps"], 0, stdout="not a process record\n", stderr="")
-with mock.patch.object(module.subprocess, "run", return_value=invalid_snapshot):
+with mock.patch.object(process_module.subprocess, "run", return_value=invalid_snapshot):
     try:
-        module.process_records()
+        process_module.process_records()
     except OSError:
         pass
     else:
         raise AssertionError("invalid ps output was treated as an empty successful snapshot")
 
-class FinishedProcess:
-    pid = 424242
-
-    @staticmethod
-    def wait(timeout):
-        return 0
-
 inspection_error = subprocess.CalledProcessError(1, ["/bin/ps"])
-with (
-    mock.patch.object(module, "descendant_records", side_effect=inspection_error),
-    mock.patch.object(module, "process_records", side_effect=inspection_error),
-    mock.patch.object(module.os, "killpg", side_effect=ProcessLookupError),
-):
-    cleanup = module.terminate_owned_group(FinishedProcess())
-assert cleanup == {
-    "process_group_terminated": True,
-    "detectable_descendants_remaining": True,
-    "detectable_descendant_pids": [],
-}
+root = lifecycle_module.ProcessRecord(424242, 1, 424242, "S", "owned-start")
+tracker = lifecycle_module.OwnershipTracker.establish(root, lifecycle_module.InspectionAvailable((root,)))
+with mock.patch.object(process_module, "process_records", side_effect=inspection_error):
+    cleanup = lifecycle_module.cleanup_owned_processes(
+        tracker,
+        process_module.inspect_processes,
+        process_module.signal_owned_group,
+    )
+assert cleanup.status is lifecycle_module.CleanupStatus.INSPECTION_UNAVAILABLE
+assert cleanup.tracked_pids == (424242,)
 PY
 pass "failed process inspection remains fail-closed"
 
 if python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" >"$TMP/process-inspection.out" 2>&1 <<'PY'
 import importlib.util
+import importlib
 import sys
 
 module_path = sys.argv[1]
+sys.path.insert(0, str(__import__('pathlib').Path(module_path).parent))
 spec = importlib.util.spec_from_file_location("lazybuddy_bounded_run_probe", module_path)
 assert spec is not None and spec.loader is not None
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
-module.process_records()
+importlib.import_module("lazybuddy_bounded_process").process_records()
 PY
 then
     PROCESS_INSPECTION_SUPPORTED=true
@@ -295,18 +295,16 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["status"] == "timeout"
 assert payload["reason"] == "deadline_exceeded"
 inspection_supported = sys.argv[3] == "true"
-assert payload["cleanup"] == {
-    "process_group_terminated": True,
-    "detectable_descendants_remaining": not inspection_supported,
-    "detectable_descendant_pids": [],
-}
+assert payload["cleanup"]["status"] == ("verified-absent" if inspection_supported else "inspection-unavailable")
+assert payload["cleanup"]["process_group_terminated"] is inspection_supported
+assert payload["cleanup"]["detectable_descendants_remaining"] is (not inspection_supported)
 PY
 if kill -0 "$group_child_pid" 2>/dev/null; then fail "timeout left owned group child alive"; else pass "timeout terminates owned process group"; fi
 
 # Given a child that escapes into another process group, when the parent times
 # out, then the runner reports the still-detectable child but never signals it.
 ESCAPED_CHILD_PID="$TMP/escaped-child.pid"
-if CHILD_PID="$ESCAPED_CHILD_PID" python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label escaped --timeout 1 --result-file "$TMP/escaped.json" -- bash -c 'python3 -c "import os, time; os.setsid(); time.sleep(30)" & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/escaped.out" 2>"$TMP/escaped.stderr"; then
+if CHILD_PID="$ESCAPED_CHILD_PID" python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label escaped --timeout 1 --result-file "$TMP/escaped.json" -- bash -c 'python3 -c "import os, time; os.setsid(); time.sleep(3)" & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/escaped.out" 2>"$TMP/escaped.stderr"; then
     fail "escaped timeout must fail"
 else
     pass "escaped timeout fails"
@@ -317,17 +315,21 @@ import json
 import sys
 
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
-assert payload["status"] == "timeout"
+assert payload["status"] == "unavailable"
+assert payload["reason"] == "process_cleanup_failed"
 inspection_supported = sys.argv[3] == "true"
-assert payload["cleanup"] == {
-    "process_group_terminated": True,
-    "detectable_descendants_remaining": True,
-    "detectable_descendant_pids": [int(sys.argv[2])] if inspection_supported else [],
-}
+assert payload["cleanup"]["status"] == ("verified-remaining" if inspection_supported else "inspection-unavailable")
+assert payload["cleanup"]["process_group_terminated"] is False
+assert payload["cleanup"]["detectable_descendants_remaining"] is True
+assert payload["cleanup"]["supervisor_teardown"] == "verified-absent"
 PY
 if kill -0 "$escaped_child_pid" 2>/dev/null; then pass "escaped child is reported without signaling"; else fail "escaped child was signaled"; fi
-grep -q '^CLEANUP: escaped detectable_descendants_remaining=true' "$TMP/escaped.stderr" && pass "stderr reports detectable escaped child" || fail "escaped child cleanup report"
-kill -KILL "$escaped_child_pid" 2>/dev/null || true
+grep -q '^CLEANUP: escaped status=.* detectable_descendants_remaining=true' "$TMP/escaped.stderr" && pass "stderr reports detectable escaped child" || fail "escaped child cleanup report"
+for _ in $(seq 1 150); do
+    if ! kill -0 "$escaped_child_pid" 2>/dev/null; then break; fi
+    sleep 0.02
+done
+if kill -0 "$escaped_child_pid" 2>/dev/null; then fail "escaped fixture did not finish its bounded self-cleanup"; else pass "escaped fixture self-cleans without runner signaling"; fi
 
 cat > "$FIXTURE/scripts/lazybuddy-smoke-test.sh" <<'SH'
 #!/usr/bin/env bash
