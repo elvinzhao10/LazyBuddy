@@ -18,14 +18,12 @@ from lazybuddy_bounded_process import (
     TAIL_BYTES,
     ChildStatus,
     OutputBoundary,
-    SupervisorHandle,
     WaitBoundary,
-    establish_tracker,
     executable_fingerprint,
     inspect_processes,
     signal_owned_group,
-    wait_for_child,
 )
+from lazybuddy_supervisor_runner import SupervisorLaunch, SupervisorRuntime
 from lazybuddy_process_lifecycle import (
     CleanupReceipt,
     CleanupStatus,
@@ -125,6 +123,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="lazybuddy-bounded-") as temporary:
         temporary_root = Path(temporary)
         supervisor_status_path = temporary_root / "supervisor-status.json"
+        supervisor_ack_path = temporary_root / "supervisor-ack.json"
         supervisor_teardown_path = temporary_root / "supervisor-teardown"
         supervisor = Path(__file__).resolve().parent / "lazybuddy_launch_supervisor.py"
         stdin_path, stdout_path, stderr_path = (
@@ -142,34 +141,32 @@ def main() -> int:
             emit("FAIL", args.label)
             return 125
         with ExitStack() as resources:
+            deadline = time.monotonic() + args.timeout
             stdin_handle = resources.enter_context(stdin_path.open("rb")) if args.stdin_file is not None else None
             stdout_handle = resources.enter_context(stdout_path.open("wb"))
             stderr_handle = resources.enter_context(stderr_path.open("wb"))
             try:
-                process = subprocess.Popen(
-                    [
-                        sys.executable,
-                        str(supervisor),
-                        "--status-file",
-                        str(supervisor_status_path),
-                        "--teardown-file",
-                        str(supervisor_teardown_path),
-                        "--",
-                        *args.command[1:],
-                    ], cwd=working_directory, stdin=stdin_handle,
-                    stdout=stdout_handle, stderr=stderr_handle, start_new_session=True,
-                )
+                process = SupervisorLaunch(
+                    supervisor,
+                    supervisor_status_path,
+                    supervisor_ack_path,
+                    supervisor_teardown_path,
+                    os.getpid(),
+                    args.timeout,
+                    tuple(args.command[1:]),
+                    working_directory,
+                ).start(stdin_handle, stdout_handle, stderr_handle)
             except OSError as error:
                 write_result(args.result_file, {"status": "unavailable", "reason": "launch_error", "tail": str(error)[-TAIL_BYTES:]})
                 emit("FAIL", args.label)
                 return 125
-            tracker = establish_tracker(process, inspect_processes)
             output = OutputBoundary(stdout_path, stderr_path, args.max_output_bytes)
-            child = wait_for_child(
-                SupervisorHandle(process, tracker, supervisor_status_path, inspect_processes),
-                output,
-                WaitBoundary(time.monotonic() + args.timeout, args.cancel_file, cancellation_requested),
-            )
+            child = SupervisorRuntime(
+                process,
+                supervisor_status_path,
+                supervisor_ack_path,
+                inspect_processes,
+            ).wait(output, WaitBoundary(deadline, args.cancel_file, cancellation_requested))
         cleanup_receipt = cleanup_owned_processes(child.tracker, inspect_processes, signal_owned_group)
         cleanup: dict[str, JSONValue] = {
             "status": cleanup_receipt.status.value,

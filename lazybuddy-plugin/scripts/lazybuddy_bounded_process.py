@@ -12,7 +12,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Final, TypeAlias, assert_never
 
-from lazybuddy_launch_supervisor import SupervisorState, SupervisorStatusError, parse_status
+from lazybuddy_supervisor_contract import SupervisorState, SupervisorStatus, SupervisorStatusError, parse_status
 from lazybuddy_process_lifecycle import (
     InspectionAvailable,
     InspectionResult,
@@ -104,6 +104,13 @@ class SupervisorHandle:
     inspector: Inspector
 
 
+@dataclass(frozen=True, slots=True)
+class HandshakeOutcome:
+    tracker: OwnershipTracker
+    ready: SupervisorStatus | None
+    detail: str = ""
+
+
 def process_records() -> tuple[ProcessRecord, ...]:
     ps_path = next(
         (candidate for candidate in ("/bin/ps", "/usr/bin/ps") if os.path.isfile(candidate) and os.access(candidate, os.X_OK)),
@@ -167,6 +174,49 @@ def establish_tracker(process: subprocess.Popen[bytes], inspector: Inspector) ->
             assert_never(unreachable)
 
 
+def unobserved_tracker(process: subprocess.Popen[bytes], detail: str) -> OwnershipTracker:
+    placeholder = ProcessRecord(process.pid, 0, process.pid, "?", "unobserved")
+    return OwnershipTracker(placeholder, (placeholder,), detail)
+
+
+def await_supervisor_ready(
+    process: subprocess.Popen[bytes],
+    status_file: Path,
+    inspector: Inspector,
+    deadline: float,
+) -> HandshakeOutcome:
+    while True:
+        try:
+            status = parse_status(status_file)
+        except SupervisorStatusError as error:
+            return HandshakeOutcome(unobserved_tracker(process, str(error)), None, str(error))
+        if status is not None:
+            if status.state is not SupervisorState.READY:
+                detail = f"supervisor entered {status.state.value} before ownership acknowledgement"
+                return HandshakeOutcome(unobserved_tracker(process, detail), None, detail)
+            if status.supervisor_pid != process.pid or status.supervisor_pgid != process.pid:
+                detail = "supervisor ready identity does not match the launched group leader"
+                return HandshakeOutcome(unobserved_tracker(process, detail), None, detail)
+            tracker = establish_tracker(process, inspector)
+            if tracker.inspection_problem:
+                return HandshakeOutcome(tracker, None, tracker.inspection_problem)
+            if (
+                tracker.root.pid != status.supervisor_pid
+                or tracker.root.group_id != status.supervisor_pgid
+                or not tracker.root.started
+            ):
+                detail = "supervisor ready identity is not continuously observable"
+                return HandshakeOutcome(tracker, None, detail)
+            return HandshakeOutcome(tracker, status)
+        if process.poll() is not None:
+            detail = "launch supervisor exited before publishing ready identity"
+            return HandshakeOutcome(unobserved_tracker(process, detail), None, detail)
+        if time.monotonic() >= deadline:
+            detail = "launch supervisor ready identity timed out"
+            return HandshakeOutcome(unobserved_tracker(process, detail), None, detail)
+        time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
+
+
 def wait_for_child(
     handle: SupervisorHandle,
     output: OutputBoundary,
@@ -182,6 +232,8 @@ def wait_for_child(
         if supervisor_status is not None:
             match supervisor_status.state:
                 case SupervisorState.RUNNING:
+                    pass
+                case SupervisorState.READY:
                     pass
                 case SupervisorState.EXITED:
                     return ChildOutcome(ChildStatus.EXITED, supervisor_status.returncode, current_tracker)

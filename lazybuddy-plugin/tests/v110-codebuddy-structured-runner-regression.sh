@@ -39,6 +39,10 @@ python3 "$PLUGIN_ROOT/tests/bounded-launch-supervisor-regression.py" \
   "$PLUGIN_ROOT/scripts/lazybuddy_launch_supervisor.py"
 pass 'bounded launch supervisor publishes atomic status and requires verified group teardown'
 
+python3 "$PLUGIN_ROOT/tests/bounded-supervisor-fault-regression.py" \
+  "$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py"
+pass 'supervisor inspection faults remain typed and teardown-safe at every lifecycle phase'
+
 cat > "$TMP/fake-codebuddy" <<'PY'
 #!/usr/bin/env python3
 import json, os, pathlib, subprocess, sys, time
