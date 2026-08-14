@@ -198,9 +198,48 @@ test('credential-shaped connector identifiers fail closed without disclosure', (
   }
 });
 
+test('session credential assignment connector identifiers fail closed without disclosure', (t) => {
+  // Given: session, cookie, authentication, token, secret, password, and API-key assignments in an identifier field.
+  const credentialShapedIds = [
+    `sessionid:${'h'.repeat(32)}`,
+    `session_id=${'i'.repeat(32)}`,
+    `cookie:${'j'.repeat(32)}`,
+    `authorization=${'k'.repeat(32)}`,
+    `auth_header:${'l'.repeat(32)}`,
+    `token=${'m'.repeat(32)}`,
+    `secret:${'n'.repeat(32)}`,
+    `password=${'o'.repeat(32)}`,
+    `api-key:${'p'.repeat(32)}`,
+  ];
+
+  for (const credentialShapedId of credentialShapedIds) {
+    const f = fixture(t);
+    f.observation.surfaces[10].details.entries[0].connector_id = credentialShapedId;
+    writeObservation(f);
+
+    // When: the observation crosses the real CLI boundary.
+    const result = run(f);
+
+    // Then: the CLI refuses it without serializing or echoing the credential-shaped value.
+    assert.equal(result.status, 1);
+    assert.equal(JSON.parse(result.stderr).error.code, 'WORKBUDDY_SENSITIVE_DATA_REJECTED');
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr.includes(credentialShapedId), false);
+    assert.equal(fs.existsSync(f.outputPath), false);
+  }
+});
+
 test('opaque connector identifiers remain valid when they are not credential-shaped', (t) => {
   // Given: legitimate opaque identifiers that contain provider or credential-adjacent words without secret material.
-  const connectorIds = ['github-connector:001', 'api-key-adapter', 'authorization-status'];
+  const connectorIds = [
+    'github-connector:001',
+    'api-key-adapter',
+    'authorization-status',
+    '550e8400-e29b-41d4-a716-446655440000',
+    'salesforce',
+    'provider:connector:001',
+    'b'.repeat(64),
+  ];
 
   for (const connectorId of connectorIds) {
     const f = fixture(t);
