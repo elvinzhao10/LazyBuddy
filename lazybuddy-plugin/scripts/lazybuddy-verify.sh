@@ -189,6 +189,8 @@ run_regression_inventory() {
         "v102-readiness-claims-regression.sh"
         "v102-workbuddy-package-preparation-regression.sh"
         "v103-adaptive-contract-regression.sh"
+        "v110-codebuddy-service-adapters-regression.sh"
+        "v110-codebuddy-service-adversarial-regression.sh"
         "v110-codebuddy-structured-runner-regression.sh"
         "v110-mcp-profiles-regression.sh"
     )

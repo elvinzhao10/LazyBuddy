@@ -27,6 +27,11 @@ flowchart TB
 
 `scripts/state/state-paths.sh` is the shared root/run-ID boundary. Its companion scripts create, load, list, validate, checkpoint, summarize, append events, update tasks/checkboxes, and recover runs. `scripts/loop/` classifies failure, creates repair tasks, selects work, runs a cycle, and finalizes a run. This is file-backed workflow state, not a database and not host session state.
 
+Documented CodeBuddy long-horizon processes use the separate
+[service adapter receipt boundary](codebuddy-service-adapters.md). Those
+receipts prove exact process and endpoint ownership; they never replace or
+advance this workflow state.
+
 ## MCP and local analysis layer
 
 The run-ledger, verification, and dashboard servers expose constrained state views. `mcp/jsonrpc.py` is the line protocol loop; `mcp/path_boundary.py` canonicalizes repository-local paths. `context-graph` uses `rg`/`grep` heuristics. `code-intel` and `lsp` are local code-oriented bridges; `mcp/lsp/session.py` manages LSP session protocol while operations remain read-only. `docs` only queries fixed package registries.

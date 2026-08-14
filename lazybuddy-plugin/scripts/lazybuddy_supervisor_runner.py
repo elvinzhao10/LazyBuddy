@@ -29,10 +29,10 @@ class SupervisorLaunch:
     ack_timeout: int
     command: tuple[str, ...]
     cwd: Path
+    handoff_file: Path | None = None
 
     def start(self, stdin: BinaryIO | None, stdout: BinaryIO, stderr: BinaryIO) -> subprocess.Popen[bytes]:
-        return subprocess.Popen(
-            [
+        command = [
                 sys.executable,
                 str(self.executable),
                 "--status-file",
@@ -45,9 +45,12 @@ class SupervisorLaunch:
                 str(self.parent_pid),
                 "--ack-timeout",
                 str(self.ack_timeout),
-                "--",
-                *self.command,
-            ],
+            ]
+        if self.handoff_file is not None:
+            command.extend(("--handoff-file", str(self.handoff_file)))
+        command.extend(("--", *self.command))
+        return subprocess.Popen(
+            command,
             cwd=self.cwd,
             stdin=stdin,
             stdout=stdout,

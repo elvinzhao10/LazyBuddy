@@ -74,14 +74,18 @@ def supervise(
     supervisor_pid: int,
     supervisor_pgid: int,
     expected_parent_pid: int,
+    handoff_file: Path | None,
 ) -> Never:
     write_status(
         status_file,
         SupervisorStatus(SupervisorState.RUNNING, supervisor_pid, supervisor_pgid, child_pid=child.pid),
     )
     terminal_written = False
+    handed_off = False
     while True:
-        if os.getppid() != expected_parent_pid:
+        if handoff_file is not None and handoff_file.exists():
+            handed_off = True
+        if not handed_off and os.getppid() != expected_parent_pid:
             os.killpg(os.getpgrp(), signal.SIGTERM)
         returncode = child.poll()
         if returncode is not None and not terminal_written:
@@ -108,6 +112,7 @@ def main() -> int:
     parser.add_argument("--teardown-file", required=True, type=Path)
     parser.add_argument("--parent-pid", required=True, type=int)
     parser.add_argument("--ack-timeout", required=True, type=float)
+    parser.add_argument("--handoff-file", type=Path)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if not args.command or args.command[0] != "--" or len(args.command) == 1:
@@ -116,7 +121,8 @@ def main() -> int:
         parser.error("--ack-timeout must be positive")
     if any(
         not path.is_absolute() or path.parent.is_symlink()
-        for path in (args.status_file, args.ack_file, args.teardown_file)
+        for path in (args.status_file, args.ack_file, args.teardown_file, args.handoff_file)
+        if path is not None
     ):
         parser.error("supervisor control paths must be absolute non-symlink paths")
     supervisor_pid = os.getpid()
@@ -179,7 +185,15 @@ def main() -> int:
             ),
         )
         wait_for_teardown(args.teardown_file)
-    supervise(child, args.status_file, args.teardown_file, supervisor_pid, supervisor_pgid, args.parent_pid)
+    supervise(
+        child,
+        args.status_file,
+        args.teardown_file,
+        supervisor_pid,
+        supervisor_pgid,
+        args.parent_pid,
+        args.handoff_file,
+    )
 
 
 if __name__ == "__main__":
