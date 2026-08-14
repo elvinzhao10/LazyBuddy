@@ -20,20 +20,34 @@ from lazybuddy_adaptive_fingerprint import canonical_fingerprint, revision_finge
 from lazybuddy_adaptive_snapshot import write_state_file_atomic  # noqa: E402
 
 
-FINGERPRINT_NAMES: Final = ("host", "session", "binary", "root", "revision", "worktree", "mcp", "asset", "probe")
+FINGERPRINT_NAMES: Final = (
+    "host",
+    "profile",
+    "probe",
+    "binary",
+    "session",
+    "worktree",
+    "mcp",
+    "generated_asset",
+    "marketplace",
+    "root",
+    "revision",
+)
 MAX_FINGERPRINT_FILE_BYTES: Final = 16 * 1024 * 1024
 
 
 class Fingerprints(TypedDict):
     host: str
+    profile: str
+    probe: str
     session: str
     binary: str
     root: str
     revision: str
     worktree: str
     mcp: str
-    asset: str
-    probe: str
+    generated_asset: str
+    marketplace: str
 
 
 class Binding(TypedDict):
@@ -114,19 +128,29 @@ def worktree_fingerprints(worktree: Path) -> tuple[str, str]:
 def make_binding(args: argparse.Namespace) -> Binding:
     if not args.session_id or len(args.session_id) > 256 or "\x00" in args.session_id:
         raise RuntimeBindingError("invalid_session_id")
+    if not args.profile or len(args.profile) > 64 or "\x00" in args.profile:
+        raise RuntimeBindingError("invalid_profile")
     root = absolute_nonlinked(args.root, kind="root")
     worktree_digest, revision_digest = worktree_fingerprints(args.worktree)
     root_status = root.stat()
     fingerprints: Fingerprints = {
         "host": canonical_fingerprint({"host": args.host}),
+        "profile": canonical_fingerprint({"profile": args.profile}),
+        "probe": bounded_file_digest(args.probe_file, kind="probe"),
         "session": canonical_fingerprint({"session_id": args.session_id}),
         "binary": bounded_file_digest(args.executable, kind="binary"),
         "root": canonical_fingerprint({"path": str(root), "device": root_status.st_dev, "inode": root_status.st_ino}),
         "revision": revision_digest,
         "worktree": worktree_digest,
         "mcp": bounded_file_digest(args.mcp_file, kind="mcp"),
-        "asset": bounded_file_digest(args.asset_file, kind="asset"),
-        "probe": bounded_file_digest(args.probe_file, kind="probe"),
+        "generated_asset": bounded_file_digest(
+            args.asset_file,
+            kind="generated_asset",
+        ),
+        "marketplace": bounded_file_digest(
+            args.marketplace_file,
+            kind="marketplace",
+        ),
     }
     return {"session_id": args.session_id, "host": args.host, "worktree": str(args.worktree), "fingerprints": fingerprints}
 
@@ -184,6 +208,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--state-file", required=True, type=Path)
     parser.add_argument("--host", required=True)
+    parser.add_argument("--profile", default="direct")
     parser.add_argument("--session-id", required=True)
     parser.add_argument("--worktree", required=True, type=Path)
     parser.add_argument("--root", required=True, type=Path)
@@ -191,6 +216,13 @@ def main() -> int:
     parser.add_argument("--mcp-file", required=True, type=Path)
     parser.add_argument("--asset-file", required=True, type=Path)
     parser.add_argument("--probe-file", required=True, type=Path)
+    parser.add_argument(
+        "--marketplace-file",
+        default=Path(__file__).resolve().parents[3]
+        / ".codebuddy-plugin"
+        / "marketplace.json",
+        type=Path,
+    )
     args = parser.parse_args()
     try:
         candidate = make_binding(args)

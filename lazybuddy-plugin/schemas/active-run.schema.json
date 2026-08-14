@@ -46,17 +46,19 @@
           "worktree": { "type": "string", "pattern": "^/" },
           "fingerprints": {
             "type": "object",
-            "required": ["host", "session", "binary", "root", "revision", "worktree", "mcp", "asset", "probe"],
+            "required": ["host", "profile", "probe", "binary", "session", "worktree", "mcp", "generated_asset", "marketplace", "root", "revision"],
             "properties": {
               "host": { "$ref": "#/definitions/digest" },
+              "profile": { "$ref": "#/definitions/digest" },
+              "probe": { "$ref": "#/definitions/digest" },
               "session": { "$ref": "#/definitions/digest" },
               "binary": { "$ref": "#/definitions/digest" },
               "root": { "$ref": "#/definitions/digest" },
               "revision": { "$ref": "#/definitions/digest" },
               "worktree": { "$ref": "#/definitions/digest" },
               "mcp": { "$ref": "#/definitions/digest" },
-              "asset": { "$ref": "#/definitions/digest" },
-              "probe": { "$ref": "#/definitions/digest" }
+              "generated_asset": { "$ref": "#/definitions/digest" },
+              "marketplace": { "$ref": "#/definitions/digest" }
             },
             "additionalProperties": false
           }

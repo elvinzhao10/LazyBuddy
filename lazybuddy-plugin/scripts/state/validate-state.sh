@@ -118,7 +118,10 @@ else:
     binding_ids = [value.get('session_id') for value in runtime_fingerprints if isinstance(value, dict)]
     if len(binding_ids) != len(runtime_fingerprints) or binding_ids != session_ids:
         errors.append('runtime_fingerprints must match session_ids exactly')
-    required_fingerprints = {'host','session','binary','root','revision','worktree','mcp','asset','probe'}
+    required_fingerprints = {
+        'host','profile','probe','binary','session','worktree','mcp',
+        'generated_asset','marketplace','root','revision'
+    }
     for binding in runtime_fingerprints:
         fingerprints = binding.get('fingerprints', {}) if isinstance(binding, dict) else {}
         if set(fingerprints) != required_fingerprints or any(

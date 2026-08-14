@@ -156,7 +156,7 @@ def exact_argv(args: argparse.Namespace, schema_text: str | None, input_text: st
 
 
 def binding_command(args: argparse.Namespace, state_file: Path, session_id: str) -> list[str]:
-    return [sys.executable, str(Path(__file__).resolve().parent / "state" / "bind-session.py"), "--state-file", str(state_file), "--host", "codebuddy-cli", "--session-id", session_id, "--worktree", str(args.cwd), "--root", str(args.binding_root), "--executable", str(args.binary), "--mcp-file", str(args.mcp_config), "--asset-file", str(args.asset_file), "--probe-file", str(args.probe_file)]
+    return [sys.executable, str(Path(__file__).resolve().parent / "state" / "bind-session.py"), "--state-file", str(state_file), "--host", "codebuddy-cli", "--profile", args.profile, "--session-id", session_id, "--worktree", str(args.cwd), "--root", str(args.binding_root), "--executable", str(args.binary), "--mcp-file", str(args.mcp_config), "--asset-file", str(args.asset_file), "--probe-file", str(args.probe_file), "--marketplace-file", str(args.marketplace_file)]
 
 
 def preflight_resume(args: argparse.Namespace) -> None:
@@ -204,10 +204,18 @@ def parser() -> argparse.ArgumentParser:
         value.add_argument(f"--{option}", required=True, choices=SAFE_PERMISSION_MODES)
     value.add_argument("--permission-prompt-tool")
     value.add_argument("--resume")
+    value.add_argument("--profile", default="direct")
     value.add_argument("--worktree")
     value.add_argument("--cancel-file", type=Path)
     for option in ("state-file", "binding-root", "asset-file", "probe-file"):
         value.add_argument(f"--{option}", type=Path)
+    value.add_argument(
+        "--marketplace-file",
+        default=Path(__file__).resolve().parents[2]
+        / ".codebuddy-plugin"
+        / "marketplace.json",
+        type=Path,
+    )
     return value
 
 

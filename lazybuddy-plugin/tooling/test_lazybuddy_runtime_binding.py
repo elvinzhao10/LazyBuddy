@@ -63,13 +63,16 @@ def binding_command(
     probe: Path,
     *,
     host: str = "codebuddy-cli",
+    marketplace: Path | None = None,
+    profile: str = "direct",
     session_id: str = "session-exact",
 ) -> list[str]:
-    return [
+    command = [
         sys.executable,
         str(BINDER),
         "--state-file", str(state_file),
         "--host", host,
+        "--profile", profile,
         "--session-id", session_id,
         "--worktree", str(worktree),
         "--root", str(root),
@@ -78,6 +81,9 @@ def binding_command(
         "--asset-file", str(asset),
         "--probe-file", str(probe),
     ]
+    if marketplace is not None:
+        command.extend(("--marketplace-file", str(marketplace)))
+    return command
 
 
 def test_runner_records_explicit_artifacts_and_typed_outcomes(tmp_path: Path) -> None:
@@ -293,9 +299,9 @@ def test_session_binding_deduplicates_exact_id_and_rejects_stale_fingerprints(tm
     assert json.loads(rejected.stdout)["changed"] == "mcp"
     mcp.write_text("{}\n", encoding="utf-8")
     asset.write_text('{"changed":true}\n', encoding="utf-8")
-    changed.append(("asset", binding_command(state_file, worktree, executable, root, mcp, asset, probe)))
+    changed.append(("generated_asset", binding_command(state_file, worktree, executable, root, mcp, asset, probe)))
     rejected = subprocess.run(changed[-1][1], check=False, capture_output=True, text=True, timeout=5)
-    assert json.loads(rejected.stdout)["changed"] == "asset"
+    assert json.loads(rejected.stdout)["changed"] == "generated_asset"
     asset.write_text("{}\n", encoding="utf-8")
     probe.write_text('{"changed":true}\n', encoding="utf-8")
     changed.append(("probe", binding_command(state_file, worktree, executable, root, mcp, asset, probe)))
@@ -305,6 +311,14 @@ def test_session_binding_deduplicates_exact_id_and_rejects_stale_fingerprints(tm
     changed.append(("host", binding_command(state_file, worktree, executable, root, mcp, asset, probe, host="codebuddy-ide")))
     rejected = subprocess.run(changed[-1][1], check=False, capture_output=True, text=True, timeout=5)
     assert json.loads(rejected.stdout)["changed"] == "host"
+    changed.append(("profile", binding_command(state_file, worktree, executable, root, mcp, asset, probe, profile="assisted")))
+    rejected = subprocess.run(changed[-1][1], check=False, capture_output=True, text=True, timeout=5)
+    assert json.loads(rejected.stdout)["changed"] == "profile"
+    marketplace = tmp_path / "marketplace.json"
+    marketplace.write_text('{"changed":true}\n', encoding="utf-8")
+    changed.append(("marketplace", binding_command(state_file, worktree, executable, root, mcp, asset, probe, marketplace=marketplace)))
+    rejected = subprocess.run(changed[-1][1], check=False, capture_output=True, text=True, timeout=5)
+    assert json.loads(rejected.stdout)["changed"] == "marketplace"
 
     moved_worktree = tmp_path / "moved-worktree"
     worktree.rename(moved_worktree)

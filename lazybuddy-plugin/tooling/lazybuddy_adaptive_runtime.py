@@ -10,7 +10,11 @@ from typing import Final, NamedTuple
 
 from lazybuddy_adaptive_detector import classify_adaptive_decision
 from lazybuddy_adaptive_explanation import adaptive_explanation_fields
-from lazybuddy_adaptive_fingerprint import canonical_fingerprint, revision_fingerprint
+from lazybuddy_adaptive_fingerprint import (
+    canonical_fingerprint,
+    request_digest,
+    revision_fingerprint,
+)
 from lazybuddy_adaptive_hosts import map_adaptive_decision_to_hosts
 from lazybuddy_adaptive_state import (
     changed_fingerprint_material,
@@ -44,6 +48,23 @@ class HookInput(NamedTuple):
     host: dict
     project_root: Path
     prompt: str
+    session_id: str | None
+
+
+MATERIAL_FINGERPRINTS: Final = (
+    "host",
+    "profile",
+    "probe",
+    "binary",
+    "session",
+    "worktree",
+    "mcp",
+    "generated_asset",
+    "marketplace",
+)
+STORED_FINGERPRINTS: Final = (*MATERIAL_FINGERPRINTS, "root", "revision")
+BINDING_FIELDS: Final = {"session_id", "host", "worktree", "fingerprints"}
+SHA256_PATTERN: Final = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 def _canonical_context(raw_context: dict) -> dict:
@@ -159,6 +180,12 @@ def _parse_input(raw_input: str) -> HookInput | None:
         host={},
         project_root=project_root,
         prompt=prompt,
+        session_id=(
+            payload.get("session_id")
+            if isinstance(payload.get("session_id"), str)
+            and 0 < len(payload["session_id"]) <= 256
+            else None
+        ),
     )
 
 
@@ -210,10 +237,64 @@ def _runtime_mapping(decision: dict, confirmed: bool, host_name: str) -> dict:
     }
 
 
-def _decision_context(hook_input: HookInput) -> tuple[dict, bool, str]:
+def _selected_binding_fingerprint(
+    state: dict | None,
+    session_id: str | None,
+    fallback: str,
+) -> tuple[str, bool]:
+    if state is None:
+        return fallback, True
+    bindings = state.get("runtime_fingerprints")
+    if bindings is None or bindings == []:
+        return fallback, True
+    if not isinstance(bindings, list) or session_id is None:
+        return fallback, False
+    selected = next(
+        (
+            binding
+            for binding in bindings
+            if isinstance(binding, dict)
+            and binding.get("session_id") == session_id
+        ),
+        None,
+    )
+    if not isinstance(selected, dict):
+        return fallback, False
+    if set(selected) != BINDING_FIELDS:
+        return fallback, False
+    host = selected.get("host")
+    worktree = selected.get("worktree")
+    if (
+        not isinstance(host, str)
+        or not host
+        or not isinstance(worktree, str)
+        or not Path(worktree).is_absolute()
+    ):
+        return fallback, False
+    fingerprints = selected.get("fingerprints")
+    if not isinstance(fingerprints, dict) or set(fingerprints) != set(STORED_FINGERPRINTS):
+        return fallback, False
+    for name in STORED_FINGERPRINTS:
+        value = fingerprints.get(name)
+        if not isinstance(value, str) or SHA256_PATTERN.fullmatch(value) is None:
+            return fallback, False
+    material = {name: fingerprints[name] for name in MATERIAL_FINGERPRINTS}
+    return canonical_fingerprint(material), True
+
+
+def _decision_context(
+    hook_input: HookInput,
+    state: dict | None,
+) -> tuple[dict, bool, str, bool]:
     host_material, confirmed, host_name = _host_boundary()
     context = dict(hook_input.context)
-    context["host_fingerprint"] = canonical_fingerprint(host_material)
+    fallback_fingerprint = canonical_fingerprint(host_material)
+    host_fingerprint, binding_available = _selected_binding_fingerprint(
+        state,
+        hook_input.session_id,
+        fallback_fingerprint,
+    )
+    context["host_fingerprint"] = host_fingerprint
     context["scope_fingerprint"] = canonical_fingerprint(
         {
             "acceptanceCriteria": context.get("acceptance_criteria"),
@@ -232,21 +313,25 @@ def _decision_context(hook_input: HookInput) -> tuple[dict, bool, str]:
         hook_input.project_root,
         timeout_seconds=_git_timeout(),
     ).as_dict()
-    return context, confirmed, host_name
+    return context, confirmed, host_name, binding_available
 
 
 def build_directive(hook_input: HookInput) -> dict:
-    context, confirmed, host_name = _decision_context(hook_input)
-    decision = classify_adaptive_decision(hook_input.prompt, context)
-    snapshot = decision["snapshot"]
     state_resolution = resolve_active_state(
         hook_input.project_root,
-        snapshot["requestDigest"],
+        request_digest(hook_input.prompt),
     )
+    target = state_resolution.target
+    target_state = target.state if target is not None else None
+    context, confirmed, host_name, binding_available = _decision_context(
+        hook_input,
+        target_state,
+    )
+    decision = classify_adaptive_decision(hook_input.prompt, context)
+    snapshot = decision["snapshot"]
     changed_material: list[str] = []
     continuation = "new"
     stale = False
-    target = state_resolution.target
     if target is not None:
         prior = target.state.get("adaptive")
         if isinstance(prior, dict):
@@ -276,7 +361,10 @@ def build_directive(hook_input: HookInput) -> dict:
         if confirmed
         else "blocked:host-readiness-pending"
     )
-    if revision["status"] != "available":
+    if not binding_available:
+        dispatched = "blocked:runtime-fingerprint-unavailable"
+        persistence = "skipped:runtime-fingerprint-unavailable"
+    elif revision["status"] != "available":
         dispatched = "blocked:revision-unavailable"
         persistence = "skipped:revision-unavailable"
     elif state_resolution.status == "unsafe-state-path":
