@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LazyBuddy WorkBuddy sanitized observation bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "record_type", "bundle_id", "observation_id", "host", "build", "session_id", "observed_at", "expires_at", "ledger_link", "surfaces", "permission_selection", "invocation", "host_readiness", "promotion"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "record_type": { "const": "workbuddy-observation-bundle" },
+    "bundle_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+    "observation_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+    "host": { "const": "workbuddy" },
+    "build": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+    "session_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+    "observed_at": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/timestamp" },
+    "expires_at": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/timestamp" },
+    "ledger_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "effect", "run_id", "event_id", "event_sha256"],
+      "properties": {
+        "owner": { "const": "run-ledger" },
+        "effect": { "const": "reference-only" },
+        "run_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+        "event_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+        "event_sha256": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/sha256" }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surface_id", "native_mode", "host_authority", "package_owner", "status", "observed_at", "freshness", "source_receipt", "source_observation_id", "value_digest", "details"],
+        "properties": {
+          "surface_id": { "enum": ["permission-mode", "tasks", "plans", "artifacts", "files", "changes", "previews", "memory", "skills", "mcp", "connectors", "experts", "automations", "assistant"] },
+          "native_mode": { "enum": ["observe-only", "descriptor-only", "unavailable"] },
+          "host_authority": { "const": "host" },
+          "package_owner": { "const": "LazyBuddy" },
+          "status": { "enum": ["observed", "unavailable"] },
+          "observed_at": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/timestamp" },
+          "freshness": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/freshness" },
+          "source_receipt": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/source_receipt" },
+          "source_observation_id": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/id" },
+          "value_digest": { "$ref": "lazyseries-host-evidence-defs.v1.schema.json#/$defs/sha256" },
+          "details": { "type": "object" }
+        }
+      }
+    },
+    "permission_selection": { "const": "not-performed" },
+    "invocation": { "const": "not-performed" },
+    "host_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "scope"],
+      "properties": { "status": { "const": "pending" }, "scope": { "const": "observation-only" } }
+    },
+    "promotion": { "const": "prohibited" }
+  }
+}
