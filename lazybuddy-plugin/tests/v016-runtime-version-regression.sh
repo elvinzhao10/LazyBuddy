@@ -62,6 +62,7 @@ if marketplace_path.is_file():
 
 current_release_patterns = (
     r"\bLazyBuddy\s+v(\d+\.\d+\.\d+)\b",
+    r"\bCurrent documentation release:\s*v(\d+\.\d+\.\d+)\b",
     r"\blazybuddy@lazybuddy\b[^\n]{0,80}\bversion\s+`?v?(\d+\.\d+\.\d+)\b",
     r"github\.com/elvinzhao10/LazyBuddy/releases/tag/v(\d+\.\d+\.\d+)\b",
 )
@@ -89,4 +90,4 @@ assert {
     for match in re.findall(pattern, misleading_identity, flags=re.IGNORECASE)
 } == {"1.0.2"}, "misleading current-release prose must remain detectable"
 PY
-printf 'v1.0 runtime version regression: PASS\n'
+printf 'v1.1 runtime version regression: PASS\n'

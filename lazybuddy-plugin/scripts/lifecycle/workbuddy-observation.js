@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { atomicJson, readJson, safeFile, sha256File } = require('./files');
 const { validateReceiptPath, validateWorkbuddyReceipt } = require('./workbuddy-receipt');
+const { CURRENT_VERSION } = require('./version');
 const {
   digest, exact, fail, identifier, rejectSensitive, timestamp, validateItemTimes, validateOutputPath, validateSurfaces,
 } = require('./workbuddy-observation-contract');
@@ -66,7 +67,7 @@ function observe(options) {
   const manifest = path.join(releaseRoot, 'lazybuddy-plugin', '.workbuddy-plugin', 'plugin.json');
   validateWorkbuddyReceipt(options.marketplaceReceipt, {
     releaseRoot, manifestSha256: sha256File(manifest), build: observation.build,
-    session: observation.session_id, now: new Date(options.now),
+    session: observation.session_id, now: new Date(options.now), version: CURRENT_VERSION,
   });
   const context = { observationId: observation.observation_id, observedAt: observation.observed_at, expiresAt: observation.expires_at, receiptDigest };
   validateSurfaces(observation.surfaces, context);
