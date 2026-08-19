@@ -1,5 +1,20 @@
 # Host routes
 
+## Current v1.1.0 route and evidence status
+
+This guide is the current v1.1.0 documentation boundary for `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`; it does not publish a v1.1.0 package.
+Marketplace is the default full-plugin route for CodeBuddy IDE and WorkBuddy.
+The manual Skills/MCP route is recovery-only and mutually exclusive with a
+full-plugin route for one project.
+
+v2 reports native mode as `invoke-documented`, `observe-only`,
+`descriptor-only`, or `unavailable`; public label as `documented-tested`,
+`documented-untested`, `observed-build-specific`, or `unavailable`; and
+evidence scope as `package`, `probe`, or `current-session`. A `package` result
+does not prove a live host, and a `probe` never substitutes for a
+current-session receipt.
+
 Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`; then run `update`, `status`,
 and plan-first `offboard` through
@@ -10,7 +25,7 @@ The source checkout may be deleted. A moved same-version ref needs
 offboard/re-onboard, never a receipt edit. None of these package facts changes
 **HOST READINESS: PENDING** without observation.
 
-Open or link the durable `v1.0.3` release in the selected host, give the agent
+Open or link the durable release selected by `status` in the selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
 detects or asks for the host, runs package checks and safe local setup, then
 reports **package readiness** separately from **host readiness**.
@@ -62,8 +77,9 @@ inspect before the next:
 1. After approval, open the host's **Plugins / Marketplace → Add local
    directory** GUI, choose the absolute release root containing
    `.codebuddy-plugin/marketplace.json`, and wait.
-2. Inspect discovery of `lazybuddy@lazybuddy` version `1.0.3`; do not install in
-   the discovery action. If the control or marketplace is absent, record the
+2. Inspect the version the marketplace actually displays; do not infer v1.1.0
+   publication from this documentation boundary or install in the discovery
+   action. If the control or marketplace is absent, record the
    current host version/build and exact error as `UNAVAILABLE`, leave **HOST
    READINESS: PENDING**, and select the fallback only as a later action.
 3. After separate approval, click **Install** for `lazybuddy@lazybuddy`, then

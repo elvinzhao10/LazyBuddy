@@ -4,6 +4,20 @@ LazyBuddy deliberately aligns policy and package safety across hosts while keepi
 
 ## Onboarding baseline
 
+## Current v1.1.0 evidence boundary
+
+This documentation release covers `codebuddy-cli`, `codebuddy-ide`, and
+`workbuddy`; it does not publish a v1.1.0 package or claim a host has loaded
+one. Marketplace is the default full-plugin route for CodeBuddy IDE and
+WorkBuddy. The Skills/manual-MCP route is recovery-only and mutually exclusive
+with a full-plugin route in the same project.
+
+| v2 field | Allowed values and boundary |
+| --- | --- |
+| Native mode | `invoke-documented`, `observe-only`, `descriptor-only`, or `unavailable`. |
+| Public label | `documented-tested`, `documented-untested`, `observed-build-specific`, or `unavailable`. |
+| Evidence scope | `package`, `probe`, or `current-session`; `package` does not prove a live host. |
+
 Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`; then run `update`, `status`,
 and plan-first `offboard` with
@@ -13,7 +27,7 @@ and survives source deletion. Moving a same-version ref requires full-SHA
 confirmation; stale runtime recovery is scoped offboard/re-onboard. None of
 this proves a host: **HOST READINESS: PENDING** until observation.
 
-Open or link the durable `v1.0.3` release in the selected host, give the agent
+Open or link the durable release selected by `status` in the selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
 detects or asks for CodeBuddy IDE, CodeBuddy CLI, or WorkBuddy, runs safe
 package checks, and reports package readiness separately from host readiness.
@@ -37,7 +51,7 @@ only.
 | **WorkBuddy** | The active release's `.workbuddy-plugin/plugin.json` marketplace source, declaring Skills, commands, agents, hooks, and six MCP servers. | Recovery-only Skills import plus six manual local MCP connectors. It excludes commands, agents, and hooks. | A current source/version/build/session receipt with one loaded Skill, command, agent, hook, and all six MCP connections. |
 
 The supplied macOS QA dated 2026-07-18 inspected WorkBuddy v5.2.6 on macOS
-with LazyBuddy `v1.0.3`; the CodeBuddy exact host version/build was not recorded.
+with a historical LazyBuddy package; the CodeBuddy exact host version/build was not recorded.
 For CodeBuddy IDE,
 prefer the CLI marketplace route whenever available; the GUI local-directory
 marketplace is only a fallback observed-build alternative. In WorkBuddy, use
@@ -105,3 +119,11 @@ and verify that route before making a live-host-proof claim.
 ## macOS-only scope
 
 The package evidence is verified on macOS only. It does not claim equivalent host loading, marketplace behavior, hook execution, or MCP connection on other operating systems. Those are observed per host session.
+
+## Migration and removal
+
+To change routes, stop the active session, remove only LazyBuddy's
+receipt-scoped plugin/Skills entry and connectors that the user added through
+the host UI, choose one route, and verify it in a fresh session. Preserve
+other plugins, connectors, credentials, project settings, and host-managed
+paths. Package removal remains separate from observed host removal.

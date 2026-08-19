@@ -4,6 +4,16 @@ LazyBuddy supports CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. It is verified
 on macOS only. Package files, host settings, credentials, marketplace state,
 and live sessions remain separate authorities.
 
+## Current documentation release: v1.1.0
+
+This v1.1.0 guide names current human-facing boundaries only. It does not
+publish a package or promote package evidence to host proof. The route IDs are
+`codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
+`invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
+public labels are `documented-tested`, `documented-untested`,
+`observed-build-specific`, and `unavailable`; evidence scopes are `package`,
+`probe`, and `current-session`.
+
 ## Durable onboarding (start here)
 
 Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
@@ -142,8 +152,9 @@ numbered item is a separate action:
 1. After approval, use the host's **Plugins / Marketplace → Add local
    directory** GUI to select the absolute release root containing
    `.codebuddy-plugin/marketplace.json`; then wait for inspection.
-2. Observe `lazybuddy@lazybuddy` version `1.0.3` in that marketplace. Do not
-   install in the discovery action. If discovery is unavailable, record the
+2. Observe the version the current marketplace actually displays. Do not infer
+   v1.1.0 publication from this documentation boundary. Do not install in the
+   discovery action. If discovery is unavailable, record the
    host version/build and exact error, keep **HOST READINESS: PENDING**, and use
    the fallback below only after selecting it explicitly.
 3. After separate approval, click the GUI **Install** action for
@@ -237,9 +248,9 @@ assets, and preserve unknown, modified, linked, caller-owned, project, and
 host-managed paths. Use the host's own plugin/Skills removal flow for host
 state. Report package result separately from the user-observed host result in a
 new session; never scan or guess host directories and never remove another
-host's settings. An upgrade rollback must likewise remove only v1.0.3
-receipt-owned assets after approval; never overwrite user-modified v1.0.2
-assets.
+host's settings. An upgrade rollback must likewise remove only the selected
+release's receipt-owned assets after approval; never overwrite user-modified
+prior-release assets.
 Recovery is limited to an explicitly verified lifecycle-owned sibling bootstrap
 lock or product `staging/`/`locks/` artifact; the caller workspace is always
 preserved.

@@ -4,6 +4,19 @@ This document records public, present-tense evidence for the LazyBuddy package.
 It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
 plugin. Verification is on macOS only.
 
+## Current documentation status: v1.1.0
+
+The v1.1.0 documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
+`workbuddy`; it does not publish or alter a package. For CodeBuddy IDE and
+WorkBuddy, marketplace is the default full-plugin route. The manual
+Skills/MCP route is recovery-only and mutually exclusive with the full-plugin
+route for one project. Package readiness does not prove a live host.
+
+v2 receipts use `invoke-documented`, `observe-only`, `descriptor-only`, and
+`unavailable` native modes; `documented-tested`, `documented-untested`,
+`observed-build-specific`, and `unavailable` public labels; and `package`,
+`probe`, and `current-session` evidence scopes.
+
 ## Project purpose and attribution
 
 LazyBuddy is a learning project for evidence-led agent workflows. It is
@@ -101,6 +114,12 @@ receipt-owned root can be removed. Modified, foreign, linked, caller-owned,
 project, and host-managed paths are preserved. This boundary protects local
 tooling and does not authorize removal of host plugin, marketplace, MCP, or
 credential state.
+
+Migration is route replacement: stop the session; remove only LazyBuddy's
+receipt-scoped plugin/Skills entry and manually added connectors through the
+host UI; select one route; then verify it in a fresh session. Do not scan or
+edit private host registries, automate trust, bypass permissions, or place
+credentials in configuration examples.
 
 ## Package readiness versus host verification
 

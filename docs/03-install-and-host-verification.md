@@ -2,6 +2,17 @@
 
 This page explains the deployment boundary in code terms. A plugin package contains files a host may load; it does not contain the host's marketplace database, session state, or connector process table.
 
+## Current v1.1.0 route status
+
+This documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
+`workbuddy`; it does not publish a v1.1.0 package. Marketplace is the default
+full-plugin route for CodeBuddy IDE and WorkBuddy. The Skills/manual-MCP route
+is recovery-only and mutually exclusive with a full-plugin route. v2 records
+native mode as `invoke-documented`, `observe-only`, `descriptor-only`, or
+`unavailable`; public label as `documented-tested`, `documented-untested`,
+`observed-build-specific`, or `unavailable`; and evidence scope as `package`,
+`probe`, or `current-session`. Package readiness does not prove a live host.
+
 ## Durable lifecycle
 
 Prerequisites are **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard`
@@ -20,7 +31,7 @@ not host proof: **HOST READINESS: PENDING** until current observation.
 
 ## Host onboarding
 
-Open or link the durable `v1.0.3` release in the selected host, give the agent
+Open or link the durable release selected by `status` in the selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent asks
 which host is in use, runs safe package checks, and reports package readiness
 separately from host readiness. Before a host-managed marketplace, plugin,

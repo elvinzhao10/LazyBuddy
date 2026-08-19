@@ -13,6 +13,18 @@ a recovery-only route.
 It provides structured workflows for planning, implementation, verification,
 review, and bounded long-running work.
 
+## Current documentation release: v1.1.0
+
+This is the authoritative human-facing status boundary for **v1.1.0**. It does
+not alter package manifests, publish a marketplace build, or turn package
+readiness into host proof. The immutable v1.0.3 release notes and evidence
+remain historical records.
+
+The route IDs are `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. For
+CodeBuddy IDE and WorkBuddy, marketplace is the default full-plugin route. The
+Skills/manual-MCP route is recovery-only and mutually exclusive with a
+full-plugin route for the same project.
+
 It is verified on macOS only. Package checks prove the copied package and its
 local contracts; a CodeBuddy or WorkBuddy session remains the authority for
 plugin loading, hooks, and MCP connection.
@@ -36,9 +48,9 @@ In a CodeBuddy plugin session, commands are namespaced as
 `/lazybuddy:lazy-<command>`. If the host does not expose slash commands, make
 the same request in plain language.
 
-## Adaptive harness (v1.0.3)
+## Adaptive harness and v1.1.0 host status
 
-LazyBuddy v1.0.3 introduces an **adaptive harness** that selects the smallest
+The preserved adaptive harness selects the smallest
 sufficient workflow for an outcome-based request, composes existing Skills,
 agents, commands, MCPs, tools, hooks, and verifiers, persists an additive
 single-writer snapshot, and explains material choices. Named workflows
@@ -102,7 +114,7 @@ data to a remote provider, or controlling a browser surface all require
 approval. `release-review` and `security-review` do not themselves require
 approval; the requested concrete action determines the approval boundary.
 
-### v1.0.3 policy behavior
+### Current v1.1.0 policy behavior
 
 Current package checks enforce the same policy boundaries as LazyTrae: concrete credential changes and Git
 pushes require approval; `investigate why` selects `assisted`; broad validation
@@ -126,9 +138,18 @@ The behavior-only contract is shared byte-identically with LazyTrae at
 paired with its JSON Schema and sha256 digest. Fixtures live under
 `lazybuddy-plugin/contracts/fixtures/v103/`. The implementation lives in
 `lazybuddy-plugin/tooling/lazybuddy_adaptive_*.py`. The full contract
-semantics, authority levels, fallback rules, evidence labels, and known v1.0.3
-gaps are documented in
+semantics, authority levels, fallback rules, evidence labels, and historical
+v1.0.3 gaps are documented in
 [`docs/v1.0.3-adaptive-harness-contract.md`](docs/v1.0.3-adaptive-harness-contract.md).
+
+### v2 host-evidence vocabulary
+
+The v2 readiness receipt uses native modes `invoke-documented`, `observe-only`,
+`descriptor-only`, and `unavailable`; public labels `documented-tested`,
+`documented-untested`, `observed-build-specific`, and `unavailable`; and
+evidence scopes `package`, `probe`, and `current-session`. A `package` result
+does not prove a live host, a `probe` is build-specific, and only a current
+`current-session` observation can support a current host claim.
 
 ## Design mindset
 
@@ -178,13 +199,13 @@ the caller workspace is preserved. Recovery is limited to an explicitly
 verified lifecycle-owned sibling bootstrap lock or product `staging/`/`locks/`
 artifact; it never authorizes removal or replacement of caller workspace files.
 
-### Upgrade from v1.0.2
+### Upgrade a prior release
 
 Inventory managed versus modified/unknown assets before upgrading. Onboard the
-durable v1.0.3 bundle, run package checks through `launcher.js`, then replace
+durable release selected by `status`, run package checks through `launcher.js`, then replace
 only receipt-owned plugin or Skills assets after the required host approval.
-Preserve user changes and host settings until the fresh v1.0.3 session is
-observed. See the [v1.0.3 migration guide](docs/v1.0.3-migration-guide.md).
+Preserve user changes and host settings until the fresh session is observed.
+The [v1.0.3 migration guide](docs/v1.0.3-migration-guide.md) is historical.
 
 `onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
 or **WorkBuddy**, runs only safe package checks and local setup, and reports
@@ -261,8 +282,9 @@ Use `.codebuddy/settings.json` only for shareable non-secret project defaults.
 `.codebuddy/settings.local.json` is ignored local/machine scope and must remain
 unstaged; secrets must never be committed. Package checks preserve both files.
 
-The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
-and release notes are on the [v1.0.3 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.3).
+The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy).
+Read `RELEASE_NOTES-v1.1.0.md` for the authoritative host-status boundary; the
+v1.0.3 release page remains historical.
 
 ## Verify and remove
 

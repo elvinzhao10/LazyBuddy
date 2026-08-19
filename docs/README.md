@@ -59,7 +59,8 @@ boundaries. Host state is deliberately outside those boundaries.
 | [08 — Safe removal](08-safe-removal.md) | Why does removal stop at package-owned paths? |
 | [09 — Test and release verification](09-test-and-release-verification.md) | What does each release gate prove? |
 | [10 — Host capability matrix](10-host-capability-matrix.md) | Where do CodeBuddy and WorkBuddy intentionally diverge? |
-| [v1.0.3 migration guide](v1.0.3-migration-guide.md) | How do durable onboarding, update confirmation, runtime refresh, and scoped offboard work? |
+| `RELEASE_NOTES-v1.1.0.md` | Current route, readiness, migration, security, and removal boundaries at the repository root. |
+| [v1.0.3 migration guide](v1.0.3-migration-guide.md) | Historical guide to durable onboarding, update confirmation, runtime refresh, and scoped offboard. |
 
 The lookup tables in [state artifact reference](reference/state-artifact-reference.md),
 [MCP inventory](reference/mcp-inventory.md), [verification contract](reference/verification-contract.md),

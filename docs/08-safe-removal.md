@@ -3,6 +3,16 @@
 Remove host-managed integration through its host, and remove package-owned
 tooling only when its receipt proves ownership. These are separate operations.
 
+## v1.1.0 route removal boundary
+
+For `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`, remove only LazyBuddy
+entries through the selected host UI or documented host command. Preserve
+credentials, trust decisions, unrelated plugins and connectors, project files,
+and host-private paths. Marketplace is the default full-plugin route for
+CodeBuddy IDE and WorkBuddy; Skills/manual MCP is recovery-only and mutually
+exclusive with the full-plugin route. A package result does not prove a live
+host was removed.
+
 ## Remove by installation route
 
 | Route | Safe action | Preserve |
