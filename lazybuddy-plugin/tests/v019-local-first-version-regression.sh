@@ -4,7 +4,7 @@ set -euo pipefail
 PLUGIN_ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 PLUGIN_ROOT="$(cd "$PLUGIN_ROOT" && pwd)"
 REPOSITORY_ROOT="$(cd "$PLUGIN_ROOT/.." && pwd)"
-EXPECTED_VERSION="1.0.3"
+EXPECTED_VERSION="$(node -p 'require(process.argv[1]).version' "$PLUGIN_ROOT/.codebuddy-plugin/plugin.json")"
 
 python3 - "$REPOSITORY_ROOT" "$PLUGIN_ROOT" "$EXPECTED_VERSION" <<'PY'
 import json
@@ -92,6 +92,7 @@ def assert_durable_lifecycle_docs(root, package_root):
             raise AssertionError(f"{name} endorses installation through private host state")
 
 def assert_static_versions(root, package_root, value):
+    version_pattern = re.escape(value)
     json_versions = [
         (root / ".codebuddy-plugin/marketplace.json", ("plugins", 0, "version")),
         (package_root / ".codebuddy-plugin/plugin.json", ("version",)),
@@ -110,21 +111,21 @@ def assert_static_versions(root, package_root, value):
         assert_version(path, root, keys, value)
 
     text_versions = [
-        (root / "AGENTS.md", r"\bv?1\.0\.3\b"),
-        (root / "README.md", r"\bv?1\.0\.3\b"),
+        (root / "AGENTS.md", rf"\bv?{version_pattern}\b"),
+        (root / "README.md", rf"\bv?{version_pattern}\b"),
         (package_root / "templates/AGENTS.md", r"\bv?1\.0\.3\b"),
-        (package_root / "mcp/code-intel/server.py", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/context-graph/server.py", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/docs/server.py", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/docs/server.py", r"lazybuddy-docs/1\.0\.3"),
-        (package_root / "mcp/lsp/server.py", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/run-ledger/server.sh", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/status-dashboard/server.sh", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/verification/server.sh", r'"version"\s*:\s*"1\.0\.3"'),
-        (package_root / "mcp/status-dashboard/dashboard.html", r"LazyBuddy v1\.0\.3"),
-        (package_root / "scripts/hooks/session-start.sh", r"LazyBuddy v1\.0\.3"),
-        (package_root / "scripts/lazybuddy-verify.sh", r"v1\.0\.3"),
-        (package_root / "tests/v016-runtime-version-regression.sh", r'EXPECTED_VERSION="1\.0\.3"'),
+        (package_root / "mcp/code-intel/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/context-graph/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/docs/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/docs/server.py", rf"lazybuddy-docs/{version_pattern}"),
+        (package_root / "mcp/lsp/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/run-ledger/server.sh", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/status-dashboard/server.sh", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/verification/server.sh", rf'"version"\s*:\s*"{version_pattern}"'),
+        (package_root / "mcp/status-dashboard/dashboard.html", rf"LazyBuddy v{version_pattern}"),
+        (package_root / "scripts/hooks/session-start.sh", rf"LazyBuddy v{version_pattern}"),
+        (package_root / "scripts/lazybuddy-verify.sh", rf"v{version_pattern}"),
+        (package_root / "tests/v016-runtime-version-regression.sh", rf'EXPECTED_VERSION="{version_pattern}"'),
     ]
     for path, pattern in text_versions:
         assert_contains(path, root, pattern)
@@ -167,7 +168,7 @@ with tempfile.TemporaryDirectory(prefix="lazybuddy v102 version fixture ") as te
         message = str(error)
         if "lazybuddy-plugin/.codebuddy-plugin/plugin.json#version" not in message:
             raise AssertionError(f"mutation failure omitted the exact manifest path: {message}") from error
-        if "expected '1.0.3', got '1.0.1'" not in message:
+        if f"expected '{expected}', got '1.0.1'" not in message:
             raise AssertionError(f"mutation failure omitted the expected values: {message}") from error
     else:
         raise AssertionError("a copied product manifest mismatch was accepted")
@@ -237,4 +238,4 @@ for server_name in run-ledger verification status-dashboard context-graph code-i
     fi
 done
 
-printf 'v1.0.3 local-first version regression: PASS\n'
+printf 'authoritative local-first version regression (%s): PASS\n' "$EXPECTED_VERSION"

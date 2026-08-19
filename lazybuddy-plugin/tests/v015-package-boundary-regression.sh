@@ -112,6 +112,8 @@ PYEOF
 
 mkdir -p "$PARENT"
 cp -R "$PLUGIN_ROOT" "$INSTALLED_PLUGIN"
+mkdir -p "$PARENT/.codebuddy-plugin"
+cp "$PLUGIN_ROOT/../.codebuddy-plugin/marketplace.json" "$PARENT/.codebuddy-plugin/marketplace.json"
 printf 'PARENT LICENSE POISON\n' > "$PARENT/LICENSE"
 printf 'PARENT NOTICE POISON\n' > "$PARENT/NOTICE"
 mkdir -p "$PARENT/docs"

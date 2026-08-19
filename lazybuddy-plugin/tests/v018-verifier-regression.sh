@@ -5,16 +5,19 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-verifier.XXXXXX")"
 PASS=0
 FAIL=0
+unset CODEBUDDY_PLUGIN_ROOT CWD
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
 pass() { printf 'PASS %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 
-mkdir "$TMP/plugin"
+mkdir "$TMP/lazybuddy-plugin"
+mkdir -p "$TMP/.codebuddy-plugin"
+cp "$PLUGIN_ROOT/../.codebuddy-plugin/marketplace.json" "$TMP/.codebuddy-plugin/marketplace.json"
 # Given the former streaming fixture copy, when its consumer exits after one
 # byte, then pipefail exposes tar's real write-side EPIPE failure.  The
 # controlled early close makes this independent of archive size and host I/O.
-if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf - . \
+if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' --exclude='*/__pycache__' --exclude='*.pyc' -cf - . \
     2>"$TMP/old-stream.stderr" | { IFS= read -r -n 1 _; exit 0; }; then
     old_stream_statuses=("${PIPESTATUS[@]}")
 else
@@ -28,25 +31,25 @@ else
     fail "controlled old streaming archive must report producer EPIPE"
 fi
 
-if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf "$TMP/plugin.tar" .; then
+if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' --exclude='*/__pycache__' --exclude='*.pyc' -cf "$TMP/plugin.tar" .; then
     pass "file-backed fixture archive is created"
 else
     fail "file-backed fixture archive creation"
     exit 1
 fi
-if tar -C "$TMP/plugin" -xf "$TMP/plugin.tar"; then
+if tar -C "$TMP/lazybuddy-plugin" -xf "$TMP/plugin.tar"; then
     pass "file-backed fixture archive extracts successfully"
 else
     fail "file-backed fixture archive extraction"
     exit 1
 fi
-FIXTURE="$TMP/plugin"
+FIXTURE="$TMP/lazybuddy-plugin"
 [ -f "$FIXTURE/LICENSE" ] && pass "file-backed fixture contains the source license" || fail "file-backed fixture source license"
 [ ! -e "$FIXTURE/tooling/node_modules" ] && pass "verifier fixture omits unused tooling dependencies" || fail "verifier fixture must omit unused tooling dependencies"
 
 fixture_parity() {
     local candidate="$1" report="$2"
-    if diff -ru --exclude='node_modules' "$PLUGIN_ROOT" "$candidate" >"$report"; then
+    if diff -ru --exclude='node_modules' --exclude='__pycache__' --exclude='*.pyc' "$PLUGIN_ROOT" "$candidate" >"$report"; then
         return 0
     fi
     printf 'FIXTURE_PARITY_MISMATCH: %s\n' "$candidate" >>"$report"
@@ -147,15 +150,27 @@ def capture_policy(name, mutate=False):
 
 def assert_scoped_policy(root, records):
     prefix = "regression:"
+    paired_only = {
+        "v016-automatic-tooling-contract-parity.sh",
+        "v017-capability-readiness-contract-parity.sh",
+        "v018-docs-manifest-parity.sh",
+        "v103-lifecycle-contract-parity.sh",
+        "v110-six-host-contract-parity.sh",
+        "v110-six-host-contract-parity-regression.sh",
+    }
     expected = {
         f"{prefix}{path.name}"
         for path in (root / "tests").glob("*-regression.sh")
-        if path.name != "publication-regression.sh"
+        if path.name != "publication-regression.sh" and path.name not in paired_only
     }
     observed = [(label, timeout) for label, timeout in records if label.startswith(prefix)]
     require(len(observed) == len(expected), "standalone regression timeout capture was incomplete or duplicated")
     by_label = dict(observed)
     require(set(by_label) == expected, "standalone regression timeout labels did not match the complete inventory")
+    require(
+        not ({f"{prefix}{name}" for name in paired_only} & set(by_label)),
+        "explicit-root paired-only regression was scheduled as standalone",
+    )
     readiness = f"{prefix}v015-readiness-regression.sh"
     require(by_label[readiness] == "120", f"{readiness} expected 120, observed {by_label[readiness]}")
     for label in sorted(expected - {readiness}):
@@ -446,11 +461,12 @@ chmod +x "$TMP/fake-bin/codebuddy"
 mkdir "$TMP/launch-error-bin"
 printf '%s\n' '#!/definitely/missing/lazybuddy-interpreter' > "$TMP/launch-error-bin/codebuddy"
 chmod +x "$TMP/launch-error-bin/codebuddy"
+RUNTIME_PATH="$(dirname "$(command -v node)"):/usr/bin:/bin"
 
 run_doctor() {
     local label="$1" host="$2" mode="$3" bin_dir="$4"
     DOCTOR_OUTPUT="$TMP/doctor-$label.out"
-    if PATH="$bin_dir:/usr/bin:/bin" \
+    if PATH="$bin_dir:$RUNTIME_PATH" \
         FAKE_CODEBUDDY_MODE="$mode" \
         FAKE_CODEBUDDY_MARKER="${DOCTOR_MARKER:-}" \
         LAZYBUDDY_DOCTOR_HOST="$host" \
@@ -503,7 +519,7 @@ run_doctor package-timeout package timeout "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && grep -q '^TIMEOUT: CodeBuddy manifest validator$' "$DOCTOR_OUTPUT.err" && pass "package doctor leaves validator timeout unchecked" || fail "package timeout validator classification"
 run_doctor package-launch package pass "$TMP/launch-error-bin"
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves validator launch unavailable unchecked" || fail "package launch validator classification"
-run_doctor package-absent package pass "/usr/bin:/bin"
+run_doctor package-absent package pass "$TMP/empty-bin"
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves absent CLI unchecked" || fail "package absent validator classification"
 
 run_doctor cli-pass codebuddy-cli pass "$TMP/fake-bin"
@@ -514,7 +530,7 @@ run_doctor cli-timeout codebuddy-cli timeout "$TMP/fake-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator timeout" || fail "CLI timeout validator classification"
 run_doctor cli-launch codebuddy-cli pass "$TMP/launch-error-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator launch unavailable" || fail "CLI launch validator classification"
-run_doctor cli-absent codebuddy-cli pass "/usr/bin:/bin"
+run_doctor cli-absent codebuddy-cli pass "$TMP/empty-bin"
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails absent CLI" || fail "CLI absent validator classification"
 
 DOCTOR_MARKER="$TMP/ide-validator.marker"

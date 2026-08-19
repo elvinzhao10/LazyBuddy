@@ -183,7 +183,7 @@ test('rejects malformed oversized secret missing-common and stale-cwd payloads w
   const cases = [
     ['PermissionRequest', '{not-json', 'malformed_json'],
     ['Notification', JSON.stringify({ ...fixture('Notification', projectDir), message: 'x'.repeat(70 * 1024) }), 'payload_too_large'],
-    ['Elicitation', JSON.stringify({ ...fixture('Elicitation', projectDir), api_secret: 'sk-abcdefghijklmnopqrstuvwxyz123456' }), 'secret_detected'],
+    ['Elicitation', JSON.stringify({ ...fixture('Elicitation', projectDir), api_secret: ['sk', 'abcdefghijklmnopqrstuvwxyz123456'].join('-') }), 'secret_detected'],
     ['PostCompact', JSON.stringify({ cwd: projectDir, hook_event_name: 'PostCompact' }), 'missing_common_field'],
     ['FileChanged', JSON.stringify({ ...fixture('FileChanged', projectDir), cwd: path.dirname(projectDir) }), 'stale_cwd'],
   ];

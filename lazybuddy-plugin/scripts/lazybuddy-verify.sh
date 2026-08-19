@@ -20,6 +20,8 @@ RUNNER="${SCRIPTS_DIR}/lazybuddy-bounded-run.py"
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 export CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}"
 export CWD="${CWD:-${PROJECT_ROOT}}"
+export PYTHONDONTWRITEBYTECODE=1
+export NODE_PATH="${SIX_HOST_PARITY_NODE_MODULES:-${PLUGIN_ROOT}/tooling/node_modules}"
 ALL_PASS=true
 DOCTOR_RESULT="skipped"
 SMOKE_RESULT="skipped"
@@ -215,6 +217,8 @@ run_regression_inventory() {
         "v017-capability-readiness-contract-parity.sh"
         "v018-docs-manifest-parity.sh"
         "v103-lifecycle-contract-parity.sh"
+        "v110-six-host-contract-parity.sh"
+        "v110-six-host-contract-parity-regression.sh"
     )
     local publication_tests=(
         "publication-regression.sh"

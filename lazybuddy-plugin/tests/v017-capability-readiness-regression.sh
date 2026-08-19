@@ -6,6 +6,9 @@ TOOLING="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-readiness.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
+mkdir -p "$TMP/.codebuddy-plugin"
+cp "$PLUGIN_ROOT/../.codebuddy-plugin/marketplace.json" "$TMP/.codebuddy-plugin/marketplace.json"
+
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
 
@@ -165,7 +168,7 @@ pass 'readiness contract checksum mismatch fails safely'
 # the report and load-check run from a disposable plugin copy, then the report
 # must fail safely and the package check must also fail. Regenerating the copied
 # contract digest, sidecar, and source pin restores normal readiness.
-DISPOSABLE_PLUGIN="$TMP/disposable-plugin"
+DISPOSABLE_PLUGIN="$TMP/lazybuddy-plugin"
 cp -R "$PLUGIN_ROOT" "$DISPOSABLE_PLUGIN"
 DISPOSABLE_TOOLING="$DISPOSABLE_PLUGIN/scripts/lazybuddy-tooling.sh"
 DISPOSABLE_LOAD_CHECK="$DISPOSABLE_PLUGIN/scripts/lazybuddy-load-check.sh"
