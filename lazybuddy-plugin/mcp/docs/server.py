@@ -39,7 +39,7 @@ def fetch(url, timeout=20):
     if not CURL:
         return None, "curl not available"
     try:
-        r = subprocess.run([CURL, "-sS", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "0", "--max-time", str(timeout), "-A", "lazybuddy-docs/1.0.3", url],
+        r = subprocess.run([CURL, "-sS", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "0", "--max-time", str(timeout), "-A", "lazybuddy-docs/1.1.0", url],
                            capture_output=True, text=True, timeout=timeout + 5)
         if r.returncode == 0 and r.stdout:
             return r.stdout, None
@@ -192,7 +192,7 @@ def handle(req, notification):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "docs", "version": "1.0.3"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "docs", "version": "1.1.0"}})
         return
 
     if method == "tools/list":

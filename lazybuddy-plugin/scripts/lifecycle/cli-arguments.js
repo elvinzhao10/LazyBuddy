@@ -1,6 +1,7 @@
 'use strict';
 
 const { LifecycleError } = require('./errors');
+const { CURRENT_VERSION } = require('./version');
 
 const COMMANDS = new Set(['onboard', 'update', 'status', 'offboard', 'recover-bootstrap-lock']);
 const VALUE_FLAGS = new Set([
@@ -10,7 +11,7 @@ const BOOLEAN_FLAGS = new Set(['--json', '--yes']);
 const ROUTE_FLAG = '--route';
 
 function usage() {
-  return `LazyBuddy durable lifecycle v1.0.3
+  return `LazyBuddy durable lifecycle v${CURRENT_VERSION}
 
 Usage: node scripts/lazybuddy-lifecycle.js <command> [options]
 

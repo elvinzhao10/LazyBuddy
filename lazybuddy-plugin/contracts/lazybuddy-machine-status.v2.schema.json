@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lazybuddy-machine-status.v2.schema.json",
+  "title": "LazyBuddy v1.1 machine status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "product",
+    "version",
+    "status",
+    "package_readiness",
+    "host_readiness",
+    "hosts",
+    "routes"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "contract_version": { "const": "2.0.0" },
+    "product": { "const": "LazyBuddy" },
+    "version": { "const": "1.1.0" },
+    "status": { "const": "ready" },
+    "package_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "scope"],
+      "properties": {
+        "status": { "const": "ready" },
+        "scope": { "const": "package" }
+      }
+    },
+    "host_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": { "status": { "const": "pending" } }
+    },
+    "hosts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/host" }
+    },
+    "routes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/route" }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "ref", "sha256", "session_id"],
+      "properties": {
+        "scope": { "const": "package" },
+        "ref": { "const": "contracts/marketplace-route-contract.v1.json" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "session_id": { "type": "null" }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "route",
+        "native_mode",
+        "public_label",
+        "package_status",
+        "probe_status",
+        "readiness_scope",
+        "host_readiness",
+        "evidence"
+      ],
+      "properties": {
+        "host": { "enum": ["codebuddy-cli", "codebuddy-ide", "workbuddy"] },
+        "route": { "enum": ["codebuddy-marketplace", "workbuddy-full-plugin"] },
+        "native_mode": { "enum": ["invoke-documented", "observe-only"] },
+        "public_label": { "enum": ["documented-tested", "observed-build-specific"] },
+        "package_status": { "const": "ready" },
+        "probe_status": { "const": "not-run" },
+        "readiness_scope": { "const": "package" },
+        "host_readiness": { "const": "pending" },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "hosts",
+        "route_role",
+        "recovery_only",
+        "coexists_with_default",
+        "native_mode",
+        "public_label",
+        "evidence"
+      ],
+      "properties": {
+        "route": {
+          "enum": ["codebuddy-marketplace", "workbuddy-full-plugin", "manual-skills-mcp-fallback"]
+        },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["codebuddy-cli", "codebuddy-ide", "workbuddy"] },
+          "uniqueItems": true
+        },
+        "route_role": { "enum": ["default", "recovery-only"] },
+        "recovery_only": { "type": "boolean" },
+        "coexists_with_default": { "type": "boolean" },
+        "native_mode": { "enum": ["invoke-documented", "observe-only"] },
+        "public_label": {
+          "enum": ["documented-tested", "documented-untested", "observed-build-specific"]
+        },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    }
+  }
+}

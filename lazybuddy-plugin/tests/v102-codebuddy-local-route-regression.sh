@@ -19,7 +19,7 @@ import json
 import sys
 
 repository_root = Path(sys.argv[1])
-version = "1.0.3"
+version = "1.1.0"
 marketplace = json.loads((repository_root / ".codebuddy-plugin/marketplace.json").read_text(encoding="utf-8"))
 codebuddy = json.loads((repository_root / "lazybuddy-plugin/.codebuddy-plugin/plugin.json").read_text(encoding="utf-8"))
 workbuddy = json.loads((repository_root / "lazybuddy-plugin/.workbuddy-plugin/plugin.json").read_text(encoding="utf-8"))
@@ -89,7 +89,7 @@ PY
 if HOME="$TMP/home" bash "$NESTED_SOURCE_ROOT/lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh" \
     --project-dir "$PROJECT_ROOT" >"$TMP/nested-source.out" 2>&1; then
     fail 'nested plugin metadata is rejected as a marketplace source'
-elif grep -Fq 'release marketplace must contain lazybuddy 1.0.3 from ./lazybuddy-plugin' "$TMP/nested-source.out"; then
+elif grep -Fq 'release marketplace must contain lazybuddy 1.1.0 from ./lazybuddy-plugin' "$TMP/nested-source.out"; then
     pass 'nested plugin metadata is rejected as a marketplace source'
 else
     fail 'nested plugin metadata is rejected with an actionable layout error'
@@ -99,7 +99,7 @@ READINESS_OUTPUT="$TMP/readiness.out"
 if env CODEBUDDY_PLUGIN_ROOT="$RELEASE_ROOT/lazybuddy-plugin" \
     LAZYBUDDY_MARKETPLACE_FILE="$RELEASE_ROOT/.codebuddy-plugin/marketplace.json" \
     bash "$RELEASE_ROOT/lazybuddy-plugin/scripts/lazybuddy-load-check.sh" >"$READINESS_OUTPUT" \
-    && grep -Fq 'PASS marketplace version agreement: 1.0.3' "$READINESS_OUTPUT" \
+    && grep -Fq 'PASS marketplace version agreement: 1.1.0' "$READINESS_OUTPUT" \
     && grep -Fq 'PACKAGE_READINESS=full' "$READINESS_OUTPUT"; then
     pass 'copied spaced release passes marketplace/plugin package readiness'
 else

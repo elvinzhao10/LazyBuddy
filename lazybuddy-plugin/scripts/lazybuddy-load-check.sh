@@ -123,6 +123,31 @@ if route_check.returncode == 0:
 else:
     result("FAIL", "marketplace route contract", route_check.stderr.strip())
 
+machine_status = subprocess.run(
+    ["node", os.path.join(root, "scripts", "lazybuddy-machine-status.js"), "--json"],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+try:
+    status = json.loads(machine_status.stdout)
+    host_rows = status.get("hosts")
+    if (
+        machine_status.returncode != 0
+        or status.get("schema_version") != 2
+        or status.get("version") != "1.1.0"
+        or status.get("package_readiness") != {"status": "ready", "scope": "package"}
+        or status.get("host_readiness") != {"status": "pending"}
+        or not isinstance(host_rows, list)
+        or [row.get("host") for row in host_rows] != ["codebuddy-cli", "codebuddy-ide", "workbuddy"]
+        or any(row.get("host_readiness") != "pending" for row in host_rows)
+    ):
+        raise ValueError("status fields do not match the v2 package boundary")
+except (AttributeError, TypeError, ValueError, json.JSONDecodeError) as exc:
+    result("FAIL", "machine status v2", str(exc))
+else:
+    result("PASS", "machine status v2", "three package-scoped hosts; host readiness pending")
+
 for legal_name in ("LICENSE", "NOTICE"):
     legal_path = os.path.join(root, legal_name)
     if os.path.isfile(legal_path):

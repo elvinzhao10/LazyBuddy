@@ -251,6 +251,27 @@ else
     check "Marketplace route contract" "$route_contract"
 fi
 
+if machine_status=$(node "${PLUGIN_ROOT}/scripts/lazybuddy-machine-status.js" --json 2>&1) \
+    && python3 - "$machine_status" <<'PY'
+import json
+import sys
+
+status = json.loads(sys.argv[1])
+assert status.get("schema_version") == 2
+assert status.get("version") == "1.1.0"
+assert status.get("package_readiness") == {"status": "ready", "scope": "package"}
+assert status.get("host_readiness") == {"status": "pending"}
+hosts = status.get("hosts")
+assert isinstance(hosts, list)
+assert [row.get("host") for row in hosts] == ["codebuddy-cli", "codebuddy-ide", "workbuddy"]
+assert all(row.get("host_readiness") == "pending" for row in hosts)
+PY
+then
+    check "Machine status v2" ok
+else
+    check "Machine status v2" "invalid or unavailable"
+fi
+
 if [ "$DOCTOR_HOST" = "codebuddy-ide" ] || [ "$DOCTOR_HOST" = "workbuddy" ]; then
     echo "  [SKIP] CodeBuddy manifest validator — CLI-only validator not applicable to ${DOCTOR_HOST}"
 elif command -v codebuddy >/dev/null 2>&1; then

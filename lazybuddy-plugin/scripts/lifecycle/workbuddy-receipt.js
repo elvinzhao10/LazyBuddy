@@ -53,19 +53,19 @@ function loadedCapability(value, label) {
   if (!IDENTIFIER.test(value.id) || value.status !== 'loaded') fail(`${label} must identify a loaded capability`);
 }
 
-function sourceTemplate(releaseRoot, manifestSha256) {
+function sourceTemplate(releaseRoot, manifestSha256, version) {
   return {
     route: 'workbuddy-marketplace',
     release_root: releaseRoot,
     manifest: 'lazybuddy-plugin/.workbuddy-plugin/plugin.json',
     manifest_sha256: manifestSha256,
     plugin: 'lazybuddy',
-    version: '1.0.3',
+    version,
   };
 }
 
-function receiptTemplates(releaseRoot, manifestSha256) {
-  const source = sourceTemplate(releaseRoot, manifestSha256);
+function receiptTemplates(releaseRoot, manifestSha256, version) {
+  const source = sourceTemplate(releaseRoot, manifestSha256, version);
   return {
     observation: {
       schema_version: 1,
@@ -116,7 +116,7 @@ function validateWorkbuddyReceipt(receiptPath, context) {
   exactKeys(receipt.capabilities, CAPABILITY_KEYS, 'capabilities');
   if (receipt.schema_version !== 1 || receipt.type !== 'workbuddy-marketplace-full-plugin'
     || receipt.host !== 'workbuddy') fail('receipt identity does not match WorkBuddy marketplace full-plugin');
-  const expectedSource = sourceTemplate(context.releaseRoot, context.manifestSha256);
+  const expectedSource = sourceTemplate(context.releaseRoot, context.manifestSha256, context.version);
   if (!Object.entries(expectedSource).every(([key, value]) => receipt.source[key] === value)) {
     fail('receipt marketplace source or version is stale');
   }

@@ -141,6 +141,7 @@ function status(options, paths) {
         route: selection.route,
         releaseRoot,
         manifestSha256: marketplace.workbuddy.manifest_sha256,
+        version: marketplace.version,
         build: options.hostBuild,
         session: options.hostSession,
       }),

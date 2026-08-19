@@ -98,14 +98,14 @@ function renderHandoff(route, releaseRoot, projectRoot, marketplace = null) {
       expected_artifacts: {
         marketplace: path.join(releaseRoot, '.codebuddy-plugin', 'marketplace.json'),
         plugin: 'lazybuddy@lazybuddy',
-        version: '1.0.3',
+        version: marketplace.version,
       },
       degraded: { status: 'none' },
       next_action: { kind: 'host-command', command: `codebuddy plugin marketplace add ${releaseRoot}` },
     };
   }
   if (route === 'workbuddy-full-plugin') {
-    const templates = receiptTemplates(releaseRoot, marketplace.workbuddy.manifest_sha256);
+    const templates = receiptTemplates(releaseRoot, marketplace.workbuddy.manifest_sha256, marketplace.version);
     return {
       ...base,
       route_priority: { rank: 1, fallback_rank: 2 },
@@ -113,7 +113,7 @@ function renderHandoff(route, releaseRoot, projectRoot, marketplace = null) {
         route: 'workbuddy-marketplace',
         manifest: path.join(releaseRoot, 'lazybuddy-plugin', '.workbuddy-plugin', 'plugin.json'),
         plugin: 'lazybuddy',
-        version: '1.0.3',
+        version: marketplace.version,
       },
       preflight: { status: 'package-ready', full_plugin: 'user-observed-only' },
       receipt_templates: templates,
