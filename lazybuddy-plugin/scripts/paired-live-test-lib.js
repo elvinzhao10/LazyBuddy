@@ -4,7 +4,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const {
   buildInventory,
   computeCombinedDigest,
@@ -70,6 +70,14 @@ function assertRegularTree(root) {
   visit(root, '');
 }
 
+function parseArchivePath(input, label) {
+  const detail = `${label}: ${JSON.stringify(input)}`;
+  refuse(typeof input !== 'string' || input === '' || input.includes('\0') || input.includes('\\')
+    || path.posix.isAbsolute(input) || path.win32.isAbsolute(input) || path.posix.normalize(input) !== input
+    || input.split('/').some((segment) => segment === '' || segment === '.' || segment === '..'), 'UNSAFE_ARCHIVE_PATH', detail);
+  return input;
+}
+
 function readRegular(root, relative) {
   const target = path.join(root, relative);
   let stat;
@@ -94,6 +102,34 @@ function git(root, args) {
   return result.stdout.trim();
 }
 
+function terminateChild(child, signal) {
+  if (!child?.pid || child.exitCode !== null) return;
+  try { process.kill(-child.pid, signal); } catch { child.kill(signal); }
+}
+
+function gitAsync(root, args, registerChild) {
+  return new Promise((resolve, reject) => {
+    let settled = false; let timedOut = false; let stdout = ''; let stderr = '';
+    const child = spawn('git', ['-C', root, ...args], { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const timeout = setTimeout(() => { timedOut = true; terminateChild(child, 'SIGKILL'); }, 10000);
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true; clearTimeout(timeout); registerChild(null);
+      callback();
+    };
+    registerChild(child);
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.once('error', (error) => finish(() => reject(error)));
+    child.once('close', (status) => finish(() => {
+      if (timedOut) reject(new AssemblyError('CHILD_TIMEOUT', `git ${args.join(' ')}`));
+      else if (status !== 0) reject(new AssemblyError('MALFORMED_SOURCE', `${root}: git ${args.join(' ')}: ${stderr.trim()}`)); else resolve(stdout.trim());
+    }));
+  });
+}
+
 function verifySource(root, expectedSha, expectedTree, label) {
   refuse(!SOURCE_SHA.test(expectedSha), 'INVALID_RECEIPT', `${label} source sha`);
   refuse(git(root, ['rev-parse', '--show-toplevel']) !== root, 'MALFORMED_SOURCE', `${label} is not repository root`);
@@ -102,12 +138,20 @@ function verifySource(root, expectedSha, expectedTree, label) {
   refuse(git(root, ['status', '--porcelain', '--untracked-files=all']) !== '', 'DIRTY_SOURCE', label);
 }
 
+async function verifySourceAsync(root, expectedSha, expectedTree, label, registerChild) {
+  refuse(!SOURCE_SHA.test(expectedSha), 'INVALID_RECEIPT', `${label} source sha`);
+  refuse(await gitAsync(root, ['rev-parse', '--show-toplevel'], registerChild) !== root, 'MALFORMED_SOURCE', `${label} is not repository root`);
+  refuse(await gitAsync(root, ['rev-parse', 'HEAD'], registerChild) !== expectedSha, 'SOURCE_SHA_MISMATCH', label);
+  refuse(await gitAsync(root, ['rev-parse', 'HEAD^{tree}'], registerChild) !== expectedTree, 'SOURCE_TREE_MISMATCH', label);
+  refuse(await gitAsync(root, ['status', '--porcelain', '--untracked-files=all'], registerChild) !== '', 'DIRTY_SOURCE', label);
+}
+
 function verifyArtifacts(buddyRoot, traeRoot) {
   assertRegularTree(buddyRoot);
   assertRegularTree(traeRoot);
   const buddyManifest = readJson(buddyRoot, 'manifest.json');
   const buddyReceipt = readJson(buddyRoot, 'self-verification-receipt.json');
-  const buddyArchive = buddyManifest.archive_path;
+  const buddyArchive = parseArchivePath(buddyManifest.archive_path, 'LazyBuddy archive path');
   const buddyBytes = readRegular(buddyRoot, buddyArchive);
   const buddyTree = readRegular(buddyRoot, 'ordered-tree.digest').toString('utf8').trim();
   refuse(digest(buddyBytes) !== buddyManifest.archive_sha256 || buddyReceipt.archive_sha256 !== buddyManifest.archive_sha256, 'ARCHIVE_DIGEST_MISMATCH', `LazyBuddy/${buddyArchive}`);
@@ -117,8 +161,7 @@ function verifyArtifacts(buddyRoot, traeRoot) {
 
   const traeManifest = readJson(traeRoot, 'manifest.json');
   const traeReceipt = readJson(traeRoot, 'self-verification-receipt.json');
-  const traeArchive = traeManifest.artifact?.file;
-  refuse(typeof traeArchive !== 'string', 'INVALID_RECEIPT', 'LazyTrae archive path');
+  const traeArchive = parseArchivePath(traeManifest.artifact?.file, 'LazyTrae archive path');
   const traeBytes = readRegular(traeRoot, traeArchive);
   const traeTree = readRegular(traeRoot, 'tree-digest.txt').toString('utf8').trim();
   const traeSidecar = readRegular(traeRoot, `${traeArchive}.sha256`).toString('utf8').trim().split(/\s+/)[0];
@@ -211,6 +254,7 @@ module.exports = {
   digest,
   jsonBytes,
   makeWritable,
+  parseArchivePath,
   pendingTemplate,
   productRecord,
   readJson,
@@ -218,7 +262,9 @@ module.exports = {
   refuse,
   resolveRealDirectory,
   stableJson,
+  terminateChild,
   verifyArtifacts,
   verifySource,
+  verifySourceAsync,
   writeExclusive,
 };

@@ -17,8 +17,10 @@ const {
   refuse,
   resolveRealDirectory,
   stableJson,
+  terminateChild,
   verifyArtifacts,
   verifySource,
+  verifySourceAsync,
   writeExclusive,
 } = require('./paired-live-test-lib.js');
 const {
@@ -115,7 +117,24 @@ function verifyCandidate(candidateInput) {
   return { valid: true, combined_digest: combined, candidate_path: root, onboarding_path: onboardingRoot };
 }
 
-function assemble(values) {
+function cleanupOwnedPrepublish(transaction) {
+  if (transaction.lockOwned && transaction.lock && fs.existsSync(transaction.lock)) fs.unlinkSync(transaction.lock);
+  transaction.lockOwned = false;
+  if (transaction.stagingOwned && transaction.staging && fs.existsSync(transaction.staging)) { makeWritable(transaction.staging); fs.rmSync(transaction.staging, { recursive: true }); }
+  transaction.stagingOwned = false;
+}
+
+function installSignalCleanup(transaction) {
+  const handle = (signal) => {
+    terminateChild(transaction.child, signal); cleanupOwnedPrepublish(transaction);
+    process.stderr.write(`ASSEMBLY_INTERRUPTED: ${signal}\n`);
+    process.exit(signal === 'SIGHUP' ? 129 : signal === 'SIGINT' ? 130 : 143);
+  };
+  for (const signal of ['SIGHUP', 'SIGINT', 'SIGTERM']) process.once(signal, handle);
+  return () => { for (const signal of ['SIGHUP', 'SIGINT', 'SIGTERM']) process.off(signal, handle); };
+}
+
+async function assemble(values) {
   const buddySource = resolveRealDirectory(values.get('--lazybuddy-root'), 'LazyBuddy source');
   const traeSource = resolveRealDirectory(values.get('--lazytrae-root'), 'LazyTrae source');
   const buddyArtifacts = resolveRealDirectory(values.get('--lazybuddy-artifact-root'), 'LazyBuddy artifacts');
@@ -130,18 +149,17 @@ function assemble(values) {
   refuse(!buddySchema.equals(traeSchema), 'SHARED_SCHEMA_MISMATCH', 'paired-candidate-contract.v1.schema.json');
 
   const nonce = require('node:crypto').randomBytes(16).toString('hex');
-  let staging = path.join(outputRoot, `.live-test-v1.1.0.prestaging-${nonce}`);
-  fs.mkdirSync(staging, { mode: 0o700 });
+  const transaction = { child: null, lock: '', lockOwned: false, staging: path.join(outputRoot, `.live-test-v1.1.0.prestaging-${nonce}`), stagingOwned: true };
+  fs.mkdirSync(transaction.staging, { mode: 0o700 });
+  const removeSignalCleanup = installSignalCleanup(transaction);
   let destination = '';
   let onboardingDestination = '';
   let onboardingStaging = '';
-  let lock = '';
-  let lockOwned = false;
   let published = false;
   let onboardingPublished = false;
   try {
-    writeExclusive(staging, `LazyBuddy/${artifacts.buddy.archive}`, artifacts.buddy.archiveBytes);
-    writeExclusive(staging, `LazyTrae/${artifacts.trae.archive}`, artifacts.trae.archiveBytes);
+    writeExclusive(transaction.staging, `LazyBuddy/${artifacts.buddy.archive}`, artifacts.buddy.archiveBytes);
+    writeExclusive(transaction.staging, `LazyTrae/${artifacts.trae.archive}`, artifacts.trae.archiveBytes);
     const metadataBytes = jsonBytes({
       schema_version: 'lazyseries.paired-build-metadata.v1',
       products: [
@@ -159,8 +177,8 @@ function assemble(values) {
         },
       ],
     });
-    writeExclusive(staging, 'detached/build-metadata.json', metadataBytes);
-    const inventory = buildInventory(staging);
+    writeExclusive(transaction.staging, 'detached/build-metadata.json', metadataBytes);
+    const inventory = buildInventory(transaction.staging);
     const manifest = {
       schema_version: 'lazyseries.paired-candidate.v1',
       release_version: '1.1.0',
@@ -180,27 +198,29 @@ function assemble(values) {
     refuse(fs.existsSync(destination), 'DESTINATION_EXISTS', destination);
     refuse(fs.existsSync(onboardingDestination), 'DESTINATION_EXISTS', onboardingDestination);
     const namedStaging = path.join(outputRoot, `.live-test-v1.1.0-${manifest.combined_digest}.staging-${nonce}`);
-    fs.renameSync(staging, namedStaging);
-    staging = namedStaging;
-    validateCandidate(manifest, { payloadRoot: staging, destination });
+    fs.renameSync(transaction.staging, namedStaging);
+    transaction.staging = namedStaging;
+    validateCandidate(manifest, { payloadRoot: transaction.staging, destination });
     const manifestBytes = jsonBytes(manifest);
-    writeExclusive(staging, 'manifest.json', manifestBytes);
-    chmodImmutable(staging);
+    writeExclusive(transaction.staging, 'manifest.json', manifestBytes);
+    chmodImmutable(transaction.staging);
     if (process.env.LAZYBUDDY_PAIRED_FAIL_BEFORE_RENAME === '1') throw new AssemblyError('INJECTED_FAILURE', 'before rename');
-    lock = `${destination}.lock`;
+    transaction.lock = `${destination}.lock`;
     let lockFd;
-    try { lockFd = fs.openSync(lock, 'wx', 0o600); }
+    try { lockFd = fs.openSync(transaction.lock, 'wx', 0o600); }
     catch (error) {
       if (error.code === 'EEXIST') throw new AssemblyError('DESTINATION_EXISTS', destination);
       throw error;
     }
     fs.closeSync(lockFd);
-    lockOwned = true;
-    verifySource(buddySource, artifacts.buddy.manifest.source_sha, artifacts.buddy.manifest.source_tree, 'LazyBuddy');
-    verifySource(traeSource, artifacts.trae.manifest.source.sha, artifacts.trae.manifest.source.tree, 'LazyTrae');
+    transaction.lockOwned = true;
+    const registerChild = (child) => { transaction.child = child; };
+    await verifySourceAsync(buddySource, artifacts.buddy.manifest.source_sha, artifacts.buddy.manifest.source_tree, 'LazyBuddy', registerChild);
+    await verifySourceAsync(traeSource, artifacts.trae.manifest.source.sha, artifacts.trae.manifest.source.tree, 'LazyTrae', registerChild);
     refuse(fs.existsSync(destination), 'DESTINATION_EXISTS', destination);
     refuse(fs.existsSync(onboardingDestination), 'DESTINATION_EXISTS', onboardingDestination);
-    fs.renameSync(staging, destination);
+    fs.renameSync(transaction.staging, destination);
+    transaction.stagingOwned = false;
     published = true;
     onboardingStaging = path.join(outputRoot, `.live-test-v1.1.0-${manifest.combined_digest}-onboarding.staging-${nonce}`);
     fs.mkdirSync(onboardingStaging, { mode: 0o700 });
@@ -213,37 +233,32 @@ function assemble(values) {
     fs.renameSync(onboardingStaging, onboardingDestination);
     onboardingPublished = true;
     const verified = verifyCandidate(destination);
-    fs.unlinkSync(lock);
-    lockOwned = false;
-    lock = '';
+    fs.unlinkSync(transaction.lock);
+    transaction.lockOwned = false;
+    transaction.lock = '';
     return verified;
   } catch (error) {
-    if (lockOwned && lock && fs.existsSync(lock)) fs.unlinkSync(lock);
-    if (fs.existsSync(staging)) { makeWritable(staging); fs.rmSync(staging, { recursive: true }); }
+    cleanupOwnedPrepublish(transaction);
     if (onboardingStaging && fs.existsSync(onboardingStaging)) fs.rmSync(onboardingStaging, { recursive: true });
-    if (onboardingPublished && onboardingDestination && fs.existsSync(onboardingDestination)) {
-      fs.rmSync(onboardingDestination, { recursive: true });
-    }
-    if (published && destination && fs.existsSync(destination)) {
-      makeWritable(destination);
-      fs.rmSync(destination, { recursive: true });
-    }
+    if (onboardingPublished && onboardingDestination && fs.existsSync(onboardingDestination)) fs.rmSync(onboardingDestination, { recursive: true });
+    if (published && destination && fs.existsSync(destination)) { makeWritable(destination); fs.rmSync(destination, { recursive: true }); }
     throw error;
+  } finally {
+    removeSignalCleanup();
   }
 }
 
-function main(argv) {
+async function main(argv) {
   const parsed = parse(argv);
-  const result = parsed.command === 'assemble' ? assemble(parsed.values) : verifyCandidate(parsed.values.get('--candidate'));
+  const result = parsed.command === 'assemble' ? await assemble(parsed.values) : verifyCandidate(parsed.values.get('--candidate'));
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
 if (require.main === module) {
-  try { main(process.argv.slice(2)); }
-  catch (error) {
+  main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error.code || 'ASSEMBLY_ERROR'}: ${error.message}\n`);
     process.exitCode = 1;
-  }
+  });
 }
 
 module.exports = { assemble, verifyCandidate };

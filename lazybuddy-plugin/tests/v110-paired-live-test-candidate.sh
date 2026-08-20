@@ -81,12 +81,89 @@ expect_failure crash-before-rename INJECTED_FAILURE env LAZYBUDDY_PAIRED_FAIL_BE
     --output-root "$TMP/crash-out"
 [ -z "$(find "$TMP/crash-out" -mindepth 1 -print -quit)" ] || fail "crash left output residue"
 
+mkdir "$TMP/signal-bin" "$TMP/signal-out"
+signal_ready="$TMP/signal-ready"
+signal_count="$TMP/signal-count"
+signal_child_pid="$TMP/signal-child-pid"
+printf '%s\n' '#!/bin/sh' 'set -eu' \
+    'count=$(cat "$TODO33_GIT_COUNT" 2>/dev/null || printf 0)' \
+    'count=$((count + 1))' \
+    'printf "%s\\n" "$count" > "$TODO33_GIT_COUNT"' \
+    'if [ "$count" -eq 9 ]; then' \
+    '  printf "%s\\n" "$$" > "$TODO33_GIT_CHILD_PID"' \
+    '  : > "$TODO33_GIT_READY"' \
+    '  sleep 5' \
+    'fi' \
+    'exec /usr/bin/git "$@"' > "$TMP/signal-bin/git"
+chmod 0755 "$TMP/signal-bin/git"
+PATH="$TMP/signal-bin:$PATH" TODO33_GIT_COUNT="$signal_count" TODO33_GIT_CHILD_PID="$signal_child_pid" TODO33_GIT_READY="$signal_ready" \
+    node "$SCRIPT" assemble --lazybuddy-root "$BUDDY_ROOT" --lazytrae-root "$TRAE_ROOT" \
+    --lazybuddy-artifact-root "$BUDDY_ARTIFACTS" --lazytrae-artifact-root "$TRAE_ARTIFACTS" \
+    --output-root "$TMP/signal-out" >"$TMP/signal.out" 2>"$TMP/signal.err" &
+signal_pid=$!
+for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    [ -f "$signal_ready" ] && break
+    sleep 0.1
+done
+[ -f "$signal_ready" ] || fail "signal fixture did not reach the second source check"
+kill -TERM "$signal_pid"
+set +e
+wait "$signal_pid"
+signal_rc=$?
+set -e
+[ "$signal_rc" -eq 143 ] || fail "SIGTERM exit was $signal_rc, expected 143"
+grep -F 'ASSEMBLY_INTERRUPTED: SIGTERM' "$TMP/signal.err" >/dev/null || fail "SIGTERM omitted interruption code"
+[ -z "$(find "$TMP/signal-out" -mindepth 1 -print -quit)" ] || fail "SIGTERM left output residue"
+signal_child="$(cat "$signal_child_pid")"
+sleep 0.1
+! kill -0 "$signal_child" 2>/dev/null || fail "SIGTERM left bounded git child $signal_child"
+printf 'PASS: real SIGTERM cleaned owned stage, lock, and git child\n'
+
 copy_artifacts() {
     local name="$1"
     mkdir "$TMP/$name-buddy" "$TMP/$name-trae"
     cp -R "$BUDDY_ARTIFACTS/." "$TMP/$name-buddy/"
     cp -R "$TRAE_ARTIFACTS/." "$TMP/$name-trae/"
 }
+
+set_manifest_archive_path() {
+    local root="$1" product="$2" archive_path="$3"
+    node -e '
+const fs = require("node:fs");
+const [root, product, archive] = process.argv.slice(1);
+const manifestPath = `${root}/manifest.json`;
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const value = archive === "__NUL__" ? "\0" : archive;
+if (product === "buddy") manifest.archive_path = value;
+else manifest.artifact.file = value;
+fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+' "$root" "$product" "$archive_path"
+}
+
+expect_archive_path_failure() {
+    local label="$1" product="$2" archive_path="$3" expected="$4"
+    copy_artifacts "$label"
+    if [ "$product" = buddy ]; then
+        set_manifest_archive_path "$TMP/$label-buddy" "$product" "$archive_path"
+    else
+        set_manifest_archive_path "$TMP/$label-trae" "$product" "$archive_path"
+    fi
+    mkdir "$TMP/$label-out"
+    expect_failure "$label" "$expected" assemble "$BUDDY_ROOT" "$TRAE_ROOT" \
+        "$TMP/$label-buddy" "$TMP/$label-trae" "$TMP/$label-out"
+    [ -z "$(find "$TMP/$label-out" -mindepth 1 -print -quit)" ] || fail "$label left output residue"
+}
+
+expect_archive_path_failure buddy-parent buddy ../todo33-benign-sibling-marker 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: "../todo33-benign-sibling-marker"'
+expect_archive_path_failure buddy-traversal buddy ../../escape 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: "../../escape"'
+expect_archive_path_failure buddy-empty buddy '' 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: ""'
+expect_archive_path_failure buddy-absolute buddy /tmp/todo33-absolute 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: "/tmp/todo33-absolute"'
+expect_archive_path_failure buddy-dot buddy . 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: "."'
+expect_archive_path_failure buddy-dotdot buddy .. 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: ".."'
+expect_archive_path_failure buddy-backslash buddy 'archive\\escape.tgz' 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: "archive\\\\escape.tgz"'
+expect_archive_path_failure buddy-nul buddy __NUL__ 'UNSAFE_ARCHIVE_PATH: LazyBuddy archive path: "\u0000"'
+expect_archive_path_failure trae-parent trae ../todo33-benign-sibling-marker 'UNSAFE_ARCHIVE_PATH: LazyTrae archive path: "../todo33-benign-sibling-marker"'
+expect_archive_path_failure trae-normalization trae 'nested//archive.tgz' 'UNSAFE_ARCHIVE_PATH: LazyTrae archive path: "nested//archive.tgz"'
 
 for kind in symlink hardlink fifo; do
     copy_artifacts "$kind"
