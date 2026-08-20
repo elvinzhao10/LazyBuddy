@@ -219,6 +219,7 @@ run_regression_inventory() {
         "v103-lifecycle-contract-parity.sh"
         "v110-six-host-contract-parity.sh"
         "v110-six-host-contract-parity-regression.sh"
+        "v110-paired-live-test-candidate.sh"
     )
     local publication_tests=(
         "publication-regression.sh"

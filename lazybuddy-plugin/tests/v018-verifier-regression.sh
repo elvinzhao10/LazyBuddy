@@ -157,6 +157,7 @@ def assert_scoped_policy(root, records):
         "v103-lifecycle-contract-parity.sh",
         "v110-six-host-contract-parity.sh",
         "v110-six-host-contract-parity-regression.sh",
+        "v110-paired-live-test-candidate.sh",
     }
     expected = {
         f"{prefix}{path.name}"

@@ -27,6 +27,33 @@ Normal CI is self-contained: it does not require a sibling repository. Documenta
 
 The final host layer is intentionally manual. A CodeBuddy or WorkBuddy session must show the selected plugin surface, hook behavior where relevant, and MCP connection before those facts are claimed. Current package evidence is verified on macOS only.
 
+### Paired live-test candidate assembly
+
+The Buddy-owned paired assembler is release-only and consumes two clean source
+repositories plus the independently verified Todo32 artifact directories. All
+roots must be explicit absolute paths; LazyTrae remains filesystem input and no
+LazyTrae runtime module is imported or executed.
+
+```bash
+node lazybuddy-plugin/scripts/paired-live-test-candidate.js assemble \
+  --lazybuddy-root "/absolute/LazyBuddy" \
+  --lazytrae-root "/absolute/LazyTrae" \
+  --lazybuddy-artifact-root "/absolute/todo32/lazybuddy" \
+  --lazytrae-artifact-root "/absolute/todo32/lazytrae" \
+  --output-root "/absolute/disposable-output"
+```
+
+The command exclusively publishes
+`live-test-v1.1.0-<combined-digest>/` and its mutable `-onboarding/`
+sibling. Candidate directories and files are `0555` and `0444`; the onboarding
+manifest remains `0644`. A repeated destination refuses without replacement.
+Reopen and verify both bindings with:
+
+```bash
+node lazybuddy-plugin/scripts/paired-live-test-candidate.js verify \
+  --candidate "/absolute/disposable-output/live-test-v1.1.0-<combined-digest>"
+```
+
 ## How to read a regression by boundary
 
 The shell regressions are intentionally named by the boundary they attack, not
