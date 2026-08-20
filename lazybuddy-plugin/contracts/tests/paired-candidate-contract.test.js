@@ -14,6 +14,7 @@ const {
   validateFinalizerInput,
   validateOnboarding,
 } = require('../validate-paired-candidate.js');
+const { productRecord } = require('../../scripts/paired-live-test-lib.js');
 
 const HOSTS = ['codebuddy-cli', 'codebuddy-ide', 'workbuddy', 'trae-cli', 'trae-ide', 'trae-work'];
 const SHA = '1'.repeat(40);
@@ -42,7 +43,9 @@ function fixture() {
       archive_sha256: records.find((entry) => entry.path.endsWith(archive)).sha256,
       tree_sha256: computeTreeDigest(records),
       payload_sha256: computeTreeDigest(records, 'payload-v1'),
-      command: productId === 'lazybuddy' ? 'bash lazybuddy-plugin/scripts/lazybuddy-verify.sh' : 'npm test',
+      command: productId === 'lazybuddy'
+        ? 'bash lazybuddy-plugin/scripts/lazybuddy-package-verify.sh'
+        : 'npm test',
       runtime: productId === 'lazybuddy' ? 'python-3.13+node-20' : 'node-22',
     };
   };
@@ -122,6 +125,23 @@ test('accepts a real ordered inventory and computes a stable combined digest', (
   const digest = computeCombinedDigest(second);
   // Then the digest is stable and independent of object insertion order.
   assert.equal(digest, first.candidate.combined_digest);
+});
+
+test('advertises a fresh-extraction LazyBuddy verification command', () => {
+  // Given an extracted LazyBuddy archive whose locked tooling dependencies are not installed.
+  const inventory = [{
+    path: 'LazyBuddy/lazybuddy-v1.1.0.tar.gz',
+    mode: '0644',
+    size: 1,
+    sha256: '2'.repeat(64),
+  }];
+  // When the paired candidate records the product self-verification contract.
+  const product = productRecord('lazybuddy', 'LazyBuddy', 'lazybuddy-v1.1.0.tar.gz', SHA, inventory);
+  // Then the advertised command installs the locked package dependencies before verification.
+  assert.equal(
+    product.command,
+    'bash lazybuddy-plugin/scripts/lazybuddy-package-verify.sh',
+  );
 });
 
 test('accepts the pending onboarding sibling and fully bound finalizer input', () => {

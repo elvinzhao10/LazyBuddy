@@ -255,7 +255,7 @@ function productRecord(id, prefix, archive, sourceSha, inventory) {
     archive_sha256: archiveRecord.sha256,
     tree_sha256: computeTreeDigest(records),
     payload_sha256: computeTreeDigest(records, 'payload-v1'),
-    command: id === 'lazybuddy' ? 'bash lazybuddy-plugin/scripts/lazybuddy-verify.sh' : 'npm test',
+    command: id === 'lazybuddy' ? 'bash lazybuddy-plugin/scripts/lazybuddy-package-verify.sh' : 'npm test',
     runtime: id === 'lazybuddy' ? 'node-20+python-3' : 'node-20',
   };
 }

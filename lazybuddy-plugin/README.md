@@ -229,9 +229,16 @@ bash scripts/lazybuddy-smoke-test.sh
 # Docs check: verifies no broken internal links, including templates/AGENTS.md.
 bash scripts/lazybuddy-docs-check.sh
 
-# Aggregate verification: doctor, smoke, docs, security, MCP, and hooks.
-bash scripts/lazybuddy-verify.sh
+# From the release root, install locked verification dependencies in an isolated
+# temporary root, then run the aggregate checks without modifying the package.
+bash lazybuddy-plugin/scripts/lazybuddy-package-verify.sh
 ```
+
+The wrapper requires npm registry access. It reads the shipped lockfile, installs
+only into a temporary root, cleans that root on exit or interruption, and keeps
+the extracted release unchanged. The verifier itself is local-only and bounded.
+Missing registry access must fail instead of reporting package verification
+success.
 
 The aggregate command is installed package health and does not read repository-
 root learner pages. In a repository checkout, publication validation is a
