@@ -162,6 +162,7 @@ async function assemble(values) {
     writeExclusive(transaction.staging, `LazyTrae/${artifacts.trae.archive}`, artifacts.trae.archiveBytes);
     const metadataBytes = jsonBytes({
       schema_version: 'lazyseries.paired-build-metadata.v1',
+      artifact_input_policy: 'closed-artifact-inventory-v1',
       products: [
         {
           product_id: 'lazybuddy',

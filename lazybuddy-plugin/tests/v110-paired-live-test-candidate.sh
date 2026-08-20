@@ -22,7 +22,21 @@ done
 
 SCRIPT="$(cd "$(dirname "$0")/../scripts" && pwd -P)/paired-live-test-candidate.js"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/paired-live-test-regression.XXXXXX")"
-trap 'chmod -R u+w "$TMP" 2>/dev/null || true; rm -rf "$TMP"' EXIT HUP INT TERM
+socket_pid=""
+socket_base=""
+cleanup() {
+    if [ -n "$socket_pid" ]; then
+        kill "$socket_pid" 2>/dev/null || true
+        wait "$socket_pid" 2>/dev/null || true
+    fi
+    if [ -n "$socket_base" ]; then
+        chmod -R u+w "$socket_base" 2>/dev/null || true
+        rm -rf "$socket_base"
+    fi
+    chmod -R u+w "$TMP" 2>/dev/null || true
+    rm -rf "$TMP"
+}
+trap cleanup EXIT HUP INT TERM
 
 assemble() {
     node "$SCRIPT" assemble \
@@ -180,6 +194,41 @@ for kind in symlink hardlink fifo; do
         "$TMP/$kind-buddy" "$TMP/$kind-trae" "$TMP/$kind-out"
 done
 
+copy_artifacts extra-regular
+printf 'undeclared\n' > "$TMP/extra-regular-trae/extra-regular.txt"
+mkdir "$TMP/extra-regular-out"
+expect_failure extra-regular UNEXPECTED_ARTIFACT assemble "$BUDDY_ROOT" "$TRAE_ROOT" \
+    "$TMP/extra-regular-buddy" "$TMP/extra-regular-trae" "$TMP/extra-regular-out"
+
+socket_base="$(mktemp -d /tmp/pltc-sock.XXXXXX)"
+mkdir "$socket_base/buddy" "$socket_base/trae" "$socket_base/out"
+cp -R "$BUDDY_ARTIFACTS/." "$socket_base/buddy/"
+cp -R "$TRAE_ARTIFACTS/." "$socket_base/trae/"
+python3 - "$socket_base/trae/s.sock" <<'PY' &
+import socket
+import sys
+import time
+
+server = socket.socket(socket.AF_UNIX)
+server.bind(sys.argv[1])
+server.listen(1)
+time.sleep(30)
+PY
+socket_pid=$!
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    [ -S "$socket_base/trae/s.sock" ] && break
+    sleep 0.1
+done
+[ -S "$socket_base/trae/s.sock" ] || fail "socket fixture did not create Unix socket"
+expect_failure socket NONREGULAR_FILE assemble "$BUDDY_ROOT" "$TRAE_ROOT" \
+    "$socket_base/buddy" "$socket_base/trae" "$socket_base/out"
+kill "$socket_pid" 2>/dev/null || true
+wait "$socket_pid" 2>/dev/null || true
+socket_pid=""
+chmod -R u+w "$socket_base" 2>/dev/null || true
+rm -rf "$socket_base"
+socket_base=""
+
 copy_artifacts digest
 printf 'x' >> "$TMP/digest-buddy/lazybuddy-v1.1.0.tar.gz"
 mkdir "$TMP/digest-out"
@@ -187,7 +236,7 @@ expect_failure digest-mismatch ARCHIVE_DIGEST_MISMATCH assemble "$BUDDY_ROOT" "$
     "$TMP/digest-buddy" "$TMP/digest-trae" "$TMP/digest-out"
 
 copy_artifacts moved
-mv "$TMP/moved-trae/lazytrae-ai-v1.1.0.tgz" "$TMP/moved-trae/moved.tgz"
+rm "$TMP/moved-trae/lazytrae-ai-v1.1.0.tgz"
 mkdir "$TMP/moved-out"
 expect_failure moved-artifact MISSING_ARTIFACT assemble "$BUDDY_ROOT" "$TRAE_ROOT" \
     "$TMP/moved-buddy" "$TMP/moved-trae" "$TMP/moved-out"

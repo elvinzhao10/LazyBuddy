@@ -70,6 +70,40 @@ function assertRegularTree(root) {
   visit(root, '');
 }
 
+function parentDirectories(files) {
+  const directories = new Set();
+  for (const file of files) {
+    const parts = file.split('/');
+    for (let index = 1; index < parts.length; index += 1) {
+      directories.add(parts.slice(0, index).join('/'));
+    }
+  }
+  return directories;
+}
+
+function assertClosedRegularTree(root, allowedFiles) {
+  const allowed = new Set(allowedFiles);
+  const allowedDirectories = parentDirectories(allowed);
+  const visit = (directory, prefix) => {
+    for (const name of fs.readdirSync(directory).sort()) {
+      const relative = prefix ? `${prefix}/${name}` : name;
+      refuse(relative.split('/').some((segment) => FORBIDDEN.has(segment)), 'FORBIDDEN_PATH', relative);
+      const target = path.join(directory, name);
+      const stat = fs.lstatSync(target);
+      refuse(stat.isSymbolicLink(), 'LINKED_FILE', relative);
+      if (stat.isDirectory()) {
+        refuse(!allowedDirectories.has(relative), 'UNEXPECTED_ARTIFACT', relative);
+        visit(target, relative);
+      } else {
+        refuse(!stat.isFile(), 'NONREGULAR_FILE', relative);
+        refuse(stat.nlink !== 1, 'LINKED_FILE', relative);
+        refuse(!allowed.has(relative), 'UNEXPECTED_ARTIFACT', relative);
+      }
+    }
+  };
+  visit(root, '');
+}
+
 function parseArchivePath(input, label) {
   const detail = `${label}: ${JSON.stringify(input)}`;
   refuse(typeof input !== 'string' || input === '' || input.includes('\0') || input.includes('\\')
@@ -147,11 +181,17 @@ async function verifySourceAsync(root, expectedSha, expectedTree, label, registe
 }
 
 function verifyArtifacts(buddyRoot, traeRoot) {
-  assertRegularTree(buddyRoot);
-  assertRegularTree(traeRoot);
   const buddyManifest = readJson(buddyRoot, 'manifest.json');
   const buddyReceipt = readJson(buddyRoot, 'self-verification-receipt.json');
   const buddyArchive = parseArchivePath(buddyManifest.archive_path, 'LazyBuddy archive path');
+  assertClosedRegularTree(buddyRoot, [
+    'manifest.json',
+    'self-verification-receipt.json',
+    'ordered-tree.digest',
+    'ordered-file-digest-inventory.json',
+    'ordered-file-digest-inventory.txt',
+    buddyArchive,
+  ]);
   const buddyBytes = readRegular(buddyRoot, buddyArchive);
   const buddyTree = readRegular(buddyRoot, 'ordered-tree.digest').toString('utf8').trim();
   refuse(digest(buddyBytes) !== buddyManifest.archive_sha256 || buddyReceipt.archive_sha256 !== buddyManifest.archive_sha256, 'ARCHIVE_DIGEST_MISMATCH', `LazyBuddy/${buddyArchive}`);
@@ -162,6 +202,15 @@ function verifyArtifacts(buddyRoot, traeRoot) {
   const traeManifest = readJson(traeRoot, 'manifest.json');
   const traeReceipt = readJson(traeRoot, 'self-verification-receipt.json');
   const traeArchive = parseArchivePath(traeManifest.artifact?.file, 'LazyTrae archive path');
+  assertClosedRegularTree(traeRoot, [
+    'manifest.json',
+    'self-verification-receipt.json',
+    'tree-digest.txt',
+    'inventory.json',
+    'inventory.txt',
+    traeArchive,
+    `${traeArchive}.sha256`,
+  ]);
   const traeBytes = readRegular(traeRoot, traeArchive);
   const traeTree = readRegular(traeRoot, 'tree-digest.txt').toString('utf8').trim();
   const traeSidecar = readRegular(traeRoot, `${traeArchive}.sha256`).toString('utf8').trim().split(/\s+/)[0];
