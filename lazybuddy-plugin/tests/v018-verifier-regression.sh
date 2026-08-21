@@ -480,58 +480,148 @@ run_doctor() {
     fi
 }
 
-run_doctor package-pass package pass "$TMP/fake-bin"
+if python3 - "$FIXTURE" "$TMP" "$RUNTIME_PATH" >"$TMP/doctor-matrix.out" 2>"$TMP/doctor-matrix.err" <<'PY'
+from concurrent.futures import ThreadPoolExecutor
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+fixture = Path(sys.argv[1])
+tmp = Path(sys.argv[2])
+runtime_path = sys.argv[3]
+fake_bin = tmp / "fake-bin"
+launch_error_bin = tmp / "launch-error-bin"
+empty_bin = tmp / "empty-bin"
+cases = [
+    ("package-pass", "package", "pass", fake_bin),
+    ("package-structured-pass", "package", "structured-pass", fake_bin),
+    ("package-structured-leading-failure", "package", "structured-leading-failure", fake_bin),
+    ("package-structured-leading-invalid", "package", "structured-leading-invalid", fake_bin),
+    ("package-structured-leading-rejected", "package", "structured-leading-rejected", fake_bin),
+    ("package-structured-leading-error", "package", "structured-leading-error", fake_bin),
+    ("package-structured-pass-trailing-failure", "package", "structured-pass-trailing-failure", fake_bin),
+    ("package-structured-errors", "package", "structured-errors", fake_bin),
+    ("package-structured-error-object", "package", "structured-error-object", fake_bin),
+    ("package-pretty-embedded", "package", "pretty-embedded", fake_bin),
+    ("package-contradictory", "package", "contradictory", fake_bin),
+    ("package-structured-nonzero", "package", "structured-nonzero", fake_bin),
+    ("package-semantic", "package", "semantic", fake_bin),
+    ("package-misleading", "package", "misleading", fake_bin),
+    ("package-invalid-text", "package", "invalid-text", fake_bin),
+    ("package-invalid-json", "package", "invalid-json", fake_bin),
+    ("package-invalid-symbol", "package", "invalid-symbol", fake_bin),
+    ("package-nonzero", "package", "nonzero", fake_bin),
+    ("package-timeout", "package", "timeout", fake_bin),
+    ("package-launch", "package", "pass", launch_error_bin),
+    ("package-absent", "package", "pass", empty_bin),
+    ("cli-pass", "codebuddy-cli", "pass", fake_bin),
+    ("cli-semantic", "codebuddy-cli", "semantic", fake_bin),
+    ("cli-timeout", "codebuddy-cli", "timeout", fake_bin),
+    ("cli-launch", "codebuddy-cli", "pass", launch_error_bin),
+    ("cli-absent", "codebuddy-cli", "pass", empty_bin),
+]
+if len({label for label, *_ in cases}) != len(cases):
+    raise SystemExit("duplicate doctor matrix label")
+
+def run(case: tuple[str, str, str, Path]) -> tuple[str, int]:
+    label, host, mode, bin_dir = case
+    environment = os.environ | {
+        "PATH": f"{bin_dir}:{runtime_path}",
+        "FAKE_CODEBUDDY_MODE": mode,
+        "FAKE_CODEBUDDY_MARKER": "",
+        "LAZYBUDDY_DOCTOR_HOST": host,
+        "LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS": "1",
+        "CODEBUDDY_PLUGIN_ROOT": str(fixture),
+    }
+    with open(tmp / f"doctor-{label}.out", "w", encoding="utf-8") as stdout, open(
+        tmp / f"doctor-{label}.out.err", "w", encoding="utf-8"
+    ) as stderr:
+        completed = subprocess.run(
+            ["bash", str(fixture / "scripts" / "lazybuddy-plugin-doctor.sh")],
+            env=environment,
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+        )
+    return label, completed.returncode
+
+max_workers = 4
+with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    results = list(executor.map(run, cases))
+with open(tmp / "doctor-matrix.tsv", "w", encoding="utf-8") as output:
+    for label, status in results:
+        output.write(f"{label}\t{status}\n")
+print(f"DOCTOR_MATRIX_MAX_WORKERS={max_workers} COUNT={len(results)}")
+PY
+then
+    grep -Fqx 'DOCTOR_MATRIX_MAX_WORKERS=4 COUNT=26' "$TMP/doctor-matrix.out" \
+        && pass "doctor classification matrix uses a bounded worker pool" \
+        || fail "doctor classification matrix worker boundary"
+else
+    cat "$TMP/doctor-matrix.out" "$TMP/doctor-matrix.err" >&2
+    fail "doctor classification matrix executes"
+fi
+
+load_doctor() {
+    local label="$1"
+    DOCTOR_OUTPUT="$TMP/doctor-$label.out"
+    DOCTOR_STATUS="$(awk -F '\t' -v expected="$label" '$1 == expected { print $2 }' "$TMP/doctor-matrix.tsv")"
+    [ -n "$DOCTOR_STATUS" ] || fail "doctor classification matrix omitted $label"
+}
+
+load_doctor package-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts validator pass" || fail "package validator pass classification"
-run_doctor package-structured-pass package structured-pass "$TMP/fake-bin"
+load_doctor package-structured-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts structured validator pass" || fail "package structured validator pass classification"
-run_doctor package-structured-leading-failure package structured-leading-failure "$TMP/fake-bin"
+load_doctor package-structured-leading-failure
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading validator failure text before valid JSON" || fail "package leading validator failure classification"
-run_doctor package-structured-leading-invalid package structured-leading-invalid "$TMP/fake-bin"
+load_doctor package-structured-leading-invalid
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading invalid text before valid JSON" || fail "package leading invalid text classification"
-run_doctor package-structured-leading-rejected package structured-leading-rejected "$TMP/fake-bin"
+load_doctor package-structured-leading-rejected
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading rejected text before valid JSON" || fail "package leading rejected text classification"
-run_doctor package-structured-leading-error package structured-leading-error "$TMP/fake-bin"
+load_doctor package-structured-leading-error
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading error text before valid JSON" || fail "package leading error text classification"
-run_doctor package-structured-pass-trailing-failure package structured-pass-trailing-failure "$TMP/fake-bin"
+load_doctor package-structured-pass-trailing-failure
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects trailing validator failure text" || fail "package trailing validator failure classification"
-run_doctor package-structured-errors package structured-errors "$TMP/fake-bin"
+load_doctor package-structured-errors
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects valid structured output with errors" || fail "package structured output with errors classification"
-run_doctor package-structured-error-object package structured-error-object "$TMP/fake-bin"
+load_doctor package-structured-error-object
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects adjacent structured error object" || fail "package adjacent structured error object classification"
-run_doctor package-pretty-embedded package pretty-embedded "$TMP/fake-bin"
+load_doctor package-pretty-embedded
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts pretty embedded validator JSON" || fail "package pretty embedded validator JSON classification"
-run_doctor package-contradictory package contradictory "$TMP/fake-bin"
+load_doctor package-contradictory
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects contradictory validator JSON" || fail "package contradictory validator JSON classification"
-run_doctor package-structured-nonzero package structured-nonzero "$TMP/fake-bin"
+load_doctor package-structured-nonzero
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects structured validator nonzero" || fail "package structured validator nonzero classification"
-run_doctor package-semantic package semantic "$TMP/fake-bin"
+load_doctor package-semantic
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails semantic validator output" || fail "package semantic validator classification"
-run_doctor package-misleading package misleading "$TMP/fake-bin"
+load_doctor package-misleading
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects misleading success output" || fail "package misleading validator classification"
-run_doctor package-invalid-text package invalid-text "$TMP/fake-bin"
+load_doctor package-invalid-text
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq 'Invalid plugin manifest' "$DOCTOR_OUTPUT" && pass "package doctor rejects unrecognized invalid-manifest text" || fail "package invalid-manifest text classification"
-run_doctor package-invalid-json package invalid-json "$TMP/fake-bin"
+load_doctor package-invalid-json
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq '{"valid":false,"errors":["bad manifest"]}' "$DOCTOR_OUTPUT" && pass "package doctor rejects structured false validator output" || fail "package structured false validator classification"
-run_doctor package-invalid-symbol package invalid-symbol "$TMP/fake-bin"
+load_doctor package-invalid-symbol
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq '✘ plugin manifest rejected' "$DOCTOR_OUTPUT" && pass "package doctor rejects symbolic manifest rejection" || fail "package symbolic rejection classification"
-run_doctor package-nonzero package nonzero "$TMP/fake-bin"
+load_doctor package-nonzero
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails validator nonzero" || fail "package nonzero validator classification"
-run_doctor package-timeout package timeout "$TMP/fake-bin"
+load_doctor package-timeout
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && grep -q '^TIMEOUT: CodeBuddy manifest validator$' "$DOCTOR_OUTPUT.err" && pass "package doctor leaves validator timeout unchecked" || fail "package timeout validator classification"
-run_doctor package-launch package pass "$TMP/launch-error-bin"
+load_doctor package-launch
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves validator launch unavailable unchecked" || fail "package launch validator classification"
-run_doctor package-absent package pass "$TMP/empty-bin"
+load_doctor package-absent
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves absent CLI unchecked" || fail "package absent validator classification"
 
-run_doctor cli-pass codebuddy-cli pass "$TMP/fake-bin"
+load_doctor cli-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor accepts validator pass" || fail "CLI validator pass classification"
-run_doctor cli-semantic codebuddy-cli semantic "$TMP/fake-bin"
+load_doctor cli-semantic
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails semantic validator output" || fail "CLI semantic validator classification"
-run_doctor cli-timeout codebuddy-cli timeout "$TMP/fake-bin"
+load_doctor cli-timeout
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator timeout" || fail "CLI timeout validator classification"
-run_doctor cli-launch codebuddy-cli pass "$TMP/launch-error-bin"
+load_doctor cli-launch
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator launch unavailable" || fail "CLI launch validator classification"
-run_doctor cli-absent codebuddy-cli pass "$TMP/empty-bin"
+load_doctor cli-absent
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails absent CLI" || fail "CLI absent validator classification"
 
 DOCTOR_MARKER="$TMP/ide-validator.marker"
