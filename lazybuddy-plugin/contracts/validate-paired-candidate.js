@@ -53,18 +53,30 @@ function isExcluded(relativePath) {
   return segments.some((segment) => EXCLUDED_SEGMENTS.has(segment)) || segments.at(-1) === 'manifest.json';
 }
 
-function fileRecord(root, relativePath) {
+function fileRecord(root, relativePath, physicalStage, declaredModes) {
   const target = path.join(root, ...safeRelative(relativePath));
   const stat = fs.lstatSync(target);
   refuse(stat.isSymbolicLink() || stat.nlink !== 1, 'LINKED_FILE', relativePath);
   refuse(!stat.isFile(), 'NONREGULAR_FILE', relativePath);
   const mode = stat.mode & 0o777;
-  refuse(mode !== 0o644 && mode !== 0o755, 'FILE_MODE', `${relativePath}:${mode.toString(8)}`);
+  if (physicalStage === 'immutable-final') {
+    refuse(mode !== 0o444, 'FILE_MODE', `${relativePath}:${mode.toString(8)}`);
+    refuse(!declaredModes.has(relativePath), 'UNDECLARED_FILE_MODE', relativePath);
+  } else {
+    refuse(mode !== 0o644 && mode !== 0o755, 'FILE_MODE', `${relativePath}:${mode.toString(8)}`);
+  }
   const bytes = fs.readFileSync(target);
-  return { path: relativePath, mode: mode.toString(8).padStart(4, '0'), size: bytes.length, sha256: digest(bytes) };
+  const inventoryMode = physicalStage === 'immutable-final' ? declaredModes.get(relativePath) : mode.toString(8).padStart(4, '0');
+  return { path: relativePath, mode: inventoryMode, size: bytes.length, sha256: digest(bytes) };
 }
 
-function buildInventory(root) {
+function buildInventory(root, options = {}) {
+  const physicalStage = options.physicalStage || 'staged';
+  refuse(physicalStage !== 'staged' && physicalStage !== 'immutable-final', 'PAYLOAD_STAGE', physicalStage);
+  const declaredModes = new Map((options.declaredInventory || []).map((entry) => [entry.path, entry.mode]));
+  const ignoredPaths = new Set(options.ignoredPaths || []);
+  const rootMode = fs.lstatSync(root).mode & 0o777;
+  refuse(rootMode !== (physicalStage === 'immutable-final' ? 0o555 : 0o700), 'DIRECTORY_MODE', `.:${rootMode.toString(8)}`);
   const records = [];
   function visit(directory, prefix) {
     for (const name of fs.readdirSync(directory).sort()) {
@@ -73,9 +85,12 @@ function buildInventory(root) {
       const stat = fs.lstatSync(target);
       refuse(stat.isSymbolicLink(), 'LINKED_FILE', relativePath);
       if (stat.isDirectory()) {
+        const mode = stat.mode & 0o777;
+        refuse(mode !== (physicalStage === 'immutable-final' ? 0o555 : 0o755), 'DIRECTORY_MODE', `${relativePath}:${mode.toString(8)}`);
         visit(target, relativePath);
       } else {
-        records.push(fileRecord(root, relativePath));
+        const record = fileRecord(root, relativePath, physicalStage, declaredModes);
+        if (!ignoredPaths.has(relativePath)) records.push(record);
       }
     }
   }
@@ -91,6 +106,7 @@ function digestProjection(candidate) {
   return {
     schema_version: candidate.schema_version,
     release_version: candidate.release_version,
+    payload_stage: candidate.payload_stage,
     products: candidate.products,
     shared_contract_digests: candidate.shared_contract_digests,
     detached_metadata: candidate.detached_metadata,
@@ -145,9 +161,10 @@ function destinationExists(destination) {
 }
 
 function validateCandidate(candidate, options) {
-  exactKeys(candidate, ['schema_version', 'release_version', 'products', 'shared_contract_digests', 'payload_inventory', 'detached_metadata', 'host_rows', 'onboarding_sibling', 'combined_digest'], 'CANDIDATE_SCHEMA');
+  exactKeys(candidate, ['schema_version', 'release_version', 'payload_stage', 'products', 'shared_contract_digests', 'payload_inventory', 'detached_metadata', 'host_rows', 'onboarding_sibling', 'combined_digest'], 'CANDIDATE_SCHEMA');
   refuse(candidate.schema_version !== 'lazyseries.paired-candidate.v1', 'CANDIDATE_SCHEMA', 'schema version');
   refuse(candidate.release_version !== '1.1.0', 'CANDIDATE_SCHEMA', 'release version');
+  refuse(candidate.payload_stage !== 'staged' && candidate.payload_stage !== 'immutable-final', 'PAYLOAD_STAGE', candidate.payload_stage);
   refuse(destinationExists(options.destination), 'DESTINATION_EXISTS', options.destination);
   const inventory = candidate.payload_inventory;
   refuse(!Array.isArray(inventory) || inventory.length === 0, 'PAYLOAD_INVENTORY', 'empty');
@@ -156,10 +173,16 @@ function validateCandidate(candidate, options) {
     refuse(index > 0 && Buffer.compare(Buffer.from(inventory[index - 1].path), Buffer.from(entry.path)) >= 0, 'PAYLOAD_ORDER', entry.path);
     refuse(entry.path === 'manifest.json' || entry.path === candidate.detached_metadata.path, 'SELF_REFERENCE', entry.path);
     refuse(isExcluded(entry.path), 'EXCLUDED_PAYLOAD', entry.path);
+    refuse(entry.mode !== '0644' && entry.mode !== '0755', 'FILE_MODE', `${entry.path}:${entry.mode}`);
   });
-  const actual = buildInventory(options.payloadRoot);
   exactKeys(candidate.detached_metadata, ['path', 'sha256'], 'DETACHED_METADATA');
   refuse(isExcluded(candidate.detached_metadata.path), 'DETACHED_METADATA', candidate.detached_metadata.path);
+  const physicalStage = options.physicalStage || candidate.payload_stage;
+  const actual = buildInventory(options.payloadRoot, {
+    physicalStage,
+    declaredInventory: [...inventory, { path: candidate.detached_metadata.path, mode: '0644' }, { path: 'manifest.json', mode: '0644' }],
+    ignoredPaths: physicalStage === 'immutable-final' ? ['manifest.json'] : [],
+  });
   const metadata = actual.find((entry) => entry.path === candidate.detached_metadata.path);
   refuse(!metadata || metadata.sha256 !== candidate.detached_metadata.sha256, 'DETACHED_METADATA_MISMATCH', candidate.detached_metadata.path);
   const actualPayload = actual.filter((entry) => entry.path !== candidate.detached_metadata.path);

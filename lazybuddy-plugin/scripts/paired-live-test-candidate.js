@@ -82,6 +82,10 @@ function verifyCandidate(candidateInput) {
   const combined = computeCombinedDigest(manifest);
   refuse(combined !== manifest.combined_digest, 'COMBINED_DIGEST_MISMATCH', 'manifest projection');
   refuse(path.basename(root) !== `live-test-v1.1.0-${combined}`, 'CANDIDATE_NAME_MISMATCH', root);
+  validateCandidate(manifest, {
+    payloadRoot: root,
+    destination: path.join(root, '.paired-candidate-validation-destination'),
+  });
   const actualFiles = listFiles(root);
   refuse(stableJson(actualFiles) !== stableJson(expectedFinalFiles(manifest)), 'UNEXPECTED_FILE', actualFiles.join(','));
   const actualInventory = manifest.payload_inventory.map((expected) => {
@@ -183,6 +187,7 @@ async function assemble(values) {
     const manifest = {
       schema_version: 'lazyseries.paired-candidate.v1',
       release_version: '1.1.0',
+      payload_stage: 'immutable-final',
       products: [
         productRecord('lazybuddy', 'LazyBuddy', artifacts.buddy.archive, artifacts.buddy.manifest.source_sha, inventory),
         productRecord('lazytrae', 'LazyTrae', artifacts.trae.archive, artifacts.trae.manifest.source.sha, inventory),
@@ -201,7 +206,7 @@ async function assemble(values) {
     const namedStaging = path.join(outputRoot, `.live-test-v1.1.0-${manifest.combined_digest}.staging-${nonce}`);
     fs.renameSync(transaction.staging, namedStaging);
     transaction.staging = namedStaging;
-    validateCandidate(manifest, { payloadRoot: transaction.staging, destination });
+    validateCandidate(manifest, { payloadRoot: transaction.staging, destination, physicalStage: 'staged' });
     const manifestBytes = jsonBytes(manifest);
     writeExclusive(transaction.staging, 'manifest.json', manifestBytes);
     chmodImmutable(transaction.staging);

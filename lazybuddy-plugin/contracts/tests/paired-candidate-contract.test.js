@@ -52,6 +52,7 @@ function fixture() {
   const candidate = {
     schema_version: 'lazyseries.paired-candidate.v1',
     release_version: '1.1.0',
+    payload_stage: 'staged',
     products: [
       product('lazybuddy', 'LazyBuddy', 'lazybuddy-v1.1.0.tar.gz'),
       product('lazytrae', 'LazyTrae', 'lazytrae-ai-v1.1.0.tgz'),
@@ -88,6 +89,22 @@ function fixture() {
     })),
   };
   return { root, candidate, onboarding, finalizer };
+}
+
+function freezeTree(root) {
+  const visit = (directory) => {
+    for (const name of fs.readdirSync(directory)) {
+      const target = path.join(directory, name);
+      if (fs.lstatSync(target).isDirectory()) {
+        visit(target);
+        fs.chmodSync(target, 0o555);
+      } else {
+        fs.chmodSync(target, 0o444);
+      }
+    }
+  };
+  visit(root);
+  fs.chmodSync(root, 0o555);
 }
 
 function expectRefusal(run, code) {
@@ -127,6 +144,42 @@ test('accepts a real ordered inventory and computes a stable combined digest', (
   assert.equal(digest, first.candidate.combined_digest);
 });
 
+test('accepts the declared inventory after the candidate tree is frozen immutable', () => {
+  // Given a valid candidate inventory assembled from staged 0644/0755 files.
+  const subject = fixture();
+  subject.candidate.payload_stage = 'immutable-final';
+  subject.candidate.combined_digest = computeCombinedDigest(subject.candidate);
+  freezeTree(subject.root);
+  // When the exact same payload is validated after final immutability is applied.
+  validateCandidate(subject.candidate, { payloadRoot: subject.root, destination: path.join(subject.root, 'candidate-output') });
+  // Then physical 0444 files are reconciled with their declared staged modes.
+  assert.equal(subject.candidate.payload_inventory[0].mode, '0755');
+});
+
+test('refuses unexpected physical modes and directory modes after final freeze', async (t) => {
+  const cases = [
+    ['writable final file', 'FILE_MODE', ({ root }) => { fs.chmodSync(path.join(root, 'LazyBuddy/bin/run'), 0o644); }],
+    ['nonimmutable final file', 'FILE_MODE', ({ root }) => { fs.chmodSync(path.join(root, 'LazyBuddy/bin/run'), 0o400); }],
+    ['writable final directory', 'DIRECTORY_MODE', ({ root }) => { fs.chmodSync(path.join(root, 'LazyBuddy/bin'), 0o755); }],
+  ];
+  for (const [name, code, mutate] of cases) {
+    await t.test(name, () => {
+      // Given a valid candidate whose declared stage and physical tree are immutable-final.
+      const subject = fixture();
+      subject.candidate.payload_stage = 'immutable-final';
+      subject.candidate.combined_digest = computeCombinedDigest(subject.candidate);
+      freezeTree(subject.root);
+      // When one physical permission is changed after freezing.
+      mutate(subject);
+      // Then validation refuses the unexpected file or directory mode.
+      expectRefusal(() => validateCandidate(subject.candidate, {
+        payloadRoot: subject.root,
+        destination: path.join(subject.root, 'candidate-output'),
+      }), code);
+    });
+  }
+});
+
 test('advertises a fresh-extraction LazyBuddy verification command', () => {
   // Given an extracted LazyBuddy archive whose locked tooling dependencies are not installed.
   const inventory = [{
@@ -156,6 +209,7 @@ test('accepts the pending onboarding sibling and fully bound finalizer input', (
 
 test('refuses each required hostile candidate mutation', async (t) => {
   const cases = [
+    ['missing payload stage', 'CANDIDATE_SCHEMA', ({ candidate }) => { delete candidate.payload_stage; }],
     ['missing source SHA', 'MISSING_SOURCE_SHA', ({ candidate }) => { delete candidate.products[0].source_sha; }],
     ['wrong release', 'CANDIDATE_SCHEMA', ({ candidate }) => { candidate.release_version = '1.2.0'; candidate.combined_digest = computeCombinedDigest(candidate); }],
     ['dirty source', 'DIRTY_SOURCE', ({ candidate }) => { candidate.products[0].source_clean = false; }],

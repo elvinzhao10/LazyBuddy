@@ -24,7 +24,7 @@
     "detachedMetadataBinding": "sha256 of exact detached metadata bytes",
     "treeDigest": "sha256('tree-v1\\n' + ordered(path + NUL + mode + NUL + size + NUL + sha256) + '\\n')",
     "payloadDigest": "sha256('payload-v1\\n' + ordered(path + NUL + mode + NUL + size + NUL + sha256) + '\\n')",
-    "combinedDigest": "sha256('lazyseries-paired-candidate-v1\\n' + canonical-json(schema version, release version, ordered products including full source SHAs/archive/tree/payload digests/commands/runtimes, ordered shared contract digests, detached metadata binding, six pending host rows, onboarding sibling) + '\\n')",
+    "combinedDigest": "sha256('lazyseries-paired-candidate-v1\\n' + canonical-json(schema version, release version, payload stage, ordered products including full source SHAs/archive/tree/payload digests/commands/runtimes, ordered shared contract digests, detached metadata binding, six pending host rows, onboarding sibling) + '\\n')",
     "staging": {
       "name": ".live-test-v1.1.0-<combined-digest>.staging-<nonce>",
       "exclusiveCreate": true,
@@ -135,6 +135,7 @@
       "required": [
         "schema_version",
         "release_version",
+        "payload_stage",
         "products",
         "shared_contract_digests",
         "payload_inventory",
@@ -146,6 +147,7 @@
       "properties": {
         "schema_version": { "const": "lazyseries.paired-candidate.v1" },
         "release_version": { "const": "1.1.0" },
+        "payload_stage": { "enum": ["staged", "immutable-final"] },
         "products": {
           "type": "array",
           "minItems": 2,
