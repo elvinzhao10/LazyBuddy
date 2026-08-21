@@ -5,7 +5,8 @@ const path = require('node:path');
 const { LifecycleError } = require('./errors');
 const {
   atomicJson,
-  inventory,
+  includeReleaseSource,
+  inventoryReleaseSource,
   readJson,
   removeInventory,
   safeFile,
@@ -34,9 +35,14 @@ function stageRelease(paths, { sourceRoot, version, commitSha }) {
   if (!fs.existsSync(sourceRoot) || !fs.lstatSync(sourceRoot).isDirectory()) {
     throw new LifecycleError('INVALID_SOURCE', 'release source must be a directory');
   }
-  inventory(sourceRoot);
+  inventoryReleaseSource(sourceRoot);
   const stagingPath = path.join(paths.staging, `${id}-${process.pid}-${Date.now()}`);
-  fs.cpSync(sourceRoot, stagingPath, { recursive: true, errorOnExist: true, force: false });
+  fs.cpSync(sourceRoot, stagingPath, {
+    recursive: true,
+    errorOnExist: true,
+    force: false,
+    filter: (source) => includeReleaseSource(sourceRoot, source),
+  });
   return { releaseId: id, stagingPath };
 }
 
