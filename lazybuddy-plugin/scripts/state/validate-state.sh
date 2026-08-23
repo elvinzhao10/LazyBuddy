@@ -70,7 +70,7 @@ for task in d.get('tasks', []):
         errors.append(f"Duplicate task id: {tid}")
     task_ids.add(tid)
     all_task_ids.add(tid)
-    for req in ['title','description','owner','status']:
+    for req in ['title','status']:
         if req not in task:
             errors.append(f"Task {tid} missing field: {req}")
     if task.get('status') not in VALID_TASK_STATUSES:

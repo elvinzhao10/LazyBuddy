@@ -195,6 +195,7 @@ run_regression_inventory() {
         "v110-codebuddy-service-adversarial-regression.sh"
         "v110-codebuddy-structured-runner-regression.sh"
         "v110-mcp-profiles-regression.sh"
+        "v110-state-task-schema-regression.sh"
         "v110-workbuddy-observation-bundle-regression.sh"
         "v2-capability-readiness-contract-regression.sh"
         "v2-host-evidence-contract-regression.sh"
