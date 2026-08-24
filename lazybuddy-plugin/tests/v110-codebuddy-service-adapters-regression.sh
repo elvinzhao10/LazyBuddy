@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+trap 'rc=$?; printf "UNEXPECTED_FAILURE: line=%s command=%s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"' ERR
+
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 ADAPTER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-service.py"
 FAKE="$PLUGIN_ROOT/tests/fixtures/fake-codebuddy-service.py"

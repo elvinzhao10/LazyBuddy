@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+trap 'rc=$?; printf "UNEXPECTED_FAILURE: line=%s command=%s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"' ERR
+
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 ADAPTER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-service.py"
 FAKE="$PLUGIN_ROOT/tests/fixtures/fake-codebuddy-service.py"
@@ -205,8 +207,10 @@ for slot in 1 2; do
   contender[$slot]=$!
 done
 set +e
+trap - ERR
 wait "${contender[1]}"; rc1=$?
 wait "${contender[2]}"; rc2=$?
+trap 'rc=$?; printf "UNEXPECTED_FAILURE: line=%s command=%s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"' ERR
 set -e
 if ! { [ "$rc1" -eq 0 ] && [ "$rc2" -eq 1 ]; } && ! { [ "$rc1" -eq 1 ] && [ "$rc2" -eq 0 ]; }; then
   fail "same-name contention exits were $rc1/$rc2"
