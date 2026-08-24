@@ -19,23 +19,6 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'; }
-start_changed_serve() {
-  local attempt reason
-  for attempt in 1 2 3; do
-    changed_port=$(port)
-    changed_endpoint="http://127.0.0.1:$changed_port/health"
-    printf '%s\n' "$changed_endpoint" > "$TMP/endpoint.txt"
-    if FAKE_ENDPOINT_FILE="$TMP/endpoint.txt" python3 "$ADAPTER" start --state-root "$TMP/state" --name changed --kind serve \
-      --binary "$FAKE" --cwd "$TMP/project" --endpoint "$changed_endpoint" --result-file "$TMP/start-changed.json"; then
-      return 0
-    fi
-    reason=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("reason", ""))' "$TMP/start-changed.json")
-    [ "$reason" = readiness_timeout ] || return 1
-  done
-  cat "$TMP/start-changed.json" >&2
-  cat "$TMP/state/logs/changed.stderr" >&2 || true
-  return 1
-}
 assert_reason() {
   python3 - "$1" "$2" <<'PY'
 import json, pathlib, sys
@@ -144,7 +127,11 @@ stop_name identity
 pass 'PID reuse identity mismatch fails closed without signalling the replacement'
 pass 'misleading stopped receipt cannot substitute for live process evidence'
 
-start_changed_serve
+changed_port=$(port)
+changed_endpoint="http://127.0.0.1:$changed_port/health"
+printf '%s\n' "$changed_endpoint" > "$TMP/endpoint.txt"
+FAKE_ENDPOINT_FILE="$TMP/endpoint.txt" python3 "$ADAPTER" start --state-root "$TMP/state" --name changed --kind serve \
+  --binary "$FAKE" --cwd "$TMP/project" --endpoint "$changed_endpoint" --result-file "$TMP/start-changed.json"
 active_names="$active_names changed"
 printf 'http://127.0.0.1:1/health\n' > "$TMP/endpoint.txt"
 if FAKE_ENDPOINT_FILE="$TMP/endpoint.txt" python3 "$ADAPTER" status --state-root "$TMP/state" --name changed --result-file "$TMP/status-changed.json"; then

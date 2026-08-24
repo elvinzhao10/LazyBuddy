@@ -14,35 +14,35 @@ import signal
 import socket
 import sys
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Final
 
 
-class HealthHandler(BaseHTTPRequestHandler):
-    endpoint: str = ""
-
-    def do_GET(self) -> None:
-        if self.path != "/health":
-            self.send_error(404)
-            return
-        endpoint_file = os.environ.get("FAKE_ENDPOINT_FILE")
-        endpoint = Path(endpoint_file).read_text(encoding="utf-8").strip() if endpoint_file else self.endpoint
-        body = json.dumps({"status": "ok", "endpoint": endpoint}).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, _format: str, *_args: str) -> None:
-        return
-
-
 def serve(port: int) -> None:
-    server = ThreadingHTTPServer(("127.0.0.1", port), HealthHandler)
-    HealthHandler.endpoint = f"http://127.0.0.1:{server.server_port}/health"
-    server.serve_forever()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", port))
+        listener.listen()
+        endpoint = f"http://127.0.0.1:{listener.getsockname()[1]}/health"
+        while True:
+            connection, _address = listener.accept()
+            with connection:
+                request = connection.recv(4096).decode("iso-8859-1", errors="replace")
+                path = request.split(" ", 2)[1] if request else ""
+                if path == "/health":
+                    endpoint_file = os.environ.get("FAKE_ENDPOINT_FILE")
+                    advertised = Path(endpoint_file).read_text(encoding="utf-8").strip() if endpoint_file else endpoint
+                    body = json.dumps({"status": "ok", "endpoint": advertised}).encode()
+                    response = (
+                        b"HTTP/1.1 200 OK\r\n"
+                        b"Content-Type: application/json\r\n"
+                        + f"Content-Length: {len(body)}\r\n".encode()
+                        + b"Connection: close\r\n\r\n"
+                        + body
+                    )
+                else:
+                    response = b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                connection.sendall(response)
 
 
 def prewarm(identifier: str) -> None:
