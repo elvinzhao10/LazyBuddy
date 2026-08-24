@@ -50,14 +50,27 @@ FAKE_ARGV_FILE="$TMP/serve-argv.json" python3 "$ADAPTER" start --state-root "$TM
   --result-file "$TMP/start-serve.json"
 json_assert "$TMP/start-serve.json" 'v["status"] == "running" and v["session_mode"] == "ephemeral"'
 json_assert "$TMP/serve-argv.json" 'v == ["--serve", "--port", v[2], "--no-session-persistence"] and v[2].isdigit()'
+python3 - "$serve_port" "$TMP/idle-ready" <<'PY' &
+import pathlib, socket, sys, time
+with socket.create_connection(("127.0.0.1", int(sys.argv[1]))) as connection:
+    pathlib.Path(sys.argv[2]).touch()
+    time.sleep(1)
+PY
+idle_peer=$!
+for _attempt in {1..50}; do
+  [ -f "$TMP/idle-ready" ] && break
+  sleep 0.02
+done
+[ -f "$TMP/idle-ready" ] || fail 'idle peer did not connect'
 python3 "$ADAPTER" status --state-root "$TMP/state" --name serve --result-file "$TMP/status-serve.json"
+wait "$idle_peer"
 json_assert "$TMP/status-serve.json" 'v["status"] == "running" and v["health"]["status"] == 200 and v["monitoring"]["scope"] == "traces-only"'
 python3 "$ADAPTER" stop --state-root "$TMP/state" --name serve --result-file "$TMP/stop-serve.json"
 json_assert "$TMP/stop-serve.json" 'v["status"] == "stopped" and v["cleanup"]["status"] == "verified-absent"'
 if curl --silent --fail --max-time 1 "$endpoint" >/dev/null 2>&1; then
   fail 'serve endpoint survived owned stop'
 fi
-pass 'ephemeral loopback serve health and owned stop'
+pass 'ephemeral loopback serve health remains responsive behind an idle peer and owned stop'
 
 nonlocal_port=$(port)
 expect_exit 2 python3 "$ADAPTER" start --state-root "$TMP/state" --name nonlocal --kind serve \

@@ -27,8 +27,13 @@ def serve(port: int) -> None:
         while True:
             connection, _address = listener.accept()
             with connection:
-                request = connection.recv(4096).decode("iso-8859-1", errors="replace")
-                path = request.split(" ", 2)[1] if request else ""
+                connection.settimeout(0.1)
+                try:
+                    request = connection.recv(4096).decode("iso-8859-1", errors="replace")
+                except TimeoutError:
+                    continue
+                parts = request.split(" ", 2)
+                path = parts[1] if len(parts) > 1 else ""
                 if path == "/health":
                     endpoint_file = os.environ.get("FAKE_ENDPOINT_FILE")
                     advertised = Path(endpoint_file).read_text(encoding="utf-8").strip() if endpoint_file else endpoint
