@@ -21,7 +21,7 @@ It is a review branch, not a GitHub Release, marketplace publication, or host
 readiness claim. Use the durable onboarding route below to install its pinned
 source; then verify package readiness and separately observe a fresh host
 session. The immutable v1.0.3 release notes and evidence remain historical
-records. See [V1.1.0_EXPLAINER.md](V1.1.0_EXPLAINER.md) for the complete route.
+records. See the [v1.1.0 supported route](docs/v1.1.0-supported-route.md) for the complete route.
 
 The route IDs are `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. For
 CodeBuddy IDE and WorkBuddy, marketplace is the default full-plugin route. The
