@@ -462,7 +462,7 @@ chmod +x "$TMP/fake-bin/codebuddy"
 mkdir "$TMP/launch-error-bin"
 printf '%s\n' '#!/definitely/missing/lazybuddy-interpreter' > "$TMP/launch-error-bin/codebuddy"
 chmod +x "$TMP/launch-error-bin/codebuddy"
-RUNTIME_PATH="$(dirname "$(command -v node)"):/usr/bin:/bin"
+RUNTIME_PATH="$(dirname "$(command -v node)"):$(dirname "$(command -v python3)"):/usr/bin:/bin"
 
 run_doctor() {
     local label="$1" host="$2" mode="$3" bin_dir="$4"

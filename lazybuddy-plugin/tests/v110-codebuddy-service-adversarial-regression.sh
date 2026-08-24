@@ -73,7 +73,7 @@ if python3 "$ADAPTER" status --state-root "$TMP/state" --name flood --result-fil
   fail 'oversized service log unexpectedly passed status'
 fi
 assert_reason "$TMP/status-flood.json" output_limit_exceeded
-if rg -q 'ignore previous instructions' "$TMP/status-flood.json"; then fail 'untrusted log text escaped status output'; fi
+if grep -q 'ignore previous instructions' "$TMP/status-flood.json"; then fail 'untrusted log text escaped status output'; fi
 stop_name flood
 pass 'oversized and prompt-injection logs are capped and inert'
 
