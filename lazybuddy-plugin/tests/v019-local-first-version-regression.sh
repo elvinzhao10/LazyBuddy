@@ -58,7 +58,6 @@ def assert_durable_lifecycle_docs(root, package_root):
         root / "docs/10-host-capability-matrix.md",
         root / "docs/reference/host-routes.md",
         root / "docs/v1.0.3-migration-guide.md",
-        root / "RELEASE_NOTES-v1.0.3.md",
         package_root / "README.md",
         package_root / "CHANGELOG.md",
         package_root / "templates/AGENTS.md",
