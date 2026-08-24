@@ -2,301 +2,81 @@
 
 ![LazyBuddy](lazybuddy-banner.jpg)
 
-LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
-**CodeBuddy CLI**, and **WorkBuddy**.It provides structured workflows for planning, implementation, verification,
-review, and bounded long-running work.
+LazyBuddy helps you use structured, evidence-based workflows in **CodeBuddy
+CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
+and guidance; a host is only considered ready after it is observed in a fresh
+session.
 
-## Current documentation release: v1.1.0
+The current stable release is [v1.1.0](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.1.0).
 
-This is the authoritative human-facing status boundary for **v1.1.0**. It is
-published as the [v1.1.0 GitHub Release](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.1.0),
-not a marketplace publication or host-readiness claim. Use the durable
-onboarding route below to install its pinned source; then verify package
-readiness and separately observe a fresh host session. The immutable v1.0.3
-release notes and evidence remain historical records. See the [v1.1.0
-supported route](docs/v1.1.0-supported-route.md) for the complete route.
+## Recommended: install with AI help
 
-The route IDs are `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. For
-CodeBuddy IDE and WorkBuddy, marketplace is the default full-plugin route. The
-Skills/manual-MCP route is recovery-only and mutually exclusive with a
-full-plugin route for the same project.
+You do not need to manually work through every setup detail. Open an AI coding
+assistant in your project and paste this:
 
-It is verified on macOS only. Package checks prove the copied package and its
-local contracts; a CodeBuddy or WorkBuddy session remains the authority for
-plugin loading, hooks, and MCP connection.
+> Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
+> this project. Use the stable v1.1.0 route. Run safe package checks first,
+> explain each step plainly, and ask me before changing marketplace, plugin,
+> Skills, MCP, account, credential, or trust settings.
 
-## Start with the outcome
+The assistant can guide onboarding, but you approve every host-managed change.
 
-State the result you need, the acceptance criteria, and the surface that must
-prove it. Use the smallest workflow that fits the uncertainty and risk:
+## Manual setup
 
-| Situation | Ask for | Why |
-| --- | --- | --- |
-| Small, well-understood change | A normal request | Avoid process for process's sake. |
-| Unfamiliar repository | `lazy-init-deep` | Establish project-local instructions and context. |
-| Broad or ambiguous change | `lazy-ulw-plan` | Make decisions reviewable before editing. |
-| Approved plan | `lazy-start-work` | Execute against explicit acceptance criteria. |
-| Failure | “Debug why … fails” | Reproduce, compare hypotheses, and verify the fix. |
-| Material-risk completion | `lazy-review-work` | Add independent quality, QA, security, and scope checks. |
-| Long-running goal | `lazy-ulw-loop` | Keep durable state and checkpoints. |
+Manual setup is available when you prefer complete control. You need
+**Node.js LTS 20 or newer** and **Git**. Start from the verified origin
+`https://github.com/elvinzhao10/LazyBuddy` and follow the
+[installation guide](docs/03-install-and-host-verification.md).
 
-In a CodeBuddy plugin session, commands are namespaced as
-`/lazybuddy:lazy-<command>`. If the host does not expose slash commands, make
-the same request in plain language.
+Run `onboard` once to create a durable installation. After that, use the stable
+launcher for `update`, `status`, and safe `offboard`:
 
-## Adaptive harness and v1.1.0 host status
+```text
+node "<install-root>/LazyBuddy/launcher.js" status
+```
 
-The preserved adaptive harness selects the smallest
-sufficient workflow for an outcome-based request, composes existing Skills,
-agents, commands, MCPs, tools, hooks, and verifiers, persists an additive
-single-writer snapshot, and explains material choices. Named workflows
-(`lazy-ulw-plan`, `lazy-start-work`, `lazy-review-work`, `lazy-ulw-loop`,
-`lazy-init-deep`, `lazy-verifier`, `lazy-ultrawork`) remain authoritative; an
-explicit user request is never silently downgraded. In a CodeBuddy plugin
-session, commands are namespaced as `/lazybuddy:lazy-<command>`; in WorkBuddy,
-use the equivalent natural-language workflow or imported skill.
+## What “ready” means
 
-### Five modes
+- **Package readiness** means the copied package and local checks are valid.
+- **Host readiness** needs a fresh host session, one real Skill or command,
+  and every expected MCP connection.
 
-The harness selects the lowest mode that satisfies all identified risk,
-uncertainty, continuation, and verification requirements.
+Until that is observed, the honest result is **HOST READINESS: PENDING**.
+Local files and load checks never prove that a host loaded the plugin.
 
-| Mode | When selected |
-| --- | --- |
-| `direct` | Localized change, clear acceptance criteria, targeted verification sufficient. |
-| `assisted` | Unfamiliar subsystem, cross-file tracing, primarily debugging, bounded implementation. |
-| `planned` | Acceptance criteria incomplete, multi-system change, decisions must precede edits. |
-| `orchestrated` | Security-sensitive, release/publication, destructive migration, or independent review required. Review responsibilities run automatically; only gated actions require approval. |
-| `long-horizon` | Multi-session work, durable checkpoints, bounded continuation loop. |
+## Choose one route
 
-### Automatic selection and explicit override
+Pick one host route during onboarding:
 
-For an ordinary outcome request the classifier evaluates an ordered
-seven-step policy (explicit user workflow → compatible continuation →
-long-horizon → high-risk or multi-system → broad or ambiguous → unfamiliar or
-diagnostic → small and clear) and selects the first match. An explicit named
-workflow always wins; the classifier may only add required verification or
-approval boundaries.
+- **CodeBuddy CLI** uses the documented local marketplace route.
+- **CodeBuddy IDE** uses that marketplace route when the CLI is available.
+- **WorkBuddy** uses its full-plugin marketplace route.
 
-### Bounded escalation and capability fallback
-
-Verification failure adds a debugging stage. A broader-scope failure may
-escalate the mode by one level. No more than two automatic depth escalations
-are permitted per decision; further failure produces a blocked-state record
-with reproduced failure, attempted approaches, current evidence, and the exact
-next user decision required. When a preferred capability is unavailable, the
-harness selects a safe fallback in the same capability class, reports the
-substitution, and weakens verification claims when the fallback is weaker — it
-never claims equivalent evidence.
-
-### Adaptive snapshot
-
-The harness writes an additive, optional `adaptive` block inside existing
-run/loop state (managed by `lazybuddy-plugin/scripts/state/`). The block
-carries `version`, `decisionId`, `requestDigest`, `mode`, `stages`, `currentStage`,
-`responsibilities`, `capabilityClasses`, `capabilitySubstitutions`, `approval`,
-`escalationCount`, `escalationHistory`, `revisionFingerprint`,
-`scopeFingerprint`, `hostFingerprint`, `risk`, `reasons`, `blocker`,
-`nextAction`, and `verificationLevel`. Only the adaptive orchestrator writes
-the block; existing pre-adaptive state without it continues to load.
-
-### Authority
-
-Read-only and package-owned capabilities, including selected review
-responsibilities, activate automatically. Installing a dependency, persisting
-a provider beyond the task, modifying host or marketplace settings, changing
-MCP registrations, using credentials, using a paid service, sending repository
-data to a remote provider, or controlling a browser surface all require
-approval. `release-review` and `security-review` do not themselves require
-approval; the requested concrete action determines the approval boundary.
-
-### Current v1.1.0 policy behavior
-
-Current package checks enforce the same policy boundaries as LazyTrae: concrete credential changes and Git
-pushes require approval; `investigate why` selects `assisted`; broad validation
-refactors select `planned`; and work spanning the next week selects
-`long-horizon`. A current WorkBuddy session still requires direct observation
-before **HOST READINESS** can be reported as anything other than **PENDING**.
-
-### Full-plugin host mapping
-
-CodeBuddy and WorkBuddy are treated as first-class full-plugin hosts. The
-adapter maps each mode onto the existing Skills, agents, commands, hooks, and
-all six declared MCP servers (`run-ledger`, `verification`, `status-dashboard`,
-`context-graph`, `code-intel`, `docs`). The Skills/manual-MCP fallback is a
-clearly degraded route that excludes commands, agents, and hooks; it is not
-the adaptive architecture or default product target.
-
-### Contract reference
-
-The behavior-only contract is shared byte-identically with LazyTrae at
-[`lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json`](lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json),
-paired with its JSON Schema and sha256 digest. Fixtures live under
-`lazybuddy-plugin/contracts/fixtures/v103/`. The implementation lives in
-`lazybuddy-plugin/tooling/lazybuddy_adaptive_*.py`. The full contract
-semantics, authority levels, fallback rules, evidence labels, and historical
-v1.0.3 gaps are documented in
-[`docs/v1.0.3-adaptive-harness-contract.md`](docs/v1.0.3-adaptive-harness-contract.md).
-
-### v2 host-evidence vocabulary
-
-The v2 readiness receipt uses native modes `invoke-documented`, `observe-only`,
-`descriptor-only`, and `unavailable`; public labels `documented-tested`,
-`documented-untested`, `observed-build-specific`, and `unavailable`; and
-evidence scopes `package`, `probe`, and `current-session`. A `package` result
-does not prove a live host, a `probe` is build-specific, and only a current
-`current-session` observation can support a current host claim.
+Skills plus manual MCP connectors are a recovery-only option. Do not run that
+fallback beside a full-plugin route for the same project. Stop the session,
+remove only LazyBuddy's previous entries through the host UI, choose one route,
+and start a new session to verify it.
 
 ## Design mindset
 
-LazyBuddy treats a task as an evidence problem: define the observable outcome,
-keep authority with the host and user, choose local tools before heavier
-providers, and finish by exercising the surface the user actually cares about.
-A passing unit test is useful evidence, not automatically proof of a CLI, API,
-page, or host integration.
+Start with the result you want and how you will know it worked. Then use the
+smallest amount of structure that fits the task. You can simply describe the
+work in plain language; the modes are guidance, not commands you need to
+memorize.
 
-The package never turns its own readiness check into a claim about a running
-host. It keeps package-owned state separate from marketplace state, host MCP
-registrations, credentials, and live sessions.
+| Mode | Use it when | Example request |
+| --- | --- | --- |
+| Direct | The change is small and clear. | “Fix this error and run the relevant test.” |
+| Assisted | You need help understanding an unfamiliar area or failure. | “Help me find why this command fails, then verify the fix.” |
+| Planned | The work has several parts or important choices. | “Make a plan for this feature before changing files.” |
+| Orchestrated | The work affects a release, security, or a risky change. | “Review this release and prepare it for publication.” |
+| Long-horizon | The goal needs to continue across sessions. | “Keep working on this migration with checkpoints.” |
 
-## Install and onboard
+## Keep host changes deliberate
 
-Prerequisites are **Node.js LTS 20 or newer** and **Git**. Bootstrap only from
-the verified official origin `https://github.com/elvinzhao10/LazyBuddy.git`
-(the `.git` suffix is optional). The first checkout is transport only:
-
-```bash
-node "<verified-source-root>/lazybuddy-plugin/scripts/lazybuddy-lifecycle.js" \
-  onboard --source https://github.com/elvinzhao10/LazyBuddy \
-  --install-root "<absolute-install-root>" \
-  --project "<absolute-project-root>" --json
-```
-
-The default `<install-root>` is `~/Library/Application Support/LazySeries` on
-macOS, `${XDG_DATA_HOME:-~/.local/share}/lazyseries` on Linux, and
-`%LOCALAPPDATA%\LazySeries` on Windows. It must be an absolute, non-root,
-durable path outside disposable downloads and caches. After onboarding, use
-the stable launcher:
-
-```bash
-node "<install-root>/LazyBuddy/launcher.js" status \
-  --install-root "<install-root>" --project "<project-root>" --json
-```
-
-The source checkout may then be deleted. The exact installed tree is
-`LazyBuddy/{active.json,launcher.js,releases/,receipts/,rollback/,staging/,locks/}`.
-The lifecycle commands are `onboard`, `update`, `status`, `offboard`, and
-`recover-bootstrap-lock`.
-The official ref resolves to a full commit SHA; a moved same-version ref
-requires a second `update` with `--confirm-revision <full-sha>`.
-
-If lifecycle state collides with an existing path or an interrupted operation,
-the caller workspace is preserved. Recovery is limited to an explicitly
-verified lifecycle-owned sibling bootstrap lock or product `staging/`/`locks/`
-artifact; it never authorizes removal or replacement of caller workspace files.
-
-### Upgrade a prior release
-
-Inventory managed versus modified/unknown assets before upgrading. Onboard the
-durable release selected by `status`, run package checks through `launcher.js`, then replace
-only receipt-owned plugin or Skills assets after the required host approval.
-Preserve user changes and host settings until the fresh session is observed.
-The [v1.0.3 migration guide](docs/v1.0.3-migration-guide.md) is historical.
-
-`onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
-or **WorkBuddy**, runs only safe package checks and local setup, and reports
-**package readiness** separately from **host readiness**. Before any marketplace
-trust/add, plugin install, Skills import, Settings connector, account, or
-credential change it asks for approval. It then gives one exact host action and
-waits; after you respond it inspects the app with Computer Use. Reload/new
-session is a separate handoff. Host readiness requires one real Skill/command
-and every expected MCP connection; without observation it stays **pending**.
-
-Route status is explicit: the local marketplace is the **documented CodeBuddy
-CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
-marketplace full-plugin route; `manual-skills-mcp-fallback` is recovery-only.
-If Computer Use is unavailable, a user-pasted
-verbatim status or screenshot can provide observation; otherwise **HOST
-READINESS: PENDING**.
-
-For CodeBuddy CLI, and for CodeBuddy IDE when the CLI is available
-(`codebuddy`), first run durable `status --route codebuddy-marketplace`; use
-the printed active durable release root containing
-`.codebuddy-plugin/marketplace.json` and enter these in order, one approved
-action at a time:
-
-```text
-codebuddy plugin marketplace add "<active-durable-release-root>"
-codebuddy plugin install lazybuddy@lazybuddy
-```
-
-Run these terminal commands against the absolute release root. Wait after
-discovery, wait again after installation, then start a fresh session as a third
-action and observe one Skill/command plus all six MCP connections.
-`--plugin-dir <absolute-release-root>` is for development/testing only,
-never persistent. Inside a CodeBuddy session, the interactive `/plugin` menu is
-equivalent; do not use the slash forms as terminal commands.
-
-CodeBuddy IDE's GUI Add local directory flow failed in the supplied build, so
-use the CLI marketplace route above whenever the CLI is available. If the CLI
-is unavailable, record that limitation and use the Skills/manual-MCP fallback;
-the GUI flow is only an observed-build alternative and must be inspected before
-installation. If selected, add the release root, wait for discovery, install
-separately, fully restart the IDE, and verify a fresh session.
-
-### WorkBuddy marketplace full-plugin route
-
-The active release's `lazybuddy-plugin/.workbuddy-plugin/plugin.json` is the
-default marketplace source for Skills, commands, agents, hooks, and all six MCP
-servers. Do not inspect or mutate private WorkBuddy state. Use only the
-marketplace/plugin action exposed by the current build.
-
-This read-only package preflight remains safe:
-
-```bash
-bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
-  --project-dir "<absolute-project-root>"
-```
-
-It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
-`HOST_READINESS=pending`. `--apply` refuses. Treat that result as package
-evidence only. Durable `status --host workbuddy` emits exact observation,
-removal, and recovery receipt templates; only current full-plugin evidence can
-promote host readiness. The Skills/manual-MCP route is recovery-only.
-
-The fallback for either desktop host is Skills-only import plus six individual
-manual local MCP connectors. It excludes commands, Agents, and hooks. Its exact
-six-entry connector JSON, including absolute launchers and project context, is
-in [Host routes](docs/reference/host-routes.md#manual-connector-specification).
-Do not run it beside a full plugin route: stop the session, remove only the old
-LazyBuddy entries through the host UI, choose one route, start a new session,
-and verify it. A copied repository or load-check output never establishes host
-readiness.
-
-Use `.codebuddy/settings.json` only for shareable non-secret project defaults.
-`.codebuddy/settings.local.json` is ignored local/machine scope and must remain
-unstaged; secrets must never be committed. Package checks preserve both files.
-
-The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy).
-Read `RELEASE_NOTES-v1.1.0.md` for the authoritative host-status boundary; the
-v1.0.3 release page remains historical.
-
-## Verify and remove
-
-`bash lazybuddy-plugin/scripts/lazybuddy-load-check.sh` reports **package
-readiness** only. Type `offboard` for the matching safe-removal protocol; it
-never guesses or removes host-managed paths.
-
-Run the durable launcher's `offboard` without `--yes` first. Review its exact
-receipt-owned LazyBuddy product-root plan, then repeat with `--yes` only after
-confirmation. Modified or unknown content is preserved. Project files, another
-LazySeries product, and host settings remain out of scope. A recovery command
-may address only an explicitly verified lifecycle-owned sibling bootstrap lock
-or product `staging/`/`locks/` artifact; the caller workspace stays preserved.
-
-For package command details and the optional tooling lifecycle, see
-[lazybuddy-plugin/README.md](lazybuddy-plugin/README.md).
+LazyBuddy does not automate credentials, OAuth values, private registries, or
+trust settings. It asks for approval before any host-managed action and keeps
+safe package checks separate from marketplace and connector changes.
 
 ## Package inventory
 
@@ -319,9 +99,17 @@ including what LazyBuddy implements and where it intentionally differs, see
 
 LazyBuddy is primarily inspired by LazyCodex
 ([upstream project](https://github.com/code-yeongyu/lazycodex)). Its
-relationship to OmO and upstream sources is recorded in [NOTICE](NOTICE). It
-is an independent implementation and does not require LazyCodex or OmO at
+relationship to OmO and upstream sources is recorded in [NOTICE](NOTICE).
+It is an independent implementation and does not require LazyCodex or OmO at
 runtime.
+
+## Learn more
+
+- [Install and verify a host](docs/03-install-and-host-verification.md)
+- [Supported v1.1.0 route](docs/v1.1.0-supported-route.md)
+- [Host routes and recovery](docs/reference/host-routes.md)
+- [Release notes](RELEASE_NOTES-v1.1.0.md)
+- [Documentation index](docs/README.md)
 
 ## License
 
@@ -330,6 +118,6 @@ runtime.
 ## Contributing
 
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
-for the development checks, release expectations, and guidance for reporting
+for development checks, release expectations, and guidance for reporting
 sanitized reproduction details. Report vulnerabilities privately according to
 [SECURITY.md](SECURITY.md).
