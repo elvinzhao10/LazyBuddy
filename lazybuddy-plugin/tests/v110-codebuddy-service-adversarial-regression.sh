@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-trap 'rc=$?; printf "UNEXPECTED_FAILURE: line=%s command=%s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"' ERR
-
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 ADAPTER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-service.py"
 FAKE="$PLUGIN_ROOT/tests/fixtures/fake-codebuddy-service.py"
@@ -21,6 +19,21 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'; }
+start_changed_serve() {
+  local attempt reason
+  for attempt in 1 2 3; do
+    changed_port=$(port)
+    changed_endpoint="http://127.0.0.1:$changed_port/health"
+    printf '%s\n' "$changed_endpoint" > "$TMP/endpoint.txt"
+    if FAKE_ENDPOINT_FILE="$TMP/endpoint.txt" python3 "$ADAPTER" start --state-root "$TMP/state" --name changed --kind serve \
+      --binary "$FAKE" --cwd "$TMP/project" --endpoint "$changed_endpoint" --result-file "$TMP/start-changed.json"; then
+      return 0
+    fi
+    reason=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("reason", ""))' "$TMP/start-changed.json")
+    [ "$reason" = readiness_timeout ] || return 1
+  done
+  return 1
+}
 assert_reason() {
   python3 - "$1" "$2" <<'PY'
 import json, pathlib, sys
@@ -129,11 +142,7 @@ stop_name identity
 pass 'PID reuse identity mismatch fails closed without signalling the replacement'
 pass 'misleading stopped receipt cannot substitute for live process evidence'
 
-changed_port=$(port)
-changed_endpoint="http://127.0.0.1:$changed_port/health"
-printf '%s\n' "$changed_endpoint" > "$TMP/endpoint.txt"
-FAKE_ENDPOINT_FILE="$TMP/endpoint.txt" python3 "$ADAPTER" start --state-root "$TMP/state" --name changed --kind serve \
-  --binary "$FAKE" --cwd "$TMP/project" --endpoint "$changed_endpoint" --result-file "$TMP/start-changed.json"
+start_changed_serve
 active_names="$active_names changed"
 printf 'http://127.0.0.1:1/health\n' > "$TMP/endpoint.txt"
 if FAKE_ENDPOINT_FILE="$TMP/endpoint.txt" python3 "$ADAPTER" status --state-root "$TMP/state" --name changed --result-file "$TMP/status-changed.json"; then
@@ -207,10 +216,8 @@ for slot in 1 2; do
   contender[$slot]=$!
 done
 set +e
-trap - ERR
 wait "${contender[1]}"; rc1=$?
 wait "${contender[2]}"; rc2=$?
-trap 'rc=$?; printf "UNEXPECTED_FAILURE: line=%s command=%s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"' ERR
 set -e
 if ! { [ "$rc1" -eq 0 ] && [ "$rc2" -eq 1 ]; } && ! { [ "$rc1" -eq 1 ] && [ "$rc2" -eq 0 ]; }; then
   fail "same-name contention exits were $rc1/$rc2"

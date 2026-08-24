@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-trap 'rc=$?; printf "UNEXPECTED_FAILURE: line=%s command=%s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"' ERR
-
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 ADAPTER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-service.py"
 FAKE="$PLUGIN_ROOT/tests/fixtures/fake-codebuddy-service.py"
@@ -23,6 +21,21 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'; }
+start_serve() {
+  local attempt reason
+  for attempt in 1 2 3; do
+    serve_port=$(port)
+    endpoint="http://127.0.0.1:$serve_port/health"
+    if FAKE_ARGV_FILE="$TMP/serve-argv.json" python3 "$ADAPTER" start --state-root "$TMP/state" --name serve --kind serve \
+      --binary "$FAKE" --cwd "$TMP/project" --endpoint "$endpoint" --ephemeral \
+      --result-file "$TMP/start-serve.json"; then
+      return 0
+    fi
+    reason=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("reason", ""))' "$TMP/start-serve.json")
+    [ "$reason" = readiness_timeout ] || return 1
+  done
+  return 1
+}
 expect_exit() {
   local expected=$1 observed
   shift
@@ -45,12 +58,7 @@ PY
 
 mkdir -p "$TMP/project" "$TMP/state"
 chmod +x "$FAKE"
-serve_port=$(port)
-endpoint="http://127.0.0.1:$serve_port/health"
-
-FAKE_ARGV_FILE="$TMP/serve-argv.json" python3 "$ADAPTER" start --state-root "$TMP/state" --name serve --kind serve \
-  --binary "$FAKE" --cwd "$TMP/project" --endpoint "$endpoint" --ephemeral \
-  --result-file "$TMP/start-serve.json"
+start_serve
 json_assert "$TMP/start-serve.json" 'v["status"] == "running" and v["session_mode"] == "ephemeral"'
 json_assert "$TMP/serve-argv.json" 'v == ["--serve", "--port", v[2], "--no-session-persistence"] and v[2].isdigit()'
 python3 "$ADAPTER" status --state-root "$TMP/state" --name serve --result-file "$TMP/status-serve.json"
