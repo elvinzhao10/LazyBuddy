@@ -19,7 +19,7 @@ skills:
   - git-master
   - debugging
 memory: false
-isolation: true
+isolation: worktree
 ---
 
 # lazybuddy-implementer

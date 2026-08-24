@@ -14,8 +14,8 @@ const {
 } = require('./paths');
 const { receiptFor } = require('./receipt');
 const { acquireLock, readActive } = require('./state');
+const { CURRENT_VERSION: VERSION } = require('./version');
 
-const VERSION = '1.0.3';
 const CONTRACT_DIGESTS = Object.freeze({
   'lazy-harness-lifecycle.v1.example.json': '6b10b60074fd9dac366b9b92d22daf06de73e76f8530cc376b58fcae20b05445',
   'lazy-harness-lifecycle.v1.schema.json': 'd43ed27597e97f93d1be408472d2640171eee9d73b0e49d3c7332993bbc04388',

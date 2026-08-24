@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 2,
+  "contract_version": "2.0.0",
+  "title": "LazySeries Host Capability Readiness Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "policy_digest",
+    "host",
+    "capability",
+    "provider",
+    "internal_status",
+    "native_mode",
+    "public_label",
+    "package_status",
+    "probe_status",
+    "readiness_scope",
+    "reason_code",
+    "message",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "contract_version": { "const": "2.0.0" },
+    "policy_digest": { "const": "3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a" },
+    "host": {
+      "enum": ["codebuddy-cli", "codebuddy-ide", "workbuddy", "trae-cli", "trae-ide", "trae-work"]
+    },
+    "capability": { "type": "string", "minLength": 1 },
+    "provider": { "type": ["string", "null"] },
+    "internal_status": {
+      "enum": [
+        "package-ready",
+        "owned-ready",
+        "missing",
+        "incompatible",
+        "disabled",
+        "failed-optional",
+        "not-initialized",
+        "probe-observed",
+        "current-session-ready"
+      ]
+    },
+    "native_mode": {
+      "enum": ["invoke-documented", "observe-only", "descriptor-only", "unavailable"]
+    },
+    "public_label": {
+      "enum": ["documented-tested", "documented-untested", "observed-build-specific", "unavailable"]
+    },
+    "package_status": {
+      "enum": ["not-checked", "ready", "missing", "incompatible", "disabled", "failed"]
+    },
+    "probe_status": { "enum": ["not-run", "observed", "failed", "stale"] },
+    "readiness_scope": { "enum": ["package", "probe", "current-session"] },
+    "reason_code": { "type": ["string", "null"] },
+    "message": { "type": "string" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "ref", "sha256", "session_id"],
+      "properties": {
+        "scope": { "enum": ["package", "probe", "current-session"] },
+        "ref": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "session_id": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "x-internal-state-mapping": {
+    "package-ready": ["invoke-documented", "documented-tested", "ready", "not-run", "package"],
+    "owned-ready": ["invoke-documented", "documented-tested", "ready", "not-run", "package"],
+    "missing": ["unavailable", "unavailable", "missing", "not-run", "package"],
+    "incompatible": ["unavailable", "unavailable", "incompatible", "not-run", "package"],
+    "disabled": ["descriptor-only", "documented-untested", "disabled", "not-run", "package"],
+    "failed-optional": ["unavailable", "unavailable", "failed", "not-run", "package"],
+    "not-initialized": ["descriptor-only", "documented-untested", "not-checked", "not-run", "package"],
+    "probe-observed": ["observe-only", "observed-build-specific", "not-checked", "observed", "probe"],
+    "current-session-ready": ["invoke-documented", "documented-tested", "ready", "observed", "current-session"]
+  }
+}

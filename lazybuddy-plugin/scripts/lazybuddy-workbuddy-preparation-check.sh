@@ -80,7 +80,7 @@ if [ ! -f "$PLUGIN_ROOT/.workbuddy-plugin/plugin.json" ] \
     || [ ! -f "$PLUGIN_ROOT/.mcp.json" ] \
     || [ ! -f "$RELEASE_ROOT/.codebuddy-plugin/marketplace.json" ]; then
     printf '%s\n' \
-        'ERROR: LazyBuddy plugin root is unavailable; keep this script under the v1.0.3 lazybuddy-plugin/scripts directory.' >&2
+        'ERROR: LazyBuddy plugin root is unavailable; keep this script under the v1.1.0 lazybuddy-plugin/scripts directory.' >&2
     exit 1
 fi
 
@@ -107,7 +107,7 @@ plugin_root = Path(sys.argv[1]).resolve()
 release_root = Path(sys.argv[2]).resolve()
 project_root = Path(sys.argv[3]).resolve()
 home_root = Path(os.path.abspath(sys.argv[4]))
-version = "1.0.3"
+version = "1.1.0"
 server_names = (
     "run-ledger",
     "verification",
@@ -138,7 +138,7 @@ try:
         "WorkBuddy manifest",
     )
     if work_manifest.get("name") != "lazybuddy" or work_manifest.get("version") != version:
-        raise ValueError("WorkBuddy manifest must identify lazybuddy version 1.0.3")
+        raise ValueError("WorkBuddy manifest must identify lazybuddy version 1.1.0")
 
     marketplace = load_object(
         release_root / ".codebuddy-plugin" / "marketplace.json",
@@ -156,7 +156,7 @@ try:
         None,
     )
     if entry is None or entry.get("version") != version or entry.get("source") != "./lazybuddy-plugin":
-        raise ValueError("release marketplace must contain lazybuddy 1.0.3 from ./lazybuddy-plugin")
+        raise ValueError("release marketplace must contain lazybuddy 1.1.0 from ./lazybuddy-plugin")
     if (release_root / entry["source"]).resolve() != plugin_root:
         raise ValueError("release marketplace source does not resolve to this plugin root")
 
@@ -172,18 +172,27 @@ try:
         source = servers[name]
         if not isinstance(source, dict):
             raise ValueError(f"MCP server {name} must be a JSON object")
-        if set(source) != {"command", "args", "cwd", "required"}:
+        if set(source) != {"type", "command", "args", "env", "defer_loading"}:
             raise ValueError(
                 f"MCP server {name} fields are unsupported; "
-                "expected exactly command, args, cwd, and required"
+                "expected exactly type, command, args, env, and defer_loading"
             )
         expected_arg = f"${{CODEBUDDY_PLUGIN_ROOT}}/mcp/{name}/server.sh"
-        if source.get("command") != "bash" or source.get("args") != [expected_arg]:
+        if source.get("type") != "stdio" or source.get("command") != "bash" or source.get("args") != [expected_arg]:
             raise ValueError(f"MCP server {name} must use its package launcher")
-        if source.get("cwd") != "${CODEBUDDY_PROJECT_DIR}":
-            raise ValueError(f"MCP server {name} must use CODEBUDDY_PROJECT_DIR as cwd")
-        if source.get("required") is not False:
-            raise ValueError(f"MCP server {name} must declare required=false")
+        source_env = source.get("env")
+        expected_env = {
+            "CWD": "${CODEBUDDY_PROJECT_DIR}",
+            "CODEBUDDY_PROJECT_DIR": "${CODEBUDDY_PROJECT_DIR}",
+            "LAZYBUDDY_MCP_MODE": "${user_config.mcp_mode}",
+            "LAZYBUDDY_DEPENDENCY_ROOT": "${CODEBUDDY_PLUGIN_DATA}/dependencies",
+            "LAZYBUDDY_CACHE_ROOT": "${CODEBUDDY_PLUGIN_DATA}/cache",
+        }
+        if source_env != expected_env:
+            raise ValueError(f"MCP server {name} has invalid env process context")
+        expected_deferred = name in {"context-graph", "code-intel", "docs"}
+        if source.get("defer_loading") is not expected_deferred:
+            raise ValueError(f"MCP server {name} has invalid deferred loading")
         launcher = plugin_root / "mcp" / name / "server.sh"
         try:
             launcher_mode = launcher.lstat().st_mode

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "version": "1.1.0",
+  "identity": {
+    "marketplace": "lazybuddy",
+    "owner": "LazyBuddy",
+    "plugin": "lazybuddy",
+    "codebuddy_install_id": "lazybuddy@lazybuddy"
+  },
+  "artifacts": {
+    ".codebuddy-plugin/marketplace.json": "a07e2ce0e859753bb080c46796359028f041da0a40e09f86856b45830d354ad9",
+    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "58f178c9e2bdb02fe7b8a71d229695b42e0efba0f248dd4aa94f6e074ff5ea50",
+    "lazybuddy-plugin/.workbuddy-plugin/plugin.json": "7b639a4de850e15d18c83bdb879ebf3120b91da035f33b837e0b99c34da6fb89"
+  },
+  "payload": {
+    "roots": ["skills", "commands", "agents", "hooks", "mcp"],
+    "files": [".mcp.json"],
+    "file_count": 60,
+    "inventory_sha256": "d06af3b66f92c174f01b714cd0b95931a0c29d703594754172b35135f48b9640"
+  },
+  "default_routes": {
+    "codebuddy-ide": "codebuddy-marketplace",
+    "workbuddy": "workbuddy-full-plugin"
+  },
+  "fallback": {
+    "route": "manual-skills-mcp-fallback",
+    "generated_only": true,
+    "asset_manifest": "lazybuddy-plugin/asset-source-manifest.v1.json",
+    "receipt_required_for_removal": true,
+    "coexists_with_marketplace": false
+  }
+}

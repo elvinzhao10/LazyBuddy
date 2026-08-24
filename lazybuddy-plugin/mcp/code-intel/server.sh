@@ -19,6 +19,8 @@ case "$PLUGIN_ROOT" in
   *) die "plugin root must be absolute: $PLUGIN_ROOT" ;;
 esac
 [ -d "$PLUGIN_ROOT" ] || die "plugin root not found: $PLUGIN_ROOT"
+source "$PLUGIN_ROOT/mcp/profile-gate.sh"
+lazybuddy_require_mcp_profile "code-intel"
 SERVER_DIR="$PLUGIN_ROOT/mcp/code-intel"
 [ -f "$SERVER_DIR/server.py" ] || die "MCP server implementation not found: $SERVER_DIR/server.py"
 RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-}}"
@@ -31,5 +33,5 @@ esac
 CWD="$(cd -P -- "$RAW_CWD" 2>/dev/null && pwd -P)" || die "cannot resolve project CWD: $RAW_CWD"
 export CWD
 while IFS= read -r INPUT || [ -n "$INPUT" ]; do
-  printf '%s' "$INPUT" | python3 "$SERVER_DIR/server.py"
+  printf '%s' "$INPUT" | python3 -B "$SERVER_DIR/server.py"
 done

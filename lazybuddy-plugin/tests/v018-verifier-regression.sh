@@ -5,16 +5,19 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-verifier.XXXXXX")"
 PASS=0
 FAIL=0
+unset CODEBUDDY_PLUGIN_ROOT CWD
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
 pass() { printf 'PASS %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf 'FAIL %s\n' "$1" >&2; FAIL=$((FAIL + 1)); }
 
-mkdir "$TMP/plugin"
+mkdir "$TMP/lazybuddy-plugin"
+mkdir -p "$TMP/.codebuddy-plugin"
+cp "$PLUGIN_ROOT/../.codebuddy-plugin/marketplace.json" "$TMP/.codebuddy-plugin/marketplace.json"
 # Given the former streaming fixture copy, when its consumer exits after one
 # byte, then pipefail exposes tar's real write-side EPIPE failure.  The
 # controlled early close makes this independent of archive size and host I/O.
-if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf - . \
+if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' --exclude='*/__pycache__' --exclude='*.pyc' -cf - . \
     2>"$TMP/old-stream.stderr" | { IFS= read -r -n 1 _; exit 0; }; then
     old_stream_statuses=("${PIPESTATUS[@]}")
 else
@@ -28,25 +31,25 @@ else
     fail "controlled old streaming archive must report producer EPIPE"
 fi
 
-if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' -cf "$TMP/plugin.tar" .; then
+if tar -C "$PLUGIN_ROOT" --exclude='tooling/node_modules' --exclude='*/__pycache__' --exclude='*.pyc' -cf "$TMP/plugin.tar" .; then
     pass "file-backed fixture archive is created"
 else
     fail "file-backed fixture archive creation"
     exit 1
 fi
-if tar -C "$TMP/plugin" -xf "$TMP/plugin.tar"; then
+if tar -C "$TMP/lazybuddy-plugin" -xf "$TMP/plugin.tar"; then
     pass "file-backed fixture archive extracts successfully"
 else
     fail "file-backed fixture archive extraction"
     exit 1
 fi
-FIXTURE="$TMP/plugin"
+FIXTURE="$TMP/lazybuddy-plugin"
 [ -f "$FIXTURE/LICENSE" ] && pass "file-backed fixture contains the source license" || fail "file-backed fixture source license"
 [ ! -e "$FIXTURE/tooling/node_modules" ] && pass "verifier fixture omits unused tooling dependencies" || fail "verifier fixture must omit unused tooling dependencies"
 
 fixture_parity() {
     local candidate="$1" report="$2"
-    if diff -ru --exclude='node_modules' "$PLUGIN_ROOT" "$candidate" >"$report"; then
+    if diff -ru --exclude='node_modules' --exclude='__pycache__' --exclude='*.pyc' "$PLUGIN_ROOT" "$candidate" >"$report"; then
         return 0
     fi
     printf 'FIXTURE_PARITY_MISMATCH: %s\n' "$candidate" >>"$report"
@@ -147,15 +150,28 @@ def capture_policy(name, mutate=False):
 
 def assert_scoped_policy(root, records):
     prefix = "regression:"
+    paired_only = {
+        "v016-automatic-tooling-contract-parity.sh",
+        "v017-capability-readiness-contract-parity.sh",
+        "v018-docs-manifest-parity.sh",
+        "v103-lifecycle-contract-parity.sh",
+        "v110-six-host-contract-parity.sh",
+        "v110-six-host-contract-parity-regression.sh",
+        "v110-paired-live-test-candidate.sh",
+    }
     expected = {
         f"{prefix}{path.name}"
         for path in (root / "tests").glob("*-regression.sh")
-        if path.name != "publication-regression.sh"
+        if path.name != "publication-regression.sh" and path.name not in paired_only
     }
     observed = [(label, timeout) for label, timeout in records if label.startswith(prefix)]
     require(len(observed) == len(expected), "standalone regression timeout capture was incomplete or duplicated")
     by_label = dict(observed)
     require(set(by_label) == expected, "standalone regression timeout labels did not match the complete inventory")
+    require(
+        not ({f"{prefix}{name}" for name in paired_only} & set(by_label)),
+        "explicit-root paired-only regression was scheduled as standalone",
+    )
     readiness = f"{prefix}v015-readiness-regression.sh"
     require(by_label[readiness] == "120", f"{readiness} expected 120, observed {by_label[readiness]}")
     for label in sorted(expected - {readiness}):
@@ -199,77 +215,77 @@ python3 - "$TMP/fast.json" <<'PY'
 import json
 import sys
 
-assert json.load(open(sys.argv[1], encoding="utf-8")) == {"status": "pass", "reason": "ok", "tail": ""}
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+assert payload["status"] == "pass" and payload["reason"] == "ok" and payload["tail"] == ""
+assert payload["cleanup"]["status"] == "verified-absent"
 PY
 grep -q '^PASS: fast$' "$TMP/fast.stderr" && pass "fast trusted command succeeds" || fail "fast trusted command result"
 
 # Given a trusted process inspector that executes but reports failure, cleanup
 # must treat inspection as unavailable instead of interpreting empty output as
 # proof that no descendants remain.
-python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" <<'PY'
+python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" "$FIXTURE/scripts/lazybuddy_process_lifecycle.py" <<'PY'
 import importlib.util
+import importlib
 import subprocess
 import sys
 from unittest import mock
 
 module_path = sys.argv[1]
+sys.path.insert(0, str(__import__('pathlib').Path(sys.argv[2]).parent))
 spec = importlib.util.spec_from_file_location("lazybuddy_bounded_run", module_path)
 assert spec is not None and spec.loader is not None
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
+process_module = importlib.import_module("lazybuddy_bounded_process")
+lifecycle_module = importlib.import_module("lazybuddy_process_lifecycle")
 
 failed_snapshot = subprocess.CompletedProcess(["/bin/ps"], 1, stdout="", stderr="inspection failed")
-with mock.patch.object(module.subprocess, "run", return_value=failed_snapshot):
+with mock.patch.object(process_module.subprocess, "run", return_value=failed_snapshot):
     try:
-        module.process_records()
+        process_module.process_records()
     except subprocess.CalledProcessError:
         pass
     else:
         raise AssertionError("nonzero ps exit was treated as an empty successful snapshot")
 
 invalid_snapshot = subprocess.CompletedProcess(["/bin/ps"], 0, stdout="not a process record\n", stderr="")
-with mock.patch.object(module.subprocess, "run", return_value=invalid_snapshot):
+with mock.patch.object(process_module.subprocess, "run", return_value=invalid_snapshot):
     try:
-        module.process_records()
+        process_module.process_records()
     except OSError:
         pass
     else:
         raise AssertionError("invalid ps output was treated as an empty successful snapshot")
 
-class FinishedProcess:
-    pid = 424242
-
-    @staticmethod
-    def wait(timeout):
-        return 0
-
 inspection_error = subprocess.CalledProcessError(1, ["/bin/ps"])
-with (
-    mock.patch.object(module, "descendant_records", side_effect=inspection_error),
-    mock.patch.object(module, "process_records", side_effect=inspection_error),
-    mock.patch.object(module.os, "killpg", side_effect=ProcessLookupError),
-):
-    cleanup = module.terminate_owned_group(FinishedProcess())
-assert cleanup == {
-    "process_group_terminated": True,
-    "detectable_descendants_remaining": True,
-    "detectable_descendant_pids": [],
-}
+root = lifecycle_module.ProcessRecord(424242, 1, 424242, "S", "owned-start")
+tracker = lifecycle_module.OwnershipTracker.establish(root, lifecycle_module.InspectionAvailable((root,)))
+with mock.patch.object(process_module, "process_records", side_effect=inspection_error):
+    cleanup = lifecycle_module.cleanup_owned_processes(
+        tracker,
+        process_module.inspect_processes,
+        process_module.signal_owned_group,
+    )
+assert cleanup.status is lifecycle_module.CleanupStatus.INSPECTION_UNAVAILABLE
+assert cleanup.tracked_pids == (424242,)
 PY
 pass "failed process inspection remains fail-closed"
 
 if python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" >"$TMP/process-inspection.out" 2>&1 <<'PY'
 import importlib.util
+import importlib
 import sys
 
 module_path = sys.argv[1]
+sys.path.insert(0, str(__import__('pathlib').Path(module_path).parent))
 spec = importlib.util.spec_from_file_location("lazybuddy_bounded_run_probe", module_path)
 assert spec is not None and spec.loader is not None
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
-module.process_records()
+importlib.import_module("lazybuddy_bounded_process").process_records()
 PY
 then
     PROCESS_INSPECTION_SUPPORTED=true
@@ -295,18 +311,16 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["status"] == "timeout"
 assert payload["reason"] == "deadline_exceeded"
 inspection_supported = sys.argv[3] == "true"
-assert payload["cleanup"] == {
-    "process_group_terminated": True,
-    "detectable_descendants_remaining": not inspection_supported,
-    "detectable_descendant_pids": [],
-}
+assert payload["cleanup"]["status"] == ("verified-absent" if inspection_supported else "inspection-unavailable")
+assert payload["cleanup"]["process_group_terminated"] is inspection_supported
+assert payload["cleanup"]["detectable_descendants_remaining"] is (not inspection_supported)
 PY
 if kill -0 "$group_child_pid" 2>/dev/null; then fail "timeout left owned group child alive"; else pass "timeout terminates owned process group"; fi
 
 # Given a child that escapes into another process group, when the parent times
 # out, then the runner reports the still-detectable child but never signals it.
 ESCAPED_CHILD_PID="$TMP/escaped-child.pid"
-if CHILD_PID="$ESCAPED_CHILD_PID" python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label escaped --timeout 1 --result-file "$TMP/escaped.json" -- bash -c 'python3 -c "import os, time; os.setsid(); time.sleep(30)" & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/escaped.out" 2>"$TMP/escaped.stderr"; then
+if CHILD_PID="$ESCAPED_CHILD_PID" python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label escaped --timeout 1 --result-file "$TMP/escaped.json" -- bash -c 'python3 -c "import os, time; os.setsid(); time.sleep(3)" & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/escaped.out" 2>"$TMP/escaped.stderr"; then
     fail "escaped timeout must fail"
 else
     pass "escaped timeout fails"
@@ -317,17 +331,21 @@ import json
 import sys
 
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
-assert payload["status"] == "timeout"
+assert payload["status"] == "unavailable"
+assert payload["reason"] == "process_cleanup_failed"
 inspection_supported = sys.argv[3] == "true"
-assert payload["cleanup"] == {
-    "process_group_terminated": True,
-    "detectable_descendants_remaining": True,
-    "detectable_descendant_pids": [int(sys.argv[2])] if inspection_supported else [],
-}
+assert payload["cleanup"]["status"] == ("verified-remaining" if inspection_supported else "inspection-unavailable")
+assert payload["cleanup"]["process_group_terminated"] is False
+assert payload["cleanup"]["detectable_descendants_remaining"] is True
+assert payload["cleanup"]["supervisor_teardown"] == "verified-absent"
 PY
 if kill -0 "$escaped_child_pid" 2>/dev/null; then pass "escaped child is reported without signaling"; else fail "escaped child was signaled"; fi
-grep -q '^CLEANUP: escaped detectable_descendants_remaining=true' "$TMP/escaped.stderr" && pass "stderr reports detectable escaped child" || fail "escaped child cleanup report"
-kill -KILL "$escaped_child_pid" 2>/dev/null || true
+grep -q '^CLEANUP: escaped status=.* detectable_descendants_remaining=true' "$TMP/escaped.stderr" && pass "stderr reports detectable escaped child" || fail "escaped child cleanup report"
+for _ in $(seq 1 150); do
+    if ! kill -0 "$escaped_child_pid" 2>/dev/null; then break; fi
+    sleep 0.02
+done
+if kill -0 "$escaped_child_pid" 2>/dev/null; then fail "escaped fixture did not finish its bounded self-cleanup"; else pass "escaped fixture self-cleans without runner signaling"; fi
 
 cat > "$FIXTURE/scripts/lazybuddy-smoke-test.sh" <<'SH'
 #!/usr/bin/env bash
@@ -444,11 +462,12 @@ chmod +x "$TMP/fake-bin/codebuddy"
 mkdir "$TMP/launch-error-bin"
 printf '%s\n' '#!/definitely/missing/lazybuddy-interpreter' > "$TMP/launch-error-bin/codebuddy"
 chmod +x "$TMP/launch-error-bin/codebuddy"
+RUNTIME_PATH="$(dirname "$(command -v node)"):$(dirname "$(command -v python3)"):/usr/bin:/bin"
 
 run_doctor() {
     local label="$1" host="$2" mode="$3" bin_dir="$4"
     DOCTOR_OUTPUT="$TMP/doctor-$label.out"
-    if PATH="$bin_dir:/usr/bin:/bin" \
+    if PATH="$bin_dir:$RUNTIME_PATH" \
         FAKE_CODEBUDDY_MODE="$mode" \
         FAKE_CODEBUDDY_MARKER="${DOCTOR_MARKER:-}" \
         LAZYBUDDY_DOCTOR_HOST="$host" \
@@ -461,58 +480,148 @@ run_doctor() {
     fi
 }
 
-run_doctor package-pass package pass "$TMP/fake-bin"
+if python3 - "$FIXTURE" "$TMP" "$RUNTIME_PATH" >"$TMP/doctor-matrix.out" 2>"$TMP/doctor-matrix.err" <<'PY'
+from concurrent.futures import ThreadPoolExecutor
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+fixture = Path(sys.argv[1])
+tmp = Path(sys.argv[2])
+runtime_path = sys.argv[3]
+fake_bin = tmp / "fake-bin"
+launch_error_bin = tmp / "launch-error-bin"
+empty_bin = tmp / "empty-bin"
+cases = [
+    ("package-pass", "package", "pass", fake_bin),
+    ("package-structured-pass", "package", "structured-pass", fake_bin),
+    ("package-structured-leading-failure", "package", "structured-leading-failure", fake_bin),
+    ("package-structured-leading-invalid", "package", "structured-leading-invalid", fake_bin),
+    ("package-structured-leading-rejected", "package", "structured-leading-rejected", fake_bin),
+    ("package-structured-leading-error", "package", "structured-leading-error", fake_bin),
+    ("package-structured-pass-trailing-failure", "package", "structured-pass-trailing-failure", fake_bin),
+    ("package-structured-errors", "package", "structured-errors", fake_bin),
+    ("package-structured-error-object", "package", "structured-error-object", fake_bin),
+    ("package-pretty-embedded", "package", "pretty-embedded", fake_bin),
+    ("package-contradictory", "package", "contradictory", fake_bin),
+    ("package-structured-nonzero", "package", "structured-nonzero", fake_bin),
+    ("package-semantic", "package", "semantic", fake_bin),
+    ("package-misleading", "package", "misleading", fake_bin),
+    ("package-invalid-text", "package", "invalid-text", fake_bin),
+    ("package-invalid-json", "package", "invalid-json", fake_bin),
+    ("package-invalid-symbol", "package", "invalid-symbol", fake_bin),
+    ("package-nonzero", "package", "nonzero", fake_bin),
+    ("package-timeout", "package", "timeout", fake_bin),
+    ("package-launch", "package", "pass", launch_error_bin),
+    ("package-absent", "package", "pass", empty_bin),
+    ("cli-pass", "codebuddy-cli", "pass", fake_bin),
+    ("cli-semantic", "codebuddy-cli", "semantic", fake_bin),
+    ("cli-timeout", "codebuddy-cli", "timeout", fake_bin),
+    ("cli-launch", "codebuddy-cli", "pass", launch_error_bin),
+    ("cli-absent", "codebuddy-cli", "pass", empty_bin),
+]
+if len({label for label, *_ in cases}) != len(cases):
+    raise SystemExit("duplicate doctor matrix label")
+
+def run(case: tuple[str, str, str, Path]) -> tuple[str, int]:
+    label, host, mode, bin_dir = case
+    environment = os.environ | {
+        "PATH": f"{bin_dir}:{runtime_path}",
+        "FAKE_CODEBUDDY_MODE": mode,
+        "FAKE_CODEBUDDY_MARKER": "",
+        "LAZYBUDDY_DOCTOR_HOST": host,
+        "LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS": "1",
+        "CODEBUDDY_PLUGIN_ROOT": str(fixture),
+    }
+    with open(tmp / f"doctor-{label}.out", "w", encoding="utf-8") as stdout, open(
+        tmp / f"doctor-{label}.out.err", "w", encoding="utf-8"
+    ) as stderr:
+        completed = subprocess.run(
+            ["bash", str(fixture / "scripts" / "lazybuddy-plugin-doctor.sh")],
+            env=environment,
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+        )
+    return label, completed.returncode
+
+max_workers = 4
+with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    results = list(executor.map(run, cases))
+with open(tmp / "doctor-matrix.tsv", "w", encoding="utf-8") as output:
+    for label, status in results:
+        output.write(f"{label}\t{status}\n")
+print(f"DOCTOR_MATRIX_MAX_WORKERS={max_workers} COUNT={len(results)}")
+PY
+then
+    grep -Fqx 'DOCTOR_MATRIX_MAX_WORKERS=4 COUNT=26' "$TMP/doctor-matrix.out" \
+        && pass "doctor classification matrix uses a bounded worker pool" \
+        || fail "doctor classification matrix worker boundary"
+else
+    cat "$TMP/doctor-matrix.out" "$TMP/doctor-matrix.err" >&2
+    fail "doctor classification matrix executes"
+fi
+
+load_doctor() {
+    local label="$1"
+    DOCTOR_OUTPUT="$TMP/doctor-$label.out"
+    DOCTOR_STATUS="$(awk -F '\t' -v expected="$label" '$1 == expected { print $2 }' "$TMP/doctor-matrix.tsv")"
+    [ -n "$DOCTOR_STATUS" ] || fail "doctor classification matrix omitted $label"
+}
+
+load_doctor package-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts validator pass" || fail "package validator pass classification"
-run_doctor package-structured-pass package structured-pass "$TMP/fake-bin"
+load_doctor package-structured-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts structured validator pass" || fail "package structured validator pass classification"
-run_doctor package-structured-leading-failure package structured-leading-failure "$TMP/fake-bin"
+load_doctor package-structured-leading-failure
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading validator failure text before valid JSON" || fail "package leading validator failure classification"
-run_doctor package-structured-leading-invalid package structured-leading-invalid "$TMP/fake-bin"
+load_doctor package-structured-leading-invalid
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading invalid text before valid JSON" || fail "package leading invalid text classification"
-run_doctor package-structured-leading-rejected package structured-leading-rejected "$TMP/fake-bin"
+load_doctor package-structured-leading-rejected
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading rejected text before valid JSON" || fail "package leading rejected text classification"
-run_doctor package-structured-leading-error package structured-leading-error "$TMP/fake-bin"
+load_doctor package-structured-leading-error
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects leading error text before valid JSON" || fail "package leading error text classification"
-run_doctor package-structured-pass-trailing-failure package structured-pass-trailing-failure "$TMP/fake-bin"
+load_doctor package-structured-pass-trailing-failure
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects trailing validator failure text" || fail "package trailing validator failure classification"
-run_doctor package-structured-errors package structured-errors "$TMP/fake-bin"
+load_doctor package-structured-errors
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects valid structured output with errors" || fail "package structured output with errors classification"
-run_doctor package-structured-error-object package structured-error-object "$TMP/fake-bin"
+load_doctor package-structured-error-object
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects adjacent structured error object" || fail "package adjacent structured error object classification"
-run_doctor package-pretty-embedded package pretty-embedded "$TMP/fake-bin"
+load_doctor package-pretty-embedded
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor accepts pretty embedded validator JSON" || fail "package pretty embedded validator JSON classification"
-run_doctor package-contradictory package contradictory "$TMP/fake-bin"
+load_doctor package-contradictory
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects contradictory validator JSON" || fail "package contradictory validator JSON classification"
-run_doctor package-structured-nonzero package structured-nonzero "$TMP/fake-bin"
+load_doctor package-structured-nonzero
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects structured validator nonzero" || fail "package structured validator nonzero classification"
-run_doctor package-semantic package semantic "$TMP/fake-bin"
+load_doctor package-semantic
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails semantic validator output" || fail "package semantic validator classification"
-run_doctor package-misleading package misleading "$TMP/fake-bin"
+load_doctor package-misleading
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor rejects misleading success output" || fail "package misleading validator classification"
-run_doctor package-invalid-text package invalid-text "$TMP/fake-bin"
+load_doctor package-invalid-text
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq 'Invalid plugin manifest' "$DOCTOR_OUTPUT" && pass "package doctor rejects unrecognized invalid-manifest text" || fail "package invalid-manifest text classification"
-run_doctor package-invalid-json package invalid-json "$TMP/fake-bin"
+load_doctor package-invalid-json
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq '{"valid":false,"errors":["bad manifest"]}' "$DOCTOR_OUTPUT" && pass "package doctor rejects structured false validator output" || fail "package structured false validator classification"
-run_doctor package-invalid-symbol package invalid-symbol "$TMP/fake-bin"
+load_doctor package-invalid-symbol
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && grep -Fq '✘ plugin manifest rejected' "$DOCTOR_OUTPUT" && pass "package doctor rejects symbolic manifest rejection" || fail "package symbolic rejection classification"
-run_doctor package-nonzero package nonzero "$TMP/fake-bin"
+load_doctor package-nonzero
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "package doctor hard-fails validator nonzero" || fail "package nonzero validator classification"
-run_doctor package-timeout package timeout "$TMP/fake-bin"
+load_doctor package-timeout
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && grep -q '^TIMEOUT: CodeBuddy manifest validator$' "$DOCTOR_OUTPUT.err" && pass "package doctor leaves validator timeout unchecked" || fail "package timeout validator classification"
-run_doctor package-launch package pass "$TMP/launch-error-bin"
+load_doctor package-launch
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves validator launch unavailable unchecked" || fail "package launch validator classification"
-run_doctor package-absent package pass "/usr/bin:/bin"
+load_doctor package-absent
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves absent CLI unchecked" || fail "package absent validator classification"
 
-run_doctor cli-pass codebuddy-cli pass "$TMP/fake-bin"
+load_doctor cli-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor accepts validator pass" || fail "CLI validator pass classification"
-run_doctor cli-semantic codebuddy-cli semantic "$TMP/fake-bin"
+load_doctor cli-semantic
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails semantic validator output" || fail "CLI semantic validator classification"
-run_doctor cli-timeout codebuddy-cli timeout "$TMP/fake-bin"
+load_doctor cli-timeout
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*timeout' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator timeout" || fail "CLI timeout validator classification"
-run_doctor cli-launch codebuddy-cli pass "$TMP/launch-error-bin"
+load_doctor cli-launch
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator launch unavailable" || fail "CLI launch validator classification"
-run_doctor cli-absent codebuddy-cli pass "/usr/bin:/bin"
+load_doctor cli-absent
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails absent CLI" || fail "CLI absent validator classification"
 
 DOCTOR_MARKER="$TMP/ide-validator.marker"

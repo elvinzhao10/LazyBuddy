@@ -7,6 +7,9 @@ const { LifecycleError } = require('./errors');
 const { contained } = require('./paths');
 
 const NOFOLLOW = fs.constants.O_NOFOLLOW || 0;
+const GENERATED_SOURCE_DIRECTORIES = new Set([
+  'lazybuddy-plugin/tooling/node_modules',
+]);
 
 function sha256File(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -53,7 +56,7 @@ function atomicJson(root, target, value, mode = 0o600) {
   }
 }
 
-function inventory(root, current = root) {
+function inventoryTree(root, current, omitGenerated) {
   const entries = [];
   for (const name of fs.readdirSync(current)) {
     const absolute = path.join(current, name);
@@ -61,8 +64,9 @@ function inventory(root, current = root) {
     const stat = fs.lstatSync(absolute);
     if (stat.isSymbolicLink()) throw new LifecycleError('OWNERSHIP_REFUSED', `symlinked content: ${relative}`);
     if (stat.isDirectory()) {
+      if (omitGenerated && GENERATED_SOURCE_DIRECTORIES.has(relative)) continue;
       entries.push({ path: relative, type: 'directory', mode: modeOf(stat), sha256: null });
-      entries.push(...inventory(root, absolute));
+      entries.push(...inventoryTree(root, absolute, omitGenerated));
     } else if (stat.isFile() && stat.nlink === 1) {
       entries.push({ path: relative, type: 'file', mode: modeOf(stat), sha256: sha256File(absolute) });
     } else {
@@ -70,6 +74,24 @@ function inventory(root, current = root) {
     }
   }
   return entries.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function inventory(root, current = root) {
+  return inventoryTree(root, current, false);
+}
+
+function inventoryReleaseSource(root) {
+  return inventoryTree(root, root, true);
+}
+
+function includeReleaseSource(root, candidate) {
+  const relative = path.relative(root, candidate).split(path.sep).join('/');
+  if (!GENERATED_SOURCE_DIRECTORIES.has(relative)) return true;
+  const stat = fs.lstatSync(candidate);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    throw new LifecycleError('OWNERSHIP_REFUSED', `unsafe generated dependency root: ${relative}`);
+  }
+  return false;
 }
 
 function modeOf(stat) {
@@ -94,7 +116,9 @@ function removeInventory(root, entries) {
 
 module.exports = {
   atomicJson,
+  includeReleaseSource,
   inventory,
+  inventoryReleaseSource,
   readJson,
   removeInventory,
   safeFile,

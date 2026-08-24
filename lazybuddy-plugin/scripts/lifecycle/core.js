@@ -5,7 +5,8 @@ const path = require('node:path');
 const { LifecycleError } = require('./errors');
 const {
   atomicJson,
-  inventory,
+  includeReleaseSource,
+  inventoryReleaseSource,
   readJson,
   removeInventory,
   safeFile,
@@ -13,7 +14,14 @@ const {
 const { contained } = require('./paths');
 const { ORIGINS, verifyProjectDeclarations } = require('./ownership');
 const { preparePromotion, receiptFor } = require('./receipt');
-const { LAUNCHER, installLauncher, readActive, writeActive } = require('./state');
+const {
+  LAUNCHER,
+  LEGACY_LAUNCHER_V1,
+  installLauncher,
+  readActive,
+  restoreLauncher,
+  writeActive,
+} = require('./state');
 
 function releaseId(version, commitSha) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !/^[0-9a-f]{40}$/.test(commitSha)) {
@@ -27,9 +35,14 @@ function stageRelease(paths, { sourceRoot, version, commitSha }) {
   if (!fs.existsSync(sourceRoot) || !fs.lstatSync(sourceRoot).isDirectory()) {
     throw new LifecycleError('INVALID_SOURCE', 'release source must be a directory');
   }
-  inventory(sourceRoot);
+  inventoryReleaseSource(sourceRoot);
   const stagingPath = path.join(paths.staging, `${id}-${process.pid}-${Date.now()}`);
-  fs.cpSync(sourceRoot, stagingPath, { recursive: true, errorOnExist: true, force: false });
+  fs.cpSync(sourceRoot, stagingPath, {
+    recursive: true,
+    errorOnExist: true,
+    force: false,
+    filter: (source) => includeReleaseSource(sourceRoot, source),
+  });
   return { releaseId: id, stagingPath };
 }
 
@@ -48,29 +61,42 @@ function promoteRelease(paths, options) {
     throw new LifecycleError('CROSS_DEVICE', 'staging and releases must share a filesystem');
   }
   const prepared = preparePromotion(paths, options, active ? active.active_release : null);
-  try {
-    fs.renameSync(options.stagingPath, target);
-  } catch (error) {
-    if (error && error.code === 'EXDEV') throw new LifecycleError('CROSS_DEVICE', 'cross-filesystem promotion refused', error);
-    throw error;
-  }
   const receipt = prepared.receipt;
   const receiptPath = path.join(paths.productRoot, receipt.receipt_path);
-  atomicJson(paths.productRoot, receiptPath, receipt, 0o600);
-  installLauncher(paths);
-  writeActive(paths, {
-    schema_version: 1,
-    product: paths.product,
-    active_release: options.releaseId,
-    previous_release: active ? active.active_release : null,
-    entrypoint: prepared.entrypoint,
-    runtime_path: options.runtimePath,
-    release_metadata: {
-      ...(active ? active.release_metadata : {}),
-      [options.releaseId]: { entrypoint: prepared.entrypoint, runtime_path: options.runtimePath },
-    },
-    updated_at: new Date().toISOString(),
-  });
+  if (fs.existsSync(receiptPath)) throw new LifecycleError('OWNERSHIP_REFUSED', 'immutable receipt already exists');
+  let targetInstalled = false;
+  let receiptInstalled = false;
+  let launcherInstallation = null;
+  try {
+    fs.renameSync(options.stagingPath, target);
+    targetInstalled = true;
+    atomicJson(paths.productRoot, receiptPath, receipt, 0o600);
+    receiptInstalled = true;
+    launcherInstallation = installLauncher(paths);
+    writeActive(paths, {
+      $schema: 'lazy-harness-active.v2.schema.json',
+      schema_version: 2,
+      product: paths.product,
+      active_release: options.releaseId,
+      previous_release: active ? active.active_release : null,
+      entrypoint: prepared.entrypoint,
+      runtime_path: options.runtimePath,
+      release_metadata: {
+        ...(active ? active.release_metadata : {}),
+        [options.releaseId]: { entrypoint: prepared.entrypoint, runtime_path: options.runtimePath },
+      },
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (error && error.code === 'EXDEV') throw new LifecycleError('CROSS_DEVICE', 'cross-filesystem promotion refused', error);
+    if (launcherInstallation !== null) restoreLauncher(paths, launcherInstallation);
+    if (receiptInstalled) fs.unlinkSync(receiptPath);
+    if (targetInstalled) {
+      removeInventory(target, prepared.stagedInventory);
+      fs.rmdirSync(target);
+    }
+    throw error;
+  }
   return { releaseId: options.releaseId, receiptPath };
 }
 
@@ -155,7 +181,10 @@ function offboardProduct(paths, confirmation) {
       || JSON.stringify(releaseIds) !== JSON.stringify(releaseNames)) throw new Error('unknown release content');
     const expectedRoot = new Set(['active.json', 'launcher.js', 'locks', 'receipts', 'releases', 'rollback', 'staging']);
     if (fs.readdirSync(paths.productRoot).some((name) => !expectedRoot.has(name))) throw new Error('unknown product content');
-    if (!safeFile(paths.launcher).bytes.equals(Buffer.from(LAUNCHER))) throw new Error('launcher changed');
+    const launcher = safeFile(paths.launcher).bytes;
+    if (!launcher.equals(Buffer.from(LAUNCHER)) && !launcher.equals(Buffer.from(LEGACY_LAUNCHER_V1))) {
+      throw new Error('launcher changed');
+    }
     if (fs.readdirSync(paths.locks).length !== 0) throw new Error('unknown lock content');
     const rollbackNames = fs.readdirSync(paths.rollback);
     if (rollbackNames.some((name) => name !== 'retained.json')) throw new Error('unknown rollback content');

@@ -1,0 +1,84 @@
+{
+  "$id": "lazy-harness-active.v2.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Durable active release state written by the lifecycle v2 single writer.",
+  "properties": {
+    "$schema": {
+      "const": "lazy-harness-active.v2.schema.json",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "type": "integer"
+    },
+    "product": {
+      "enum": ["LazyBuddy", "LazyTrae"],
+      "type": "string"
+    },
+    "active_release": {
+      "$ref": "#/definitions/release_id"
+    },
+    "previous_release": {
+      "oneOf": [
+        { "$ref": "#/definitions/release_id" },
+        { "type": "null" }
+      ]
+    },
+    "entrypoint": {
+      "$ref": "#/definitions/owned_relative_path"
+    },
+    "runtime_path": {
+      "$ref": "#/definitions/absolute_path"
+    },
+    "release_metadata": {
+      "additionalProperties": false,
+      "minProperties": 1,
+      "patternProperties": {
+        "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}$": {
+          "additionalProperties": false,
+          "properties": {
+            "entrypoint": { "$ref": "#/definitions/owned_relative_path" },
+            "runtime_path": { "$ref": "#/definitions/absolute_path" }
+          },
+          "required": ["entrypoint", "runtime_path"],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "updated_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "$schema",
+    "schema_version",
+    "product",
+    "active_release",
+    "previous_release",
+    "entrypoint",
+    "runtime_path",
+    "release_metadata",
+    "updated_at"
+  ],
+  "type": "object",
+  "definitions": {
+    "absolute_path": {
+      "pattern": "^(?:/|[A-Za-z]:[\\\\/]).+",
+      "type": "string"
+    },
+    "owned_relative_path": {
+      "allOf": [
+        { "pattern": "^[^/\\\\].+", "type": "string" },
+        { "not": { "pattern": "(?:^|[/\\\\])\\.\\.?(?:[/\\\\]|$)" } },
+        { "not": { "pattern": "\\\\" } }
+      ]
+    },
+    "release_id": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}$",
+      "type": "string"
+    }
+  }
+}

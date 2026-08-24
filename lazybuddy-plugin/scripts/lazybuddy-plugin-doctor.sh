@@ -244,6 +244,34 @@ else
     check "Host/marketplace version agreement" "$agreement"
 fi
 
+if route_contract=$(node "${PLUGIN_ROOT}/scripts/lazybuddy-marketplace-route-check.js" "$PROJECT_ROOT" 2>&1); then
+    check "Marketplace route contract" ok
+    echo "  [INFO] Marketplace routes: $route_contract"
+else
+    check "Marketplace route contract" "$route_contract"
+fi
+
+if machine_status=$(node "${PLUGIN_ROOT}/scripts/lazybuddy-machine-status.js" --json 2>&1) \
+    && python3 - "$machine_status" <<'PY'
+import json
+import sys
+
+status = json.loads(sys.argv[1])
+assert status.get("schema_version") == 2
+assert status.get("version") == "1.1.0"
+assert status.get("package_readiness") == {"status": "ready", "scope": "package"}
+assert status.get("host_readiness") == {"status": "pending"}
+hosts = status.get("hosts")
+assert isinstance(hosts, list)
+assert [row.get("host") for row in hosts] == ["codebuddy-cli", "codebuddy-ide", "workbuddy"]
+assert all(row.get("host_readiness") == "pending" for row in hosts)
+PY
+then
+    check "Machine status v2" ok
+else
+    check "Machine status v2" "invalid or unavailable"
+fi
+
 if [ "$DOCTOR_HOST" = "codebuddy-ide" ] || [ "$DOCTOR_HOST" = "workbuddy" ]; then
     echo "  [SKIP] CodeBuddy manifest validator — CLI-only validator not applicable to ${DOCTOR_HOST}"
 elif command -v codebuddy >/dev/null 2>&1; then
@@ -326,6 +354,16 @@ else
     check ".mcp.json exists" "missing"
 fi
 
+PROFILE_VALIDATION_DATA="${TMPDIR:-/tmp}/lazybuddy-doctor-profile-data-$$"
+if profile_result=$(python3 "${PLUGIN_ROOT}/scripts/lazybuddy-mcp-profile.py" \
+    --mode orchestrated \
+    --project-dir "$PROJECT_ROOT" \
+    --plugin-data "$PROFILE_VALIDATION_DATA" 2>&1); then
+    check "MCP typed profile contract" ok
+else
+    check "MCP typed profile contract" "$profile_result"
+fi
+
 if contract_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import hashlib
 import json
@@ -379,8 +417,8 @@ records = json.loads(completed.stdout).get("records")
 if (
     not isinstance(records, list)
     or len(records) != 9
-    or any(record.get("status") == "host-ready" for record in records)
-    or any(record.get("readiness_scope") != "package-ready" for record in records)
+    or any(record.get("readiness_scope") == "current-session" for record in records)
+    or any(record.get("readiness_scope") != "package" for record in records)
 ):
     raise SystemExit("canonical readiness report did not return nine records")
 print("ok")
@@ -412,6 +450,19 @@ expected_events = [
     "TaskCompleted",
     "SubagentStart",
     "SubagentStop",
+    "PermissionRequest",
+    "PermissionDenied",
+    "Notification",
+    "PostCompact",
+    "SessionEnd",
+    "InstructionsLoaded",
+    "ConfigChange",
+    "CwdChanged",
+    "FileChanged",
+    "WorktreeCreate",
+    "WorktreeRemove",
+    "Elicitation",
+    "ElicitationResult",
 ]
 errors = []
 
@@ -473,8 +524,8 @@ for event in expected_events:
     if len(event_targets) != 1:
         errors.append(f"{event} has {len(event_targets)} command targets, expected 1")
 
-if len(targets) != 12:
-    errors.append(f"hook command target count is {len(targets)}, expected 12")
+if len(targets) != 25:
+    errors.append(f"hook command target count is {len(targets)}, expected 25")
 
 if errors:
     print("; ".join(errors))
@@ -482,9 +533,9 @@ if errors:
 print("ok")
 PY
 ); then
-    check "Hook command targets (12 executable)" ok
+    check "Hook command targets (25 executable)" ok
 else
-    check "Hook command targets (12 executable)" "${hook_result}"
+    check "Hook command targets (25 executable)" "${hook_result}"
 fi
 
 if mcp_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1

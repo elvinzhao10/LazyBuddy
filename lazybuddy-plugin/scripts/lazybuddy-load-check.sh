@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# noqa: SIZE_OK - standalone package-readiness gate remains self-contained in installed plugins.
 set -euo pipefail
 
 reject_symlinked_path_components() {
@@ -110,6 +111,42 @@ if not os.path.exists(code_manifest_path) and not os.path.exists(work_manifest_p
     print("PACKAGE_READINESS=degraded")
     print("Package readiness is degraded; host activation and runtime loading are unchecked.")
     sys.exit(0)
+
+route_check = subprocess.run(
+    ["node", os.path.join(root, "scripts", "lazybuddy-marketplace-route-check.js"), os.path.dirname(root)],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+if route_check.returncode == 0:
+    result("PASS", "marketplace route contract", "CodeBuddy IDE and WorkBuddy marketplace defaults")
+else:
+    result("FAIL", "marketplace route contract", route_check.stderr.strip())
+
+machine_status = subprocess.run(
+    ["node", os.path.join(root, "scripts", "lazybuddy-machine-status.js"), "--json"],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+try:
+    status = json.loads(machine_status.stdout)
+    host_rows = status.get("hosts")
+    if (
+        machine_status.returncode != 0
+        or status.get("schema_version") != 2
+        or status.get("version") != "1.1.0"
+        or status.get("package_readiness") != {"status": "ready", "scope": "package"}
+        or status.get("host_readiness") != {"status": "pending"}
+        or not isinstance(host_rows, list)
+        or [row.get("host") for row in host_rows] != ["codebuddy-cli", "codebuddy-ide", "workbuddy"]
+        or any(row.get("host_readiness") != "pending" for row in host_rows)
+    ):
+        raise ValueError("status fields do not match the v2 package boundary")
+except (AttributeError, TypeError, ValueError, json.JSONDecodeError) as exc:
+    result("FAIL", "machine status v2", str(exc))
+else:
+    result("PASS", "machine status v2", "three package-scoped hosts; host readiness pending")
 
 for legal_name in ("LICENSE", "NOTICE"):
     legal_path = os.path.join(root, legal_name)
@@ -278,13 +315,29 @@ hooks = load_json(os.path.join(root, "hooks", "hooks.json"), "hooks configuratio
 if hooks is not None:
     actual = hooks.get("hooks")
     count = len(actual) if isinstance(actual, dict) else -1
-    result("PASS" if count == 12 else "FAIL", "hooks", f"{count}/12")
+    result("PASS" if count == 25 else "FAIL", "hooks", f"{count}/25")
 
 mcp = load_json(os.path.join(root, ".mcp.json"), "MCP configuration")
 if mcp is not None:
     actual = mcp.get("mcpServers")
     count = len(actual) if isinstance(actual, dict) else -1
     result("PASS" if count == 6 else "FAIL", "MCP servers", f"{count}/6")
+    profile_check = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(root, "scripts", "lazybuddy-mcp-profile.py"),
+            "--mode", "orchestrated",
+            "--project-dir", os.path.dirname(root),
+            "--plugin-data", os.path.join(os.path.realpath(os.getenv("TMPDIR", "/tmp")), f"lazybuddy-profile-validation-{os.getpid()}"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if profile_check.returncode == 0:
+        result("PASS", "MCP typed profile contract", "six typed declarations; core direct; optional deferred")
+    else:
+        result("FAIL", "MCP typed profile contract", profile_check.stderr.strip() or "profile validation failed")
 
 contract_path = os.path.join(root, "contracts", "automatic-tooling-contract.v1.json")
 contract_digest_path = contract_path + ".sha256"
@@ -325,8 +378,8 @@ try:
         not isinstance(records, list)
         or len(records) != 9
         or any(record.get("reason_code") == "CONTRACT_INTEGRITY_INVALID" for record in records)
-        or any(record.get("status") == "host-ready" for record in records)
-        or any(record.get("readiness_scope") != "package-ready" for record in records)
+        or any(record.get("readiness_scope") == "current-session" for record in records)
+        or any(record.get("readiness_scope") != "package" for record in records)
     ):
         raise ValueError("canonical report did not return nine integrity-valid records")
 except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:

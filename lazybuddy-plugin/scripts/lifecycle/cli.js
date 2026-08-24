@@ -12,7 +12,13 @@ const {
 } = require('./index');
 const { receiptFor } = require('./receipt');
 const { parseArgs, usage } = require('./cli-arguments');
-const { parseObservation, renderHandoff, routeSelection } = require('./host-handoff');
+const {
+  defaultRouteForHost,
+  parseObservation,
+  renderHandoff,
+  routeSelection,
+  validateMarketplaceRoutes,
+} = require('./host-handoff');
 const { createStatus } = require('./status');
 
 const PRODUCT = 'LazyBuddy';
@@ -111,7 +117,8 @@ function offboard(options, paths) {
 function status(options, paths) {
   const current = inspect(paths);
   if (current.status !== 'ready') return { code: current.status === 'blocked' ? 1 : 0, output: envelope(options, current) };
-  const selection = routeSelection(options.routes);
+  const routes = options.routes.length === 0 && options.host ? [defaultRouteForHost(options.host)] : options.routes;
+  const selection = routeSelection(routes);
   if (selection.kind === 'none') return { code: 0, output: envelope(options, current) };
   if (selection.kind === 'conflict') {
     return {
@@ -125,12 +132,20 @@ function status(options, paths) {
   }
   receiptFor(paths, current.extra.release_id);
   const releaseRoot = path.join(paths.releases, current.extra.release_id);
+  const marketplace = validateMarketplaceRoutes(releaseRoot);
   return {
     code: 0,
     output: envelope(options, {
       ...current,
-      hostReadiness: parseObservation(options.observationReceipt, selection.host),
-      extra: { ...current.extra, host_handoff: renderHandoff(selection.route, releaseRoot, options.projectRoot) },
+      hostReadiness: parseObservation(options.observationReceipt, selection.host, {
+        route: selection.route,
+        releaseRoot,
+        manifestSha256: marketplace.workbuddy.manifest_sha256,
+        version: marketplace.version,
+        build: options.hostBuild,
+        session: options.hostSession,
+      }),
+      extra: { ...current.extra, host_handoff: renderHandoff(selection.route, releaseRoot, options.projectRoot, marketplace) },
     }),
   };
 }

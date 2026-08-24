@@ -34,6 +34,8 @@ expect() {
 
 mkdir -p "$INSTALLED" "$HOME_ROOT" "$CONFIG_ROOT" "$TOOLING_ROOT" "$NPM_BIN"
 cp -R "$PLUGIN_ROOT/." "$INSTALLED/"
+mkdir -p "$TMP/installed/.codebuddy-plugin"
+cp "$PLUGIN_ROOT/../.codebuddy-plugin/marketplace.json" "$TMP/installed/.codebuddy-plugin/marketplace.json"
 cat > "$NPM_BIN/npm" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail

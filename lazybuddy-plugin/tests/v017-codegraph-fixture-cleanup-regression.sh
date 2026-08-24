@@ -3,12 +3,14 @@ set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-codegraph-fixture-cleanup.XXXXXX")"
+CONCURRENT_SIBLING_FIXTURE=""
 
 cleanup() {
     [ "${LAZYBUDDY_KEEP_TEST_FIXTURES:-}" = 1 ] && {
         printf 'KEEP fixture: %s\n' "$TMP" >&2
         return
     }
+    [ -z "$CONCURRENT_SIBLING_FIXTURE" ] || rm -rf "$CONCURRENT_SIBLING_FIXTURE"
     rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -16,8 +18,8 @@ trap cleanup EXIT
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 snapshot() {
-    local prefix="$1" output="$2"
-    find "${TMPDIR:-/tmp}" -maxdepth 1 -type d -name "${prefix}*" -print 2>/dev/null | sort > "$output"
+    local root="$1" prefix="$2" output="$3"
+    find "$root" -maxdepth 1 -type d -name "${prefix}*" -print 2>/dev/null | sort > "$output"
 }
 
 after_only_roots() {
@@ -37,13 +39,15 @@ fixture_cleanup_status() {
 
 check_fixture_cleanup() {
     local prefix="$1" test_path="$2" label="$3"
+    local namespace="$TMP/${label// /-}.fixtures"
     local before="$TMP/$label.before" after="$TMP/$label.after" output="$TMP/$label.output" leftovers="$TMP/$label.leftovers"
-    snapshot "$prefix" "$before"
-    if ! bash "$test_path" >"$output" 2>&1; then
+    mkdir "$namespace"
+    snapshot "$namespace" "$prefix" "$before"
+    if ! TMPDIR="$namespace" bash "$test_path" >"$output" 2>&1; then
         cat "$output" >&2
         fail "$label regression failed"
     fi
-    snapshot "$prefix" "$after"
+    snapshot "$namespace" "$prefix" "$after"
     fixture_cleanup_status "$label" "$before" "$after" "$leftovers" || fail "$label fixture cleanup check failed"
     printf 'PASS: %s cleans its owned fixture prefix\n' "$label"
 }
@@ -69,6 +73,19 @@ grep -Fq 'after-only fixture left a fixture outside its invocation-owned root:' 
     || fail 'after-only fixture leak did not retain the named failure'
 grep -Fqx "$after_only" <<<"$LEAK_OUTPUT" || fail 'after-only fixture path was omitted from failure output'
 printf 'PASS: after-only fixture remains a named leak\n'
+
+CONCURRENT_SIBLING_FIXTURE="${TMPDIR:-/tmp}/lazybuddy-codegraph-install-timeout.concurrent-sibling.$$"
+cat > "$TMP/create-concurrent-sibling.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+mkdir "$LAZYBUDDY_CONCURRENT_SIBLING_FIXTURE"
+SH
+chmod +x "$TMP/create-concurrent-sibling.sh"
+export LAZYBUDDY_CONCURRENT_SIBLING_FIXTURE="$CONCURRENT_SIBLING_FIXTURE"
+check_fixture_cleanup 'lazybuddy-codegraph-install-timeout.' "$TMP/create-concurrent-sibling.sh" 'concurrent sibling isolation'
+unset LAZYBUDDY_CONCURRENT_SIBLING_FIXTURE
+rm -rf "$CONCURRENT_SIBLING_FIXTURE"
+CONCURRENT_SIBLING_FIXTURE=""
 
 check_fixture_cleanup 'lazybuddy-codegraph.' "$PLUGIN_ROOT/tests/v016-codegraph-regression.sh" 'CodeGraph lifecycle'
 check_fixture_cleanup 'lazybuddy-codegraph-install-timeout.' "$PLUGIN_ROOT/tests/v017-codegraph-install-timeout-regression.sh" 'CodeGraph install timeout'

@@ -1,14 +1,17 @@
 'use strict';
 
 const { LifecycleError } = require('./errors');
+const { CURRENT_VERSION } = require('./version');
 
 const COMMANDS = new Set(['onboard', 'update', 'status', 'offboard', 'recover-bootstrap-lock']);
-const VALUE_FLAGS = new Set(['--install-root', '--project', '--source', '--confirm-revision', '--observation-receipt']);
+const VALUE_FLAGS = new Set([
+  '--install-root', '--project', '--source', '--confirm-revision', '--observation-receipt', '--host', '--host-build', '--host-session',
+]);
 const BOOLEAN_FLAGS = new Set(['--json', '--yes']);
 const ROUTE_FLAG = '--route';
 
 function usage() {
-  return `LazyBuddy durable lifecycle v1.0.3
+  return `LazyBuddy durable lifecycle v${CURRENT_VERSION}
 
 Usage: node scripts/lazybuddy-lifecycle.js <command> [options]
 
@@ -25,8 +28,11 @@ Common options:
   --json
 
 Status options:
+  --host <codebuddy-ide|workbuddy>
   --route <codebuddy-marketplace|workbuddy-full-plugin|manual-skills-mcp-fallback>
   --observation-receipt <absolute-path>
+  --host-build <current-workbuddy-build>
+  --host-session <current-workbuddy-session>
 
 Onboard/update options:
   --source <canonical-official-url>
@@ -64,7 +70,12 @@ function parseArgs(argv) {
     if (!VALUE_FLAGS.has(flag)) throw new LifecycleError('INVALID_ARGUMENT', `unknown option: ${flag}`);
     const value = argv[index + 1];
     if (!value || value.startsWith('--')) throw new LifecycleError('INVALID_ARGUMENT', `${flag} requires a value`);
-    const key = flag.slice(2).replace('-revision', 'Revision').replace('-receipt', 'Receipt').replace('-root', 'Root');
+    const key = flag.slice(2)
+      .replace('-revision', 'Revision')
+      .replace('-receipt', 'Receipt')
+      .replace('-root', 'Root')
+      .replace('-build', 'Build')
+      .replace('-session', 'Session');
     if (options[key] !== undefined) throw new LifecycleError('INVALID_ARGUMENT', `${flag} may be provided only once`);
     options[key] = value;
     index += 1;
@@ -78,11 +89,26 @@ function parseArgs(argv) {
   if (options.confirmRevision && command !== 'update') {
     throw new LifecycleError('INVALID_ARGUMENT', '--confirm-revision applies only to update');
   }
-  if ((options.routes.length > 0 || options.observationReceipt) && command !== 'status') {
-    throw new LifecycleError('INVALID_ARGUMENT', '--route and --observation-receipt apply only to status');
+  if ((options.routes.length > 0 || options.observationReceipt || options.hostBuild || options.hostSession) && command !== 'status') {
+    throw new LifecycleError('INVALID_ARGUMENT', '--host, --route, and --observation-receipt apply only to status');
   }
-  if (options.observationReceipt && options.routes.length === 0) {
-    throw new LifecycleError('INVALID_ARGUMENT', '--observation-receipt requires one selected --route');
+  if (options.host && !['codebuddy-ide', 'workbuddy'].includes(options.host)) {
+    throw new LifecycleError('INVALID_ARGUMENT', `unsupported marketplace host: ${options.host}`);
+  }
+  if (options.host && command !== 'status') {
+    throw new LifecycleError('INVALID_ARGUMENT', '--host applies only to status');
+  }
+  if (options.observationReceipt && options.routes.length === 0 && !options.host) {
+    throw new LifecycleError('INVALID_ARGUMENT', '--observation-receipt requires --host or one selected --route');
+  }
+  if ((options.hostBuild || options.hostSession) && !options.observationReceipt) {
+    throw new LifecycleError('INVALID_ARGUMENT', '--host-build and --host-session require --observation-receipt');
+  }
+  if (options.observationReceipt && (options.hostBuild === undefined) !== (options.hostSession === undefined)) {
+    throw new LifecycleError('INVALID_ARGUMENT', '--host-build and --host-session must be provided together');
+  }
+  if (options.hostBuild && options.host !== 'workbuddy' && !options.routes.includes('workbuddy-full-plugin')) {
+    throw new LifecycleError('INVALID_ARGUMENT', '--host-build and --host-session apply only to WorkBuddy full-plugin status');
   }
   if (options.yes && !['offboard', 'recover-bootstrap-lock'].includes(command)) {
     throw new LifecycleError('INVALID_ARGUMENT', '--yes applies only to offboard or recover-bootstrap-lock');

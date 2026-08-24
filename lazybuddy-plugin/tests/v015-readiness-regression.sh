@@ -6,6 +6,10 @@ PROJECT_ROOT="$(cd "$PLUGIN_ROOT/.." && pwd)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-readiness.XXXXXX")"
 PASS=0
 FAIL=0
+unset CODEBUDDY_PLUGIN_ROOT CWD
+
+mkdir -p "$TMP/.codebuddy-plugin"
+cp "$PROJECT_ROOT/.codebuddy-plugin/marketplace.json" "$TMP/.codebuddy-plugin/marketplace.json"
 
 cleanup() {
     rm -rf "$TMP"
@@ -51,8 +55,10 @@ expect_contains() {
     fi
 }
 
-cp -R "$PLUGIN_ROOT" "$TMP/installed-plugin"
-INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
+cp -R "$PLUGIN_ROOT" "$TMP/lazybuddy-plugin"
+find "$TMP/lazybuddy-plugin" -type d -name __pycache__ -prune -exec rm -rf {} +
+find "$TMP/lazybuddy-plugin" -type f -name '*.pyc' -delete
+INSTALLED_PLUGIN="$(cd "$TMP/lazybuddy-plugin" && pwd)"
 FULL_PACKAGE_VALIDATOR_BIN="$TMP/full-package-validator-bin"
 FULL_PACKAGE_VALIDATOR_MARKER="$TMP/full-package-validator.log"
 mkdir -p "$FULL_PACKAGE_VALIDATOR_BIN"
@@ -154,6 +160,8 @@ PY
 if [ "${LAZYBUDDY_READINESS_PARENT_COPY_DEPTH:-0}" -eq 0 ]; then
     PARENT_COPY="$TMP/poisoned-parent/lazybuddy-plugin"
     mkdir -p "$TMP/poisoned-parent/docs"
+    mkdir -p "$TMP/poisoned-parent/.codebuddy-plugin"
+    cp "$PROJECT_ROOT/.codebuddy-plugin/marketplace.json" "$TMP/poisoned-parent/.codebuddy-plugin/marketplace.json"
     printf '# poisoned parent handoff\n' > "$TMP/poisoned-parent/docs/handoff.md"
     cp -R "$PLUGIN_ROOT" "$PARENT_COPY"
     expect_status copied-plugin-ignores-parent-docs 0 env \
@@ -220,9 +228,11 @@ else
     pass "manual-skill-only-readiness omits unavailable package legal checks"
 fi
 
-rm -rf "$TMP/installed-plugin"
-cp -R "$PLUGIN_ROOT" "$TMP/installed-plugin"
-INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
+rm -rf "$TMP/lazybuddy-plugin"
+cp -R "$PLUGIN_ROOT" "$TMP/lazybuddy-plugin"
+find "$TMP/lazybuddy-plugin" -type d -name __pycache__ -prune -exec rm -rf {} +
+find "$TMP/lazybuddy-plugin" -type f -name '*.pyc' -delete
+INSTALLED_PLUGIN="$(cd "$TMP/lazybuddy-plugin" && pwd)"
 expect_status installed-root-mcp 0 env CWD="$PROJECT_ROOT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-mcp-test.sh"
 expect_contains installed-root-mcp "Plugin root: $INSTALLED_PLUGIN"
 expect_contains installed-root-mcp '^=== LazyBuddy MCP integration test \(6 declared servers \+ optional LSP endpoint\) ===$'

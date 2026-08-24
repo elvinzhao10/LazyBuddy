@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "owner": "lazybuddy-portable-assets",
+  "roots": [
+    { "source": "skills", "destination": "skills", "default_format": "text", "format_by_extension": {} }
+  ]
+}

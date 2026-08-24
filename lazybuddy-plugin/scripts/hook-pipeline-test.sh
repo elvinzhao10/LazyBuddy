@@ -159,6 +159,22 @@ test_hook "subagent-stop.sh" \
     '{"event":"subagent_stop","cwd":"'"$CWD"'","session_id":"'"$SESSION_ID"'","agent_id":"a2","agent_type":"implementer","last_assistant_message":"done","transcript_path":"/dev/null"}' \
     "continue.*false\|block"
 
+result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-lifecycle-result.XXXXXX")"
+if python3 "$RUNNER" --label "hook:lifecycle-event-boundary" --timeout "${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}" --result-file "$result_file" -- node --test "$PLUGIN_ROOT/tests/hook-lifecycle-pipeline.test.js" >/dev/null 2>&1; then
+    RESULTS="${RESULTS}  [PASS] lifecycle-event.js — all 13 added events normalized\n"
+    PASS=$((PASS + 1))
+else
+    output="$(python3 - "$result_file" <<'PY'
+import json
+import sys
+print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
+PY
+)"
+    RESULTS="${RESULTS}  [FAIL] lifecycle-event.js — ${output:0:80}\n"
+    FAIL=$((FAIL + 1))
+fi
+rm -f "$result_file"
+
 echo -e "$RESULTS"
 echo ""
 echo "=== Results ==="
@@ -168,7 +184,7 @@ echo ""
 if [ "$FAIL" -eq 0 ]; then
     echo "Hook pipeline test: ALL PASS"
     echo ""
-    echo "All 12 hook events produce correct output for realistic payloads."
+    echo "All 25 hook events produce correct output for realistic payloads."
     echo "Package-level hook behavior passed; live host registration remains unchecked."
     exit 0
 else

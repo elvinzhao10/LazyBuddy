@@ -6,7 +6,7 @@ INPUT=$(cat 2>/dev/null || echo "{}")
 CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd','.'))" 2>/dev/null || echo ".")
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
-echo "(LazyBuddy v1.0.3): Session starting — checking project state..."
+echo "(LazyBuddy v1.1.0): Session starting — checking project state..."
 
 if [ ! -d "$PLUGIN_ROOT" ] || [ ! -x "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh" ]; then
     echo "SESSIONSTART_READINESS=failed reason=plugin-root-unavailable" >&2

@@ -16,7 +16,6 @@ skills:
   - review-work
   - remove-ai-slops
 memory: false
-isolation: true
 ---
 
 # lazybuddy-security-auditor (Security Auditor)

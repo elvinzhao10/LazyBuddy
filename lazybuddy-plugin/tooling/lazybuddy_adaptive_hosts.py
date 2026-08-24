@@ -50,8 +50,14 @@ CAPABILITY_TO_MCP = {
     "text-search": (),
     "structural-search": (),
 }
-# Always include status-dashboard for status reporting regardless of mode.
-ALWAYS_ON_MCP = ("status-dashboard",)
+ALWAYS_ON_MCP = ("run-ledger", "verification", "status-dashboard")
+MODE_MCP_SERVERS = {
+    "direct": ALWAYS_ON_MCP,
+    "assisted": ALWAYS_ON_MCP + ("context-graph", "code-intel"),
+    "planned": ALWAYS_ON_MCP + ("context-graph", "docs"),
+    "orchestrated": ALL_MCP_SERVERS,
+    "long-horizon": ALL_MCP_SERVERS,
+}
 
 
 def _is_valid_decision(decision: Any) -> bool:
@@ -64,18 +70,7 @@ def _is_valid_decision(decision: Any) -> bool:
 
 
 def _mcp_servers_for(decision: dict) -> list:
-    """Resolve MCP servers from the decision's capability classes."""
-    caps = decision.get("capabilities") or []
-    if not isinstance(caps, list):
-        caps = []
-    servers: list = list(ALWAYS_ON_MCP)
-    for cap in caps:
-        if cap in CAPABILITY_TO_MCP:
-            for server in CAPABILITY_TO_MCP[cap]:
-                if server not in servers:
-                    servers.append(server)
-    # Sorted for deterministic output, with status-dashboard first.
-    return [ALWAYS_ON_MCP[0]] + sorted(s for s in servers if s != ALWAYS_ON_MCP[0])
+    return list(MODE_MCP_SERVERS[decision["mode"]])
 
 
 def _agents_for(decision: dict) -> list:

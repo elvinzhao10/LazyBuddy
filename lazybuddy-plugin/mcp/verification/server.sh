@@ -18,6 +18,8 @@ case "$PLUGIN_ROOT" in
   *) die "plugin root must be absolute: $PLUGIN_ROOT" ;;
 esac
 [ -d "$PLUGIN_ROOT" ] || die "plugin root not found: $PLUGIN_ROOT"
+source "$PLUGIN_ROOT/mcp/profile-gate.sh"
+lazybuddy_require_mcp_profile "verification"
 RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-}}"
 [ -n "$RAW_CWD" ] || die "project CWD is required: set CWD or CODEBUDDY_PROJECT_DIR"
 case "$RAW_CWD" in
@@ -148,7 +150,7 @@ while IFS= read -r INPUT || [ -n "$INPUT" ]; do
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"1.0.3"}}' ;;
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"1.1.0"}}' ;;
   tools/list) reply "$TOOL_LIST" ;;
   tools/call)
     if ! python3 -c "import json, sys; params=json.load(sys.stdin).get('params'); assert isinstance(params, dict) and isinstance(params.get('name'), str) and isinstance(params.get('arguments', {}), dict)" 2>/dev/null <<<"$INPUT"; then

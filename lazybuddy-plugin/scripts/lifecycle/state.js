@@ -6,34 +6,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { LifecycleError, workspacePreserved } = require('./errors');
 const { atomicJson, readJson, safeFile } = require('./files');
+const { LAUNCHER, LEGACY_LAUNCHER_V1, installLauncher, restoreLauncher } = require('./launcher');
 const { ownedRelativePath } = require('./ownership');
-
-const LAUNCHER = `'use strict';
-const fs = require('node:fs');
-const path = require('node:path');
-const { spawnSync } = require('node:child_process');
-const root = __dirname;
-const active = JSON.parse(fs.readFileSync(path.join(root, 'active.json'), 'utf8'));
-const releases = path.join(root, 'releases');
-const release = path.resolve(releases, active.active_release);
-if (path.dirname(release) !== releases) throw new Error('active release escapes durable releases');
-const entry = path.resolve(release, active.entrypoint);
-if (!entry.startsWith(release + path.sep)) throw new Error('entrypoint escapes active release');
-const result = spawnSync(active.runtime_path, [entry, ...process.argv.slice(2)], { stdio: 'inherit' });
-if (result.error) throw result.error;
-process.exitCode = result.status === null ? 1 : result.status;
-`;
-
-function installLauncher(paths) {
-  if (fs.existsSync(paths.launcher)) {
-    const existing = safeFile(paths.launcher);
-    if (!existing.bytes.equals(Buffer.from(LAUNCHER))) {
-      throw new LifecycleError('OWNERSHIP_REFUSED', 'stable launcher was modified');
-    }
-    return;
-  }
-  fs.writeFileSync(paths.launcher, LAUNCHER, { mode: 0o755, flag: 'wx' });
-}
+const { receiptFor } = require('./receipt');
 
 function acquireLock(paths, operation, productIdentity, lockPath = paths.lock, lockKind = null) {
   const record = {
@@ -163,15 +138,30 @@ function recoverBootstrapLock(paths, confirmation) {
 
 function readActive(paths) {
   if (!fs.existsSync(paths.active)) return null;
-  const active = readJson(paths.active, 'MALFORMED_ACTIVE');
-  if (active.schema_version !== 1 || active.product !== paths.product
+  return normalizeActive(paths, readJson(paths.active, 'MALFORMED_ACTIVE'));
+}
+
+function normalizeActive(paths, active) {
+  if (!active || typeof active !== 'object') {
+    throw new LifecycleError('MALFORMED_ACTIVE', 'active state has an invalid shape');
+  }
+  let normalized;
+  if (active.schema_version === 1
+    && (active.$schema === undefined || active.$schema === 'lazy-harness-active.v1.schema.json')) {
+    normalized = { ...active, $schema: 'lazy-harness-active.v2.schema.json', schema_version: 2 };
+  } else if (active.schema_version === 2 && active.$schema === 'lazy-harness-active.v2.schema.json') {
+    normalized = { ...active };
+  } else {
+    throw new LifecycleError('MALFORMED_ACTIVE', 'active state version is unknown or tampered');
+  }
+  if (normalized.product !== paths.product
     || typeof active.active_release !== 'string' || typeof active.entrypoint !== 'string'
     || typeof active.runtime_path !== 'string' || !active.release_metadata
     || typeof active.release_metadata !== 'object'
     || !active.release_metadata[active.active_release] || !validReleaseMetadata(active.release_metadata)) {
     throw new LifecycleError('MALFORMED_ACTIVE', 'active state has an invalid shape');
   }
-  return active;
+  return normalized;
 }
 
 function validReleaseMetadata(metadata) {
@@ -189,12 +179,16 @@ function validReleaseMetadata(metadata) {
 }
 
 function writeActive(paths, active) {
-  atomicJson(paths.productRoot, paths.active, active, 0o600);
+  if (active.schema_version !== 2 || active.$schema !== 'lazy-harness-active.v2.schema.json') {
+    throw new LifecycleError('MALFORMED_ACTIVE', 'active state writer accepts v2 only');
+  }
+  atomicJson(paths.productRoot, paths.active, normalizeActive(paths, active), 0o600);
 }
 
 function recoveryReport(paths) {
   const issues = [];
   let activeState = null;
+  let retainedRelease = null;
   try {
     fs.lstatSync(paths.bootstrapLock);
     issues.push({
@@ -220,9 +214,22 @@ function recoveryReport(paths) {
   if (fs.existsSync(paths.staging) && fs.readdirSync(paths.staging).length > 0) {
     issues.push({ code: 'STAGING_PRESENT', path: paths.staging });
   }
+  if (fs.existsSync(paths.rollbackMarker)) {
+    try {
+      const marker = readJson(paths.rollbackMarker, 'UNSAFE_ROLLBACK');
+      if (JSON.stringify(Object.keys(marker).sort()) !== JSON.stringify(['release_id'])
+        || typeof marker.release_id !== 'string') {
+        throw new LifecycleError('UNSAFE_ROLLBACK', 'rollback retention marker is malformed');
+      }
+      receiptFor(paths, marker.release_id);
+      retainedRelease = marker.release_id;
+    } catch (error) {
+      issues.push({ code: 'UNSAFE_ROLLBACK', path: paths.rollbackMarker });
+    }
+  }
   if (fs.existsSync(paths.releases)) {
     const referenced = new Set(activeState
-      ? [activeState.active_release, activeState.previous_release].filter(Boolean)
+      ? [activeState.active_release, activeState.previous_release, retainedRelease].filter(Boolean)
       : []);
     for (const name of fs.readdirSync(paths.releases)) {
       if (!referenced.has(name)) issues.push({ code: 'ORPHAN_RELEASE', path: path.join(paths.releases, name) });
@@ -233,11 +240,14 @@ function recoveryReport(paths) {
 
 module.exports = {
   LAUNCHER,
+  LEGACY_LAUNCHER_V1,
   acquireLock,
   installLauncher,
+  normalizeActive,
   readActive,
   recoverBootstrapLock,
   recoverStaleLock,
   recoveryReport,
+  restoreLauncher,
   writeActive,
 };

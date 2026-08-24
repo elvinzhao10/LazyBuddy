@@ -5,14 +5,28 @@
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
 **CodeBuddy CLI**, and **WorkBuddy**. In the supplied macOS QA dated
 2026-07-18, CodeBuddy IDE loaded the full plugin through the CLI-backed
-user-scope marketplace route. WorkBuddy v5.2.6 supplied historical feedback
-about full-plugin behavior after undocumented host-internal changes. That is
-not an installation route. The GUI flows failed in that tested build; the
-CodeBuddy exact host version/build was not recorded. These are build-specific
-observations, while
-Skills/manual-MCP is the supported fallback.
+user-scope marketplace route. WorkBuddy uses the nested
+`.workbuddy-plugin/plugin.json` as its default marketplace full-plugin source;
+historical observations do not replace current build/session evidence. The
+CodeBuddy exact host version/build was not recorded. Skills/manual-MCP remains
+a recovery-only route.
 It provides structured workflows for planning, implementation, verification,
 review, and bounded long-running work.
+
+## Current documentation release: v1.1.0
+
+This is the authoritative human-facing status boundary for **v1.1.0**. It is
+published as the [v1.1.0 GitHub Release](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.1.0),
+not a marketplace publication or host-readiness claim. Use the durable
+onboarding route below to install its pinned source; then verify package
+readiness and separately observe a fresh host session. The immutable v1.0.3
+release notes and evidence remain historical records. See the [v1.1.0
+supported route](docs/v1.1.0-supported-route.md) for the complete route.
+
+The route IDs are `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. For
+CodeBuddy IDE and WorkBuddy, marketplace is the default full-plugin route. The
+Skills/manual-MCP route is recovery-only and mutually exclusive with a
+full-plugin route for the same project.
 
 It is verified on macOS only. Package checks prove the copied package and its
 local contracts; a CodeBuddy or WorkBuddy session remains the authority for
@@ -37,9 +51,9 @@ In a CodeBuddy plugin session, commands are namespaced as
 `/lazybuddy:lazy-<command>`. If the host does not expose slash commands, make
 the same request in plain language.
 
-## Adaptive harness (v1.0.3)
+## Adaptive harness and v1.1.0 host status
 
-LazyBuddy v1.0.3 introduces an **adaptive harness** that selects the smallest
+The preserved adaptive harness selects the smallest
 sufficient workflow for an outcome-based request, composes existing Skills,
 agents, commands, MCPs, tools, hooks, and verifiers, persists an additive
 single-writer snapshot, and explains material choices. Named workflows
@@ -103,7 +117,7 @@ data to a remote provider, or controlling a browser surface all require
 approval. `release-review` and `security-review` do not themselves require
 approval; the requested concrete action determines the approval boundary.
 
-### v1.0.3 policy behavior
+### Current v1.1.0 policy behavior
 
 Current package checks enforce the same policy boundaries as LazyTrae: concrete credential changes and Git
 pushes require approval; `investigate why` selects `assisted`; broad validation
@@ -127,9 +141,18 @@ The behavior-only contract is shared byte-identically with LazyTrae at
 paired with its JSON Schema and sha256 digest. Fixtures live under
 `lazybuddy-plugin/contracts/fixtures/v103/`. The implementation lives in
 `lazybuddy-plugin/tooling/lazybuddy_adaptive_*.py`. The full contract
-semantics, authority levels, fallback rules, evidence labels, and known v1.0.3
-gaps are documented in
+semantics, authority levels, fallback rules, evidence labels, and historical
+v1.0.3 gaps are documented in
 [`docs/v1.0.3-adaptive-harness-contract.md`](docs/v1.0.3-adaptive-harness-contract.md).
+
+### v2 host-evidence vocabulary
+
+The v2 readiness receipt uses native modes `invoke-documented`, `observe-only`,
+`descriptor-only`, and `unavailable`; public labels `documented-tested`,
+`documented-untested`, `observed-build-specific`, and `unavailable`; and
+evidence scopes `package`, `probe`, and `current-session`. A `package` result
+does not prove a live host, a `probe` is build-specific, and only a current
+`current-session` observation can support a current host claim.
 
 ## Design mindset
 
@@ -179,13 +202,13 @@ the caller workspace is preserved. Recovery is limited to an explicitly
 verified lifecycle-owned sibling bootstrap lock or product `staging/`/`locks/`
 artifact; it never authorizes removal or replacement of caller workspace files.
 
-### Upgrade from v1.0.2
+### Upgrade a prior release
 
 Inventory managed versus modified/unknown assets before upgrading. Onboard the
-durable v1.0.3 bundle, run package checks through `launcher.js`, then replace
+durable release selected by `status`, run package checks through `launcher.js`, then replace
 only receipt-owned plugin or Skills assets after the required host approval.
-Preserve user changes and host settings until the fresh v1.0.3 session is
-observed. See the [v1.0.3 migration guide](docs/v1.0.3-migration-guide.md).
+Preserve user changes and host settings until the fresh session is observed.
+The [v1.0.3 migration guide](docs/v1.0.3-migration-guide.md) is historical.
 
 `onboard` detects or asks whether you use **CodeBuddy IDE**, **CodeBuddy CLI**,
 or **WorkBuddy**, runs only safe package checks and local setup, and reports
@@ -198,9 +221,9 @@ and every expected MCP connection; without observation it stays **pending**.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. If Computer Use is unavailable, a user-pasted
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route; `manual-skills-mcp-fallback` is recovery-only.
+If Computer Use is unavailable, a user-pasted
 verbatim status or screenshot can provide observation; otherwise **HOST
 READINESS: PENDING**.
 
@@ -229,14 +252,12 @@ the GUI flow is only an observed-build alternative and must be inspected before
 installation. If selected, add the release root, wait for discovery, install
 separately, fully restart the IDE, and verify a fresh session.
 
-### WorkBuddy observed-build route
+### WorkBuddy marketplace full-plugin route
 
-The supplied WorkBuddy v5.2.6 macOS QA reported full-plugin behavior after
-undocumented host-internal changes and one GUI binding. That is historical,
-observed-build feedback only. LazyBuddy v1.0.3 does not endorse, automate, or
-document installation through private WorkBuddy state. The supplied GUI
-Install action also hung in an orphaned `plugin validate`, so do not direct a
-user to it.
+The active release's `lazybuddy-plugin/.workbuddy-plugin/plugin.json` is the
+default marketplace source for Skills, commands, agents, hooks, and all six MCP
+servers. Do not inspect or mutate private WorkBuddy state. Use only the
+marketplace/plugin action exposed by the current build.
 
 This read-only package preflight remains safe:
 
@@ -247,8 +268,9 @@ bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
 `HOST_READINESS=pending`. `--apply` refuses. Treat that result as package
-evidence only and use the supported Skills/manual-MCP fallback. A current host
-remains **HOST READINESS: PENDING** until the fallback is observed.
+evidence only. Durable `status --host workbuddy` emits exact observation,
+removal, and recovery receipt templates; only current full-plugin evidence can
+promote host readiness. The Skills/manual-MCP route is recovery-only.
 
 The fallback for either desktop host is Skills-only import plus six individual
 manual local MCP connectors. It excludes commands, Agents, and hooks. Its exact
@@ -263,8 +285,9 @@ Use `.codebuddy/settings.json` only for shareable non-secret project defaults.
 `.codebuddy/settings.local.json` is ignored local/machine scope and must remain
 unstaged; secrets must never be committed. Package checks preserve both files.
 
-The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy),
-and release notes are on the [v1.0.3 release page](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.0.3).
+The repository link is [github.com/elvinzhao10/LazyBuddy](https://github.com/elvinzhao10/LazyBuddy).
+Read `RELEASE_NOTES-v1.1.0.md` for the authoritative host-status boundary; the
+v1.0.3 release page remains historical.
 
 ## Verify and remove
 

@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lazyseries.local/contracts/paired-candidate-contract.v1.schema.json",
+  "title": "LazySeries paired candidate, onboarding, and finalizer contract v1",
+  "oneOf": [
+    { "$ref": "#/$defs/candidate" },
+    { "$ref": "#/$defs/onboarding" },
+    { "$ref": "#/$defs/finalizer" }
+  ],
+  "x-lazyseries-operational": {
+    "payloadOrdering": "UTF-8 bytewise ascending relative paths",
+    "excludedPayloadSegments": [
+      ".git",
+      ".cache",
+      "cache",
+      "caches",
+      "secrets",
+      "runtime",
+      "state",
+      "manifests",
+      "receipts"
+    ],
+    "excludedPayloadBasenames": ["manifest.json"],
+    "detachedMetadataBinding": "sha256 of exact detached metadata bytes",
+    "treeDigest": "sha256('tree-v1\\n' + ordered(path + NUL + mode + NUL + size + NUL + sha256) + '\\n')",
+    "payloadDigest": "sha256('payload-v1\\n' + ordered(path + NUL + mode + NUL + size + NUL + sha256) + '\\n')",
+    "combinedDigest": "sha256('lazyseries-paired-candidate-v1\\n' + canonical-json(schema version, release version, payload stage, ordered products including full source SHAs/archive/tree/payload digests/commands/runtimes, ordered shared contract digests, detached metadata binding, six pending host rows, onboarding sibling) + '\\n')",
+    "staging": {
+      "name": ".live-test-v1.1.0-<combined-digest>.staging-<nonce>",
+      "exclusiveCreate": true,
+      "atomicRename": true,
+      "refuseExistingDestination": true,
+      "interruptedStagingIsUntrusted": true
+    },
+    "permissions": {
+      "stagedFileModes": ["0644", "0755"],
+      "finalDirectoryMode": "0555",
+      "finalFileMode": "0444",
+      "onboardingDirectoryMode": "0755",
+      "onboardingFileMode": "0644"
+    },
+    "allowedFilesystemObjects": {
+      "payload": "regular files with link count exactly one",
+      "directories": "real directories only",
+      "links": "refused"
+    },
+    "finalizer": "creates a new immutable final path and never mutates candidate or onboarding history"
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sourceSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "payloadRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "mode", "size", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "mode": { "enum": ["0644", "0755"] },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_id",
+        "source_sha",
+        "source_clean",
+        "archive_path",
+        "archive_sha256",
+        "tree_sha256",
+        "payload_sha256",
+        "command",
+        "runtime"
+      ],
+      "properties": {
+        "product_id": { "enum": ["lazybuddy", "lazytrae"] },
+        "source_sha": { "$ref": "#/$defs/sourceSha" },
+        "source_clean": { "const": true },
+        "archive_path": { "$ref": "#/$defs/safePath" },
+        "archive_sha256": { "$ref": "#/$defs/sha256" },
+        "tree_sha256": { "$ref": "#/$defs/sha256" },
+        "payload_sha256": { "$ref": "#/$defs/sha256" },
+        "command": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sharedContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "pendingHostRows": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        { "$ref": "#/$defs/pendingCodebuddyCli" },
+        { "$ref": "#/$defs/pendingCodebuddyIde" },
+        { "$ref": "#/$defs/pendingWorkbuddy" },
+        { "$ref": "#/$defs/pendingTraeCli" },
+        { "$ref": "#/$defs/pendingTraeIde" },
+        { "$ref": "#/$defs/pendingTraeWork" }
+      ],
+      "items": false
+    },
+    "pendingCodebuddyCli": { "allOf": [{ "$ref": "#/$defs/pendingHost" }, { "properties": { "host_id": { "const": "codebuddy-cli" } } }] },
+    "pendingCodebuddyIde": { "allOf": [{ "$ref": "#/$defs/pendingHost" }, { "properties": { "host_id": { "const": "codebuddy-ide" } } }] },
+    "pendingWorkbuddy": { "allOf": [{ "$ref": "#/$defs/pendingHost" }, { "properties": { "host_id": { "const": "workbuddy" } } }] },
+    "pendingTraeCli": { "allOf": [{ "$ref": "#/$defs/pendingHost" }, { "properties": { "host_id": { "const": "trae-cli" } } }] },
+    "pendingTraeIde": { "allOf": [{ "$ref": "#/$defs/pendingHost" }, { "properties": { "host_id": { "const": "trae-ide" } } }] },
+    "pendingTraeWork": { "allOf": [{ "$ref": "#/$defs/pendingHost" }, { "properties": { "host_id": { "const": "trae-work" } } }] },
+    "pendingHost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host_id", "status"],
+      "properties": {
+        "host_id": { "type": "string" },
+        "status": { "const": "pending" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "release_version",
+        "payload_stage",
+        "products",
+        "shared_contract_digests",
+        "payload_inventory",
+        "detached_metadata",
+        "host_rows",
+        "onboarding_sibling",
+        "combined_digest"
+      ],
+      "properties": {
+        "schema_version": { "const": "lazyseries.paired-candidate.v1" },
+        "release_version": { "const": "1.1.0" },
+        "payload_stage": { "enum": ["staged", "immutable-final"] },
+        "products": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/product" }, { "properties": { "product_id": { "const": "lazybuddy" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/product" }, { "properties": { "product_id": { "const": "lazytrae" } } }] }
+          ],
+          "items": false
+        },
+        "shared_contract_digests": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sharedContract" }
+        },
+        "payload_inventory": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/payloadRecord" }
+        },
+        "detached_metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "$ref": "#/$defs/safePath" },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "host_rows": { "$ref": "#/$defs/pendingHostRows" },
+        "onboarding_sibling": { "const": "live-test-v1.1.0-<combined-digest>-onboarding" },
+        "combined_digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "pendingOnboardingRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host_id", "status", "receipt"],
+      "properties": {
+        "host_id": { "type": "string" },
+        "status": { "const": "pending" },
+        "receipt": { "type": "null" }
+      }
+    },
+    "onboarding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "candidate_combined_digest", "candidate_manifest_sha256", "records"],
+      "properties": {
+        "schema_version": { "const": "lazyseries.live-host-onboarding.v1" },
+        "candidate_combined_digest": { "$ref": "#/$defs/sha256" },
+        "candidate_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "records": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/pendingOnboardingRecord" }, { "properties": { "host_id": { "const": "codebuddy-cli" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pendingOnboardingRecord" }, { "properties": { "host_id": { "const": "codebuddy-ide" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pendingOnboardingRecord" }, { "properties": { "host_id": { "const": "workbuddy" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pendingOnboardingRecord" }, { "properties": { "host_id": { "const": "trae-cli" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pendingOnboardingRecord" }, { "properties": { "host_id": { "const": "trae-ide" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/pendingOnboardingRecord" }, { "properties": { "host_id": { "const": "trae-work" } } }] }
+          ],
+          "items": false
+        }
+      }
+    },
+    "finalizerReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host_id", "status", "source_sha", "candidate_combined_digest", "receipt_sha256"],
+      "properties": {
+        "host_id": { "enum": ["codebuddy-cli", "codebuddy-ide", "workbuddy", "trae-cli", "trae-ide", "trae-work"] },
+        "status": { "const": "passed" },
+        "source_sha": { "$ref": "#/$defs/sourceSha" },
+        "candidate_combined_digest": { "$ref": "#/$defs/sha256" },
+        "receipt_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "finalizer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "candidate_combined_digest", "candidate_manifest_sha256", "onboarding_manifest_sha256", "receipts"],
+      "properties": {
+        "schema_version": { "const": "lazyseries.live-test-finalizer-input.v1" },
+        "candidate_combined_digest": { "$ref": "#/$defs/sha256" },
+        "candidate_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "onboarding_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "receipts": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/finalizerReceipt" }, { "properties": { "host_id": { "const": "codebuddy-cli" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/finalizerReceipt" }, { "properties": { "host_id": { "const": "codebuddy-ide" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/finalizerReceipt" }, { "properties": { "host_id": { "const": "workbuddy" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/finalizerReceipt" }, { "properties": { "host_id": { "const": "trae-cli" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/finalizerReceipt" }, { "properties": { "host_id": { "const": "trae-ide" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/finalizerReceipt" }, { "properties": { "host_id": { "const": "trae-work" } } }] }
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}

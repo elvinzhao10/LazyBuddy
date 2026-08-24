@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v1.0.3)
+# lazybuddy-verify.sh — Master verification runner (v1.1.0)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -20,6 +20,8 @@ RUNNER="${SCRIPTS_DIR}/lazybuddy-bounded-run.py"
 PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 export CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}"
 export CWD="${CWD:-${PROJECT_ROOT}}"
+export PYTHONDONTWRITEBYTECODE=1
+export NODE_PATH="${SIX_HOST_PARITY_NODE_MODULES:-${PLUGIN_ROOT}/tooling/node_modules}"
 ALL_PASS=true
 DOCTOR_RESULT="skipped"
 SMOKE_RESULT="skipped"
@@ -189,6 +191,14 @@ run_regression_inventory() {
         "v102-readiness-claims-regression.sh"
         "v102-workbuddy-package-preparation-regression.sh"
         "v103-adaptive-contract-regression.sh"
+        "v110-codebuddy-service-adapters-regression.sh"
+        "v110-codebuddy-service-adversarial-regression.sh"
+        "v110-codebuddy-structured-runner-regression.sh"
+        "v110-mcp-profiles-regression.sh"
+        "v110-state-task-schema-regression.sh"
+        "v110-workbuddy-observation-bundle-regression.sh"
+        "v2-capability-readiness-contract-regression.sh"
+        "v2-host-evidence-contract-regression.sh"
     )
     local lifecycle_tests=(
         "v015-readiness-regression.sh"
@@ -208,6 +218,9 @@ run_regression_inventory() {
         "v017-capability-readiness-contract-parity.sh"
         "v018-docs-manifest-parity.sh"
         "v103-lifecycle-contract-parity.sh"
+        "v110-six-host-contract-parity.sh"
+        "v110-six-host-contract-parity-regression.sh"
+        "v110-paired-live-test-candidate.sh"
     )
     local publication_tests=(
         "publication-regression.sh"

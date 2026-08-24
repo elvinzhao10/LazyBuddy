@@ -1,5 +1,20 @@
 # Host routes
 
+## Current v1.1.0 route and evidence status
+
+This guide is the current v1.1.0 documentation boundary for `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`; it does not publish a v1.1.0 package.
+Marketplace is the default full-plugin route for CodeBuddy IDE and WorkBuddy.
+The manual Skills/MCP route is recovery-only and mutually exclusive with a
+full-plugin route for one project.
+
+v2 reports native mode as `invoke-documented`, `observe-only`,
+`descriptor-only`, or `unavailable`; public label as `documented-tested`,
+`documented-untested`, `observed-build-specific`, or `unavailable`; and
+evidence scope as `package`, `probe`, or `current-session`. A `package` result
+does not prove a live host, and a `probe` never substitutes for a
+current-session receipt.
+
 Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`; then run `update`, `status`,
 and plan-first `offboard` through
@@ -10,7 +25,7 @@ The source checkout may be deleted. A moved same-version ref needs
 offboard/re-onboard, never a receipt edit. None of these package facts changes
 **HOST READINESS: PENDING** without observation.
 
-Open or link the durable `v1.0.3` release in the selected host, give the agent
+Open or link the durable release selected by `status` in the selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
 detects or asks for the host, runs package checks and safe local setup, then
 reports **package readiness** separately from **host readiness**.
@@ -25,9 +40,9 @@ screenshot is observed evidence; otherwise **HOST READINESS: PENDING**.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. These labels never prove the current build.
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route. The `manual-skills-mcp-fallback` is recovery
+only. These labels never prove the current build.
 The supplied macOS QA dated 2026-07-18 observed CodeBuddy IDE full-plugin
 loading through the CLI-backed user-scope marketplace route. It inspected
 WorkBuddy v5.2.6 on macOS and reported full-plugin behavior after undocumented
@@ -47,8 +62,8 @@ directory-marketplace compatibility.
 | --- | --- | --- |
 | **CodeBuddy IDE** | When the CLI is available (`codebuddy`), use the same user-scope release-root marketplace route as CodeBuddy CLI. The desktop GUI route is only an observed-build alternative; the supplied GUI Add local directory flow failed. | Use the CLI marketplace route below and inspect the IDE's fresh session. If the CLI is unavailable, record that limitation and choose the Skills/manual-MCP fallback explicitly. |
 | **CodeBuddy CLI** | Absolute release-root marketplace metadata and package validation. The nested `lazybuddy-plugin/` path is not the marketplace root. | Use the three separate actions below. After installation and a fresh session observe one real Skill/command plus all six MCP connections. |
-| **WorkBuddy Skills fallback** | Import/copy `lazybuddy-plugin/skills/` only, then configure each of six local MCP connectors manually. | After approval, observe one imported Skill and each manual connector in Settings. Files and load-check output do not prove WorkBuddy commands, agents, hooks, or MCP. |
-| **WorkBuddy full plugin** | Historical observation only; no supported public installation contract was verified. | Do not reproduce undocumented host state. Use the fallback and leave unsupported capabilities pending. |
+| **WorkBuddy full plugin** | The active release's `lazybuddy-plugin/.workbuddy-plugin/plugin.json`, declaring Skills, commands, agents, hooks, and `.mcp.json`. | Use the marketplace/plugin surface exposed by the current build. A current receipt must bind the active source/version and same build/session, and observe one loaded Skill, command, agent, hook, and all six MCP servers. |
+| **WorkBuddy recovery fallback** | Import/copy `lazybuddy-plugin/skills/` only, then configure each of six local MCP connectors manually. | Use only after receipt-scoped removal of the full-plugin route. Observe one imported Skill and each connector; commands, agents, and hooks remain excluded. |
 
 ## CodeBuddy IDE GUI alternative (observed-build only)
 
@@ -62,8 +77,9 @@ inspect before the next:
 1. After approval, open the host's **Plugins / Marketplace → Add local
    directory** GUI, choose the absolute release root containing
    `.codebuddy-plugin/marketplace.json`, and wait.
-2. Inspect discovery of `lazybuddy@lazybuddy` version `1.0.3`; do not install in
-   the discovery action. If the control or marketplace is absent, record the
+2. Inspect the version the marketplace actually displays; do not infer v1.1.0
+   publication from this documentation boundary or install in the discovery
+   action. If the control or marketplace is absent, record the
    current host version/build and exact error as `UNAVAILABLE`, leave **HOST
    READINESS: PENDING**, and select the fallback only as a later action.
 3. After separate approval, click **Install** for `lazybuddy@lazybuddy`, then
@@ -76,11 +92,12 @@ inspect before the next:
    `code-intel`, and `docs`. A marketplace row, cache, or connector-panel count
    is not live proof.
 
-## WorkBuddy observed-build boundary
+## WorkBuddy marketplace full-plugin boundary
 
-The supplied macOS WorkBuddy build did **not** complete through its GUI Install
-action: it hung in an orphaned `plugin validate`. Do not click that action or
-direct a user to it.
+The nested `.workbuddy-plugin/plugin.json` remains the default installation
+source even without a public manifest schema. Never inspect or mutate private
+WorkBuddy registries. Use only a marketplace/plugin action exposed by the
+current build, one approved host action at a time.
 
 This package preflight remains read-only:
 
@@ -90,10 +107,11 @@ bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
-`HOST_READINESS=pending`; `--apply` refuses. Supplied QA is evidence about one
-build, not permission to reproduce undocumented host state. Use the
-Skills/manual-MCP fallback, which supplies Skills plus six connectors only and
-excludes commands, agents, and hooks.
+`HOST_READINESS=pending`; `--apply` refuses. It is not an installer or host
+proof. Durable `status --host workbuddy` emits observation, removal, and
+recovery receipt templates. Package-only checks remain pending. A receipt is
+ready only when its active source/version, current build/session, loaded Skill,
+command, agent, hook, and all six MCP statuses validate together.
 
 ## CodeBuddy local marketplace
 
@@ -123,6 +141,55 @@ The CodeBuddy handoff has three separate future user actions:
    then inspect one real Skill/command plus all six MCP connections.
 
 Do not combine these actions or claim host readiness from marketplace JSON.
+
+### CodeBuddy IDE native plan and task observations
+
+The CLI-backed user-scope marketplace remains the default CodeBuddy IDE
+installation route. After installation, the package can generate a pending
+native-surface template without reading private IDE state:
+
+```bash
+node lazybuddy-plugin/scripts/lazybuddy-codebuddy-ide-surfaces.js template \
+  --project-root "<workspace-root>" \
+  --primary-root "<workspace-root>" \
+  --branch "<branch>" \
+  --marketplace "<release-root>/.codebuddy-plugin/marketplace.json" \
+  --output "<pending-receipt.json>" \
+  --json
+```
+
+Use `observe --template <pending-receipt.json> --observation
+<sanitized-host-observation.json> --output <observed-receipt.json> --json` to
+ingest a current observation. The record covers `.codebuddy/plans`, Plan
+Design/Todo, workspace-grouped tasks, queue/parallel status, Skill management,
+automation status, primary root/branch, and task continuation. It remains
+non-promoting: host readiness stays pending until the normal fresh-session
+host verification completes. Multiple workspace roots require an explicit
+primary root, and marketplace version, root, and fingerprint are part of the
+freshness boundary.
+
+Generate the companion MCP, preview, artifact, and checkpoint descriptor from
+that pending native template without contacting the host:
+
+```bash
+node lazybuddy-plugin/scripts/lazybuddy-codebuddy-ide-surfaces.js evidence-template \
+  --template "<pending-receipt.json>" \
+  --output "<evidence-template.json>" \
+  --json
+```
+
+`evidence-observe --template <evidence-template.json> --observation
+<sanitized-evidence-observation.json> --output <evidence-receipt.json> --json`
+accepts only current, marketplace/workspace-bound evidence. The descriptor
+lists `openFile`, `openDiff`, and `close_tab` as documented invocation surfaces
+and keeps the package invocation status `not-performed`; diagnostics and all
+other surfaces are observation-only. Diagnostics must be current and
+read-only, preview errors require verification-evidence digests, and every
+artifact/file/change entry requires a content digest. Unsupported MCP OAuth,
+Sampling, Prompts, or Resources capability remains explicitly `unavailable`.
+Secret material is rejected. Native checkpoints cannot cover external files
+or advance the run ledger, and every receipt remains non-promoting.
+
 `.codebuddy/settings.json` is the shareable non-secret project scope;
 `.codebuddy/settings.local.json` is local/machine scope and must remain ignored
 and unstaged; secrets must never be committed. Repeating safe package checks

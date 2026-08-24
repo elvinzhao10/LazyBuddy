@@ -2,6 +2,25 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.1.0 — Native host readiness boundaries (2026-08-19)
+
+This documentation-only release is the current human-facing status guide. It
+does not change package manifests, publish a marketplace artifact, or claim a
+live host loaded LazyBuddy. It names `codebuddy-cli`, `codebuddy-ide`, and
+`workbuddy`; keeps marketplace as the default full-plugin route for CodeBuddy
+IDE and WorkBuddy; and keeps Skills/manual MCP recovery-only and mutually
+exclusive with the full-plugin route.
+
+v2 status language distinguishes native modes `invoke-documented`,
+`observe-only`, `descriptor-only`, and `unavailable`; public labels
+`documented-tested`, `documented-untested`, `observed-build-specific`, and
+`unavailable`; and `package`, `probe`, and `current-session` evidence scopes.
+Package readiness does not prove a live host. Removal preserves credentials and
+all non-LazyBuddy or host-managed entries.
+
+W4.5 and W4.6 are historical v1.0.3 test labels, not current v1.1.0
+host-readiness or publication evidence.
+
 ## v1.0.3 — Adaptive harness (2026-07-20)
 
 The durable route requires **Node.js LTS 20 or newer** and **Git**, accepts only

@@ -16,7 +16,6 @@ disallowedTools:
 skills:
   - review-work
 memory: false
-isolation: true
 ---
 
 # lazybuddy-context-miner

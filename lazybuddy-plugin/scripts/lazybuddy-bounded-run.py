@@ -7,8 +7,33 @@ import os
 import signal
 import subprocess
 import sys
-from dataclasses import dataclass
+import tempfile
+import time
+from contextlib import ExitStack
 from pathlib import Path
+from types import FrameType
+from typing import Final, TypeAlias, assert_never
+
+from lazybuddy_bounded_process import (
+    TAIL_BYTES,
+    ChildStatus,
+    OutputBoundary,
+    WaitBoundary,
+    executable_fingerprint,
+    inspect_processes,
+    signal_owned_group,
+)
+from lazybuddy_supervisor_runner import SupervisorLaunch, SupervisorRuntime
+from lazybuddy_process_lifecycle import (
+    CleanupReceipt,
+    CleanupStatus,
+    cleanup_owned_processes,
+)
+
+
+DEFAULT_OUTPUT_CAP: Final = 1024 * 1024
+cancel_signal_received = False
+JSONValue: TypeAlias = str | int | float | bool | None | list["JSONValue"] | dict[str, "JSONValue"]
 
 
 def positive_integer(value: str) -> int:
@@ -21,122 +46,54 @@ def positive_integer(value: str) -> int:
     return parsed
 
 
-def tail(value: str, limit: int = 4096) -> str:
-    return value[-limit:]
-
-
 def emit(status: str, label: str) -> None:
     print(f"{status}: {label}", file=sys.stderr, flush=True)
 
 
-def write_result(path: Path, result: dict[str, object]) -> None:
-    path.write_text(json.dumps(result, ensure_ascii=False) + "\n", encoding="utf-8")
+def write_result(path: Path, result: dict[str, JSONValue]) -> None:
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(result, ensure_ascii=False) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    except OSError:
+        temporary_path.unlink(missing_ok=True)
+        raise
 
 
-@dataclass(frozen=True)
-class ProcessRecord:
-    pid: int
-    parent_pid: int
-    group_id: int
-    state: str
-    started: str
+def has_linked_component(path: Path) -> bool:
+    current = path.absolute()
+    while True:
+        if current.is_symlink():
+            return True
+        if current.parent == current:
+            return False
+        current = current.parent
 
 
-def process_records() -> dict[int, ProcessRecord]:
-    ps_path = next(
-        (
-            candidate
-            for candidate in ("/bin/ps", "/usr/bin/ps")
-            if os.path.isfile(candidate) and os.access(candidate, os.X_OK)
-        ),
-        None,
-    )
-    if ps_path is None:
-        raise FileNotFoundError("trusted ps executable is unavailable")
-    completed = subprocess.run(
-        [ps_path, "-axo", "pid=,ppid=,pgid=,stat=,lstart="],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    completed.check_returncode()
-    records: dict[int, ProcessRecord] = {}
-    for line in completed.stdout.splitlines():
-        fields = line.split(maxsplit=4)
-        if len(fields) != 5:
-            continue
+def normalize_macos_temp_alias(path: Path) -> Path:
+    if sys.platform != "darwin":
+        return path
+    for alias, target in ((Path("/tmp"), Path("/private/tmp")), (Path("/var"), Path("/private/var"))):
         try:
-            record = ProcessRecord(int(fields[0]), int(fields[1]), int(fields[2]), fields[3], fields[4])
+            relative = path.relative_to(alias)
         except ValueError:
             continue
-        records[record.pid] = record
-    if os.getpid() not in records:
-        raise OSError("trusted ps output did not include the runner process")
-    return records
+        if alias.is_symlink() and alias.resolve(strict=True) == target:
+            return target / relative
+    return path
 
 
-def descendant_records(root_pid: int) -> tuple[ProcessRecord, ...]:
-    records = process_records()
-    children: dict[int, list[ProcessRecord]] = {}
-    for record in records.values():
-        children.setdefault(record.parent_pid, []).append(record)
-    descendants: list[ProcessRecord] = []
-    pending = list(children.get(root_pid, []))
-    while pending:
-        record = pending.pop()
-        descendants.append(record)
-        pending.extend(children.get(record.pid, []))
-    return tuple(descendants)
+def signal_cancel(_number: int, _frame: FrameType | None) -> None:
+    global cancel_signal_received
+    cancel_signal_received = True
 
 
-def is_same_process(record: ProcessRecord, records: dict[int, ProcessRecord]) -> bool:
-    current = records.get(record.pid)
-    return current is not None and not current.state.startswith("Z") and current.started == record.started
-
-
-def terminate_owned_group(process: subprocess.Popen[str]) -> dict[str, object]:
-    inspection_failed = False
-    try:
-        descendants = descendant_records(process.pid)
-    except (OSError, subprocess.SubprocessError):
-        descendants = ()
-        inspection_failed = True
-    try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    try:
-        process.wait(timeout=0.2)
-    except subprocess.TimeoutExpired:
-        pass
-    try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    try:
-        process.wait(timeout=1)
-    except subprocess.TimeoutExpired:
-        pass
-    try:
-        current_records = process_records()
-    except (OSError, subprocess.SubprocessError):
-        current_records = {}
-        inspection_failed = True
-    remaining = [record.pid for record in descendants if is_same_process(record, current_records)]
-    return {
-        "process_group_terminated": True,
-        "detectable_descendants_remaining": inspection_failed or bool(remaining),
-        "detectable_descendant_pids": sorted(remaining),
-    }
-
-
-def timeout_output(value: str | bytes | None) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, bytes):
-        return value.decode(errors="replace")
-    return value
+def cancellation_requested() -> bool:
+    return cancel_signal_received
 
 
 def main() -> int:
@@ -144,55 +101,164 @@ def main() -> int:
     parser.add_argument("--label", required=True)
     parser.add_argument("--timeout", required=True, type=positive_integer)
     parser.add_argument("--result-file", required=True, type=Path)
+    for option in ("cwd", "cwd-file", "stdin-file", "stdout-file", "stderr-file", "cancel-file"):
+        parser.add_argument(f"--{option}", type=Path)
+    parser.add_argument("--max-output-bytes", type=positive_integer, default=DEFAULT_OUTPUT_CAP)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    args.result_file = normalize_macos_temp_alias(args.result_file)
     if not args.command or args.command[0] != "--" or len(args.command) == 1:
         parser.error("a command after -- is required")
-    command = args.command[1:]
+    artifact_values = (args.cwd, args.cwd_file, args.stdin_file, args.stdout_file, args.stderr_file)
+    explicit_artifacts = any(artifact_values)
+    if explicit_artifacts and not all(artifact_values):
+        parser.error("--cwd, --cwd-file, --stdin-file, --stdout-file, and --stderr-file must be supplied together")
+    supplied_paths = (args.result_file, *(value for value in (*artifact_values, args.cancel_file) if value is not None))
+    if any(not path.is_absolute() or has_linked_component(path) for path in supplied_paths):
+        parser.error("runner paths must be absolute and must not traverse symlinks")
+    working_directory = (args.cwd or Path.cwd()).resolve(strict=True)
+    for cancellation_signal in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(cancellation_signal, signal_cancel)
     emit("START", args.label)
-    try:
-        process = subprocess.Popen(
-            command,
-            stdin=None,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            start_new_session=True,
+    with tempfile.TemporaryDirectory(prefix="lazybuddy-bounded-") as temporary:
+        temporary_root = Path(temporary)
+        supervisor_status_path = temporary_root / "supervisor-status.json"
+        supervisor_ack_path = temporary_root / "supervisor-ack.json"
+        supervisor_teardown_path = temporary_root / "supervisor-teardown"
+        supervisor = Path(__file__).resolve().parent / "lazybuddy_launch_supervisor.py"
+        stdin_path, stdout_path, stderr_path = (
+            value or temporary_root / name
+            for value, name in ((args.stdin_file, "stdin"), (args.stdout_file, "stdout"), (args.stderr_file, "stderr"))
         )
-    except OSError as error:
-        write_result(args.result_file, {"status": "unavailable", "reason": "launch_error", "tail": tail(str(error))})
-        emit("FAIL", args.label)
-        return 125
-    try:
-        stdout, stderr = process.communicate(timeout=args.timeout)
-    except subprocess.TimeoutExpired as error:
-        cleanup = terminate_owned_group(process)
-        stdout = timeout_output(error.output)
-        stderr = timeout_output(error.stderr)
-        if process.stdout is not None:
-            process.stdout.close()
-        if process.stderr is not None:
-            process.stderr.close()
-        write_result(
-            args.result_file,
-            {
-                "status": "timeout",
-                "reason": "deadline_exceeded",
-                "tail": tail(stdout + stderr),
-                "cleanup": cleanup,
-            },
-        )
-        emit("TIMEOUT", args.label)
+        if args.stdin_file is not None and not stdin_path.is_file():
+            parser.error("--stdin-file must be a regular file")
+        if args.cwd_file is not None:
+            args.cwd_file.write_text(f"{working_directory}\n", encoding="utf-8")
+        try:
+            fingerprint = executable_fingerprint(args.command[1], working_directory)
+        except (OSError, ValueError) as error:
+            write_result(args.result_file, {"status": "unavailable", "reason": "launch_error", "tail": str(error)[-TAIL_BYTES:]})
+            emit("FAIL", args.label)
+            return 125
+        with ExitStack() as resources:
+            deadline = time.monotonic() + args.timeout
+            stdin_handle = resources.enter_context(stdin_path.open("rb")) if args.stdin_file is not None else None
+            stdout_handle = resources.enter_context(stdout_path.open("wb"))
+            stderr_handle = resources.enter_context(stderr_path.open("wb"))
+            try:
+                process = SupervisorLaunch(
+                    supervisor,
+                    supervisor_status_path,
+                    supervisor_ack_path,
+                    supervisor_teardown_path,
+                    os.getpid(),
+                    args.timeout,
+                    tuple(args.command[1:]),
+                    working_directory,
+                ).start(stdin_handle, stdout_handle, stderr_handle)
+            except OSError as error:
+                write_result(args.result_file, {"status": "unavailable", "reason": "launch_error", "tail": str(error)[-TAIL_BYTES:]})
+                emit("FAIL", args.label)
+                return 125
+            output = OutputBoundary(stdout_path, stderr_path, args.max_output_bytes)
+            child = SupervisorRuntime(
+                process,
+                supervisor_status_path,
+                supervisor_ack_path,
+                inspect_processes,
+            ).wait(output, WaitBoundary(deadline, args.cancel_file, cancellation_requested))
+        cleanup_receipt = cleanup_owned_processes(child.tracker, inspect_processes, signal_owned_group)
+        cleanup: dict[str, JSONValue] = {
+            "status": cleanup_receipt.status.value,
+            "tracked_pids": list(cleanup_receipt.tracked_pids),
+            "detail": cleanup_receipt.detail,
+        }
+        cleanup["process_group_terminated"] = cleanup_receipt.status is CleanupStatus.VERIFIED_ABSENT
+        cleanup["detectable_descendants_remaining"] = cleanup_receipt.status is not CleanupStatus.VERIFIED_ABSENT
+        cleanup["detectable_descendant_pids"] = list(cleanup_receipt.tracked_pids)
+        supervisor_teardown = "unverified"
+        if process.poll() is None:
+            supervisor_teardown_path.touch(exist_ok=False)
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            if cleanup_receipt.status is CleanupStatus.VERIFIED_ABSENT:
+                cleanup_receipt = CleanupReceipt(
+                    CleanupStatus.VERIFIED_REMAINING,
+                    cleanup_receipt.tracked_pids,
+                    "direct child was not reaped after verified cleanup",
+                )
+                cleanup = {
+                    "status": cleanup_receipt.status.value,
+                    "tracked_pids": list(cleanup_receipt.tracked_pids),
+                    "detail": cleanup_receipt.detail,
+                }
+                cleanup["process_group_terminated"] = False
+                cleanup["detectable_descendants_remaining"] = True
+                cleanup["detectable_descendant_pids"] = list(cleanup_receipt.tracked_pids)
+        else:
+            supervisor_teardown = "verified-absent"
+        cleanup["supervisor_status"] = child.status.value
+        cleanup["supervisor_teardown"] = supervisor_teardown
+        output_complete = output.within_cap()
+        output.enforce_cap()
+        tail = output.tail()
+        artifacts: dict[str, JSONValue] = {}
+        if explicit_artifacts:
+            artifacts = {"cwd": str(args.cwd_file), "stdin": str(stdin_path), "stdout": str(stdout_path), "stderr": str(stderr_path)}
+        try:
+            current_fingerprint = executable_fingerprint(args.command[1], working_directory)
+        except (OSError, ValueError):
+            current_fingerprint = {}
+        if cleanup_receipt.status is not CleanupStatus.VERIFIED_ABSENT:
+            result: dict[str, JSONValue] = {"status": "unavailable", "reason": "process_cleanup_failed", "tail": tail, "cleanup": cleanup}
+            exit_code, event = 125, "FAIL"
+        elif current_fingerprint != fingerprint:
+            result = {"status": "unavailable", "reason": "executable_changed", "tail": tail}
+            exit_code, event = 125, "FAIL"
+        elif not output_complete or child.status is ChildStatus.OUTPUT_LIMIT:
+            result = {"status": "fail", "reason": "output_limit_exceeded", "tail": tail, "cleanup": cleanup}
+            exit_code, event = 1, "FAIL"
+        else:
+            match child.status:
+                case ChildStatus.CANCELLED:
+                    result = {"status": "cancelled", "reason": "cancellation_requested", "tail": tail, "cleanup": cleanup}
+                    exit_code, event = 130, "CANCELLED"
+                case ChildStatus.TIMEOUT:
+                    result = {"status": "timeout", "reason": "deadline_exceeded", "tail": tail, "cleanup": cleanup}
+                    exit_code, event = 124, "TIMEOUT"
+                case ChildStatus.LAUNCH_ERROR:
+                    result = {"status": "unavailable", "reason": "launch_error", "tail": child.detail[-TAIL_BYTES:], "cleanup": cleanup}
+                    exit_code, event = 125, "FAIL"
+                case ChildStatus.SUPERVISOR_FAILURE:
+                    result = {"status": "unavailable", "reason": "process_cleanup_failed", "tail": child.detail[-TAIL_BYTES:], "cleanup": cleanup}
+                    exit_code, event = 125, "FAIL"
+                case ChildStatus.EXITED:
+                    returncode = child.returncode if child.returncode is not None else 1
+                    if returncode == 0:
+                        result = {"status": "pass", "reason": "ok", "tail": tail}
+                        exit_code, event = 0, "PASS"
+                    else:
+                        result = {"status": "fail", "reason": f"exit_{returncode}", "tail": tail}
+                        exit_code, event = returncode if returncode > 0 else 1, "FAIL"
+                case ChildStatus.OUTPUT_LIMIT:
+                    raise AssertionError("output-limit outcome bypassed the output decision")
+                case unreachable:
+                    assert_never(unreachable)
+        result["cleanup"] = cleanup
+        if explicit_artifacts:
+            result["artifacts"] = artifacts
+            result["executable"] = fingerprint
+        write_result(args.result_file, result)
+        emit(event, args.label)
         detectable = str(cleanup["detectable_descendants_remaining"]).lower()
-        print(f"CLEANUP: {args.label} detectable_descendants_remaining={detectable}", file=sys.stderr, flush=True)
-        return 124
-    if process.returncode == 0:
-        write_result(args.result_file, {"status": "pass", "reason": "ok", "tail": tail((stdout or "") + (stderr or ""))})
-        emit("PASS", args.label)
-        return 0
-    write_result(args.result_file, {"status": "fail", "reason": f"exit_{process.returncode}", "tail": tail((stdout or "") + (stderr or ""))})
-    emit("FAIL", args.label)
-    return process.returncode if process.returncode > 0 else 1
+        print(
+            f"CLEANUP: {args.label} status={cleanup_receipt.status.value} "
+            f"detectable_descendants_remaining={detectable}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return exit_code
 
 
 if __name__ == "__main__":

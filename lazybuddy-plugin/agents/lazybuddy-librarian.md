@@ -16,7 +16,6 @@ disallowedTools:
 skills:
   - librarian
 memory: true
-isolation: true
 ---
 
 # lazybuddy-librarian (Librarian)

@@ -17,6 +17,8 @@ case "$PLUGIN_ROOT" in
   *) die "plugin root must be absolute: $PLUGIN_ROOT" ;;
 esac
 [ -d "$PLUGIN_ROOT" ] || die "plugin root not found: $PLUGIN_ROOT"
+source "$PLUGIN_ROOT/mcp/profile-gate.sh"
+lazybuddy_require_mcp_profile "status-dashboard"
 RAW_CWD="${CWD:-${CODEBUDDY_PROJECT_DIR:-}}"
 [ -n "$RAW_CWD" ] || die "project CWD is required: set CWD or CODEBUDDY_PROJECT_DIR"
 case "$RAW_CWD" in
@@ -106,7 +108,7 @@ fi
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.0.3"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.1.0"}}'
     ;;
   tools/list)
     reply '{"tools":[

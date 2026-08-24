@@ -3,13 +3,23 @@
 Remove host-managed integration through its host, and remove package-owned
 tooling only when its receipt proves ownership. These are separate operations.
 
+## v1.1.0 route removal boundary
+
+For `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`, remove only LazyBuddy
+entries through the selected host UI or documented host command. Preserve
+credentials, trust decisions, unrelated plugins and connectors, project files,
+and host-private paths. Marketplace is the default full-plugin route for
+CodeBuddy IDE and WorkBuddy; Skills/manual MCP is recovery-only and mutually
+exclusive with the full-plugin route. A package result does not prove a live
+host was removed.
+
 ## Remove by installation route
 
 | Route | Safe action | Preserve |
 | --- | --- | --- |
 | CodeBuddy IDE or CLI plugin | Use the host plugin removal flow; remove or disable only LazyBuddy MCP servers that you manually registered. | Host installation paths, unrelated MCP entries, credentials, and host state. |
-| WorkBuddy plugin/marketplace | Use WorkBuddy's documented remove flow and confirm the result in the host. | Host-managed plugin locations and `.workbuddy` state. |
-| WorkBuddy local-import fallback | Remove imported `skills/` entries through Skills UI and manually configured connectors through Settings. | Other imported skills, connectors, and Settings entries. |
+| WorkBuddy plugin/marketplace | Use the emitted marketplace removal receipt with WorkBuddy's remove flow and confirm the result in the host. | Host-managed plugin locations, modified assets, and `.workbuddy` state. |
+| WorkBuddy local-import fallback | Only after full-plugin removal, remove receipt-owned unmodified imported `skills/` entries through Skills UI and manually configured connectors through Settings. | Other or modified skills, connectors, and Settings entries. |
 | Receipt-owned tooling root | Run the package uninstall command only for the exact owned root. | Modified, foreign, linked, caller-owned, project, global, and host-managed paths. |
 
 For a package-owned tooling root:
@@ -27,7 +37,7 @@ it is preserved rather than removed.
 ## What not to remove
 
 Never guess or scan for host-managed installation paths. Do not delete
-`.workbuddy` state, `.workbuddy-plugin` compatibility metadata, another host's
+`.workbuddy` state, `.workbuddy-plugin` marketplace metadata, another host's
 MCP configuration, project files, global tools, or credentials. Removing a
 tooling root does not authorize removal of a plugin, marketplace installation,
 MCP registration, or credential state.

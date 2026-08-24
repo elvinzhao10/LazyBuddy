@@ -46,8 +46,8 @@ function buildReceipt(paths, options, previousRelease, stagedInventory, manifest
   ];
   const receiptId = `${paths.product.toLowerCase()}-${options.version.replaceAll('.', '-')}-${options.commitSha.slice(0, 12)}`;
   return {
-    $schema: 'lazy-harness-lifecycle.v1.schema.json',
-    schema_version: 1,
+    $schema: 'lazy-harness-lifecycle.v2.schema.json',
+    schema_version: 2,
     receipt_id: receiptId,
     product: paths.product,
     origin: options.origin,
@@ -89,6 +89,7 @@ function buildReceipt(paths, options, previousRelease, stagedInventory, manifest
       host_or_global_ownership: 'forbidden',
       symlink_ownership: 'forbidden',
     },
+    created_files_scope: 'release-only',
     created_files: createdFiles,
     registered_project_declarations: options.registeredProjectDeclarations || [],
     receipt_path: `receipts/${receiptId}.json`,
@@ -103,7 +104,8 @@ function receiptFor(paths, id) {
   const candidates = fs.readdirSync(paths.receipts).filter((name) => name.startsWith(prefix) && name.endsWith(`-${id.slice(-12)}.json`));
   if (candidates.length !== 1) throw new LifecycleError('OWNERSHIP_REFUSED', `missing exact receipt for ${id}`);
   const receiptPath = path.join(paths.receipts, candidates[0]);
-  const receipt = readJson(receiptPath, 'OWNERSHIP_REFUSED');
+  const receipt = normalizeReceipt(paths, readJson(receiptPath, 'OWNERSHIP_REFUSED'));
+  validateReceipt(paths, receipt, 'OWNERSHIP_REFUSED');
   if (receipt.product !== paths.product || receipt.release.id !== id || receipt.receipt_path !== `receipts/${candidates[0]}`) {
     throw new LifecycleError('OWNERSHIP_REFUSED', `receipt identity mismatch for ${id}`);
   }
@@ -115,4 +117,38 @@ function receiptFor(paths, id) {
   return { receipt, receiptPath, expected };
 }
 
-module.exports = { preparePromotion, receiptFor };
+function normalizeReceipt(paths, receipt) {
+  if (!receipt || typeof receipt !== 'object' || !receipt.release || typeof receipt.release.id !== 'string') {
+    throw new LifecycleError('OWNERSHIP_REFUSED', 'lifecycle receipt has an invalid shape');
+  }
+  let normalized;
+  if (receipt.schema_version === 1 && receipt.$schema === 'lazy-harness-lifecycle.v1.schema.json') {
+    const releasePrefix = `releases/${receipt.release.id}`;
+    if (!Array.isArray(receipt.created_files)
+      || receipt.created_files.filter((item) => item && typeof item.path === 'string'
+        && item.path === 'launcher.js').length > 1
+      || receipt.created_files.some((item) => !item || typeof item.path !== 'string'
+        || (item.path !== 'launcher.js' && item.path !== releasePrefix
+          && !item.path.startsWith(`${releasePrefix}/`)))) {
+      throw new LifecycleError('OWNERSHIP_REFUSED', 'legacy lifecycle receipt contains unknown ownership paths');
+    }
+    normalized = {
+      ...structuredClone(receipt),
+      $schema: 'lazy-harness-lifecycle.v2.schema.json',
+      schema_version: 2,
+      created_files_scope: 'release-only',
+      created_files: receipt.created_files.filter((item) => item.path === releasePrefix
+        || item.path.startsWith(`${releasePrefix}/`)).map((item) => ({ ...item })),
+    };
+  } else if (receipt.schema_version === 2 && receipt.$schema === 'lazy-harness-lifecycle.v2.schema.json') {
+    normalized = structuredClone(receipt);
+  } else {
+    throw new LifecycleError('OWNERSHIP_REFUSED', 'lifecycle receipt version is unknown or tampered');
+  }
+  if (normalized.product !== paths.product) {
+    throw new LifecycleError('OWNERSHIP_REFUSED', 'lifecycle receipt product does not match');
+  }
+  return normalized;
+}
+
+module.exports = { normalizeReceipt, preparePromotion, receiptFor };

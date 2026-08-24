@@ -30,7 +30,42 @@
     "iteration": { "type": "object" },
     "last_checkpoint": { "type": ["string", "null"] },
     "budget": { "type": "object" },
-    "session_ids": { "type": "array" },
+    "session_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+      "uniqueItems": true
+    },
+    "runtime_fingerprints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["session_id", "host", "worktree", "fingerprints"],
+        "properties": {
+          "session_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "host": { "type": "string", "minLength": 1 },
+          "worktree": { "type": "string", "pattern": "^/" },
+          "fingerprints": {
+            "type": "object",
+            "required": ["host", "profile", "probe", "binary", "session", "worktree", "mcp", "generated_asset", "marketplace", "root", "revision"],
+            "properties": {
+              "host": { "$ref": "#/definitions/digest" },
+              "profile": { "$ref": "#/definitions/digest" },
+              "probe": { "$ref": "#/definitions/digest" },
+              "session": { "$ref": "#/definitions/digest" },
+              "binary": { "$ref": "#/definitions/digest" },
+              "root": { "$ref": "#/definitions/digest" },
+              "revision": { "$ref": "#/definitions/digest" },
+              "worktree": { "$ref": "#/definitions/digest" },
+              "mcp": { "$ref": "#/definitions/digest" },
+              "generated_asset": { "$ref": "#/definitions/digest" },
+              "marketplace": { "$ref": "#/definitions/digest" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "adaptive": {
       "type": ["object", "null"],
       "description": "Optional additive block written only by the adaptive orchestrator (single-writer rule, plan Section 11).",
@@ -63,5 +98,8 @@
       "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
 }

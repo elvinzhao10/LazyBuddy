@@ -39,9 +39,9 @@ caller workspace files.
 
 Route status is explicit: the local marketplace is the **documented CodeBuddy
 CLI route and the preferred CodeBuddy IDE route whenever the CodeBuddy CLI is
-available**. CodeBuddy IDE GUI loading and WorkBuddy full-plugin loading are
-**observed-build routes** only. The `manual-skills-mcp-fallback` is the
-supported local fallback. None is current host proof until observed.
+available**. WorkBuddy uses `.workbuddy-plugin/plugin.json` as its default
+marketplace full-plugin route. The `manual-skills-mcp-fallback` is recovery
+only. None is current host proof until observed.
 
 Supplied macOS QA dated 2026-07-18 observed CodeBuddy IDE full-plugin loading
 through the CLI-backed user-scope marketplace route. It inspected WorkBuddy
@@ -87,11 +87,13 @@ as an observed-build alternative when the CLI is unavailable. If any GUI
 control is unavailable, record the host version/build and exact error, keep
 host readiness pending, and select the fallback only as a later action.
 
-## WorkBuddy observed-build boundary
+## WorkBuddy marketplace full-plugin boundary
 
-The supplied WorkBuddy build did **not** complete through its GUI Install
-action: it hung in an orphaned `plugin validate`. Do not click that action or
-direct a user to it.
+The active release's `.workbuddy-plugin/plugin.json` is the default marketplace
+source for Skills, commands, agents, hooks, and all six MCP servers. Missing
+public manifest documentation does not demote this route. Never inspect or
+mutate private WorkBuddy registries; use only the plugin/marketplace surface
+offered by the current build.
 
 Before asking for that approval, run this read-only preflight from the release
 root:
@@ -102,9 +104,11 @@ bash lazybuddy-plugin/scripts/lazybuddy-workbuddy-preparation-check.sh \
 ```
 
 It prints `HOST_PREPARATION=not-applied`, `HOST_MUTATION=none`, and
-`HOST_READINESS=pending`; `--apply` refuses. Do not reproduce undocumented host
-state from historical QA. Use the Skills/manual-MCP fallback; it provides
-Skills plus six connectors only and excludes commands, agents, and hooks.
+`HOST_READINESS=pending`; `--apply` refuses. Durable `status --host workbuddy`
+emits the exact receipt template. A current receipt must bind the active
+source/version and current build/session and show one loaded Skill, command,
+agent, hook, and all six connected MCP servers. The Skills/manual-MCP fallback
+is recovery-only and excludes commands, agents, and hooks.
 
 If durable `status` reports `STALE_RUNTIME`, use a fresh verified checkout for
 scoped `offboard` and re-onboard. Do not edit receipts. A moved same-version

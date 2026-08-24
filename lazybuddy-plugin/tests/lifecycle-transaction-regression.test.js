@@ -17,6 +17,7 @@ const {
 } = require('../scripts/lifecycle');
 
 const ORIGIN = 'https://github.com/elvinzhao10/LazyBuddy.git';
+const { receiptFor } = require('../scripts/lifecycle/receipt');
 
 function fixture() {
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazy lifecycle regression '));
@@ -54,6 +55,25 @@ function promote(f, staged, overrides = {}) {
 function expectCode(action, code) {
   assert.throws(action, (error) => error instanceof LifecycleError && error.code === code);
 }
+
+test('characterizes legacy v1 receipt reads as immutable ownership evidence', () => {
+  // Given: a release installed by the existing v1 lifecycle writer.
+  const f = fixture();
+  const promoted = promote(f, stage(f, 'a'));
+  const legacy = JSON.parse(fs.readFileSync(promoted.receiptPath, 'utf8'));
+  legacy.$schema = 'lazy-harness-lifecycle.v1.schema.json';
+  legacy.schema_version = 1;
+  delete legacy.created_files_scope;
+  fs.writeFileSync(promoted.receiptPath, JSON.stringify(legacy, null, 2) + '\n');
+  const before = fs.readFileSync(promoted.receiptPath);
+
+  // When: the ownership reader verifies the installed release.
+  const verified = receiptFor(f.paths, promoted.releaseId);
+
+  // Then: it returns the v1 evidence without rewriting the receipt.
+  assert.equal(verified.receipt.schema_version, 2);
+  assert.deepEqual(fs.readFileSync(promoted.receiptPath), before);
+});
 
 test('rejects entrypoint traversal before promotion', () => {
   // Given: a valid stage and an entrypoint outside that release.

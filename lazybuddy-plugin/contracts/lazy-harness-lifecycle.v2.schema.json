@@ -1,0 +1,187 @@
+{
+  "$id": "lazy-harness-lifecycle.v2.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Portable release-only ownership receipt written by lifecycle v2.",
+  "properties": {
+    "$schema": {
+      "const": "lazy-harness-lifecycle.v2.schema.json",
+      "type": "string"
+    },
+    "schema_version": { "const": 2, "type": "integer" },
+    "receipt_id": { "pattern": "^[a-z][a-z0-9-]{2,63}$", "type": "string" },
+    "product": { "enum": ["LazyBuddy", "LazyTrae"], "type": "string" },
+    "origin": { "type": "string" },
+    "commit_sha": { "$ref": "#/definitions/full_sha" },
+    "manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/definitions/artifact_path" },
+        "version": { "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$", "type": "string" },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "digests": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "path": { "$ref": "#/definitions/artifact_path" },
+              "sha256": { "$ref": "#/definitions/sha256" }
+            },
+            "required": ["path", "sha256"],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": ["path", "version", "sha256", "digests"],
+      "type": "object"
+    },
+    "layout": {
+      "additionalProperties": false,
+      "properties": {
+        "install_root": { "$ref": "#/definitions/absolute_path" },
+        "product_root": { "$ref": "#/definitions/absolute_path" },
+        "releases": { "const": "releases/", "type": "string" },
+        "active": { "const": "active.json", "type": "string" },
+        "launcher": { "const": "launcher.js", "type": "string" },
+        "receipts": { "const": "receipts/", "type": "string" },
+        "staging": { "const": "staging/", "type": "string" },
+        "locks": { "const": "locks/", "type": "string" },
+        "rollback": { "const": "rollback/", "type": "string" }
+      },
+      "required": ["install_root", "product_root", "releases", "active", "launcher", "receipts", "staging", "locks", "rollback"],
+      "type": "object"
+    },
+    "release": {
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/release_id" },
+        "path": { "$ref": "#/definitions/release_root" }
+      },
+      "required": ["id", "path"],
+      "type": "object"
+    },
+    "runtime": {
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/definitions/absolute_path" },
+        "fingerprint": {
+          "additionalProperties": false,
+          "properties": {
+            "realpath": { "$ref": "#/definitions/absolute_path" },
+            "version": { "pattern": "^v\\d+\\.\\d+\\.\\d+", "type": "string" },
+            "sha256": { "$ref": "#/definitions/sha256" }
+          },
+          "required": ["realpath", "version", "sha256"],
+          "type": "object"
+        },
+        "ownership": { "const": "external-prerequisite", "type": "string" }
+      },
+      "required": ["path", "fingerprint", "ownership"],
+      "type": "object"
+    },
+    "ownership_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "const": "product-root-only", "type": "string" },
+        "owned_path_base": { "const": "product_root", "type": "string" },
+        "cross_product_ownership": { "const": "forbidden", "type": "string" },
+        "host_or_global_ownership": { "const": "forbidden", "type": "string" },
+        "symlink_ownership": { "const": "forbidden", "type": "string" }
+      },
+      "required": ["scope", "owned_path_base", "cross_product_ownership", "host_or_global_ownership", "symlink_ownership"],
+      "type": "object"
+    },
+    "created_files_scope": { "const": "release-only", "type": "string" },
+    "created_files": {
+      "items": { "$ref": "#/definitions/created_file" },
+      "minItems": 1,
+      "type": "array"
+    },
+    "registered_project_declarations": {
+      "items": { "$ref": "#/definitions/project_declaration" },
+      "type": "array"
+    },
+    "receipt_path": { "pattern": "^receipts/[a-z][a-z0-9-]+\\.json$", "type": "string" },
+    "active_release": { "$ref": "#/definitions/release_id" },
+    "previous_release": {
+      "oneOf": [
+        { "$ref": "#/definitions/release_id" },
+        { "type": "null" }
+      ]
+    },
+    "host_evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "status": { "const": "pending", "type": "string" },
+        "observation_receipt": { "type": "null" }
+      },
+      "required": ["status", "observation_receipt"],
+      "type": "object"
+    }
+  },
+  "required": [
+    "$schema", "schema_version", "receipt_id", "product", "origin", "commit_sha", "manifest", "layout",
+    "release", "runtime", "ownership_policy", "created_files_scope", "created_files",
+    "registered_project_declarations", "receipt_path", "active_release", "previous_release", "host_evidence"
+  ],
+  "allOf": [
+    {
+      "if": { "properties": { "product": { "const": "LazyBuddy" } }, "required": ["product"] },
+      "then": {
+        "properties": {
+          "origin": { "const": "https://github.com/elvinzhao10/LazyBuddy.git" },
+          "registered_project_declarations": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "product": { "const": "LazyTrae" } }, "required": ["product"] },
+      "then": { "properties": { "origin": { "const": "https://github.com/elvinzhao10/LazyTrae.git" } } }
+    }
+  ],
+  "type": "object",
+  "definitions": {
+    "absolute_path": { "pattern": "^(?:/|[A-Za-z]:[\\\\/]).+", "type": "string" },
+    "full_sha": { "pattern": "^[0-9a-f]{40}$", "type": "string" },
+    "sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" },
+    "release_id": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}$",
+      "type": "string"
+    },
+    "release_root": {
+      "pattern": "^releases/\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}$",
+      "type": "string"
+    },
+    "artifact_path": {
+      "pattern": "^releases/\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}(?:/[^/\\\\]+)+$",
+      "type": "string"
+    },
+    "created_file": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "pattern": "^releases/\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?-[0-9a-f]{12}(?:/[^/\\\\]+)*$",
+          "type": "string"
+        },
+        "type": { "enum": ["directory", "file"], "type": "string" },
+        "mode": { "pattern": "^0[0-7]{3}$", "type": "string" },
+        "sha256": { "oneOf": [{ "$ref": "#/definitions/sha256" }, { "type": "null" }] }
+      },
+      "required": ["path", "type", "mode", "sha256"],
+      "type": "object"
+    },
+    "project_declaration": {
+      "additionalProperties": false,
+      "properties": {
+        "project_root": { "$ref": "#/definitions/absolute_path" },
+        "path": { "const": ".trae/mcp.json", "type": "string" },
+        "mode": { "pattern": "^0[0-7]{3}$", "type": "string" },
+        "managed_entry_sha256": { "$ref": "#/definitions/sha256" },
+        "ownership_scope": { "const": "managed-entry-only", "type": "string" }
+      },
+      "required": ["project_root", "path", "mode", "managed_entry_sha256", "ownership_scope"],
+      "type": "object"
+    }
+  }
+}

@@ -47,6 +47,10 @@ SIBLING_PLUGIN="$SIBLING_PARENT/lazybuddy-plugin"
 MARKER="$TMP/poisoned-sentinel-ran"
 mkdir -p "$WORKSPACE" "$SIBLING_PARENT" "$TMP/scripts" "$SIBLING_PARENT/scripts"
 cp -R "$PLUGIN_ROOT" "$SIBLING_PLUGIN"
+find "$SIBLING_PLUGIN" -type d -name __pycache__ -prune -exec rm -rf {} +
+find "$SIBLING_PLUGIN" -type f -name '*.pyc' -delete
+mkdir -p "$SIBLING_PARENT/.codebuddy-plugin"
+cp "$PLUGIN_ROOT/../.codebuddy-plugin/marketplace.json" "$SIBLING_PARENT/.codebuddy-plugin/marketplace.json"
 
 for poison in "$TMP/scripts/lazybuddy-load-check.sh" "$SIBLING_PARENT/scripts/lazybuddy-load-check.sh"; do
     cat > "$poison" <<EOF
@@ -59,7 +63,7 @@ done
 
 (
     cd "$WORKSPACE"
-    CODEBUDDY_PLUGIN_ROOT="$SIBLING_PLUGIN" bash "$SIBLING_PLUGIN/scripts/lazybuddy-load-check.sh"
+    CWD="$WORKSPACE" CODEBUDDY_PLUGIN_ROOT="$SIBLING_PLUGIN" bash "$SIBLING_PLUGIN/scripts/lazybuddy-load-check.sh"
 ) > "$TMP/explicit-override.out" 2>&1 || fail 'explicit absolute sibling-plugin load check failed'
 grep -Fxq 'PACKAGE_READINESS=full' "$TMP/explicit-override.out" || fail 'explicit absolute sibling-plugin load check was not full'
 [ ! -e "$MARKER" ] || fail 'explicit override executed a poisoned parent or sibling sentinel'

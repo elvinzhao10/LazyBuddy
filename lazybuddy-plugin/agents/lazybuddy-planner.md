@@ -20,7 +20,6 @@ disallowedTools:
 skills:
   - ulw-plan
 memory: false
-isolation: true
 ---
 
 # lazybuddy-planner (Prometheus)

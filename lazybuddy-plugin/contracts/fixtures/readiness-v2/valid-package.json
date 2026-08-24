@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "contract_version": "2.0.0",
+  "policy_digest": "3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a",
+  "host": "codebuddy-cli",
+  "capability": "local_search",
+  "provider": "rg",
+  "internal_status": "package-ready",
+  "native_mode": "invoke-documented",
+  "public_label": "documented-tested",
+  "package_status": "ready",
+  "probe_status": "not-run",
+  "readiness_scope": "package",
+  "reason_code": null,
+  "message": "Package discovery found the documented provider without invoking a host session.",
+  "evidence": {
+    "scope": "package",
+    "ref": "automatic-tooling-contract.v1.json#sha256=3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a",
+    "sha256": "3a65e1d7108c1a607035cbb127117dc5c18d0116ddf88c3e9ca5aaa4db032c4a",
+    "session_id": null
+  }
+}

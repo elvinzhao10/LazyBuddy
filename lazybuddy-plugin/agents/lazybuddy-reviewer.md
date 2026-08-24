@@ -17,7 +17,6 @@ skills:
   - review-work
   - programming
 memory: false
-isolation: true
 ---
 
 # lazybuddy-reviewer (Momus + Metis)

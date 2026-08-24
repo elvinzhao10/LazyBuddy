@@ -43,7 +43,7 @@ function createStatus({ envelope }) {
         status: 'ready',
         packageReadiness: {
           status: 'ready',
-          bundle: { release_id: active.active_release, version: '1.0.3', launcher: paths.launcher },
+          bundle: { release_id: active.active_release, version: verified.receipt.manifest.version, launcher: paths.launcher },
         },
         extra: { release_id: active.active_release, commit_sha: verified.receipt.commit_sha },
       };
