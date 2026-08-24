@@ -322,11 +322,15 @@ print_provider() {
 
 detect_tooling() {
     local rg_binary=""
+    local sg_binary="$TOOLING_ROOT/node_modules/@ast-grep/cli/ast-grep"
     rg_binary="$(owned_rg_path 2>/dev/null || true)"
+    if [[ ! -x "$sg_binary" ]]; then
+        sg_binary="$TOOLING_ROOT/node_modules/@ast-grep/cli/sg"
+    fi
     print_status
     echo "REGISTRY: $REGISTRY_SOURCE"
     print_provider "local_search" "rg" "$rg_binary"
-    print_provider "structural_search" "sg" "$TOOLING_ROOT/node_modules/@ast-grep/cli/sg"
+    print_provider "structural_search" "sg" "$sg_binary"
 }
 
 install_tooling() {

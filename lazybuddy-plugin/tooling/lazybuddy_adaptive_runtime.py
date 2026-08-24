@@ -32,7 +32,7 @@ SECRET_PATTERN: Final = re.compile(
     r"sk-[A-Za-z0-9]{20,}|Bearer [A-Za-z0-9._/+=]{20,}|gh[pousr]_[A-Za-z0-9]{20,}"
 )
 MAX_HOOK_INPUT_BYTES: Final = 1024 * 1024
-LEGACY_SECRET_WARNING: Final = (
+PROMPT_REDACTION_NOTICE: Final = (
     "[LazyBuddy WARNING] Your prompt may contain a secret (API key, token, or "
     "credential). Consider redacting it before sending."
 )
@@ -424,7 +424,7 @@ def main() -> int:
     secret_like = SECRET_PATTERN.search(hook_input.prompt) is not None
     if ACTION_PATTERN.search(hook_input.prompt) is None:
         if secret_like:
-            print(LEGACY_SECRET_WARNING)
+            print(PROMPT_REDACTION_NOTICE)
         return 0
     directive = build_directive(hook_input)
     print(json.dumps(directive, ensure_ascii=False, separators=(",", ":"), sort_keys=True))

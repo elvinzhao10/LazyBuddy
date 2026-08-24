@@ -300,7 +300,9 @@ def records(tooling_root: Path, target: Path | None, contract_paths: tuple[Path,
     state, remote_state = root_state(tooling_root)
     suffix = "darwin-arm64" if os.uname().machine == "arm64" else "darwin-x64"
     local_owned = tooling_root / "node_modules" / "@vscode" / f"ripgrep-{suffix}" / "bin" / "rg"
-    structural_owned = tooling_root / "node_modules" / "@ast-grep" / "cli" / "sg"
+    structural_owned = tooling_root / "node_modules" / "@ast-grep" / "cli" / "ast-grep"
+    if not executable(structural_owned):
+        structural_owned = tooling_root / "node_modules" / "@ast-grep" / "cli" / "sg"
     return [
         local_record("local_search", "rg", local_owned, state),
         local_record("structural_search", "sg", structural_owned, state),

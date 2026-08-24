@@ -49,7 +49,9 @@ def installed_provider(root: Path, capability: str) -> str | None:
         suffix = "darwin-arm64" if os.uname().machine == "arm64" else "darwin-x64"
         candidate = providers / "node_modules" / "@vscode" / f"ripgrep-{suffix}" / "bin" / "rg"
     else:
-        candidate = providers / "node_modules" / "@ast-grep" / "cli" / "sg"
+        candidate = providers / "node_modules" / "@ast-grep" / "cli" / "ast-grep"
+        if not candidate.is_file() or not os.access(candidate, os.X_OK):
+            candidate = providers / "node_modules" / "@ast-grep" / "cli" / "sg"
     return str(candidate) if candidate.is_file() and os.access(candidate, os.X_OK) else None
 
 
