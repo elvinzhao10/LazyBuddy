@@ -3,14 +3,7 @@
 ![LazyBuddy](lazybuddy-banner.jpg)
 
 LazyBuddy is a self-contained workflow harness for **CodeBuddy IDE**,
-**CodeBuddy CLI**, and **WorkBuddy**. In the supplied macOS QA dated
-2026-07-18, CodeBuddy IDE loaded the full plugin through the CLI-backed
-user-scope marketplace route. WorkBuddy uses the nested
-`.workbuddy-plugin/plugin.json` as its default marketplace full-plugin source;
-historical observations do not replace current build/session evidence. The
-CodeBuddy exact host version/build was not recorded. Skills/manual-MCP remains
-a recovery-only route.
-It provides structured workflows for planning, implementation, verification,
+**CodeBuddy CLI**, and **WorkBuddy**.It provides structured workflows for planning, implementation, verification,
 review, and bounded long-running work.
 
 ## Current documentation release: v1.1.0
