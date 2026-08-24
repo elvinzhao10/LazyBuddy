@@ -50,11 +50,12 @@ FAKE_ARGV_FILE="$TMP/serve-argv.json" python3 "$ADAPTER" start --state-root "$TM
   --result-file "$TMP/start-serve.json"
 json_assert "$TMP/start-serve.json" 'v["status"] == "running" and v["session_mode"] == "ephemeral"'
 json_assert "$TMP/serve-argv.json" 'v == ["--serve", "--port", v[2], "--no-session-persistence"] and v[2].isdigit()'
-python3 - "$serve_port" "$TMP/idle-ready" <<'PY' &
+python3 - "$serve_port" "$TMP/idle-ready" "$TMP/idle-release" <<'PY' &
 import pathlib, socket, sys, time
 with socket.create_connection(("127.0.0.1", int(sys.argv[1]))) as connection:
     pathlib.Path(sys.argv[2]).touch()
-    time.sleep(1)
+    while not pathlib.Path(sys.argv[3]).exists():
+        time.sleep(0.01)
 PY
 idle_peer=$!
 for _attempt in {1..50}; do
@@ -62,7 +63,22 @@ for _attempt in {1..50}; do
   sleep 0.02
 done
 [ -f "$TMP/idle-ready" ] || fail 'idle peer did not connect'
+(set +e
 python3 "$ADAPTER" status --state-root "$TMP/state" --name serve --result-file "$TMP/status-serve.json"
+printf '%s\n' "$?" > "$TMP/idle-status-exit") &
+idle_status=$!
+for _attempt in {1..50}; do
+  [ -f "$TMP/idle-status-exit" ] && break
+  sleep 0.02
+done
+if [ ! -f "$TMP/idle-status-exit" ] || [ "$(cat "$TMP/idle-status-exit")" -ne 0 ]; then
+  touch "$TMP/idle-release"
+  wait "$idle_status" || true
+  wait "$idle_peer" || true
+  fail 'service health did not respond while idle peer remained connected'
+fi
+touch "$TMP/idle-release"
+wait "$idle_status"
 wait "$idle_peer"
 json_assert "$TMP/status-serve.json" 'v["status"] == "running" and v["health"]["status"] == 200 and v["monitoring"]["scope"] == "traces-only"'
 python3 "$ADAPTER" stop --state-root "$TMP/state" --name serve --result-file "$TMP/stop-serve.json"
