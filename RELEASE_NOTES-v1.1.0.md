@@ -2,11 +2,14 @@
 
 ## Scope
 
-v1.1.0 is the current documentation release. It updates human-facing route,
-onboarding, migration, security, removal, evaluation, and status boundaries.
-It does not change a package manifest, publish a marketplace artifact, or
-assert that any host currently loaded LazyBuddy. The v1.0.3 release notes and
-their evidence are historical and unchanged.
+v1.1.0 is the current source-and-documentation branch at
+[`release/v1.1.0`](https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.1.0).
+It updates human-facing route, onboarding, migration, security, removal,
+evaluation, and status boundaries. It is not a GitHub Release, marketplace
+artifact, or assertion that any host currently loaded LazyBuddy. Install it
+through the durable onboarding route, validate the package, then obtain a
+fresh-session host observation. The v1.0.3 release notes and their evidence
+are historical and unchanged.
 
 ## Host and route status
 

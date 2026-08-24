@@ -15,10 +15,13 @@ review, and bounded long-running work.
 
 ## Current documentation release: v1.1.0
 
-This is the authoritative human-facing status boundary for **v1.1.0**. It does
-not alter package manifests, publish a marketplace build, or turn package
-readiness into host proof. The immutable v1.0.3 release notes and evidence
-remain historical records.
+This is the authoritative human-facing status boundary for **v1.1.0**. The
+source branch is [`release/v1.1.0`](https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.1.0).
+It is a review branch, not a GitHub Release, marketplace publication, or host
+readiness claim. Use the durable onboarding route below to install its pinned
+source; then verify package readiness and separately observe a fresh host
+session. The immutable v1.0.3 release notes and evidence remain historical
+records. See [V1.1.0_EXPLAINER.md](V1.1.0_EXPLAINER.md) for the complete route.
 
 The route IDs are `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. For
 CodeBuddy IDE and WorkBuddy, marketplace is the default full-plugin route. The
