@@ -57,24 +57,6 @@ fallback beside a full-plugin route for the same project. Stop the session,
 remove only LazyBuddy's previous entries through the host UI, choose one route,
 and start a new session to verify it.
 
-## Keep host changes deliberate
-
-LazyBuddy does not automate credentials, OAuth values, private registries, or
-trust settings. It asks for approval before any host-managed action and keeps
-safe package checks separate from marketplace and connector changes.
-
-## Learn more
-
-- [Install and verify a host](docs/03-install-and-host-verification.md)
-- [Supported v1.1.0 route](docs/v1.1.0-supported-route.md)
-- [Host routes and recovery](docs/reference/host-routes.md)
-- [Release notes](RELEASE_NOTES-v1.1.0.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-
-For advanced commands, workflow details, and the full technical model, see the
-[documentation index](docs/README.md).
-
 ## Design mindset
 
 Start with the result you want and how you will know it worked. Then use the
@@ -90,9 +72,11 @@ memorize.
 | Orchestrated | The work affects a release, security, or a risky change. | “Review this release and prepare it for publication.” |
 | Long-horizon | The goal needs to continue across sessions. | “Keep working on this migration with checkpoints.” |
 
-For CodeBuddy plugin sessions, named commands are available as
-`/lazybuddy:lazy-<command>`. If your host does not show slash commands, ask for
-the same outcome in plain language.
+## Keep host changes deliberate
+
+LazyBuddy does not automate credentials, OAuth values, private registries, or
+trust settings. It asks for approval before any host-managed action and keeps
+safe package checks separate from marketplace and connector changes.
 
 ## Package inventory
 
@@ -118,6 +102,14 @@ LazyBuddy is primarily inspired by LazyCodex
 relationship to OmO and upstream sources is recorded in [NOTICE](NOTICE).
 It is an independent implementation and does not require LazyCodex or OmO at
 runtime.
+
+## Learn more
+
+- [Install and verify a host](docs/03-install-and-host-verification.md)
+- [Supported v1.1.0 route](docs/v1.1.0-supported-route.md)
+- [Host routes and recovery](docs/reference/host-routes.md)
+- [Release notes](RELEASE_NOTES-v1.1.0.md)
+- [Documentation index](docs/README.md)
 
 ## License
 
