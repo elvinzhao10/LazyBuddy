@@ -32,6 +32,8 @@ start_changed_serve() {
     reason=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("reason", ""))' "$TMP/start-changed.json")
     [ "$reason" = readiness_timeout ] || return 1
   done
+  cat "$TMP/start-changed.json" >&2
+  cat "$TMP/state/logs/changed.stderr" >&2 || true
   return 1
 }
 assert_reason() {

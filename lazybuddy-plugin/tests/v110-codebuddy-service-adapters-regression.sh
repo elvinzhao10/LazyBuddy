@@ -34,6 +34,8 @@ start_serve() {
     reason=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("reason", ""))' "$TMP/start-serve.json")
     [ "$reason" = readiness_timeout ] || return 1
   done
+  cat "$TMP/start-serve.json" >&2
+  cat "$TMP/state/logs/serve.stderr" >&2 || true
   return 1
 }
 expect_exit() {
