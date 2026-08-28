@@ -18,7 +18,7 @@ function sha(value) {
 
 function runtimeContext() {
   const binding = {
-    plan_hash: sha('plan'), git_head: 'a'.repeat(40), package_version: '1.1.0',
+    plan_hash: sha('plan'), git_head: 'a'.repeat(40), package_version: '1.2.0',
     task_namespace: 'task-10', capability_fingerprint: sha('capability'),
     context_digest: sha('context'),
   };

@@ -4,7 +4,7 @@ set -euo pipefail
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 RUNNER="$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py"
 VERIFY="$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
-PYTHON_BIN="${LAZYBUDDY_TEST_PYTHON:-python3}"
+PYTHON_BIN="$(command -v "${LAZYBUDDY_TEST_PYTHON:-python3}")"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-python-preflight.XXXXXX")"
 REMEDIATION='ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.'
 
@@ -47,6 +47,7 @@ assert_supported_version_reaches_runner() {
     set +e
     output="$(
         PATH="$directory:$PATH" \
+        LAZYBUDDY_PYTHON=python3 \
         LAZYBUDDY_RUNNER_PATH="$RUNNER" \
         LAZYBUDDY_RUNNER_SENTINEL="$sentinel" \
         LAZYBUDDY_SHIM_VERSION="${version/./ }" \
@@ -97,6 +98,7 @@ chmod +x "$TMP/python-3.9-bin/python3"
 set +e
 python_39_output="$(
     PATH="$TMP/python-3.9-bin:$PATH" \
+    LAZYBUDDY_PYTHON=python3 \
     LAZYBUDDY_RUNNER_PATH="$RUNNER" \
     LAZYBUDDY_RUNNER_SENTINEL="$TMP/python-3.9-ran-runner" \
     LAZYBUDDY_TEST_PYTHON="$PYTHON_BIN" \
@@ -128,6 +130,7 @@ chmod +x "$TMP/python-3.12-bin/python3"
 set +e
 python_312_output="$(
     PATH="$TMP/python-3.12-bin:$PATH" \
+    LAZYBUDDY_PYTHON=python3 \
     LAZYBUDDY_RUNNER_PATH="$RUNNER" \
     LAZYBUDDY_RUNNER_SENTINEL="$TMP/python-3.12-ran-runner" \
     LAZYBUDDY_TEST_PYTHON="$PYTHON_BIN" \

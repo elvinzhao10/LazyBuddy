@@ -3,7 +3,7 @@
 Remove host-managed integration through its host, and remove package-owned
 tooling only when its receipt proves ownership. These are separate operations.
 
-## v1.1.0 route removal boundary
+## v1.2.0 route removal boundary
 
 For `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`, remove only LazyBuddy
 entries through the selected host UI or documented host command. Preserve

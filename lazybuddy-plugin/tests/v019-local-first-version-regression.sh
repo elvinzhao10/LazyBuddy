@@ -116,7 +116,7 @@ def assert_static_versions(root, package_root, value):
         (package_root / "mcp/code-intel/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
         (package_root / "mcp/context-graph/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
         (package_root / "mcp/docs/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
-        (package_root / "mcp/docs/server.py", rf"lazybuddy-docs/{version_pattern}"),
+        (package_root / "mcp/docs/network_boundary.py", rf"lazybuddy-docs/{version_pattern}"),
         (package_root / "mcp/lsp/server.py", rf'"version"\s*:\s*"{version_pattern}"'),
         (package_root / "mcp/run-ledger/server.sh", rf'"version"\s*:\s*"{version_pattern}"'),
         (package_root / "mcp/status-dashboard/server.sh", rf'"version"\s*:\s*"{version_pattern}"'),

@@ -44,14 +44,14 @@ node lazybuddy-plugin/scripts/paired-live-test-candidate.js assemble \
 ```
 
 The command exclusively publishes
-`live-test-v1.1.0-<combined-digest>/` and its mutable `-onboarding/`
+`live-test-v1.2.0-<combined-digest>/` and its mutable `-onboarding/`
 sibling. Candidate directories and files are `0555` and `0444`; the onboarding
 manifest remains `0644`. A repeated destination refuses without replacement.
 Reopen and verify both bindings with:
 
 ```bash
 node lazybuddy-plugin/scripts/paired-live-test-candidate.js verify \
-  --candidate "/absolute/disposable-output/live-test-v1.1.0-<combined-digest>"
+  --candidate "/absolute/disposable-output/live-test-v1.2.0-<combined-digest>"
 ```
 
 ## How to read a regression by boundary

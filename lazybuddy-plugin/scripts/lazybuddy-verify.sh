@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v1.1.0)
+# lazybuddy-verify.sh — Master verification runner (v1.2.0)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -208,6 +208,7 @@ run_regression_inventory() {
         "v110-state-task-schema-regression.sh"
         "v110-workbuddy-observation-bundle-regression.sh"
         "v120-python-preflight-regression.sh"
+        "v120-state-transaction-regression.sh"
         "v2-capability-readiness-contract-regression.sh"
         "v2-host-evidence-contract-regression.sh"
     )

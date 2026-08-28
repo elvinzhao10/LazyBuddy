@@ -78,7 +78,7 @@ def _request_once(url, addresses, timeout):
         try:
             result = subprocess.run(
                 [CURL, "-sS", "--noproxy", "*", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "0",
-                 "--max-time", str(timeout), "--dump-header", headers.name, "-A", "lazybuddy-docs/1.1.0",
+                 "--max-time", str(timeout), "--dump-header", headers.name, "-A", "lazybuddy-docs/1.2.0",
                  *resolve_args, url],
                 capture_output=True,
                 text=True,

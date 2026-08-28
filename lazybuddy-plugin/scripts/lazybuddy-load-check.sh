@@ -135,7 +135,7 @@ try:
     if (
         machine_status.returncode != 0
         or status.get("schema_version") != 2
-        or status.get("version") != "1.1.0"
+        or status.get("version") != "1.2.0"
         or status.get("package_readiness") != {"status": "ready", "scope": "package"}
         or status.get("host_readiness") != {"status": "pending"}
         or not isinstance(host_rows, list)

@@ -50,7 +50,7 @@ function fixture(t) {
     source: {
       route: 'workbuddy-marketplace', release_root: RELEASE_ROOT,
       manifest: 'lazybuddy-plugin/.workbuddy-plugin/plugin.json',
-      manifest_sha256: sha(fs.readFileSync(MANIFEST)), plugin: 'lazybuddy', version: '1.1.0',
+      manifest_sha256: sha(fs.readFileSync(MANIFEST)), plugin: 'lazybuddy', version: '1.2.0',
     },
     host: 'workbuddy', build: 'build:current', session_id: 'session:current', observed_at: OBSERVED_AT,
     capabilities: {
