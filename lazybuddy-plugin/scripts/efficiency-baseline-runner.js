@@ -8,6 +8,7 @@ const {
   validateResult,
 } = require('./efficiency-baseline-contract');
 const { verifyFixtureEvidence } = require('./efficiency-baseline-evidence');
+const { buildCostOutcome, recordCostOutcome } = require('./cost-outcome-telemetry');
 
 const EXPECTED_PRODUCT = 'lazybuddy';
 
@@ -52,7 +53,10 @@ function buildResult(fixture, evidenceRoot) {
 }
 
 function main(argv) {
-  if (argv.length !== 3 || argv[1] !== '--eval-root') {
+  const instrumented = argv.length === 7
+    && argv[3] === '--telemetry-root'
+    && argv[5] === '--run-id';
+  if ((argv.length !== 3 && !instrumented) || argv[1] !== '--eval-root') {
     throw new BaselineContractError(
       'arguments',
       'expected <fixture-json> --eval-root <absolute-eval-root>',
@@ -64,7 +68,13 @@ function main(argv) {
   } catch (error) {
     throw new BaselineContractError('fixture', `must be valid JSON: ${error.message}`);
   }
-  process.stdout.write(`${JSON.stringify(buildResult(parseFixture(raw), argv[2]))}\n`);
+  const started = process.hrtime.bigint();
+  const result = buildResult(parseFixture(raw), argv[2]);
+  if (instrumented) {
+    const elapsedMs = Number(process.hrtime.bigint() - started) / 1_000_000;
+    recordCostOutcome(argv[4], buildCostOutcome(result, argv[6], elapsedMs));
+  }
+  process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
 if (require.main === module) {
