@@ -5,11 +5,12 @@ PLUGIN="$(cd "$(dirname "$0")/.." && pwd)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-docs-ssrf.XXXXXX")"
 FAKE_BIN="$TMP/bin"
 CALLS="$TMP/curl.calls"
+PROJECT="$TMP/project"
 
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
 
-mkdir -p "$FAKE_BIN"
+mkdir -p "$FAKE_BIN" "$PROJECT"
 cat >"$FAKE_BIN/curl" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -28,6 +29,10 @@ case "$url" in
     'https://pypi.org/pypi/fastapi/json')
         printf '%s\n' '{"info":{"version":"2.0.0","summary":"PyPI package","description":"PyPI README is safely returned from registry metadata.","home_page":"http://127.0.0.1:9/","project_urls":{"Documentation":"http://127.0.0.1:9/docs"}}}'
         ;;
+    'https://registry.npmjs.org/redirect-hop/latest')
+        printf '%s\n' 'redirect destination rejected before follow' >&2
+        exit 47
+        ;;
     *)
         printf 'unexpected curl URL: %s\n' "$url" >&2
         exit 22
@@ -40,7 +45,13 @@ rpc() {
     local library="$1" registry="$2"
     PATH="$FAKE_BIN:$PATH" LAZYBUDDY_FAKE_CURL_CALLS="$CALLS" \
         printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"get_library_docs\",\"arguments\":{\"library\":\"$library\",\"registry\":\"$registry\"}}}" \
-        | PATH="$FAKE_BIN:$PATH" LAZYBUDDY_FAKE_CURL_CALLS="$CALLS" bash "$PLUGIN/mcp/docs/server.sh"
+        | PATH="$FAKE_BIN:$PATH" LAZYBUDDY_FAKE_CURL_CALLS="$CALLS" CWD="$PROJECT" bash "$PLUGIN/mcp/docs/server.sh"
+}
+
+rpc_raw() {
+    PATH="$FAKE_BIN:$PATH" LAZYBUDDY_FAKE_CURL_CALLS="$CALLS" \
+        printf '%s\n' "$1" \
+        | PATH="$FAKE_BIN:$PATH" LAZYBUDDY_FAKE_CURL_CALLS="$CALLS" CWD="$PROJECT" bash "$PLUGIN/mcp/docs/server.sh"
 }
 
 assert_registry_only() {
@@ -75,6 +86,37 @@ printf '%s' "$pypi_response" | grep -q 'PyPI package'
 assert_registry_only 1
 grep -Fx -- '-sS --proto =https --proto-redir =https --max-redirs 0 --max-time 20 -A lazybuddy-docs/1.1.0 https://pypi.org/pypi/fastapi/json' "$CALLS" >/dev/null
 
+: >"$CALLS"
+redirect_response="$(rpc redirect-hop npm)"
+printf '%s' "$redirect_response" | grep -q 'error'
+assert_registry_only 1
+grep -Fx -- '-sS --proto =https --proto-redir =https --max-redirs 0 --max-time 20 -A lazybuddy-docs/1.1.0 https://registry.npmjs.org/redirect-hop/latest' "$CALLS" >/dev/null
+
+: >"$CALLS"
+invalid_arguments_response="$(rpc_raw '{"jsonrpc":"2.0","id":"invalid-arguments","method":"tools/call","params":{"name":"get_library_docs","arguments":[]}}')"
+python3 - "$invalid_arguments_response" <<'PY'
+import json
+import sys
+
+response = json.loads(sys.argv[1])
+assert response["id"] == "invalid-arguments", response
+assert response["error"]["code"] == -32602, response
+PY
+[ ! -s "$CALLS" ] || { echo 'FAIL: malformed MCP arguments launched curl' >&2; exit 1; }
+
+: >"$CALLS"
+valid_arguments_response="$(rpc_raw '{"jsonrpc":"2.0","id":"valid-arguments","method":"tools/call","params":{"name":"list_supported_registries","arguments":{}}}')"
+python3 - "$valid_arguments_response" <<'PY'
+import json
+import sys
+
+response = json.loads(sys.argv[1])
+content = response["result"]["content"]
+assert content[0]["type"] == "text", response
+assert "npm" in content[0]["text"], response
+PY
+[ ! -s "$CALLS" ] || { echo 'FAIL: valid local MCP arguments launched curl' >&2; exit 1; }
+
 # Given: hostile or malformed library values.
 # When: each is sent to its relevant registry resolver.
 # Then: validation fails before curl is launched.
@@ -91,4 +133,4 @@ for hostile in 'http://127.0.0.1:9/' 'fastapi/redirect' 'name?url=http://127.0.0
     [ ! -s "$CALLS" ] || { echo "FAIL: hostile PyPI name launched curl: $hostile" >&2; cat "$CALLS" >&2; exit 1; }
 done
 
-echo "PASS: docs MCP only requests fixed HTTPS package registry endpoints; hostile names and loopback metadata never trigger a fetch"
+echo "PASS: docs MCP permits fixed HTTPS requests, blocks every redirect follow, and returns structured invalid-argument errors without a fetch"

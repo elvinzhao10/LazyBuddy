@@ -38,6 +38,16 @@ REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
 VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"
 READINESS_REGRESSION_TIMEOUT=120
 VERIFY_SUITE="${LAZYBUDDY_VERIFY_SUITE:-all}"
+PYTHON_BIN="${LAZYBUDDY_PYTHON:-python3}"
+PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0], sys.version_info[1])' 2>/dev/null || true)"
+read -r PYTHON_MAJOR PYTHON_MINOR _ <<<"$PYTHON_VERSION"
+
+if ! [[ "$PYTHON_MAJOR" =~ ^[0-9]+$ && "$PYTHON_MINOR" =~ ^[0-9]+$ ]] \
+    || [ "$PYTHON_MAJOR" -ne 3 ] \
+    || [ "$PYTHON_MINOR" -lt 10 ]; then
+    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    exit 2
+fi
 
 if ! [[ "$REGRESSION_DEPTH" =~ ^[0-9]+$ ]]; then
     printf 'ERROR: LAZYBUDDY_VERIFY_REGRESSION_DEPTH must be a non-negative integer\n' >&2
@@ -55,7 +65,7 @@ fi
 CHECK_DETAILS="{}"
 record_check() {
     local name="$1" result_file="$2"
-    CHECK_DETAILS="$(python3 - "$CHECK_DETAILS" "$name" "$result_file" <<'PY'
+    CHECK_DETAILS="$("$PYTHON_BIN" - "$CHECK_DETAILS" "$name" "$result_file" <<'PY'
 import json
 import sys
 details, name, path = sys.argv[1:]
@@ -69,7 +79,7 @@ PY
 }
 
 print_failure_tail() {
-    python3 - "$1" <<'PY' >&2
+    "$PYTHON_BIN" - "$1" <<'PY' >&2
 import json
 import sys
 
@@ -84,7 +94,7 @@ run_check() {
     local name="$1" script="$2" result_var="$3" result_file
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-verify-result.XXXXXX")"
     if [ -x "$script" ]; then
-        if python3 "$RUNNER" --label "$name" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- "$script"; then
+        if "$PYTHON_BIN" "$RUNNER" --label "$name" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- "$script"; then
             eval "${result_var}=pass"
         else
             eval "${result_var}=fail"
@@ -92,7 +102,7 @@ run_check() {
             print_failure_tail "$result_file"
         fi
     else
-        python3 - "$result_file" <<'PY'
+        "$PYTHON_BIN" - "$result_file" <<'PY'
 import json
 import sys
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
@@ -122,7 +132,7 @@ run_hook_pipeline_check() {
     local result_file
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-verify-result.XXXXXX")"
     if ln -s "${PLUGIN_ROOT}" "${hook_root}/lazybuddy-plugin" 2>/dev/null; then
-        if CWD="${hook_root}" CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}" python3 "$RUNNER" --label "$name" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- "$script"; then
+        if CWD="${hook_root}" CODEBUDDY_PLUGIN_ROOT="${PLUGIN_ROOT}" "$PYTHON_BIN" "$RUNNER" --label "$name" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- "$script"; then
             eval "${result_var}=pass"
         else
             eval "${result_var}=fail"
@@ -141,7 +151,7 @@ run_isolated_test() {
     local next_depth=$((REGRESSION_DEPTH + 1))
     local result_file status test_timeout="$2"
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-regression-result.XXXXXX")"
-    if LAZYBUDDY_VERIFY_SUITE=all LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" python3 "$RUNNER" --label "regression:$(basename "$1")" --timeout "$test_timeout" --result-file "$result_file" -- bash "$1"; then
+    if LAZYBUDDY_VERIFY_SUITE=all LAZYBUDDY_VERIFY_REGRESSION_DEPTH="$next_depth" "$PYTHON_BIN" "$RUNNER" --label "regression:$(basename "$1")" --timeout "$test_timeout" --result-file "$result_file" -- bash "$1"; then
         status=0
     else
         status=$?
@@ -197,6 +207,7 @@ run_regression_inventory() {
         "v110-mcp-profiles-regression.sh"
         "v110-state-task-schema-regression.sh"
         "v110-workbuddy-observation-bundle-regression.sh"
+        "v120-python-preflight-regression.sh"
         "v2-capability-readiness-contract-regression.sh"
         "v2-host-evidence-contract-regression.sh"
     )
@@ -342,7 +353,7 @@ if [ -n "$LATEST_RUN" ]; then
         if [ "$ALL_PASS" = true ]; then
             ALL_PASS_PY=True
         fi
-        python3 - "$CWD" "$EVENTS_FILE" "$LATEST_RUN" "$NOW" "$ALL_PASS_PY" <<'PY' 2>/dev/null || true
+        "$PYTHON_BIN" - "$CWD" "$EVENTS_FILE" "$LATEST_RUN" "$NOW" "$ALL_PASS_PY" <<'PY' 2>/dev/null || true
 import json
 import os
 import sys

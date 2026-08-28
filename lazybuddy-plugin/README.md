@@ -219,6 +219,12 @@ user-observed host result.
 
 ## Verify
 
+`scripts/lazybuddy-verify.sh` requires Python 3.10 or newer before it starts
+any Python helper. When `python3` resolves to an older interpreter, it exits
+with `ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.`
+Set `LAZYBUDDY_PYTHON` to an explicit supported interpreter when `python3`
+cannot be updated system-wide.
+
 ```bash
 # Run from lazybuddy-plugin/.
 bash scripts/lazybuddy-plugin-doctor.sh

@@ -5,6 +5,8 @@ PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_DIR="$PLUGIN_ROOT/scripts/state"
 LOOP_DIR="$PLUGIN_ROOT/scripts/loop"
 HOOK="$PLUGIN_ROOT/scripts/hooks/pre-tool-use.sh"
+MATRIX="$PLUGIN_ROOT/tests/fixtures/security-acceptance-matrix.v1.json"
+PYTHON_BIN="${LAZYBUDDY_TEST_PYTHON:-python3}"
 TMP="$(mktemp -d)"
 
 cleanup() {
@@ -16,6 +18,39 @@ fail() {
     echo "FAIL: $1" >&2
     exit 1
 }
+
+"$PYTHON_BIN" - "$MATRIX" <<'PYEOF'
+import json
+import sys
+
+matrix = json.load(open(sys.argv[1], encoding="utf-8"))
+assert matrix["schema_version"] == "lazybuddy-security-acceptance.v1", matrix
+expected = {
+    "ipv4-mapped-ipv6": ("allow", "reject"),
+    "redirect-hop-revalidation": ("allow", "reject"),
+    "mcp-invalid-arguments": ("result", "jsonrpc_invalid_params"),
+    "evidence-redaction": ("preserved", "redacted"),
+    "residual-risk-receipt": ("recorded", "reject"),
+}
+cases = {case["id"]: case for case in matrix["cases"]}
+assert set(cases) == set(expected), cases
+for case_id, outcomes in expected.items():
+    case = cases[case_id]
+    assert set(case) == {"id", "positive", "negative"}, case
+    assert case["positive"]["outcome"] == outcomes[0], case
+    assert case["negative"]["outcome"] == outcomes[1], case
+residual = cases["residual-risk-receipt"]
+receipt = residual["positive"]["receipt"]
+assert receipt == {
+    "kind": "residual-risk",
+    "scope": "security-acceptance",
+    "revision": "todo-14",
+    "authoritative_for_completion": False,
+}, receipt
+negative_receipt = residual["negative"]["receipt"]
+assert set(negative_receipt) == {"kind", "authoritative_for_completion"}, negative_receipt
+assert negative_receipt["authoritative_for_completion"] is True, negative_receipt
+PYEOF
 
 expect_rejected() {
     local label="$1"
@@ -112,6 +147,23 @@ import sys
 task = json.load(open(sys.argv[1]))['tasks'][0]
 assert task['status'] == 'done'
 assert task['changed_files'] == ['state']
+PYEOF
+
+fixture_secret="s""k-$(printf 'A%.0s' {1..24})"
+CWD="$TMP/work" bash "$STATE_DIR/append-event.sh" 'safe.run-1' audit "{\"password\":\"$fixture_secret\"}" >/dev/null
+"$PYTHON_BIN" - "$TMP/work/.lazybuddy/runs/safe.run-1/events.jsonl" "$fixture_secret" <<'PYEOF'
+import json
+import pathlib
+import sys
+
+events_path = pathlib.Path(sys.argv[1])
+secret = sys.argv[2]
+serialized = events_path.read_text(encoding="utf-8")
+events = [json.loads(line) for line in serialized.splitlines()]
+assert any(event["event"] == "run_created" for event in events), events
+audit = next(event for event in events if event["event"] == "audit")
+assert audit["password"] == "***REDACTED***", audit
+assert secret not in serialized
 PYEOF
 
 make_run loop-next
@@ -358,4 +410,4 @@ PYEOF
 allow_output=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"ls -la /"}}' | bash "$HOOK")
 test -z "$allow_output" || fail 'safe command was not allowed'
 
-echo 'v0.15 security regression: PASS'
+echo 'PASS: security matrix keeps mapped-address and residual-risk controls frozen; audit evidence redacts fixture secrets'

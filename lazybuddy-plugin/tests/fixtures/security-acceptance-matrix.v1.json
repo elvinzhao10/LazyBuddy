@@ -1,0 +1,30 @@
+{
+  "schema_version": "lazybuddy-security-acceptance.v1",
+  "cases": [
+    {
+      "id": "ipv4-mapped-ipv6",
+      "positive": {"endpoint": "http://127.0.0.1:4312/health", "outcome": "allow"},
+      "negative": {"endpoint": "http://[::ffff:127.0.0.1]:4312/health", "outcome": "reject"}
+    },
+    {
+      "id": "redirect-hop-revalidation",
+      "positive": {"hops": ["https://registry.npmjs.org/package/latest"], "outcome": "allow"},
+      "negative": {"hops": ["https://registry.npmjs.org/package/latest", "https://127.0.0.1:4312/"], "outcome": "reject"}
+    },
+    {
+      "id": "mcp-invalid-arguments",
+      "positive": {"arguments": {"library": "fastapi"}, "outcome": "result"},
+      "negative": {"arguments": [], "outcome": "jsonrpc_invalid_params"}
+    },
+    {
+      "id": "evidence-redaction",
+      "positive": {"payload": {"event": "audit"}, "outcome": "preserved"},
+      "negative": {"payload": {"password": "fixture-secret"}, "outcome": "redacted"}
+    },
+    {
+      "id": "residual-risk-receipt",
+      "positive": {"receipt": {"kind": "residual-risk", "scope": "security-acceptance", "revision": "todo-14", "authoritative_for_completion": false}, "outcome": "recorded"},
+      "negative": {"receipt": {"kind": "residual-risk", "authoritative_for_completion": true}, "outcome": "reject"}
+    }
+  ]
+}

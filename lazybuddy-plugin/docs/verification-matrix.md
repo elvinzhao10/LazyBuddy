@@ -11,7 +11,8 @@ and names the host observation required before a user-facing integration claim.
 | Package readiness | `bash scripts/lazybuddy-load-check.sh` | `PACKAGE_READINESS=full` or an explained degraded state | command output |
 | Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS` | command output |
 | MCP integration | `bash scripts/lazybuddy-mcp-test.sh` | `MCP test: ALL PASS` | command output |
-| Package verification | `bash scripts/lazybuddy-verify.sh` | JSON with `"all_pass":true` | command output |
+| Package verification | `bash scripts/lazybuddy-verify.sh` | Python 3.10+ then JSON with `"all_pass":true`; older Python exits 2 with the documented remediation | command output |
+| Security acceptance matrix | `bash tests/v015-security-regression.sh && bash tests/v018-docs-ssrf-regression.sh` | Every v1 security case has positive and negative controls; evidence remains redacted | command output |
 
 ## Repository publication check
 
