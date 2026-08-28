@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lazyseries.dev/contracts/lazyseries-completion-evidence.v1.schema.json",
+  "title": "LazySeries Completion Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "run_id", "task_id", "criterion_id", "repo_head",
+    "package_version", "command", "exit_code", "started_at", "finished_at",
+    "artifact", "executor", "verifier", "review"
+  ],
+  "properties": {
+    "schema_version": { "const": "lazyseries.completion-evidence.v1" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "task_id": { "$ref": "#/$defs/identity" },
+    "criterion_id": { "$ref": "#/$defs/identity" },
+    "repo_head": { "type": "string", "pattern": "^[a-f0-9]{40}(?:[a-f0-9]{24})?$" },
+    "package_version": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "command": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "exit_code": { "const": 0 },
+    "started_at": { "$ref": "#/$defs/timestamp" },
+    "finished_at": { "$ref": "#/$defs/timestamp" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relative_path" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "executor": { "$ref": "#/$defs/actor" },
+    "verifier": { "$ref": "#/$defs/actor" },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "source_sha256"],
+      "properties": {
+        "verdict": { "const": "approved" },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+      "maxLength": 160
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity"],
+      "properties": { "identity": { "$ref": "#/$defs/identity" } }
+    },
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!~)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$",
+      "maxLength": 1024
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "lazyseries.completion-evidence.v1",
+  "run_id": "run-contracts",
+  "task_id": "task-1",
+  "criterion_id": "criterion-contracts",
+  "repo_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "package_version": "1.2.0",
+  "command": "node --test contracts/tests/completion-cost-contract.test.js",
+  "exit_code": 0,
+  "started_at": "2026-08-28T00:00:00Z",
+  "finished_at": "2026-08-28T00:00:01Z",
+  "artifact": {
+    "path": "artifacts/criterion.log",
+    "sha256": "8b1880449a5fedfb5ceadc8e5cbeefb5db484b549a9062f2dee5ded643738d22"
+  },
+  "executor": {
+    "identity": "agent/executor-1"
+  },
+  "verifier": {
+    "identity": "agent/verifier-1"
+  }
+}
