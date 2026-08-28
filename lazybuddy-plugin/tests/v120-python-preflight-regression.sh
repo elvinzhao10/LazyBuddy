@@ -18,6 +18,50 @@ fail() {
     exit 1
 }
 
+make_version_shim() {
+    local directory="$1"
+    mkdir -p "$directory"
+    cat >"$directory/python3" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${1:-}" = "-c" ]; then
+    printf '%s\n' "$LAZYBUDDY_SHIM_VERSION"
+    exit 0
+fi
+if [ "${1:-}" = "$LAZYBUDDY_RUNNER_PATH" ]; then
+    : >"$LAZYBUDDY_RUNNER_SENTINEL"
+    exit 97
+fi
+exec "$LAZYBUDDY_TEST_PYTHON" "$@"
+SH
+    chmod +x "$directory/python3"
+}
+
+assert_supported_version_reaches_runner() {
+    local version="$1"
+    local directory="$TMP/python-$version-bin"
+    local sentinel="$TMP/python-$version-ran-runner"
+    local output status
+    make_version_shim "$directory"
+    set +e
+    output="$(
+        PATH="$directory:$PATH" \
+        LAZYBUDDY_RUNNER_PATH="$RUNNER" \
+        LAZYBUDDY_RUNNER_SENTINEL="$sentinel" \
+        LAZYBUDDY_SHIM_VERSION="${version/./ }" \
+        LAZYBUDDY_TEST_PYTHON="$PYTHON_BIN" \
+        LAZYBUDDY_VERIFY_SUITE=core \
+        LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 \
+        bash "$VERIFY" 2>&1
+    )"
+    status=$?
+    set -e
+    test -e "$sentinel" || fail "Python $version did not reach the bounded runner"
+    test "$output" != "$REMEDIATION" || fail "Python $version was rejected by the preflight"
+    test "$status" -ne 2 || fail "Python $version exited at the preflight"
+}
+
 "$PYTHON_BIN" "$RUNNER" --label python-baseline --timeout 3 \
     --result-file "$TMP/baseline-result.json" -- bash -c 'exit 0' \
     >"$TMP/baseline.stdout" 2>"$TMP/baseline.stderr" \
@@ -96,5 +140,8 @@ set -e
 test -e "$TMP/python-3.12-ran-runner" || fail 'Python 3.12 did not reach the bounded runner'
 test "$python_312_output" != "$REMEDIATION" || fail 'Python 3.12 was rejected by the preflight'
 test "$python_312_status" -ne 2 || fail 'Python 3.12 exited at the preflight'
+
+assert_supported_version_reaches_runner 3.10
+assert_supported_version_reaches_runner 4.0
 
 printf 'PASS: Python preflight rejects 3.9 before parsing and admits Python 3.10+\n'

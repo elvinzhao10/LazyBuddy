@@ -43,8 +43,8 @@ PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0], sys.v
 read -r PYTHON_MAJOR PYTHON_MINOR _ <<<"$PYTHON_VERSION"
 
 if ! [[ "$PYTHON_MAJOR" =~ ^[0-9]+$ && "$PYTHON_MINOR" =~ ^[0-9]+$ ]] \
-    || [ "$PYTHON_MAJOR" -ne 3 ] \
-    || [ "$PYTHON_MINOR" -lt 10 ]; then
+    || [ "$PYTHON_MAJOR" -lt 3 ] \
+    || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
     printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
     exit 2
 fi
