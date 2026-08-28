@@ -143,6 +143,30 @@ function recordCriterionEvidence(root, input) {
   return { path: target, sha256: sha256(bytes), bytes: bytes.length };
 }
 
+function recordCriterionOutcome(root, input) {
+  const blocked = capacityBlock(input.capacity);
+  if (blocked) {
+    return { status: 'blocked', completion: 'blocked', reason: blocked, preflight: 'denied' };
+  }
+  if (input.status === 'failed' && typeof input.flake_assertion === 'string') {
+    return recordFlakeFailure(root, {
+      task_namespace: input.task_namespace,
+      criterion_id: input.criterion_id,
+      assertion: input.flake_assertion,
+      bytes: input.bytes,
+    });
+  }
+  const evidence = recordCriterionEvidence(root, {
+    ...input,
+    name: input.name || input.evidence_name,
+  });
+  return {
+    status: 'recorded',
+    completion: input.status === 'passed' ? 'eligible' : 'blocked',
+    evidence,
+  };
+}
+
 function writeJSONAtomic(target, value) {
   const temporary = target + '.' + process.pid + '.' + crypto.randomBytes(6).toString('hex') + '.tmp';
   fs.writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
@@ -188,5 +212,5 @@ function recordFlakeFailure(root, input) {
 
 module.exports = {
   BINDING_FIELDS, createCurrentBinding, createHandoffSnapshot, recordCriterionEvidence,
-  recordFlakeFailure, resumeContinuation, validateBinding,
+  recordCriterionOutcome, recordFlakeFailure, resumeContinuation, validateBinding,
 };

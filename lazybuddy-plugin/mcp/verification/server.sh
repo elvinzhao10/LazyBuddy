@@ -101,6 +101,7 @@ TOOL_LIST='{"tools":[
   {"name":"discover_checks","description":"Read the package-owned verification contract and return checks as JSON","inputSchema":{"type":"object","properties":{"section":{"type":"string"}}}},
   {"name":"run_check","description":"Classify a task failure and record the event","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"task_id":{"type":"string"},"error_message":{"type":"string"}},"required":["run_id","task_id","error_message"]}},
   {"name":"record_gate_result","description":"Record gate result to events.jsonl","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"gate_name":{"type":"string"},"status":{"type":"string","enum":["passed","failed"]},"result":{"type":"string"}},"required":["run_id","gate_name","status"]}},
+  {"name":"record_criterion_result","description":"Record immutable task/criterion/worker evidence with bounded flake and capacity gates","inputSchema":{"type":"object","properties":{"task_namespace":{"type":"string"},"criterion_id":{"type":"string"},"worker_id":{"type":"string"},"evidence_name":{"type":"string"},"status":{"type":"string","enum":["passed","failed"]},"bytes":{"type":"string"},"flake_assertion":{"type":"string"},"capacity":{"type":"object"}},"required":["task_namespace","criterion_id","worker_id","evidence_name","status","bytes"]}},
   {"name":"list_gate_results","description":"Read verification gates from state.json","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
   {"name":"create_repair_task","description":"Create repair task for a failed task","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"failed_task_id":{"type":"string"},"classification":{"type":"string"}},"required":["run_id","failed_task_id","classification"]}},
   {"name":"summarize_verification","description":"Summarize verification from state.json + events.jsonl","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}}
@@ -185,6 +186,13 @@ ev=dict(ts=os.environ['NOW'], run_id=rid, event='gate_result', gate=os.environ['
 with open(os.environ['STATE_RUN_DIR'] + '/events.jsonl','a') as f: f.write(json.dumps(ev)+'\n')
 "
         reply "$(result_object status ok gate "$GNAME" gate_result "$GST")" ;;
+      record_criterion_result)
+        EVIDENCE_ROOT="$CWD/.lazybuddy/evidence/runtime"
+        if ! RESULT=$(printf '%s' "$ARGS" | node "$PLUGIN_ROOT/scripts/runtime-freshness-entry.js" criterion "$EVIDENCE_ROOT" 2>&1); then
+          err "$RESULT"
+          continue
+        fi
+        reply "$RESULT" ;;
       list_gate_results)
         SF=$(resolve_run_state "$RID") || { err "invalid or unsafe run_id"; continue; }
         reply "$(python3 -c "import json; d=json.load(open('$SF')); print(json.dumps(d.get('verification_gates',[])))")" ;;
