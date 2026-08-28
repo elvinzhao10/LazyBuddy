@@ -1,0 +1,29 @@
+{
+  "contract_version": "lazyseries-efficiency-baseline.v1",
+  "product": "lazybuddy",
+  "scenario": "direct",
+  "route": { "classification": "direct-path-complete", "actor_count": 1 },
+  "quality": {
+    "assertions_expected": 13,
+    "assertions_passed": 13,
+    "completion": "complete",
+    "assertion_manifest": [
+      { "file": "test_parse_duration.py", "count": 13, "sha256": "991f1d8bc4e5b79433ef27d3705be4866d2a2951c90d738b24a5628556fc7afd" }
+    ],
+    "required_evidence": ["raw/direct/test-output.txt", "raw/direct/final-diff.txt", "raw/direct/adaptive-directive.json"]
+  },
+  "gate_outcomes": [
+    { "gate": "exact-test-assertions", "outcome": "passed" },
+    { "gate": "completion-classification", "outcome": "passed" },
+    { "gate": "required-evidence", "outcome": "passed" }
+  ],
+  "cost": {
+    "elapsed_ms": 75300,
+    "invocation_count": 2,
+    "evidence_bytes": 5037,
+    "reruns": 0,
+    "rework": 0,
+    "concurrency": 1,
+    "tokens": { "available": false, "total": null, "reason": "host did not expose token telemetry" }
+  }
+}
