@@ -5,17 +5,21 @@
   "route": { "classification": "six-module-complete", "actor_count": 7 },
   "quality": {
     "assertions_expected": 57,
-    "assertions_passed": 57,
     "completion": "complete",
+    "assertion_output": "lazybuddy-liveeval/lazybuddy/raw/parallel-default/full-suite-output.txt",
     "assertion_manifest": [
-      { "file": "test_chunk_items.py", "count": 9, "sha256": "c691a8f9ce7c3e73fec3448f399a7748eced5e1e0091ce563feb99923cab90ff" },
-      { "file": "test_normalize_email.py", "count": 9, "sha256": "fcfa26bdc9b6e4e7c7e6c737c1f02fa2645ed07a4244572bd6411368960fe957" },
-      { "file": "test_parse_size.py", "count": 12, "sha256": "fdde33e4a919773e4d3438c27a943b26c1eaa39a13120b921caf1493d1d0c85b" },
-      { "file": "test_redact_token.py", "count": 6, "sha256": "b629d2bc348f00071a641482011bff5bbf1b2738025134d294641f8a12126518" },
-      { "file": "test_retry_delay.py", "count": 12, "sha256": "bd5e4ece61565f1f431bed41254575777cee0ea94ed24003e327532c4f1e630f" },
-      { "file": "test_slugify.py", "count": 9, "sha256": "1b411a5b2ed2562b17329a5321e329d9db5e787e65420688c313f69d20ce93cd" }
+      { "file": "lazybuddy-liveeval/runs/parallel-default-20260828T0348/repo/tests/test_chunk_items.py", "count": 9, "sha256": "c691a8f9ce7c3e73fec3448f399a7748eced5e1e0091ce563feb99923cab90ff" },
+      { "file": "lazybuddy-liveeval/runs/parallel-default-20260828T0348/repo/tests/test_normalize_email.py", "count": 9, "sha256": "fcfa26bdc9b6e4e7c7e6c737c1f02fa2645ed07a4244572bd6411368960fe957" },
+      { "file": "lazybuddy-liveeval/runs/parallel-default-20260828T0348/repo/tests/test_parse_size.py", "count": 12, "sha256": "fdde33e4a919773e4d3438c27a943b26c1eaa39a13120b921caf1493d1d0c85b" },
+      { "file": "lazybuddy-liveeval/runs/parallel-default-20260828T0348/repo/tests/test_redact_token.py", "count": 6, "sha256": "b629d2bc348f00071a641482011bff5bbf1b2738025134d294641f8a12126518" },
+      { "file": "lazybuddy-liveeval/runs/parallel-default-20260828T0348/repo/tests/test_retry_delay.py", "count": 12, "sha256": "bd5e4ece61565f1f431bed41254575777cee0ea94ed24003e327532c4f1e630f" },
+      { "file": "lazybuddy-liveeval/runs/parallel-default-20260828T0348/repo/tests/test_slugify.py", "count": 9, "sha256": "1b411a5b2ed2562b17329a5321e329d9db5e787e65420688c313f69d20ce93cd" }
     ],
-    "required_evidence": ["raw/parallel-default/full-suite-output.txt", "raw/parallel-default/final-diff.txt", "raw/parallel-default/worker-claims.json"]
+    "required_evidence": [
+      { "file": "lazybuddy-liveeval/lazybuddy/raw/parallel-default/full-suite-output.txt", "bytes": 4779, "sha256": "d0bb3d018f00a4834bb5e04c0d6e0c876a335bfb27b18f06bb936ef2df4b7313" },
+      { "file": "lazybuddy-liveeval/lazybuddy/raw/parallel-default/final-diff.txt", "bytes": 4313, "sha256": "99547603ea3fbbc94f7b548079e014afbce2db908f2136a19dacd19a45eca894" },
+      { "file": "lazybuddy-liveeval/lazybuddy/raw/parallel-default/worker-claims.json", "bytes": 2065, "sha256": "0437f80b4ab35791991aa1342fb8f99c84a9728dd55c681422ea21b841453e7e" }
+    ]
   },
   "gate_outcomes": [
     { "gate": "exact-test-assertions", "outcome": "passed" },

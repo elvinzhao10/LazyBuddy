@@ -12,8 +12,20 @@ const runner = path.join(pluginRoot, 'scripts', 'efficiency-baseline-runner.js')
 const fixtures = path.join(__dirname, 'fixtures', 'efficiency');
 const { validateResult } = require(runner);
 
+function findEvalRoot(start) {
+  let current = start;
+  while (path.dirname(current) !== current) {
+    const candidate = path.join(current, 'evals');
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) return candidate;
+    current = path.dirname(current);
+  }
+  throw new Error('evals directory not found in workspace ancestors');
+}
+
+const evalRoot = findEvalRoot(pluginRoot);
+
 function invoke(fixturePath) {
-  return spawnSync(process.execPath, [runner, fixturePath], {
+  return spawnSync(process.execPath, [runner, fixturePath, '--eval-root', evalRoot], {
     cwd: pluginRoot,
     encoding: 'utf8',
   });
@@ -69,7 +81,7 @@ test('rejects fixture when gate outcomes are omitted', (t) => {
 test('rejects misleading completion when exact assertions failed', (t) => {
   // Given
   const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'six-module.json'), 'utf8'));
-  fixture.quality.assertions_passed = 56;
+  fixture.quality.assertions_expected = 56;
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
   t.after(() => fs.rmSync(tempDir, { recursive: true }));
   const misleading = path.join(tempDir, 'misleading-success.json');
@@ -78,7 +90,7 @@ test('rejects misleading completion when exact assertions failed', (t) => {
   const result = invoke(misleading);
   // Then
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /assertions_passed/);
+  assert.match(result.stderr, /assertion_manifest/);
 });
 
 test('rejects malformed fixture JSON', (t) => {
@@ -123,4 +135,64 @@ test('rejects unavailable token telemetry without null and reason', (t) => {
   // Then
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /tokens.total/);
+});
+
+test('rejects baseline when an assertion manifest file is absent', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  fixture.quality.assertion_manifest[0].file = 'absent-test.py';
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const malformed = path.join(tempDir, 'absent-assertion.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /assertion_manifest/);
+});
+
+test('rejects baseline when an assertion manifest digest is stale', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  fixture.quality.assertion_manifest[0].sha256 = '0'.repeat(64);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const malformed = path.join(tempDir, 'stale-assertion-digest.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /sha256/);
+});
+
+test('rejects baseline when required evidence is absent', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  fixture.quality.required_evidence[0].file = 'absent-evidence.txt';
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const malformed = path.join(tempDir, 'absent-evidence.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /required_evidence/);
+});
+
+test('rejects baseline when assertion output is stale', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  fixture.quality.assertion_output = fixture.quality.required_evidence[1].file;
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const malformed = path.join(tempDir, 'stale-assertion-output.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /assertion_output/);
 });
