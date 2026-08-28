@@ -62,7 +62,6 @@ function comprehensive(reasonCodes) {
     reasonCodes: [...new Set(reasonCodes)],
     gates,
     cost: costFor('comprehensive', gates),
-    qualityAssertions: 'preserved',
   };
 }
 
@@ -132,6 +131,10 @@ function selectVerificationPolicy(untrustedInput) {
     reasonCodes.push('dirty-tree');
     level = 'comprehensive';
   }
+  if (input.reportedCostSuccess === true) {
+    reasonCodes.push('misleading-cost-success');
+    level = 'comprehensive';
+  }
 
   const flakyCounts = new Map();
   for (const outcome of input.priorOutcomes) {
@@ -141,6 +144,10 @@ function selectVerificationPolicy(untrustedInput) {
     }
     if (outcome.outcome === 'failed') {
       reasonCodes.push('prior-gate-failure');
+      level = 'comprehensive';
+    }
+    if (outcome.outcome === 'flaky' && !outcome.assertionId) {
+      reasonCodes.push('flake-without-assertion-id');
       level = 'comprehensive';
     }
     if (outcome.outcome === 'flaky' && outcome.assertionId) {
@@ -160,7 +167,6 @@ function selectVerificationPolicy(untrustedInput) {
     reasonCodes: [...new Set(reasonCodes)],
     gates,
     cost: costFor(level, gates),
-    qualityAssertions: 'preserved',
   };
 }
 

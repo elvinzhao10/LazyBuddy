@@ -103,7 +103,8 @@ test('Given malformed or misleading outcomes, when policy is selected, then poli
     [{ ...BASE, riskFlags: ['not-a-real-risk'] }, 'invalid-risk-flag'],
     [{ ...BASE, capabilityFresh: 'yes' }, 'invalid-input'],
     [{ ...BASE, priorOutcomes: [{ gateId: 'targeted', outcome: 'passed', assertionId: 'a', stale: true }] }, 'stale-outcome'],
-    [{ ...BASE, priorOutcomes: [{ gateId: 'targeted', outcome: 'failed', assertionId: 'a' }], reportedCostSuccess: true }, 'prior-gate-failure'],
+    [{ ...BASE, reportedCostSuccess: true }, 'misleading-cost-success'],
+    [{ ...BASE, priorOutcomes: [{ gateId: 'targeted', outcome: 'flaky' }] }, 'flake-without-assertion-id'],
   ];
   for (const [input, reason] of table) {
     const selected = selectVerificationPolicy(input);
@@ -126,7 +127,7 @@ test('Given each policy level, when its gate set is emitted, then higher boundar
   assert.ok(comprehensive.gates.includes('real-surface'));
 });
 
-test('Given low-risk, affected, and release fixtures, when selected, then cost falls only where final assertions are preserved', () => {
+test('Given low-risk, affected, and release fixtures, when selected, then cost falls while final gates remain selected', () => {
   const fixtures = JSON.parse(fs.readFileSync(path.join(
     __dirname,
     'fixtures',
@@ -138,6 +139,7 @@ test('Given low-risk, affected, and release fixtures, when selected, then cost f
     assert.equal(selected.level, fixture.expected.level, fixture.name);
     assert.equal(selected.cost.fullSuiteInvocations, fixture.expected.fullSuiteInvocations, fixture.name);
     assert.equal(fixture.before.finalAssertions, fixture.expected.finalAssertions, fixture.name);
-    assert.equal(selected.qualityAssertions, 'preserved', fixture.name);
+    assert.ok(selected.gates.includes('final-assertions'), fixture.name);
+    assert.equal(Object.hasOwn(selected, 'qualityAssertions'), false, fixture.name);
   }
 });
