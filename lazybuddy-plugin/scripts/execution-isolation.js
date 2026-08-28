@@ -1,17 +1,14 @@
 'use strict';
-
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-
 const PRODUCT = 'lazybuddy';
 const LEASE_MS = 15 * 60_000;
 const RENEWAL_WINDOW_MS = 5 * 60_000;
 const ID_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,62})$/;
 const PORT_MIN = 20_000;
 const PORT_COUNT = 20_000;
-
 class IsolationError extends Error {
   constructor(code, message) {
     super(message);
@@ -19,14 +16,12 @@ class IsolationError extends Error {
     this.code = code;
   }
 }
-
 function validId(value, field) {
   if (typeof value !== 'string' || value === '.' || value === '..' || !ID_PATTERN.test(value)) {
     throw new IsolationError('INVALID_IDENTIFIER', `${field} must be a lowercase task-safe identifier of 1-63 characters.`);
   }
   return value;
 }
-
 function resolveRoot(root) {
   if (typeof root !== 'string' || !path.isAbsolute(root)) {
     throw new IsolationError('INVALID_ROOT', 'Isolation root must be an explicit absolute path.');
@@ -37,7 +32,6 @@ function resolveRoot(root) {
   }
   return resolved;
 }
-
 function defaultPidAlive(pid) {
   try {
     process.kill(pid, 0);
@@ -48,7 +42,6 @@ function defaultPidAlive(pid) {
     throw error;
   }
 }
-
 function defaultWorkspaceClean(workspace) {
   const result = spawnSync('git', ['-C', workspace, 'status', '--porcelain=v1', '--untracked-files=no'], {
     encoding: 'utf8',
@@ -57,7 +50,6 @@ function defaultWorkspaceClean(workspace) {
   });
   return result.status === 0 && result.stdout.trim() === '';
 }
-
 function adapters(overrides = {}) {
   return {
     now: overrides.now || Date.now,
@@ -65,7 +57,6 @@ function adapters(overrides = {}) {
     isWorkspaceClean: overrides.isWorkspaceClean || defaultWorkspaceClean,
   };
 }
-
 function productPaths(root, taskId) {
   const productRoot = path.join(resolveRoot(root), PRODUCT);
   return {
@@ -76,7 +67,6 @@ function productPaths(root, taskId) {
     taskRoot: path.join(productRoot, 'tasks', taskId),
   };
 }
-
 function readLease(taskRoot) {
   const leasePath = path.join(taskRoot, 'lease.json');
   let value;
@@ -93,11 +83,9 @@ function readLease(taskRoot) {
   }
   return value;
 }
-
 function writeJsonExclusive(file, value) {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
 }
-
 function writeJsonAtomic(file, value) {
   const temporary = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
   try {
@@ -107,7 +95,6 @@ function writeJsonAtomic(file, value) {
     fs.rmSync(temporary, { force: true });
   }
 }
-
 function claimPort(paths, taskId, session) {
   const start = crypto.createHash('sha256').update(`${PRODUCT}:${taskId}`).digest().readUInt32BE(0) % PORT_COUNT;
   for (let offset = 0; offset < PORT_COUNT; offset++) {
@@ -121,7 +108,6 @@ function claimPort(paths, taskId, session) {
   }
   throw new IsolationError('PORTS_EXHAUSTED', 'No task-owned port namespace is available.');
 }
-
 function removePort(paths, lease) {
   const portPath = path.join(paths.portsRoot, `${lease.namespace.port}.json`);
   try {
@@ -131,14 +117,18 @@ function removePort(paths, lease) {
     if (!error || error.code !== 'ENOENT') throw new IsolationError('LEASE_INVALID', 'Task port receipt is malformed.');
   }
 }
-
 function recover(paths, lease) {
   const tombstone = path.join(paths.recoveryRoot, `${lease.task_id}.${crypto.randomUUID()}`);
-  fs.renameSync(paths.taskRoot, tombstone);
+  try {
+    fs.renameSync(paths.taskRoot, tombstone);
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return false;
+    throw error;
+  }
   removePort(paths, lease);
   fs.rmSync(tombstone, { recursive: true, force: true });
+  return true;
 }
-
 function acquire(root, request, overrideAdapters = {}) {
   const taskId = validId(request.taskId, 'taskId');
   const session = validId(request.session, 'session');
@@ -152,23 +142,20 @@ function acquire(root, request, overrideAdapters = {}) {
   fs.mkdirSync(paths.tasksRoot, { recursive: true });
   fs.mkdirSync(paths.portsRoot, { recursive: true });
   fs.mkdirSync(paths.recoveryRoot, { recursive: true });
-
   for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      fs.mkdirSync(paths.taskRoot);
-    } catch (error) {
-      if (!error || error.code !== 'EEXIST') throw error;
+    if (fs.existsSync(paths.taskRoot)) {
       const existing = readLease(paths.taskRoot);
       const now = clock.now();
       if (now < Date.parse(existing.expires_at)) throw new IsolationError('LEASE_COLLISION', 'Task namespace is held by an unexpired lease.');
       if (clock.isPidAlive(existing.owner.pid)) throw new IsolationError('LEASE_EXPIRED_OWNER_LIVE', 'Expired task namespace still has a live owner.');
       if (!clock.isWorkspaceClean(existing.workspace)) throw new IsolationError('LEASE_EXPIRED_WORKSPACE_DIRTY', 'Expired task namespace has a dirty workspace.');
-      recover(paths, existing);
+      if (!recover(paths, existing)) continue;
       continue;
     }
-
+    const candidateRoot = `${paths.taskRoot}.${crypto.randomUUID()}.tmp`;
     let port;
     try {
+      fs.mkdirSync(candidateRoot);
       const now = clock.now();
       const namespacePaths = {
         evidence: path.join(paths.taskRoot, 'evidence'),
@@ -177,9 +164,7 @@ function acquire(root, request, overrideAdapters = {}) {
         state: path.join(paths.taskRoot, 'state'),
         worktree: path.join(paths.taskRoot, 'worktree'),
       };
-      for (const key of ['evidence', 'build', 'cache', 'state']) fs.mkdirSync(namespacePaths[key]);
       const worktreeProvisioned = request.mutationRequiresWorktree === true;
-      if (worktreeProvisioned) fs.mkdirSync(namespacePaths.worktree);
       port = claimPort(paths, taskId, session);
       const lease = {
         schema_version: 1,
@@ -194,24 +179,36 @@ function acquire(root, request, overrideAdapters = {}) {
         execution: { mode: request.direct === false ? 'orchestrated' : 'direct', actors: request.direct === false ? 2 : 1, worktree_provisioned: worktreeProvisioned },
         namespace: { root: paths.taskRoot, paths: namespacePaths, port },
       };
-      writeJsonExclusive(path.join(paths.taskRoot, 'lease.json'), lease);
+      for (const key of ['evidence', 'build', 'cache', 'state']) {
+        fs.mkdirSync(path.join(candidateRoot, path.basename(namespacePaths[key])));
+      }
+      if (worktreeProvisioned) fs.mkdirSync(path.join(candidateRoot, 'worktree'));
+      writeJsonExclusive(path.join(candidateRoot, 'lease.json'), lease);
+      try {
+        fs.renameSync(candidateRoot, paths.taskRoot);
+      } catch (error) {
+        if (error && ['EEXIST', 'ENOTEMPTY'].includes(error.code)) {
+          fs.rmSync(path.join(paths.portsRoot, `${port}.json`), { force: true });
+          fs.rmSync(candidateRoot, { recursive: true, force: true });
+          continue;
+        }
+        throw error;
+      }
       return lease;
     } catch (error) {
       if (port !== undefined) fs.rmSync(path.join(paths.portsRoot, `${port}.json`), { force: true });
-      fs.rmSync(paths.taskRoot, { recursive: true, force: true });
+      fs.rmSync(candidateRoot, { recursive: true, force: true });
       throw error;
     }
   }
   throw new IsolationError('LEASE_RACE', 'Task namespace changed repeatedly during recovery.');
 }
-
 function assertOwner(lease, owner) {
   validId(owner.session, 'session');
   if (lease.owner.pid !== owner.ownerPid || lease.owner.session !== owner.session) {
     throw new IsolationError('LEASE_OWNER_MISMATCH', 'Only the recorded PID and session may mutate this lease.');
   }
 }
-
 function renew(root, taskIdValue, owner, overrideAdapters = {}) {
   const taskId = validId(taskIdValue, 'taskId');
   const clock = adapters(overrideAdapters);
@@ -231,7 +228,6 @@ function renew(root, taskIdValue, owner, overrideAdapters = {}) {
   writeJsonAtomic(path.join(paths.taskRoot, 'lease.json'), renewed);
   return renewed;
 }
-
 function release(root, taskIdValue, owner) {
   const taskId = validId(taskIdValue, 'taskId');
   const paths = productPaths(root, taskId);
@@ -242,5 +238,4 @@ function release(root, taskIdValue, owner) {
   removePort(paths, lease);
   fs.rmSync(tombstone, { recursive: true, force: true });
 }
-
 module.exports = { IsolationError, acquire, release, renew };
