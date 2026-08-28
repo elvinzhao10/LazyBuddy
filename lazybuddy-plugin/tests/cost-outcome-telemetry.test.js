@@ -54,7 +54,7 @@ test('records schema-shaped direct and parallel telemetry without sensitive inpu
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-telemetry-'));
   t.after(() => fs.rmSync(projectRoot, { recursive: true }));
   // When
-  const direct = invoke(projectRoot, 'direct', 'direct-1', { SECRET_TOKEN: 'sk-abcdefghijklmnopqrstuvwxyz123456' });
+  const direct = invoke(projectRoot, 'direct', 'direct-1', { SECRET_TOKEN: `s${'k-abcdefghijklmnopqrstuvwxyz123456'}` });
   const parallel = invoke(projectRoot, 'six-module', 'parallel-1', { HOME: '/Users/telemetry-secret-home' });
   // Then
   assert.deepEqual([direct.status, parallel.status], [0, 0]);

@@ -73,9 +73,21 @@ test('current evidence is ready and required mutations are non-ready', () => {
     ['blocked', 'REVIEW_MISSING', f => fs.unlinkSync(path.join(f.root, '.lazybuddy/runs/run-1/review/review.json'))],
     ['blocked', 'EVIDENCE_MISSING', f => fs.unlinkSync(path.join(f.root, '.lazybuddy/runs/run-1/evidence/criterion-1.json'))],
     ['blocked', 'REVIEW_TAMPERED', f => write(f.root, '.lazybuddy/runs/run-1/evidence/criterion-1.json', { ...f.evidence, review: { ...f.evidence.review, source_sha256: '0'.repeat(64) } })],
+    ['blocked', 'RESIDUAL_RISK_NON_AUTHORITATIVE', f => write(f.root, '.lazybuddy/runs/run-1/review/review.json', {
+      kind: 'residual-risk', scope: 'criterion-1', revision: f.authority.repo_head, authoritative_for_completion: false,
+    })],
     ['blocked', 'REVIEW_UNAPPROVED', f => write(f.root, '.lazybuddy/runs/run-1/review/review.json', { verdict: 'needs-fix', verifier: { identity: 'verifier-1' } })],
     ['blocked', 'ARTIFACT_TAMPERED', f => write(f.root, '.lazybuddy/runs/run-1/evidence/artifact.txt', 'tampered\n')],
     ['blocked', 'COMMAND_FAILED', f => write(f.root, '.lazybuddy/runs/run-1/evidence/criterion-1.json', { ...f.evidence, exit_code: 9 })],
+    ['blocked', 'RESIDUAL_RISK_NON_AUTHORITATIVE', f => write(f.root, '.lazybuddy/runs/run-1/evidence/criterion-1.json', {
+      kind: 'residual-risk', scope: 'criterion-1', revision: f.authority.repo_head, authoritative_for_completion: false,
+    })],
+    ['blocked', 'RESIDUAL_RISK_MALFORMED', f => write(f.root, '.lazybuddy/runs/run-1/evidence/criterion-1.json', {
+      kind: 'residual-risk', scope: 'criterion-1', revision: f.authority.repo_head, authoritative_for_completion: true,
+    })],
+    ['blocked', 'RESIDUAL_RISK_MALFORMED', f => write(f.root, '.lazybuddy/runs/run-1/evidence/criterion-1.json', {
+      kind: 'residual-risk', scope: 'criterion-1', revision: 'stale-revision', authoritative_for_completion: false,
+    })],
     ['blocked', 'WORKTREE_DIRTY', f => write(f.root, 'untracked.txt', 'dirty\n')],
   ];
   const current = assess(fixture().root);

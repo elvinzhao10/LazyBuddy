@@ -10,8 +10,13 @@ core value-add).
 Single-shot JSON-RPC 2.0 over stdio.
 Tools: get_library_docs, list_supported_registries.
 """
-import sys, json, os, subprocess, re
+import json
+import os
+import re
+import sys
 from urllib.parse import quote
+
+from network_boundary import fetch_with_redirects
 
 MCP_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if MCP_ROOT not in sys.path:
@@ -23,29 +28,10 @@ _NPM_PACKAGE = re.compile(r"(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
 _PYPI_PACKAGE = re.compile(r"[a-z0-9]+(?:[-._][a-z0-9]+)*$", re.I)
 _NPM_REGISTRY_URL = re.compile(r"https://registry\.npmjs\.org/(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*/latest$")
 _PYPI_REGISTRY_URL = re.compile(r"https://pypi\.org/pypi/[a-z0-9]+(?:[-._][a-z0-9]+)*/json$", re.I)
-CURL = None
-for c in ["curl", "/usr/bin/curl"]:
-    try:
-        if subprocess.run([c, "--version"], capture_output=True, timeout=5).returncode == 0:
-            CURL = c
-            break
-    except Exception:
-        pass
-
-
 def fetch(url, timeout=20):
     if not (_NPM_REGISTRY_URL.fullmatch(url) or _PYPI_REGISTRY_URL.fullmatch(url)):
-        return None, "only fixed package registry URLs are allowed"
-    if not CURL:
-        return None, "curl not available"
-    try:
-        r = subprocess.run([CURL, "-sS", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "0", "--max-time", str(timeout), "-A", "lazybuddy-docs/1.1.0", url],
-                           capture_output=True, text=True, timeout=timeout + 5)
-        if r.returncode == 0 and r.stdout:
-            return r.stdout, None
-        return None, r.stderr or ("curl exit %d" % r.returncode)
-    except Exception as e:
-        return None, str(e)
+        return None, "NETWORK_DESTINATION_REJECTED"
+    return fetch_with_redirects(url, timeout)
 
 
 def fetch_json(url, timeout=20):
@@ -184,9 +170,9 @@ def handle(req, notification):
         if not notification:
             print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": j}), flush=True)
 
-    def err(m):
+    def err(m, code=-32603):
         if not notification:
-            print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": -32603, "message": m}}), flush=True)
+            print(json.dumps({"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": m}}), flush=True)
 
     def tool_result(text):
         reply({"content": [{"type": "text", "text": text}]})
@@ -207,9 +193,12 @@ def handle(req, notification):
         args = params.get("arguments", {})
         try:
             if tool == "get_library_docs":
-                library = args["library"]
+                library = args.get("library")
                 topic = args.get("topic", "")
                 registry = args.get("registry", "auto")
+                if not isinstance(library, str) or not isinstance(topic, str) or registry not in ("auto", "npm", "pypi"):
+                    err("Invalid get_library_docs arguments", -32602)
+                    return
                 result = None
                 errors = []
                 if registry in ("auto", "npm"):
@@ -233,7 +222,7 @@ def handle(req, notification):
                     else:
                         errors.append(e)
                 if result is None:
-                    err("could not fetch docs for '%s': %s" % (library, "; ".join(errors)))
+                    err("could not fetch requested docs: %s" % "; ".join(errors))
                     return
                 out = "## %s (%s registry, v%s)\n" % (library, result["registry"], result.get("version", "?"))
                 if result.get("description"):
@@ -252,8 +241,8 @@ def handle(req, notification):
 
             else:
                 err("unknown tool: " + tool)
-        except Exception as e:
-            err("tool error: " + str(e))
+        except Exception:
+            err("tool error")
         return
 
     err("unsupported method: " + method)
