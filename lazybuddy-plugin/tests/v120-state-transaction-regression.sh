@@ -110,6 +110,33 @@ fi
 grep -q 'transaction journal is unsafe' "$TMP/symlink-empty.err"
 echo 'PASS pre-manifest-journal=symlink-blocked'
 
+new_run "$PROJECT" duplicate-target
+RUN="$PROJECT/.lazybuddy/runs/duplicate-target"
+printf 'old\n' > "$RUN/duplicate-target.txt"
+printf 'first\n' > "$TMP/duplicate-first"
+printf 'second\n' > "$TMP/duplicate-second"
+duplicate_before="$(shasum -a 256 "$RUN/duplicate-target.txt" | awk '{print $1}')"
+set +e
+CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-install:1 python3 "$STATE_DIR/state-transaction.py" commit "$RUN" duplicate-target \
+    "duplicate-target.txt|$duplicate_before|$TMP/duplicate-first" \
+    "duplicate-target.txt|$duplicate_before|$TMP/duplicate-second" >"$TMP/duplicate.out" 2>"$TMP/duplicate.err"
+duplicate_status=$?
+set -e
+if [ "$duplicate_status" -ne 1 ] || ! grep -q 'duplicate transaction target' "$TMP/duplicate.err"; then
+    set +e
+    duplicate_recovery="$(python3 "$STATE_DIR/state-transaction.py" recover "$RUN" 2>&1)"
+    duplicate_recovery_status=$?
+    set -e
+    duplicate_after="$(shasum -a 256 "$RUN/duplicate-target.txt" | awk '{print $1}')"
+    [ -e "$RUN/.transaction-journal" ] && duplicate_journal=present || duplicate_journal=absent
+    echo "OBSERVE duplicate-target status=$duplicate_status before_sha256=$duplicate_before after_sha256=$duplicate_after journal=$duplicate_journal recovery_status=$duplicate_recovery_status recovery=$duplicate_recovery" >&2
+    exit 1
+fi
+[ "$duplicate_before" = "$(shasum -a 256 "$RUN/duplicate-target.txt" | awk '{print $1}')" ]
+[ ! -e "$RUN/.transaction-journal" ]
+[ "$(python3 "$STATE_DIR/state-transaction.py" recover "$RUN")" = clean ]
+echo "PASS duplicate-target=rejected-before-install state_sha256=$duplicate_before journal=absent recovery=clean"
+
 for phase in after-stage:1 after-stage:2 after-stage:3 after-stage after-journal; do
     run_id="rollback-${phase//:/-}"
     new_run "$PROJECT" "$run_id"

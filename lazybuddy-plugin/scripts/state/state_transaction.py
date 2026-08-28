@@ -230,6 +230,9 @@ def commit_locked(run_dir: Path, operation: str, writes: Sequence[Write]) -> int
     recover_locked(run_dir)
     if not writes:
         raise TransactionError("transaction has no writes")
+    targets = [checked_target(run_dir, write.relative_path) for write in writes]
+    if len(targets) != len(set(targets)):
+        raise TransactionError("duplicate transaction target")
     revision_before = read_revision(run_dir)
     journal = run_dir / JOURNAL_NAME
     journal.mkdir(mode=0o700)
