@@ -149,9 +149,13 @@ function parseFixture(value) {
   if (quality.completion !== 'complete') {
     throw new BaselineContractError('quality.completion', 'must be complete');
   }
+  const product = requireString(fixture.product, 'product');
+  if (!['lazytrae', 'lazybuddy'].includes(product)) {
+    throw new BaselineContractError('product', 'must be lazytrae or lazybuddy');
+  }
   return {
     contract_version: CONTRACT_VERSION,
-    product: requireString(fixture.product, 'product'),
+    product,
     scenario: fixture.scenario,
     route: {
       classification: requireString(route.classification, 'route.classification'),

@@ -24,8 +24,8 @@ function findEvalRoot(start) {
 
 const evalRoot = findEvalRoot(pluginRoot);
 
-function invoke(fixturePath) {
-  return spawnSync(process.execPath, [runner, fixturePath, '--eval-root', evalRoot], {
+function invoke(fixturePath, rootPath = evalRoot) {
+  return spawnSync(process.execPath, [runner, fixturePath, '--eval-root', rootPath], {
     cwd: pluginRoot,
     encoding: 'utf8',
   });
@@ -195,4 +195,57 @@ test('rejects baseline when assertion output is stale', (t) => {
   // Then
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /assertion_output/);
+});
+
+test('rejects cross-product assertion artifact despite valid digest', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  fixture.quality.assertion_manifest[0].file = 'lazytrae-liveeval/runs/direct-20260827T115134/tests/test_parse_duration.py';
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const malformed = path.join(tempDir, 'cross-product.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /assertion_manifest.*product namespace/);
+});
+
+test('rejects fixture whose product does not match the runner', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  fixture.product = 'lazytrae';
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const malformed = path.join(tempDir, 'mismatched-product.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /product.*runner expects lazybuddy/);
+});
+
+test('rejects assertion symlink resolving into sibling product namespace', (t) => {
+  // Given
+  const fixture = JSON.parse(fs.readFileSync(path.join(fixtures, 'direct.json'), 'utf8'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-efficiency-'));
+  t.after(() => fs.rmSync(tempDir, { recursive: true }));
+  const ownRoot = path.join(tempDir, 'lazybuddy-liveeval');
+  const siblingRoot = path.join(tempDir, 'lazytrae-liveeval');
+  fs.mkdirSync(ownRoot);
+  fs.mkdirSync(siblingRoot);
+  const siblingFile = path.join(siblingRoot, 'test_parse_duration.py');
+  fs.copyFileSync(path.join(evalRoot, 'lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.py'), siblingFile);
+  const linkedFile = path.join(ownRoot, 'linked-test.py');
+  fs.symlinkSync(siblingFile, linkedFile);
+  fixture.quality.assertion_manifest[0].file = 'lazybuddy-liveeval/linked-test.py';
+  const malformed = path.join(tempDir, 'sibling-symlink.json');
+  fs.writeFileSync(malformed, JSON.stringify(fixture));
+  // When
+  const result = invoke(malformed, tempDir);
+  // Then
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /assertion_manifest.*product namespace/);
 });

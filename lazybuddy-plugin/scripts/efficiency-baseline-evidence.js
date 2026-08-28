@@ -27,13 +27,13 @@ function resolveRoot(rootPath) {
   return root;
 }
 
-function readBoundFile(root, item, field) {
+function readBoundFile(root, productRoot, item, field) {
   if (path.isAbsolute(item.file)) {
     throw new EvidenceIntegrityError(field, 'file must be relative to eval_root');
   }
   const candidate = path.resolve(root, item.file);
-  if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) {
-    throw new EvidenceIntegrityError(field, 'file escapes eval_root');
+  if (!candidate.startsWith(`${productRoot}${path.sep}`)) {
+    throw new EvidenceIntegrityError(field, `file is outside product namespace: ${item.file}`);
   }
   let resolved;
   try {
@@ -41,8 +41,8 @@ function readBoundFile(root, item, field) {
   } catch {
     throw new EvidenceIntegrityError(field, `file is absent: ${item.file}`);
   }
-  if (!resolved.startsWith(`${root}${path.sep}`) || !fs.statSync(resolved).isFile()) {
-    throw new EvidenceIntegrityError(field, 'file must resolve inside eval_root');
+  if (!resolved.startsWith(`${productRoot}${path.sep}`) || !fs.statSync(resolved).isFile()) {
+    throw new EvidenceIntegrityError(field, 'file must resolve inside product namespace');
   }
   const content = fs.readFileSync(resolved);
   const digest = crypto.createHash('sha256').update(content).digest('hex');
@@ -55,9 +55,11 @@ function readBoundFile(root, item, field) {
   return content;
 }
 
-function verifyAssertionManifest(root, manifest) {
+function verifyAssertionManifest(root, productRoot, manifest) {
   return manifest.reduce((total, item, index) => {
-    const content = readBoundFile(root, item, `assertion_manifest[${index}]`).toString('utf8');
+    const content = readBoundFile(root, productRoot, item, `assertion_manifest[${index}]`).toString(
+      'utf8',
+    );
     const derivedCount = [...content.matchAll(/^\s+def test_/gm)].length;
     if (derivedCount !== item.count) {
       throw new EvidenceIntegrityError(
@@ -69,10 +71,10 @@ function verifyAssertionManifest(root, manifest) {
   }, 0);
 }
 
-function verifyEvidence(root, evidence, assertionOutput) {
+function verifyEvidence(root, productRoot, evidence, assertionOutput) {
   let outputContent = null;
   evidence.forEach((item, index) => {
-    const content = readBoundFile(root, item, `required_evidence[${index}]`);
+    const content = readBoundFile(root, productRoot, item, `required_evidence[${index}]`);
     if (item.file === assertionOutput) outputContent = content.toString('utf8');
   });
   if (outputContent === null) {
@@ -87,10 +89,25 @@ function verifyEvidence(root, evidence, assertionOutput) {
 
 function verifyFixtureEvidence(rootPath, fixture) {
   const root = resolveRoot(rootPath);
+  const productPath = path.join(root, `${fixture.product}-liveeval`);
+  let productRoot;
+  try {
+    productRoot = fs.realpathSync(productPath);
+  } catch {
+    throw new EvidenceIntegrityError('product', `namespace is absent: ${productPath}`);
+  }
+  if (!productRoot.startsWith(`${root}${path.sep}`) || !fs.statSync(productRoot).isDirectory()) {
+    throw new EvidenceIntegrityError('product', 'namespace must resolve inside eval_root');
+  }
   return {
-    assertionsRepresented: verifyAssertionManifest(root, fixture.quality.assertion_manifest),
+    assertionsRepresented: verifyAssertionManifest(
+      root,
+      productRoot,
+      fixture.quality.assertion_manifest,
+    ),
     assertionsPassed: verifyEvidence(
       root,
+      productRoot,
       fixture.quality.required_evidence,
       fixture.quality.assertion_output,
     ),

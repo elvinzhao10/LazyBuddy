@@ -9,7 +9,12 @@ const {
 } = require('./efficiency-baseline-contract');
 const { verifyFixtureEvidence } = require('./efficiency-baseline-evidence');
 
+const EXPECTED_PRODUCT = 'lazybuddy';
+
 function buildResult(fixture, evidenceRoot) {
+  if (fixture.product !== EXPECTED_PRODUCT) {
+    throw new BaselineContractError('product', `runner expects ${EXPECTED_PRODUCT}`);
+  }
   const integrity = verifyFixtureEvidence(evidenceRoot, fixture);
   const expected = fixture.quality.assertions_expected;
   if (integrity.assertionsRepresented !== expected) {
