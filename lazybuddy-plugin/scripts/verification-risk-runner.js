@@ -67,8 +67,26 @@ function parseCommands(raw) {
   return commands;
 }
 
+function trustedGitExecutable() {
+  const candidates = process.platform === 'darwin'
+    ? ['/usr/bin/git', '/opt/homebrew/bin/git', '/usr/local/bin/git']
+    : process.platform === 'linux'
+      ? ['/usr/bin/git', '/bin/git']
+      : [];
+  return candidates.find((candidate) => {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return fs.statSync(candidate).isFile();
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
 function gitDirty(target) {
-  const result = spawnSync('git', ['status', '--porcelain', '--untracked-files=normal'], {
+  const git = trustedGitExecutable();
+  if (!git) return true;
+  const result = spawnSync(git, ['status', '--porcelain=v1', '--untracked-files=normal'], {
     cwd: target, encoding: 'utf8', timeout: 5000,
   });
   return result.status !== 0 || result.stdout.trim().length > 0;

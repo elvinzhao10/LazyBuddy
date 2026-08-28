@@ -46,14 +46,14 @@ function fixture(t) {
   return { behavior, configPath, log, reports, root, target };
 }
 
-function invoke(fx, input, name) {
+function invoke(fx, input, name, env = {}) {
   const inputPath = path.join(fx.reports, `${name}-input.json`);
   const report = path.join(fx.reports, `${name}-report.json`);
   fs.writeFileSync(inputPath, `${JSON.stringify(input)}\n`);
   const result = spawnSync('bash', [tooling, 'verification-risk', '--target', fx.target,
     '--input', inputPath, '--gate-config', fx.configPath, '--report', report,
     '--timeout', '5'], { cwd: pluginRoot, encoding: 'utf8',
-    env: { ...process.env, LAZYBUDDY_PYTHON: python } });
+    env: { ...process.env, LAZYBUDDY_PYTHON: python, ...env } });
   return { result, report: fs.existsSync(report) ? JSON.parse(fs.readFileSync(report, 'utf8')) : null };
 }
 
@@ -118,6 +118,33 @@ test('Given a dirty Git target, when shipped verification runs, then actual repo
   const fx = fixture(t);
   fs.appendFileSync(path.join(fx.target, 'tracked.txt'), 'dirty\n');
   const run = invoke(fx, base, 'dirty');
+  assert.equal(run.result.status, 0, JSON.stringify(run.report));
+  assert.equal(run.report.level, 'comprehensive');
+  assert.ok(run.report.reasonCodes.includes('dirty-tree'));
+  assert.equal(invoked(run.report).length, 9);
+});
+
+test('Given a dirty Git target and a PATH-spoofed clean probe, when shipped verification runs, then comprehensive gates execute', (t) => {
+  const fx = fixture(t);
+  fs.appendFileSync(path.join(fx.target, 'tracked.txt'), 'dirty\n');
+  const fakeBin = path.join(fx.root, 'fake-bin');
+  fs.mkdirSync(fakeBin);
+  fs.writeFileSync(path.join(fakeBin, 'git'), '#!/bin/sh\nexit 0\n');
+  fs.chmodSync(path.join(fakeBin, 'git'), 0o755);
+  const run = invoke(fx, base, 'dirty-spoofed-git', {
+    PATH: `${fakeBin}${path.delimiter}${process.env.PATH || ''}`,
+  });
+  assert.equal(run.result.status, 0, JSON.stringify(run.report));
+  assert.equal(run.report.level, 'comprehensive');
+  assert.ok(run.report.reasonCodes.includes('dirty-tree'));
+  assert.equal(invoked(run.report).length, 9);
+});
+
+test('Given no trusted Git executable, when shipped verification runs, then it fails closed comprehensive', (t) => {
+  const fx = fixture(t);
+  const preload = path.join(fx.root, 'hide-trusted-git.js');
+  fs.writeFileSync(preload, `'use strict';\nconst fs=require('node:fs');\nconst original=fs.statSync;\nconst trusted=new Set(['/usr/bin/git','/bin/git','/opt/homebrew/bin/git','/usr/local/bin/git']);\nfs.statSync=(candidate,...args)=>{if(trusted.has(candidate)){const error=new Error('missing trusted git');error.code='ENOENT';throw error;}return original(candidate,...args);};\n`);
+  const run = invoke(fx, base, 'missing-trusted-git', { NODE_OPTIONS: `--require=${preload}` });
   assert.equal(run.result.status, 0, JSON.stringify(run.report));
   assert.equal(run.report.level, 'comprehensive');
   assert.ok(run.report.reasonCodes.includes('dirty-tree'));
