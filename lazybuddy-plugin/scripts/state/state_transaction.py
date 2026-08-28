@@ -165,8 +165,13 @@ def recover_locked(run_dir: Path) -> str:
     manifest_path = journal / "manifest.json"
     preparing = journal / "preparing"
     if not manifest_path.exists():
+        contents = list(journal.iterdir())
+        if not contents:
+            shutil.rmtree(journal)
+            fsync_directory(run_dir)
+            return "rollback"
         allowed = {"preparing"} | {f"stage-{index}" for index in range(1024)} | {f"backup-{index}" for index in range(1024)}
-        if not preparing.is_file() or any(path.name not in allowed or path.is_symlink() or not path.is_file() for path in journal.iterdir()):
+        if not preparing.is_file() or any(path.name not in allowed or path.is_symlink() or not path.is_file() for path in contents):
             raise TransactionError("transaction journal manifest is corrupt")
         shutil.rmtree(journal)
         fsync_directory(run_dir)
@@ -228,6 +233,8 @@ def commit_locked(run_dir: Path, operation: str, writes: Sequence[Write]) -> int
     revision_before = read_revision(run_dir)
     journal = run_dir / JOURNAL_NAME
     journal.mkdir(mode=0o700)
+    fsync_directory(run_dir)
+    _fault("after-journal-mkdir")
     write_durable(journal / "preparing", b"preparing\n")
     entries = []
     for index, write in enumerate(writes):

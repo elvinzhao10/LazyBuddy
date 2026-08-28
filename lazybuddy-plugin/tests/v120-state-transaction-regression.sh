@@ -70,6 +70,46 @@ fi
 CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" startup >/dev/null
 grep -q '"run_id": "startup"' "$PROJECT/.lazybuddy/runs/startup/state.json"
 
+new_run "$PROJECT" empty-journal
+RUN="$PROJECT/.lazybuddy/runs/empty-journal"
+before="$(shasum -a 256 "$RUN/state.json" "$RUN/plan.md" "$RUN/events.jsonl" "$RUN/.revision")"
+if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-journal-mkdir bash "$STATE_DIR/update-plan-checkbox.sh" empty-journal T1 >/dev/null 2>&1; then
+    echo "journal mkdir fault unexpectedly succeeded" >&2
+    exit 1
+fi
+[ -d "$RUN/.transaction-journal" ]
+[ -z "$(find "$RUN/.transaction-journal" -mindepth 1 -maxdepth 1 -print -quit)" ]
+CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" empty-journal >/dev/null
+after="$(shasum -a 256 "$RUN/state.json" "$RUN/plan.md" "$RUN/events.jsonl" "$RUN/.revision")"
+[ "$before" = "$after" ]
+[ ! -e "$RUN/.transaction-journal" ]
+assert_initial "$RUN"
+echo 'PASS fault=after-journal-mkdir recovery=rollback-empty-journal state_sha256=unchanged cleanup=removed'
+
+new_run "$PROJECT" unexpected-empty-journal
+RUN="$PROJECT/.lazybuddy/runs/unexpected-empty-journal"
+mkdir "$RUN/.transaction-journal"
+printf 'unexpected\n' > "$RUN/.transaction-journal/surprise"
+if CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" unexpected-empty-journal >"$TMP/unexpected-empty.out" 2>"$TMP/unexpected-empty.err"; then
+    echo "unexpected journal entry did not block recovery" >&2
+    exit 1
+fi
+[ -f "$RUN/.transaction-journal/surprise" ]
+grep -q 'transaction journal manifest is corrupt' "$TMP/unexpected-empty.err"
+echo 'PASS pre-manifest-journal=unexpected-entry-blocked'
+
+new_run "$PROJECT" symlink-empty-journal
+RUN="$PROJECT/.lazybuddy/runs/symlink-empty-journal"
+mkdir "$RUN/journal-target"
+ln -s journal-target "$RUN/.transaction-journal"
+if CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" symlink-empty-journal >"$TMP/symlink-empty.out" 2>"$TMP/symlink-empty.err"; then
+    echo "symlink journal did not block recovery" >&2
+    exit 1
+fi
+[ -L "$RUN/.transaction-journal" ]
+grep -q 'transaction journal is unsafe' "$TMP/symlink-empty.err"
+echo 'PASS pre-manifest-journal=symlink-blocked'
+
 for phase in after-stage:1 after-stage:2 after-stage:3 after-stage after-journal; do
     run_id="rollback-${phase//:/-}"
     new_run "$PROJECT" "$run_id"
