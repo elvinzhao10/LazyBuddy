@@ -128,6 +128,12 @@ function probeCodeBuddy({ aliases, now, currentSessionId = null, workflowObserva
     resume = unavailable('workflow-resume', 'WORKFLOW_OBSERVATION_INVALID', fingerprint);
   } else if (workflowObservation) resume = capability('workflow-resume', 'host-executed', fingerprint, { scope: 'current-session', observed_at: workflowObservation.observed_at, session_id: currentSessionId });
   capabilities.push(resume);
+  if (probes.some(probe => readableFingerprint(probe.executable) !== probe.fingerprint)) {
+    return {
+      product: 'CodeBuddy Code CLI', version: versionText(version), outcome: 'blocked', aliases: aliasesResult,
+      capabilities: CLI_CAPABILITIES.map(name => unavailable(name, 'STALE_EXECUTABLE', fingerprint)),
+    };
+  }
   const blocked = capabilities.some(row => row.reason_code === 'UNTRUSTED_PROBE_OUTPUT');
   return { product: 'CodeBuddy Code CLI', version: versionText(version), outcome: blocked ? 'blocked' : 'observed', aliases: aliasesResult, capabilities };
 }

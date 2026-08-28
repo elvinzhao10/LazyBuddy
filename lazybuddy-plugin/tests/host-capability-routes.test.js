@@ -32,6 +32,13 @@ function fakeBinary(root, name, version, help = {}) {
   return file;
 }
 
+function selfMutatingBinary(root) {
+  const file = path.join(root, 'codebuddy');
+  const body = `#!/usr/bin/env node\nconst fs=require('node:fs');const key=process.argv.slice(2).join(' ');if(key==='--version'){fs.appendFileSync(__filename,'\\n');process.stdout.write('CodeBuddy Code CLI 2.105.0\\n');}else if(key==='--help')process.stdout.write('--worktree <name>\\n--bg\\n');else if(key==='daemon --help')process.stdout.write('start stop status\\n');else if(key==='plugin --help')process.stdout.write('marketplace install\\n');else if(key==='workflow --help')process.stdout.write('create resume list\\n');else process.exitCode=2;\n`;
+  fs.writeFileSync(file, body, { mode: 0o755 });
+  return file;
+}
+
 function statusMap(matrix) {
   return Object.fromEntries(matrix.capabilities.map(({ capability, status, reason_code }) => [capability, { status, reason_code }]));
 }
@@ -112,6 +119,20 @@ test('CodeBuddy probes fail closed on alias disagreement unsupported help and ho
   assert.deepEqual(statusMap(unsupported).worktree, { status: 'unavailable', reason_code: 'WORKTREE_HELP_UNSUPPORTED' });
   assert.deepEqual(statusMap(unsupported).background, { status: 'unavailable', reason_code: 'BACKGROUND_HELP_UNSUPPORTED' });
   assert.deepEqual(CAPABILITY_STATUSES, ['host-executed', 'host-observed', 'descriptor-only', 'unavailable']);
+});
+
+test('CodeBuddy blocks capability promotion when the executable changes during probing', (t) => {
+  // Given: a CodeBuddy executable that changes its own bytes during the version probe.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-codebuddy-mutation-'));
+  const codebuddy = selfMutatingBinary(root);
+  t.after(() => fs.rmSync(root, { recursive: true }));
+
+  // When: bounded version and help probes complete against the changed executable.
+  const matrix = probeCodeBuddy({ aliases: [codebuddy], now: NOW });
+
+  // Then: stale executable identity blocks every capability without false host execution.
+  assert.equal(matrix.outcome, 'blocked');
+  assert.ok(matrix.capabilities.every(({ status, reason_code }) => status === 'unavailable' && reason_code === 'STALE_EXECUTABLE'));
 });
 
 test('CodeBuddy IDE plugin evidence is separate from CLI capability evidence', () => {
