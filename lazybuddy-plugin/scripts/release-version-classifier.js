@@ -59,6 +59,7 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.endsWith('v120-release-version-classification.test.js')) return 'adversarial-test-input';
   if (relativePath.endsWith('lazybuddy-contract-check.sh')) return 'schema-independent-contract-test';
   if (/(?:^|\/)(?:test|tests)\//.test(relativePath) && /(previous|historical|fixture|wrong|from|upgrade|mutable|prior)/i.test(line)) return 'historical-test-input';
+  if (/\bcurrent\b.*\b(?:release|version)\b/i.test(line)) return 'current-version-drift';
   if (/(upgrade|migrat|rollback|previous|historical|prior|old release|from v?1\.1\.0|tag\/v1\.1\.0|release notes)/i.test(line)) return 'historical-migration-reference';
   return null;
 }
@@ -94,7 +95,8 @@ function classify(root) {
     contents.split('\n').forEach((line, index) => {
       if (!line.includes(PREVIOUS_VERSION)) return;
       const classification = previousVersionClassification(relativePath, line);
-      if (classification) classifications.push({ path: relativePath, line: index + 1, classification });
+      if (classification === 'current-version-drift') failures.push(`CURRENT_VERSION_DRIFT_TEXT ${relativePath}:${index + 1}`);
+      else if (classification) classifications.push({ path: relativePath, line: index + 1, classification });
       else failures.push(`UNCLASSIFIED_PREVIOUS_VERSION ${relativePath}:${index + 1}`);
     });
   }
