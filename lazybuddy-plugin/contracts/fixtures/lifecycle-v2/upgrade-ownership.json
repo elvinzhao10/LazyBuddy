@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "product": "LazyBuddy",
+  "from_version": "1.1.0",
+  "to_version": "1.2.0",
+  "sequence": [
+    "install",
+    "upgrade",
+    "soft_offboard",
+    "reinstall",
+    "receipt_owned_uninstall"
+  ],
+  "preserve": [
+    "foreign_mcp_entry",
+    "unrelated_host_settings",
+    "soft_state",
+    "modified_owned_file",
+    "unknown_file",
+    "sibling_product_root"
+  ],
+  "refusals": {
+    "modified_owned_file": "OWNERSHIP_REFUSED",
+    "unknown_file": "OWNERSHIP_REFUSED",
+    "mismatched_receipt": "OWNERSHIP_REFUSED",
+    "cross_product_root": "OWNERSHIP_REFUSED"
+  }
+}
