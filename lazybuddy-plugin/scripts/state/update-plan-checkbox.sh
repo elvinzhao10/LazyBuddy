@@ -37,67 +37,53 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-# --- Update plan.md checkbox (atomic: tmp + rename) ---
 PLAN_TMP=$(mktemp "$RUN_DIR/.plan.md.XXXXXX")
-python3 - "$PLAN_FILE" "$PLAN_TMP" "$TASK_LABEL" <<'PYEOF'
-import os
-import sys
-plan_file, plan_tmp, label = sys.argv[1:]
-with open(plan_file) as f:
-    lines = f.readlines()
-
-updated = False
-for i, line in enumerate(lines):
-    stripped = line.strip()
-    if stripped.startswith('- [ ] ') and label.lower() in stripped.lower():
-        lines[i] = line.replace('- [ ] ', '- [x] ', 1)
-        updated = True
-        break
-
-if not updated:
-    os.unlink(plan_tmp)
-    print(f'Warning: no unchecked checkbox matching \"{label}\" found in plan.md', file=sys.stderr)
-    sys.exit(0)
-
-with open(plan_tmp, 'w') as f:
-    f.writelines(lines)
-PYEOF
-
-if [ -f "$PLAN_TMP" ]; then
-    mv "$PLAN_TMP" "$PLAN_FILE"
-fi
-
-# --- Update state.json task status (atomic: tmp + rename) ---
 STATE_TMP=$(mktemp "$RUN_DIR/.state.json.XXXXXX")
-python3 - "$STATE_FILE" "$STATE_TMP" "$NOW" "$TASK_LABEL" <<'PYEOF'
-import json, sys
-state_file, state_tmp, now, label_arg = sys.argv[1:]
-label = label_arg.lower()
-d = json.load(open(state_file))
-updated = False
-for t in d.get('tasks', []):
-    if label in t.get('title', '').lower() or label in t.get('id', '').lower():
-        t['status'] = 'done'
-        updated = True
-        break
-d['updated_at'] = now
-if not updated:
-    print(f'Warning: no task matching \"{label}\" found in state.json', file=sys.stderr)
-with open(state_tmp, 'w') as f:
-    json.dump(d, f, indent=2)
-PYEOF
+EVENTS_TMP=$(mktemp "$RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$PLAN_TMP" "$STATE_TMP" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
 
-mv "$STATE_TMP" "$STATE_FILE"
-
-# --- Append event ---
-python3 - "$NOW" "$RUN_ID" "$TASK_LABEL" "$EVENTS_FILE" <<'PYEOF'
+python3 - "$PLAN_FILE" "$PLAN_TMP" "$STATE_FILE" "$STATE_TMP" "$EVENTS_FILE" "$EVENTS_TMP" "$NOW" "$RUN_ID" "$TASK_LABEL" <<'PYEOF'
 import json
 import sys
-now, run_id, task_label, events_file = sys.argv[1:]
+
+plan_file, plan_tmp, state_file, state_tmp, events_file, events_tmp, now, run_id, task_label = sys.argv[1:]
+label = task_label.lower()
+with open(plan_file) as handle:
+    lines = handle.readlines()
+plan_matches = [index for index, line in enumerate(lines) if line.strip().startswith('- [ ] ') and label in line.lower()]
+if not plan_matches:
+    raise SystemExit(f'Error: no unchecked checkbox matching "{task_label}" found in plan.md')
+if len(plan_matches) != 1:
+    raise SystemExit(f'Error: multiple unchecked checkboxes match "{task_label}" in plan.md')
+state = json.load(open(state_file))
+task_matches = [task for task in state.get('tasks', []) if label in task.get('title', '').lower() or label in task.get('id', '').lower()]
+if not task_matches:
+    raise SystemExit(f'Error: no task matching "{task_label}" found in state.json')
+if len(task_matches) != 1:
+    raise SystemExit(f'Error: multiple tasks match "{task_label}" in state.json')
+statuses = {task.get('id'): task.get('status') for task in state.get('tasks', [])}
+incomplete = [dependency for dependency in task_matches[0].get('depends_on', []) if statuses.get(dependency) != 'done']
+if incomplete:
+    raise SystemExit(f'Error: dependency {", ".join(incomplete)} must be done before task "{task_matches[0].get("id", task_label)}"')
+lines[plan_matches[0]] = lines[plan_matches[0]].replace('- [ ] ', '- [x] ', 1)
+task_matches[0]['status'] = 'done'
+state['updated_at'] = now
+with open(plan_tmp, 'w') as handle:
+    handle.writelines(lines)
+with open(state_tmp, 'w') as handle:
+    json.dump(state, handle, indent=2)
 event = {'ts': now, 'run_id': run_id, 'event': 'plan_checkbox_updated', 'task_label': task_label}
-with open(events_file, 'a') as f:
-    f.write(json.dumps(event) + '\n')
+with open(events_tmp, 'w') as output:
+    if __import__('os').path.exists(events_file):
+        with open(events_file) as source:
+            output.write(source.read())
+    output.write(json.dumps(event) + '\n')
 PYEOF
+
+state_commit_transaction "$RUN_DIR" update_plan_checkbox \
+    "$(state_transaction_write_arg plan.md "$PLAN_FILE" "$PLAN_TMP")" \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$STATE_TMP")" \
+    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
 
 echo "Updated: plan.md checkbox + state.json task for '$TASK_LABEL'"

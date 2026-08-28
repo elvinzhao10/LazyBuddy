@@ -24,6 +24,7 @@ if [ ! -f "$STATE_FILE" ]; then
     echo "Error: state.json not found for run '$RUN_ID'" >&2
     exit 1
 fi
+state_recover_transaction "$STATE_RUN_DIR" || exit 1
 
 # Run all checks
 RESULT=$(python3 - "$STATE_FILE" "$PLAN_FILE" <<'PY'
@@ -92,27 +93,31 @@ PY
 # All checks passed
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
-python3 - "$STATE_FILE" "$NOW" "$TMP_FILE" <<'PY'
+EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
+python3 - "$STATE_FILE" "$NOW" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$RUN_ID" <<'PY'
 import json
+import os
 import sys
 
-state_file, now, tmp_file = sys.argv[1:]
+state_file, now, tmp_file, events_file, events_tmp, run_id = sys.argv[1:]
 d = json.load(open(state_file))
 d['status'] = 'complete'
+d['outcome'] = 'complete'
 d['updated_at'] = now
 with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
-PY
-mv "$TMP_FILE" "$STATE_FILE"
-
-python3 - "$EVENTS_FILE" "$NOW" "$RUN_ID" <<'PY'
-import json
-import sys
-
-events_file, now, run_id = sys.argv[1:]
 event = {'ts': now, 'run_id': run_id, 'event': 'run_completed'}
-with open(events_file, 'a') as f:
-    f.write(json.dumps(event) + '\n')
+with open(events_tmp, 'w') as output:
+    if os.path.exists(events_file):
+        with open(events_file) as source:
+            output.write(source.read())
+    output.write(json.dumps(event) + '\n')
 PY
+
+state_commit_transaction "$STATE_RUN_DIR" finalize_run \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")" \
+    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
 
 echo "RUN COMPLETE: $RUN_ID"

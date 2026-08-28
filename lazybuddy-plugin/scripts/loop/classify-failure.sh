@@ -60,31 +60,34 @@ fi
 # Set task status to failed
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
-python3 - "$STATE_FILE" "$TMP_FILE" "$TASK_ID" "$CLASSIFICATION" "$ERROR_MSG" "$NOW" <<'PYEOF'
+EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
+python3 - "$STATE_FILE" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$RUN_ID" "$TASK_ID" "$CLASSIFICATION" "$ERROR_MSG" "$NOW" <<'PYEOF'
 import json
+import os
 import sys
-state_file, tmp_file, task_id, classification, error_msg, now = sys.argv[1:]
+state_file, tmp_file, events_file, events_tmp, run_id, task_id, classification, error_msg, now = sys.argv[1:]
 d = json.load(open(state_file))
-for t in d.get('tasks', []):
-    if t['id'] == task_id:
-        t['status'] = 'failed'
-        t['classification'] = classification
-        t['error'] = error_msg
-        break
+task = next((value for value in d.get('tasks', []) if value['id'] == task_id), None)
+if task is None:
+    raise SystemExit(f"Error: task '{task_id}' not found in run '{run_id}'")
+task['status'] = 'failed'
+task['classification'] = classification
+task['error'] = error_msg
 d['updated_at'] = now
 with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
-PYEOF
-mv "$TMP_FILE" "$STATE_FILE"
-
-# Append task_failed event
-python3 - "$NOW" "$RUN_ID" "$TASK_ID" "$CLASSIFICATION" "$ERROR_MSG" "$EVENTS_FILE" <<'PYEOF'
-import json
-import sys
-now, run_id, task_id, classification, error_msg, events_file = sys.argv[1:]
 event = {'ts': now, 'run_id': run_id, 'event': 'task_failed', 'task_id': task_id, 'classification': classification, 'error': error_msg}
-with open(events_file, 'a') as f:
-    f.write(json.dumps(event) + '\n')
+with open(events_tmp, 'w') as output:
+    if os.path.exists(events_file):
+        with open(events_file) as source:
+            output.write(source.read())
+    output.write(json.dumps(event) + '\n')
 PYEOF
+
+state_commit_transaction "$STATE_RUN_DIR" classify_failure \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")" \
+    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
 
 echo "$CLASSIFICATION"

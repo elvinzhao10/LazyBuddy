@@ -22,6 +22,7 @@ if [ ! -f "$STATE_FILE" ]; then
     echo '{"status":"error","reason":"state.json not found"}' >&2
     exit 1
 fi
+state_recover_transaction "$RUN_DIR" || exit 1
 
 # Try to get next task
 TASK_JSON=$("$SCRIPT_DIR/next-task.sh" "$RUN_ID" 2>/dev/null) || {
@@ -37,9 +38,10 @@ print(json.loads(sys.argv[1])['id'])
 PY
 )
 
-# Update run status to executing if not already
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TMP_FILE=$(mktemp "$RUN_DIR/.state.json.XXXXXX")
+cleanup_transaction_temps() { rm -f "$TMP_FILE"; }
+trap cleanup_transaction_temps EXIT
 python3 - "$STATE_FILE" "$NOW" "$TMP_FILE" <<'PY'
 import json
 import sys
@@ -48,27 +50,14 @@ state_file, now, tmp_file = sys.argv[1:]
 d = json.load(open(state_file))
 if d.get('status') not in ('executing',):
     d['status'] = 'executing'
-d['updated_at'] = now
-with open(tmp_file, 'w') as f:
-    json.dump(d, f, indent=2)
-PY
-mv "$TMP_FILE" "$STATE_FILE"
-
-# Increment iteration count
-TMP_FILE=$(mktemp "$RUN_DIR/.state.json.XXXXXX")
-python3 - "$STATE_FILE" "$NOW" "$TMP_FILE" <<'PY'
-import json
-import sys
-
-state_file, now, tmp_file = sys.argv[1:]
-d = json.load(open(state_file))
 it = d.setdefault('iteration', {})
 it['count'] = it.get('count', 0) + 1
 d['updated_at'] = now
 with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
 PY
-mv "$TMP_FILE" "$STATE_FILE"
+state_commit_transaction "$RUN_DIR" run_cycle \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")"
 
 # Checkpoint every 5 iterations
 ITER_COUNT=$(python3 - "$STATE_FILE" <<'PY'

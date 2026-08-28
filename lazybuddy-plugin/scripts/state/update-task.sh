@@ -28,57 +28,50 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 1
 fi
 
-# Validate task exists
-python3 - "$STATE_FILE" "$TASK_ID" <<'PYEOF'
-import json
-import sys
-state_file, task_id = sys.argv[1:]
-d = json.load(open(state_file))
-tasks = d.get('tasks', [])
-if not any(t['id'] == task_id for t in tasks):
-    raise SystemExit(1)
-PYEOF
-if [ "$?" -ne 0 ]; then
-    echo "Error: task '$TASK_ID' not found in run '$RUN_ID'" >&2
-    exit 1
-fi
-
-# Atomic write: update in memory, write to tmp, rename
 TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
+EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-python3 - "$STATE_FILE" "$TMP_FILE" "$NOW" "$TASK_ID" "$NEW_STATUS" "${@:4}" <<'PYEOF'
-import json, sys
-state_file, tmp_file, now, task_id, new_status, *extra_fields = sys.argv[1:]
+python3 - "$STATE_FILE" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$NOW" "$RUN_ID" "$TASK_ID" "$NEW_STATUS" "${@:4}" <<'PYEOF'
+import json
+import os
+import sys
+
+state_file, tmp_file, events_file, events_tmp, now, run_id, task_id, new_status, *extra_fields = sys.argv[1:]
 
 d = json.load(open(state_file))
 d['updated_at'] = now
-
-for task in d.get('tasks', []):
-    if task['id'] == task_id:
-        task['status'] = new_status
-        for arg in extra_fields:
-            if '=' in arg:
-                k, v = arg.split('=', 1)
-                try:
-                    v = json.loads(v)
-                except (json.JSONDecodeError, ValueError):
-                    pass
-                task[k] = v
-        break
+tasks = d.get('tasks', [])
+task = next((value for value in tasks if value['id'] == task_id), None)
+if task is None:
+    raise SystemExit(f"Error: task '{task_id}' not found in run '{run_id}'")
+if new_status == 'done':
+    statuses = {value['id']: value.get('status') for value in tasks}
+    incomplete = [dependency for dependency in task.get('depends_on', []) if statuses.get(dependency) != 'done']
+    if incomplete:
+        raise SystemExit(f"Error: dependency {', '.join(incomplete)} must be done before task '{task_id}'")
+task['status'] = new_status
+for arg in extra_fields:
+    if '=' in arg:
+        key, value = arg.split('=', 1)
+        try:
+            value = json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        task[key] = value
 
 with open(tmp_file, 'w') as f:
     json.dump(d, f, indent=2)
-PYEOF
-
-mv "$TMP_FILE" "$STATE_FILE"
-
-# Append event
-python3 - "$NOW" "$RUN_ID" "$TASK_ID" "$NEW_STATUS" "$EVENTS_FILE" <<'PYEOF'
-import json
-import sys
-now, run_id, task_id, new_status, events_file = sys.argv[1:]
 event = {'ts': now, 'run_id': run_id, 'event': 'task_updated', 'task_id': task_id, 'status': new_status}
-with open(events_file, 'a') as f:
-    f.write(json.dumps(event) + '\n')
+with open(events_tmp, 'w') as output:
+    if os.path.exists(events_file):
+        with open(events_file) as source:
+            output.write(source.read())
+    output.write(json.dumps(event) + '\n')
 PYEOF
+
+state_commit_transaction "$STATE_RUN_DIR" update_task \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")" \
+    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
