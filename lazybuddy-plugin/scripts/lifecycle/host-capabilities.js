@@ -128,10 +128,13 @@ function probeCodeBuddy({ aliases, now, currentSessionId = null, workflowObserva
     resume = unavailable('workflow-resume', 'WORKFLOW_OBSERVATION_INVALID', fingerprint);
   } else if (workflowObservation) resume = capability('workflow-resume', 'host-executed', fingerprint, { scope: 'current-session', observed_at: workflowObservation.observed_at, session_id: currentSessionId });
   capabilities.push(resume);
-  if (probes.some(probe => readableFingerprint(probe.executable) !== probe.fingerprint)) {
+  const postProbeFingerprints = probes.map(probe => readableFingerprint(probe.executable));
+  if (probes.some((probe, index) => postProbeFingerprints[index] !== probe.fingerprint)) {
+    const currentFingerprint = postProbeFingerprints[probes.indexOf(selected)];
     return {
-      product: 'CodeBuddy Code CLI', version: versionText(version), outcome: 'blocked', aliases: aliasesResult,
-      capabilities: CLI_CAPABILITIES.map(name => unavailable(name, 'STALE_EXECUTABLE', fingerprint)),
+      product: 'CodeBuddy Code CLI', version: versionText(version), outcome: 'blocked',
+      aliases: probes.map((probe, index) => ({ name: probe.name, fingerprint: postProbeFingerprints[index], version: versionText(version) })),
+      capabilities: CLI_CAPABILITIES.map(name => unavailable(name, 'STALE_EXECUTABLE', currentFingerprint)),
     };
   }
   const blocked = capabilities.some(row => row.reason_code === 'UNTRUSTED_PROBE_OUTPUT');

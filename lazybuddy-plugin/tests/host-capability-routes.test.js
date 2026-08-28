@@ -131,8 +131,11 @@ test('CodeBuddy blocks capability promotion when the executable changes during p
   const matrix = probeCodeBuddy({ aliases: [codebuddy], now: NOW });
 
   // Then: stale executable identity blocks every capability without false host execution.
+  const currentFingerprint = crypto.createHash('sha256').update(fs.readFileSync(codebuddy)).digest('hex');
   assert.equal(matrix.outcome, 'blocked');
   assert.ok(matrix.capabilities.every(({ status, reason_code }) => status === 'unavailable' && reason_code === 'STALE_EXECUTABLE'));
+  assert.ok(matrix.capabilities.every(({ fingerprint }) => fingerprint === currentFingerprint));
+  assert.ok(matrix.aliases.every(({ fingerprint }) => fingerprint === currentFingerprint));
 });
 
 test('CodeBuddy IDE plugin evidence is separate from CLI capability evidence', () => {
