@@ -59,6 +59,7 @@ events = [json.loads(line) for line in (run / "events.jsonl").read_text().splitl
 assert sum(event.get("event") == "plan_checkbox_updated" for event in events) == 1, events
 assert int((run / ".revision").read_text()) == 2
 assert not (run / ".transaction-journal").exists()
+assert not list(run.glob(".transaction-journal-*"))
 PY
 }
 
@@ -77,14 +78,14 @@ if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-journal-mkdir bash "$STATE_DIR/update
     echo "journal mkdir fault unexpectedly succeeded" >&2
     exit 1
 fi
-[ -d "$RUN/.transaction-journal" ]
-[ -z "$(find "$RUN/.transaction-journal" -mindepth 1 -maxdepth 1 -print -quit)" ]
+[ ! -e "$RUN/.transaction-journal" ]
+[ -z "$(find "$RUN" -maxdepth 1 -name '.transaction-journal-*' -print -quit)" ]
 CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" empty-journal >/dev/null
 after="$(shasum -a 256 "$RUN/state.json" "$RUN/plan.md" "$RUN/events.jsonl" "$RUN/.revision")"
 [ "$before" = "$after" ]
 [ ! -e "$RUN/.transaction-journal" ]
 assert_initial "$RUN"
-echo 'PASS fault=after-journal-mkdir recovery=rollback-empty-journal state_sha256=unchanged cleanup=removed'
+echo 'PASS fault=after-journal-mkdir recovery=clean state_sha256=unchanged staging=absent'
 
 new_run "$PROJECT" unexpected-empty-journal
 RUN="$PROJECT/.lazybuddy/runs/unexpected-empty-journal"
@@ -110,9 +111,9 @@ fi
 grep -q 'transaction journal is unsafe' "$TMP/symlink-empty.err"
 echo 'PASS pre-manifest-journal=symlink-blocked'
 
-new_run "$PROJECT" pre-open-replaced-journal
-RUN="$PROJECT/.lazybuddy/runs/pre-open-replaced-journal"
-if ! python3 - "$STATE_DIR" "$RUN" >"$TMP/pre-open-replaced.out" 2>"$TMP/pre-open-replaced.err" <<'PY'
+new_run "$PROJECT" mkdir-prebind-removal
+RUN="$PROJECT/.lazybuddy/runs/mkdir-prebind-removal"
+if ! python3 - "$STATE_DIR" "$RUN" >"$TMP/mkdir-prebind-removal.out" 2>"$TMP/mkdir-prebind-removal.err" <<'PY'
 import os
 import sys
 from pathlib import Path
@@ -122,101 +123,115 @@ sys.path.insert(0, state_dir)
 
 import state_transaction_files
 
-run = Path(run_text)
-journal = run / ".transaction-journal"
-detached = run / ".detached-transaction-journal"
-real_open = os.open
-swapped = False
+legacy_create = getattr(state_transaction_files, "create_owned_directory", None)
+if legacy_create is not None:
+    run = Path(run_text)
+    journal = run / ".transaction-journal"
+    detached = run / ".detached-transaction-journal"
+    replacement = run / ".attacker-controlled-journal"
+    replacement.mkdir()
+    real_mkdir = os.mkdir
+    injected = False
 
+    def replace_after_mkdir(path, *args, **kwargs):
+        global injected
+        result = real_mkdir(path, *args, **kwargs)
+        if path == journal.name and kwargs.get("dir_fd") is not None and not injected:
+            injected = True
+            journal.rename(detached)
+            replacement.rename(journal)
+        return result
 
-def swap_before_open(path, flags, *args, **kwargs):
-    global swapped
-    if path == journal.name and kwargs.get("dir_fd") is not None and flags & os.O_DIRECTORY and not swapped:
-        swapped = True
-        journal.rename(detached)
-        journal.mkdir()
-    return real_open(path, flags, *args, **kwargs)
-
-
-state_transaction_files.os.open = swap_before_open
-try:
-    owner = state_transaction_files.create_owned_directory(run, journal.name)
-except state_transaction_files.TransactionError as error:
-    assert "transaction journal is unsafe" in str(error), error
-else:
+    state_transaction_files.os.mkdir = replace_after_mkdir
     try:
-        state_transaction_files.write_durable(journal / "preparing", b"preparing\n", owner=owner)
+        owner = legacy_create(run, journal.name)
+        try:
+            state_transaction_files.write_durable(journal / "preparing", b"payload\n", owner=owner)
+        finally:
+            owner.close()
     finally:
-        owner.close()
-finally:
-    state_transaction_files.os.open = real_open
+        state_transaction_files.os.mkdir = real_mkdir
 
-assert swapped
-assert not (journal / "preparing").exists(), list(journal.iterdir())
-assert not (detached / "preparing").exists(), list(detached.iterdir())
-print("PASS journal-pre-open-replacement=rejected replacement_payload=absent created_payload=absent")
+    assert injected
+    assert not (journal / "preparing").exists(), "payload reached the attacker-controlled replacement directory"
+
+print("PASS mkdir-to-open-prebind=removed")
 PY
 then
-    cat "$TMP/pre-open-replaced.out" "$TMP/pre-open-replaced.err" >&2
+    cat "$TMP/mkdir-prebind-removal.out" "$TMP/mkdir-prebind-removal.err" >&2
     exit 1
 fi
-cat "$TMP/pre-open-replaced.out"
+cat "$TMP/mkdir-prebind-removal.out"
 
-for replacement in symlink directory; do
-    new_run "$PROJECT" "replaced-journal-$replacement"
-    RUN="$PROJECT/.lazybuddy/runs/replaced-journal-$replacement"
-    FOREIGN="$TMP/foreign-journal-$replacement"
-    mkdir "$FOREIGN"
-    if ! python3 - "$STATE_DIR" "$RUN" "$FOREIGN" "$replacement" >"$TMP/replaced-$replacement.out" 2>"$TMP/replaced-$replacement.err" <<'PY'
+new_run "$PROJECT" descriptor-relative-staging
+RUN="$PROJECT/.lazybuddy/runs/descriptor-relative-staging"
+if ! python3 - "$STATE_DIR" "$RUN" "$TMP" >"$TMP/descriptor-relative-staging.out" 2>"$TMP/descriptor-relative-staging.err" <<'PY'
+import os
 import sys
 from pathlib import Path
 
-state_dir, run_text, foreign_text, replacement = sys.argv[1:]
+state_dir, run_text, tmp_text = sys.argv[1:]
 sys.path.insert(0, state_dir)
 
-import state_transaction
+import state_transaction_files
 
 run = Path(run_text)
-foreign = Path(foreign_text)
-original_write = state_transaction.write_durable
-replaced = False
+tmp = Path(tmp_text)
+real_open = os.open
 
+positions = {
+    "preparing": ".transaction-journal-preparing",
+    "stage": ".transaction-journal-stage-0",
+    "backup": ".transaction-journal-backup-0",
+    "manifest": ".transaction-journal",
+    "committed": ".transaction-journal-committed",
+}
 
-def replace_before_write(path, content, *args, **kwargs):
-    global replaced
-    if path.name == "preparing" and not replaced:
-        replaced = True
-        journal = run / state_transaction.JOURNAL_NAME
-        journal.rename(run / ".detached-transaction-journal")
-        if replacement == "symlink":
-            journal.symlink_to(foreign, target_is_directory=True)
-        else:
-            journal.mkdir()
-    return original_write(path, content, *args, **kwargs)
+for position, stage_name in positions.items():
+    for injection in ("before-create", "after-create"):
+        foreign = tmp / f"foreign-{position}-{injection}"
+        foreign.write_bytes(b"")
+        injected = False
 
+        def replace_stage(path, flags, *args, **kwargs):
+            global injected
+            if path == stage_name and kwargs.get("dir_fd") is not None and not injected:
+                required = os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                assert flags & required == required, (path, flags)
+                injected = True
+                if injection == "before-create":
+                    (run / stage_name).symlink_to(foreign)
+                    return real_open(path, flags, *args, **kwargs)
+                descriptor = real_open(path, flags, *args, **kwargs)
+                (run / stage_name).unlink()
+                (run / stage_name).symlink_to(foreign)
+                return descriptor
+            return real_open(path, flags, *args, **kwargs)
 
-state_transaction.write_durable = replace_before_write
-try:
-    state_transaction.commit(run, "reject-replaced-journal", (
-        state_transaction.Write("owned.txt", b"payload\n"),
-    ))
-except state_transaction.TransactionError as error:
-    assert "transaction journal is unsafe" in str(error), error
-else:
-    raise AssertionError("replaced transaction journal unexpectedly accepted")
+        owner = state_transaction_files.open_owned_directory(run)
+        state_transaction_files.os.open = replace_stage
+        try:
+            try:
+                state_transaction_files.write_durable(run / stage_name, b"payload\n", owner=owner)
+            except state_transaction_files.TransactionError as error:
+                assert "transaction journal is unsafe" in str(error), error
+            else:
+                raise AssertionError(f"{position} {injection} replacement unexpectedly accepted")
+        finally:
+            state_transaction_files.os.open = real_open
+            owner.close()
 
-assert replaced
-assert not (foreign / "preparing").exists(), list(foreign.iterdir())
-assert not (run / state_transaction.JOURNAL_NAME / "preparing").exists()
-assert not (run / "owned.txt").exists()
-print(f"PASS journal-replacement={replacement}-rejected foreign_payload=absent")
+        assert injected
+        assert foreign.read_bytes() == b"", (position, injection, foreign.read_bytes())
+        assert (run / stage_name).is_symlink()
+        (run / stage_name).unlink()
+        print(f"PASS staging-position={position} replacement={injection}-rejected foreign_payload=absent")
 PY
-    then
-        cat "$TMP/replaced-$replacement.out" "$TMP/replaced-$replacement.err" >&2
-        exit 1
-    fi
-    cat "$TMP/replaced-$replacement.out"
-done
+then
+    cat "$TMP/descriptor-relative-staging.out" "$TMP/descriptor-relative-staging.err" >&2
+    exit 1
+fi
+cat "$TMP/descriptor-relative-staging.out"
 
 new_run "$PROJECT" duplicate-target
 RUN="$PROJECT/.lazybuddy/runs/duplicate-target"
@@ -254,7 +269,7 @@ for phase in after-stage:1 after-stage:2 after-stage:3 after-stage after-journal
         exit 1
     fi
     if [ "$phase" = after-journal ]; then
-        python3 - "$RUN/.transaction-journal/manifest.json" <<'PY'
+        python3 - "$RUN/.transaction-journal" <<'PY'
 import json
 import sys
 
@@ -269,6 +284,23 @@ PY
     echo "PASS fault=$phase recovery=rollback state_sha256=$(shasum -a 256 "$RUN/state.json" | awk '{print $1}')"
 done
 
+new_run "$PROJECT" legacy-journal-recovery
+RUN="$PROJECT/.lazybuddy/runs/legacy-journal-recovery"
+if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-journal bash "$STATE_DIR/update-plan-checkbox.sh" legacy-journal-recovery T1 >/dev/null 2>&1; then
+    echo "legacy journal fixture unexpectedly succeeded" >&2
+    exit 1
+fi
+mv "$RUN/.transaction-journal" "$TMP/legacy-manifest.json"
+mkdir "$RUN/.transaction-journal"
+mv "$TMP/legacy-manifest.json" "$RUN/.transaction-journal/manifest.json"
+for material in "$RUN"/.transaction-journal-stage-* "$RUN"/.transaction-journal-backup-*; do
+    name="${material##*/.transaction-journal-}"
+    mv "$material" "$RUN/.transaction-journal/$name"
+done
+CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" legacy-journal-recovery >/dev/null
+assert_initial "$RUN"
+echo 'PASS legacy-directory-journal=recovery-compatible outcome=rollback'
+
 for phase in after-commit after-install:1 after-install:2 after-install:3; do
     run_id="forward-${phase//:/-}"
     new_run "$PROJECT" "$run_id"
@@ -278,7 +310,7 @@ for phase in after-commit after-install:1 after-install:2 after-install:3; do
         exit 1
     fi
     if [ "$phase" = after-commit ]; then
-        [ -f "$RUN/.transaction-journal/committed" ]
+        [ -f "$RUN/.transaction-journal-committed" ]
         grep -q -- '- \[ \] T1: first task' "$RUN/plan.md"
         echo 'OBSERVE committed_marker=present installs=not-started'
     fi
@@ -385,7 +417,7 @@ if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-journal bash "$STATE_DIR/update-plan-
     echo "stale journal fixture unexpectedly succeeded" >&2
     exit 1
 fi
-printf 'tampered\n' > "$PROJECT/.lazybuddy/runs/stale-journal/.transaction-journal/stage-0"
+printf 'tampered\n' > "$PROJECT/.lazybuddy/runs/stale-journal/.transaction-journal-stage-0"
 if CWD="$PROJECT" bash "$STATE_DIR/load-run.sh" stale-journal >"$TMP/stale-load.out" 2>"$TMP/stale-load.err"; then
     echo "tampered generated journal unexpectedly recovered" >&2
     exit 1

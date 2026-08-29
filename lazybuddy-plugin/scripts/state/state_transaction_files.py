@@ -39,22 +39,14 @@ class OwnedDirectory(NamedTuple):
         os.close(self.parent_descriptor)
 
 
-def create_owned_directory(parent: Path, name: str) -> OwnedDirectory:
-    parent_descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    descriptor: Optional[int] = None
+def open_owned_directory(path: Path) -> OwnedDirectory:
+    parent_descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        os.mkdir(name, mode=0o700, dir_fd=parent_descriptor)
-        created = os.stat(name, dir_fd=parent_descriptor, follow_symlinks=False)
-        descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_descriptor)
-        bound = os.fstat(descriptor)
-        if (created.st_dev, created.st_ino) != (bound.st_dev, bound.st_ino):
-            raise TransactionError("transaction journal is unsafe")
-    except (OSError, TransactionError):
-        if descriptor is not None:
-            os.close(descriptor)
+        descriptor = os.open(path.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_descriptor)
+    except OSError:
         os.close(parent_descriptor)
         raise
-    owned = OwnedDirectory(parent_descriptor, descriptor, name)
+    owned = OwnedDirectory(parent_descriptor, descriptor, path.name)
     owned.require_current()
     return owned
 
@@ -73,11 +65,22 @@ def write_durable(path: Path, content: bytes, *, owner: Optional[OwnedDirectory]
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     else:
         owner.require_current()
-        descriptor = os.open(path.name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=owner.descriptor)
-    with os.fdopen(descriptor, "wb") as handle:
-        handle.write(content)
-        handle.flush()
-        os.fsync(handle.fileno())
+        try:
+            descriptor = os.open(path.name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=owner.descriptor)
+        except OSError as error:
+            raise TransactionError("transaction journal is unsafe") from error
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+            if owner is not None:
+                current = os.stat(path.name, dir_fd=owner.descriptor, follow_symlinks=False)
+                bound = os.fstat(handle.fileno())
+                if not stat.S_ISREG(current.st_mode) or (current.st_dev, current.st_ino) != (bound.st_dev, bound.st_ino):
+                    raise TransactionError("transaction journal is unsafe")
+    except FileNotFoundError as error:
+        raise TransactionError("transaction journal is unsafe") from error
     if owner is None:
         fsync_directory(path.parent)
     else:
