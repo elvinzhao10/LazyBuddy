@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Journaled grouped file commits for one LazyBuddy run."""
+"""Journaled grouped file commits for one LazyBuddy run."""  # noqa: SIZE_OK — indivisible recovery state machine
 
 from __future__ import annotations
 
@@ -14,16 +14,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, List, NamedTuple, Optional, Sequence, TypedDict
 
-from state_transaction_files import fsync_directory, replace_durable, write_durable
+from state_transaction_files import TransactionError, create_owned_directory, fsync_directory, replace_durable, write_durable
 
 JOURNAL_NAME = ".transaction-journal"
 LOCK_NAME = ".transaction.lock"
 REVISION_NAME = ".revision"
 MISSING = "missing"
-
-
-class TransactionError(Exception):
-    pass
 
 
 class Write(NamedTuple):
@@ -235,22 +231,23 @@ def commit_locked(run_dir: Path, operation: str, writes: Sequence[Write]) -> int
         raise TransactionError("duplicate transaction target")
     revision_before = read_revision(run_dir)
     journal = run_dir / JOURNAL_NAME
-    journal.mkdir(mode=0o700)
+    journal_owner = create_owned_directory(run_dir, JOURNAL_NAME)
     fsync_directory(run_dir)
     _fault("after-journal-mkdir")
-    write_durable(journal / "preparing", b"preparing\n")
+    write_durable(journal / "preparing", b"preparing\n", owner=journal_owner)
     entries = []
     for index, write in enumerate(writes):
         target = checked_target(run_dir, write.relative_path)
         before_sha256 = file_sha256(target)
         if write.expected_sha256 is not None and before_sha256 != write.expected_sha256:
+            journal_owner.close()
             shutil.rmtree(journal)
             raise TransactionError(f"stale transaction input: {write.relative_path}")
         stage_name = f"stage-{index}"
         backup_name = f"backup-{index}"
-        write_durable(journal / stage_name, write.content)
+        write_durable(journal / stage_name, write.content, owner=journal_owner)
         if before_sha256 != MISSING:
-            write_durable(journal / backup_name, target.read_bytes())
+            write_durable(journal / backup_name, target.read_bytes(), owner=journal_owner)
         entries.append({
             "path": write.relative_path,
             "before_sha256": before_sha256,
@@ -268,11 +265,11 @@ def commit_locked(run_dir: Path, operation: str, writes: Sequence[Write]) -> int
         "revision_after": revision_before + 1,
         "entries": entries,
     }
-    write_durable(journal / "manifest.json", (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode())
-    (journal / "preparing").unlink()
-    fsync_directory(journal)
+    write_durable(journal / "manifest.json", (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode(), owner=journal_owner)
+    journal_owner.unlink("preparing")
     _fault("after-journal")
-    write_durable(journal / "committed", b"committed\n")
+    write_durable(journal / "committed", b"committed\n", owner=journal_owner)
+    journal_owner.close()
     _fault("after-commit")
     for index, (entry, write) in enumerate(zip(entries, writes), start=1):
         replace_durable(checked_target(run_dir, entry["path"]), write.content)

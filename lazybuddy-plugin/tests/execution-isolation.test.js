@@ -86,7 +86,7 @@ test('task isolation recovers only an expired dead clean lease and cleans its na
     assert.equal(fs.existsSync(path.join(recovered.namespace.paths.build, 'stale.txt')), false);
     release(root, 'task-recover', { session: 'new-session', ownerPid: 5252 });
     assert.equal(fs.existsSync(recovered.namespace.root), false);
-    assert.equal(fs.existsSync(path.join(root, 'ports', `${recovered.namespace.port}.json`)), false);
+    assert.equal(fs.existsSync(path.join(root, 'lazybuddy', 'ports', `${recovered.namespace.port}.json`)), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

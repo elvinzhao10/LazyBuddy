@@ -110,6 +110,62 @@ fi
 grep -q 'transaction journal is unsafe' "$TMP/symlink-empty.err"
 echo 'PASS pre-manifest-journal=symlink-blocked'
 
+for replacement in symlink directory; do
+    new_run "$PROJECT" "replaced-journal-$replacement"
+    RUN="$PROJECT/.lazybuddy/runs/replaced-journal-$replacement"
+    FOREIGN="$TMP/foreign-journal-$replacement"
+    mkdir "$FOREIGN"
+    if ! python3 - "$STATE_DIR" "$RUN" "$FOREIGN" "$replacement" >"$TMP/replaced-$replacement.out" 2>"$TMP/replaced-$replacement.err" <<'PY'
+import sys
+from pathlib import Path
+
+state_dir, run_text, foreign_text, replacement = sys.argv[1:]
+sys.path.insert(0, state_dir)
+
+import state_transaction
+
+run = Path(run_text)
+foreign = Path(foreign_text)
+original_write = state_transaction.write_durable
+replaced = False
+
+
+def replace_before_write(path, content, *args, **kwargs):
+    global replaced
+    if path.name == "preparing" and not replaced:
+        replaced = True
+        journal = run / state_transaction.JOURNAL_NAME
+        journal.rename(run / ".detached-transaction-journal")
+        if replacement == "symlink":
+            journal.symlink_to(foreign, target_is_directory=True)
+        else:
+            journal.mkdir()
+    return original_write(path, content, *args, **kwargs)
+
+
+state_transaction.write_durable = replace_before_write
+try:
+    state_transaction.commit(run, "reject-replaced-journal", (
+        state_transaction.Write("owned.txt", b"payload\n"),
+    ))
+except state_transaction.TransactionError as error:
+    assert "transaction journal is unsafe" in str(error), error
+else:
+    raise AssertionError("replaced transaction journal unexpectedly accepted")
+
+assert replaced
+assert not (foreign / "preparing").exists(), list(foreign.iterdir())
+assert not (run / state_transaction.JOURNAL_NAME / "preparing").exists()
+assert not (run / "owned.txt").exists()
+print(f"PASS journal-replacement={replacement}-rejected foreign_payload=absent")
+PY
+    then
+        cat "$TMP/replaced-$replacement.out" "$TMP/replaced-$replacement.err" >&2
+        exit 1
+    fi
+    cat "$TMP/replaced-$replacement.out"
+done
+
 new_run "$PROJECT" duplicate-target
 RUN="$PROJECT/.lazybuddy/runs/duplicate-target"
 printf 'old\n' > "$RUN/duplicate-target.txt"

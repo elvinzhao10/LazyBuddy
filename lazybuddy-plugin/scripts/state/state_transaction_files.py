@@ -2,8 +2,54 @@
 """Durable file installation primitives for run transactions."""
 
 import os
+import stat
 import tempfile
 from pathlib import Path
+from typing import NamedTuple, Optional
+
+
+class TransactionError(Exception):
+    pass
+
+
+class OwnedDirectory(NamedTuple):
+    parent_descriptor: int
+    descriptor: int
+    name: str
+
+    def require_current(self) -> None:
+        try:
+            current = os.stat(self.name, dir_fd=self.parent_descriptor, follow_symlinks=False)
+        except FileNotFoundError as error:
+            self.close()
+            raise TransactionError("transaction journal is unsafe") from error
+        bound = os.fstat(self.descriptor)
+        if not stat.S_ISDIR(current.st_mode) or (current.st_dev, current.st_ino) != (bound.st_dev, bound.st_ino):
+            self.close()
+            raise TransactionError("transaction journal is unsafe")
+
+    def unlink(self, name: str) -> None:
+        self.require_current()
+        os.unlink(name, dir_fd=self.descriptor)
+        self.require_current()
+        os.fsync(self.descriptor)
+
+    def close(self) -> None:
+        os.close(self.descriptor)
+        os.close(self.parent_descriptor)
+
+
+def create_owned_directory(parent: Path, name: str) -> OwnedDirectory:
+    parent_descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.mkdir(name, mode=0o700, dir_fd=parent_descriptor)
+        descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_descriptor)
+    except OSError:
+        os.close(parent_descriptor)
+        raise
+    owned = OwnedDirectory(parent_descriptor, descriptor, name)
+    owned.require_current()
+    return owned
 
 
 def fsync_directory(path: Path) -> None:
@@ -14,14 +60,22 @@ def fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def write_durable(path: Path, content: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+def write_durable(path: Path, content: bytes, *, owner: Optional[OwnedDirectory] = None) -> None:
+    if owner is None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    else:
+        owner.require_current()
+        descriptor = os.open(path.name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=owner.descriptor)
     with os.fdopen(descriptor, "wb") as handle:
         handle.write(content)
         handle.flush()
         os.fsync(handle.fileno())
-    fsync_directory(path.parent)
+    if owner is None:
+        fsync_directory(path.parent)
+    else:
+        owner.require_current()
+        os.fsync(owner.descriptor)
 
 
 def replace_durable(path: Path, content: bytes) -> None:
