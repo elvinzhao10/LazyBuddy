@@ -110,6 +110,58 @@ fi
 grep -q 'transaction journal is unsafe' "$TMP/symlink-empty.err"
 echo 'PASS pre-manifest-journal=symlink-blocked'
 
+new_run "$PROJECT" pre-open-replaced-journal
+RUN="$PROJECT/.lazybuddy/runs/pre-open-replaced-journal"
+if ! python3 - "$STATE_DIR" "$RUN" >"$TMP/pre-open-replaced.out" 2>"$TMP/pre-open-replaced.err" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+state_dir, run_text = sys.argv[1:]
+sys.path.insert(0, state_dir)
+
+import state_transaction_files
+
+run = Path(run_text)
+journal = run / ".transaction-journal"
+detached = run / ".detached-transaction-journal"
+real_open = os.open
+swapped = False
+
+
+def swap_before_open(path, flags, *args, **kwargs):
+    global swapped
+    if path == journal.name and kwargs.get("dir_fd") is not None and flags & os.O_DIRECTORY and not swapped:
+        swapped = True
+        journal.rename(detached)
+        journal.mkdir()
+    return real_open(path, flags, *args, **kwargs)
+
+
+state_transaction_files.os.open = swap_before_open
+try:
+    owner = state_transaction_files.create_owned_directory(run, journal.name)
+except state_transaction_files.TransactionError as error:
+    assert "transaction journal is unsafe" in str(error), error
+else:
+    try:
+        state_transaction_files.write_durable(journal / "preparing", b"preparing\n", owner=owner)
+    finally:
+        owner.close()
+finally:
+    state_transaction_files.os.open = real_open
+
+assert swapped
+assert not (journal / "preparing").exists(), list(journal.iterdir())
+assert not (detached / "preparing").exists(), list(detached.iterdir())
+print("PASS journal-pre-open-replacement=rejected replacement_payload=absent created_payload=absent")
+PY
+then
+    cat "$TMP/pre-open-replaced.out" "$TMP/pre-open-replaced.err" >&2
+    exit 1
+fi
+cat "$TMP/pre-open-replaced.out"
+
 for replacement in symlink directory; do
     new_run "$PROJECT" "replaced-journal-$replacement"
     RUN="$PROJECT/.lazybuddy/runs/replaced-journal-$replacement"

@@ -41,10 +41,17 @@ class OwnedDirectory(NamedTuple):
 
 def create_owned_directory(parent: Path, name: str) -> OwnedDirectory:
     parent_descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    descriptor: Optional[int] = None
     try:
         os.mkdir(name, mode=0o700, dir_fd=parent_descriptor)
+        created = os.stat(name, dir_fd=parent_descriptor, follow_symlinks=False)
         descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_descriptor)
-    except OSError:
+        bound = os.fstat(descriptor)
+        if (created.st_dev, created.st_ino) != (bound.st_dev, bound.st_ino):
+            raise TransactionError("transaction journal is unsafe")
+    except (OSError, TransactionError):
+        if descriptor is not None:
+            os.close(descriptor)
         os.close(parent_descriptor)
         raise
     owned = OwnedDirectory(parent_descriptor, descriptor, name)
