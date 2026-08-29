@@ -79,6 +79,9 @@ test('Given direct affected and release risk, when shipped verification runs, th
     assert.equal(run.report.allPassed, true, name);
     assert.ok(run.report.gateResults.every(({ outcome }) => outcome === 'passed'), name);
     assert.equal(run.report.actualCost.fullSuiteInvocations, name === 'release' ? 2 : 0, name);
+    assert.ok(Number.isInteger(run.report.elapsed_ms) && run.report.elapsed_ms >= 0, name);
+    assert.ok(run.report.gateResults.every(({ elapsed_ms }) => Number.isInteger(elapsed_ms) && elapsed_ms >= 0), name);
+    assert.ok(run.report.elapsed_ms >= run.report.gateResults.reduce((sum, gate) => sum + gate.elapsed_ms, 0), name);
     assert.equal(fs.readFileSync(fx.log, 'utf8').trim().split('\n').length, expected.length, name);
   }
 });

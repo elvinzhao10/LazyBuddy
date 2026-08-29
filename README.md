@@ -44,6 +44,13 @@ node "<install-root>/LazyBuddy/launcher.js" status
 Until that is observed, the honest result is **HOST READINESS: PENDING**.
 Local files and load checks never prove that a host loaded the plugin.
 
+The default package doctor does not discover or execute `codebuddy` from
+`PATH`. Optional host-manifest validation is an explicit action using
+`bash scripts/lazybuddy-plugin-doctor.sh --host-validator /absolute/path`.
+The release verifier runs classified shell regressions serially, all package
+`tests/*.test.js` with conservative Node concurrency, and Python tests under
+`tests/` and `tooling/`; its JSON names those outcomes separately.
+
 ## Choose one route
 
 Pick one host route during onboarding:

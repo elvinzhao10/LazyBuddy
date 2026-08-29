@@ -9,9 +9,10 @@ and names the host observation required before a user-facing integration claim.
 | Verification Step | Command | Expected | Artifact |
 | --- | --- | --- | --- |
 | Package readiness | `bash scripts/lazybuddy-load-check.sh` | `PACKAGE_READINESS=full` or an explained degraded state | command output |
-| Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS` | command output |
+| Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS`; package-only, with no PATH host execution | command output |
+| Explicit host validation | `bash scripts/lazybuddy-plugin-doctor.sh --host-validator "/absolute/path/to/codebuddy"` | The named executable reports semantic validation success | command output |
 | MCP integration | `bash scripts/lazybuddy-mcp-test.sh` | `MCP test: ALL PASS` | command output |
-| Package verification | `bash scripts/lazybuddy-verify.sh` | Python 3.10+ then JSON with `"all_pass":true`; older Python exits 2 with the documented remediation | command output |
+| Package verification | `bash scripts/lazybuddy-verify.sh` | Python 3.10+ then JSON with passing `shell_regressions`, `node_tests`, `python_tests`, and `all_pass`; older Python exits 2 with the documented remediation | command output |
 | Security acceptance matrix | `bash tests/v015-security-regression.sh && bash tests/v018-docs-ssrf-regression.sh` | Every v1 security case has positive and negative controls; evidence remains redacted | command output |
 
 ## Repository publication check

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # post-tool-use.sh — PostToolUse hook: append tool-use summary to active run's events.jsonl.
-# Redacts secrets, records changed files and artifact paths. Always exits 0.
+# Redacts secrets, records changed files and artifact paths.
 set -euo pipefail
 
 INPUT=$(cat)
-python3 - "$INPUT" <<'PY' 2>/dev/null || true
+python3 - "$INPUT" <<'PY'
 import datetime
 import glob
 import json
@@ -32,13 +32,19 @@ if not os.path.isdir(runs_dir):
     raise SystemExit(0)
 
 active_run = None
-for run_dir in glob.glob(os.path.join(runs_dir, '*/')):
+for run_dir in sorted(glob.glob(os.path.join(runs_dir, '*/'))):
     state_file = os.path.join(run_dir, 'state.json')
     try:
         with open(state_file, encoding='utf-8') as state_handle:
             state = json.load(state_handle)
-    except (FileNotFoundError, IsADirectoryError, OSError, json.JSONDecodeError):
+    except FileNotFoundError:
         continue
+    except json.JSONDecodeError:
+        print(json.dumps({'error': 'active_state_corrupt'}), file=sys.stderr)
+        raise SystemExit(70)
+    except (IsADirectoryError, OSError):
+        print(json.dumps({'error': 'active_state_unreadable'}), file=sys.stderr)
+        raise SystemExit(70)
     if isinstance(state, dict) and state.get('status') in ('active', 'paused'):
         active_run = run_dir
         break
@@ -61,5 +67,3 @@ if tool_name in ('Write', 'Edit'):
 with open(os.path.join(active_run, 'events.jsonl'), 'a', encoding='utf-8') as event_handle:
     event_handle.write(json.dumps(event, default=str) + '\n')
 PY
-
-exit 0

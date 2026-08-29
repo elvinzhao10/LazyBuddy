@@ -13,9 +13,30 @@ flowchart TB
 
 ## Read the aggregate result
 
-`scripts/lazybuddy-verify.sh` calls doctor, smoke, documentation, security, MCP, hook-pipeline, load-check, contract, and classified regression checks. It uses `lazybuddy-bounded-run.py` for package-owned checks so the JSON result contains a status and reason instead of a bare exit code. A timeout or failed check is a failure; an unavailable host-side validator is reported as an unchecked condition rather than a fabricated host success.
+`scripts/lazybuddy-verify.sh` calls doctor, smoke, documentation, security, MCP,
+hook-pipeline, load-check, contract, and classified regression checks. Shell
+regressions remain serial. The canonical `all` aggregate automatically runs every
+`tests/*.test.js` file with Node concurrency 2 (maximum 4) and runs
+`python -m pytest tests tooling`. The final JSON exposes
+`shell_regressions`, `node_tests`, and `python_tests`, so omitted language
+suites cannot be mistaken for aggregate success. It uses
+`lazybuddy-bounded-run.py` for package-owned checks so the JSON result contains
+a status and reason instead of a bare exit code. A timeout or failed check is
+a failure. The default doctor is package-only; an optional host validator must
+be selected with `--host-validator /absolute/path` and is never discovered
+from `PATH`. The `core` and `lifecycle` shell partitions do not duplicate the
+Node/Python run and report those fields as `skipped-suite`.
+
+The canonical `all` environment must provide pytest to the selected supported
+Python interpreter. Missing pytest is a `python_tests` failure, never a skip.
 
 The verifier's timeout cleanup is **best-effort** process-group cleanup. It is **not a security sandbox** and does not guarantee descendant cleanup. Tests that need to execute untrusted input need a **VM or container-backed runner**.
+
+The verification MCP reports a malformed nonblank ledger entry as
+`malformed events.jsonl line N` and continues serving later JSON-RPC requests
+on the same stdio session. Lifecycle hooks preserve the silent no-run behavior
+when `.lazybuddy/runs` is absent, but corrupt or unreadable candidate state is
+a typed error and cannot redirect a record into another run.
 
 ## Regression families
 

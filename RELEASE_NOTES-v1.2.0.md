@@ -20,6 +20,20 @@ host readiness remain separate authorities.
 - Python preflight, network redirects, MCP transport, path boundaries, and
   sensitive output are hardened; lifecycle regression coverage preserves
   modified, unknown, and unrelated state through v1.1.0-to-v1.2.0 transitions.
+- The verification MCP rejects malformed nonblank ledger lines with the exact
+  line number while keeping its stdio session usable. Lifecycle hooks fail
+  typed on corrupt or unreadable candidate state instead of recording against
+  another run.
+- The npm 11 package verifier installs from inside its interrupt-cleaned
+  temporary root with scripts disabled. Aggregate verification retains serial
+  shell classifications, automatically covers Node and Python suites, bounds
+  Node concurrency to 2 by default and 4 maximum, and reports
+  `shell_regressions`, `node_tests`, and `python_tests` separately.
+- Package doctor is package-only by default and never executes a PATH-resolved
+  `codebuddy`; optional host validation requires
+  `--host-validator /absolute/path`. Verification-risk reports include
+  in-memory monotonic total and per-gate `elapsed_ms`, while historical
+  efficiency fixtures use `validation_elapsed_ms`.
 
 ## Measured efficiency
 

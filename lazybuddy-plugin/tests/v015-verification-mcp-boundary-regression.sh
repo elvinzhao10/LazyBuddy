@@ -131,6 +131,47 @@ else
     printf '%s\n' "$record_output" >&2
 fi
 
+# Given a ledger with a valid event followed by a malformed nonblank line,
+# when two requests share one MCP stdio session, then the first is a typed
+# ledger error and the next protocol request still succeeds.
+if python3 - "$PLUGIN" "$PROJECT" <<'PYEOF'
+import json
+import os
+import pathlib
+import subprocess
+import sys
+
+plugin, project = sys.argv[1:]
+events = pathlib.Path(project, ".lazybuddy", "runs", "safe", "events.jsonl")
+events.write_text('{"event":"safe"}\n{not-json\n', encoding="utf-8")
+requests = [
+    {"jsonrpc": "2.0", "id": 31, "method": "tools/call", "params": {"name": "summarize_verification", "arguments": {"run_id": "safe"}}},
+    {"jsonrpc": "2.0", "id": 32, "method": "tools/list"},
+]
+process = subprocess.run(
+    ["bash", plugin + "/mcp/verification/server.sh"],
+    input="".join(json.dumps(request) + "\n" for request in requests),
+    text=True,
+    capture_output=True,
+    env={**os.environ, "CWD": project, "CODEBUDDY_PLUGIN_ROOT": plugin},
+    check=False,
+)
+assert process.returncode == 0, process.stderr
+responses = [json.loads(line) for line in process.stdout.splitlines()]
+assert len(responses) == 2, process.stdout
+assert responses[0]["id"] == 31
+assert responses[0]["error"]["message"] == "malformed events.jsonl line 2"
+assert responses[1]["id"] == 32
+assert any(tool["name"] == "summarize_verification" for tool in responses[1]["result"]["tools"])
+PYEOF
+then
+    PASS=$((PASS + 1))
+    echo "PASS: malformed ledger returns a typed error and preserves the MCP session"
+else
+    FAIL=$((FAIL + 1))
+    echo "FAIL: malformed ledger error and MCP session continuation" >&2
+fi
+
 if python3 - "$PLUGIN" "$PROJECT" <<'PYEOF'
 import json
 import subprocess

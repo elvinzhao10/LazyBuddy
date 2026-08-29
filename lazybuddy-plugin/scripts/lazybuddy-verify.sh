@@ -34,11 +34,20 @@ CONTRACT_RESULT="skipped"
 AUTOMATIC_TOOLING_REGRESSIONS_RESULT="fail"
 AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT="not_applicable"
 REGRESSION_INVENTORY_RESULT="fail"
+NODE_TESTS_RESULT="fail"
+PYTHON_TESTS_RESULT="fail"
 REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
 VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"
+NODE_TEST_CONCURRENCY="${LAZYBUDDY_NODE_TEST_CONCURRENCY:-2}"
 READINESS_REGRESSION_TIMEOUT=120
 VERIFY_SUITE="${LAZYBUDDY_VERIFY_SUITE:-all}"
-PYTHON_BIN="${LAZYBUDDY_PYTHON:-python3}"
+PYTHON_REQUEST="${LAZYBUDDY_PYTHON:-python3}"
+if ! PYTHON_BIN="$(command -v -- "$PYTHON_REQUEST" 2>/dev/null)" \
+    || [ ! -f "$PYTHON_BIN" ] \
+    || [ ! -x "$PYTHON_BIN" ]; then
+    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    exit 2
+fi
 PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0], sys.version_info[1])' 2>/dev/null || true)"
 read -r PYTHON_MAJOR PYTHON_MINOR _ <<<"$PYTHON_VERSION"
 
@@ -57,10 +66,31 @@ if ! [[ "$VERIFY_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
     printf 'ERROR: LAZYBUDDY_VERIFY_TIMEOUT_SECONDS must be a positive integer\n' >&2
     exit 2
 fi
+if ! [[ "$NODE_TEST_CONCURRENCY" =~ ^[1-4]$ ]]; then
+    printf 'ERROR: LAZYBUDDY_NODE_TEST_CONCURRENCY must be an integer from 1 through 4\n' >&2
+    exit 2
+fi
 if [[ "$VERIFY_SUITE" != "all" && "$VERIFY_SUITE" != "core" && "$VERIFY_SUITE" != "lifecycle" ]]; then
     printf 'ERROR: LAZYBUDDY_VERIFY_SUITE must be all, core, or lifecycle\n' >&2
     exit 2
 fi
+
+PYTHON_SHIM_DIR="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-python.XXXXXX")"
+cleanup_python_shim() {
+    rm -rf "$PYTHON_SHIM_DIR"
+}
+trap cleanup_python_shim EXIT
+export LAZYBUDDY_PYTHON="$PYTHON_BIN"
+printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exec "${LAZYBUDDY_PYTHON:?}" "$@"' >"$PYTHON_SHIM_DIR/python3"
+chmod 700 "$PYTHON_SHIM_DIR/python3"
+if [ ! -f "$PYTHON_SHIM_DIR/python3" ] || [ -L "$PYTHON_SHIM_DIR/python3" ]; then
+    printf 'ERROR: LazyBuddy could not prepare the selected Python interpreter.\n' >&2
+    exit 2
+fi
+PATH="$PYTHON_SHIM_DIR:$PATH"
+export PATH
 
 CHECK_DETAILS="{}"
 record_check() {
@@ -321,6 +351,56 @@ run_regression_inventory() {
     fi
 }
 
+run_language_tests() {
+    local result_file status test_path
+    local node_test_paths=()
+    if [ "$REGRESSION_DEPTH" -gt 0 ]; then
+        NODE_TESTS_RESULT="skipped-nested"
+        PYTHON_TESTS_RESULT="skipped-nested"
+        return
+    fi
+    if [ "$VERIFY_SUITE" != "all" ]; then
+        NODE_TESTS_RESULT="skipped-suite"
+        PYTHON_TESTS_RESULT="skipped-suite"
+        return
+    fi
+
+    while IFS= read -r test_path; do
+        node_test_paths+=("$test_path")
+    done < <(find "${PLUGIN_ROOT}/tests" -maxdepth 1 -type f -name '*.test.js' -print | LC_ALL=C sort)
+    if [ "${#node_test_paths[@]}" -eq 0 ]; then
+        printf 'ERROR: no package-local Node tests found\n' >&2
+        NODE_TESTS_RESULT="fail"
+        ALL_PASS=false
+    else
+        result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-node-tests.XXXXXX")"
+        if "$PYTHON_BIN" "$RUNNER" --label "node_tests" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- \
+            node --test --test-concurrency="$NODE_TEST_CONCURRENCY" "${node_test_paths[@]}"; then
+            NODE_TESTS_RESULT="pass"
+        else
+            status=$?
+            NODE_TESTS_RESULT="fail"
+            ALL_PASS=false
+            print_failure_tail "$result_file"
+            printf 'FAIL: Node tests exited %s\n' "$status" >&2
+        fi
+        rm -f "$result_file"
+    fi
+
+    result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-python-tests.XXXXXX")"
+    if "$PYTHON_BIN" "$RUNNER" --label "python_tests" --timeout "$VERIFY_TIMEOUT" --result-file "$result_file" -- \
+        "$PYTHON_BIN" -m pytest "${PLUGIN_ROOT}/tests" "${PLUGIN_ROOT}/tooling"; then
+        PYTHON_TESTS_RESULT="pass"
+    else
+        status=$?
+        PYTHON_TESTS_RESULT="fail"
+        ALL_PASS=false
+        print_failure_tail "$result_file"
+        printf 'FAIL: Python tests exited %s\n' "$status" >&2
+    fi
+    rm -f "$result_file"
+}
+
 if [ "$VERIFY_SUITE" != "lifecycle" ]; then
     run_check doctor "${SCRIPTS_DIR}/lazybuddy-plugin-doctor.sh"  DOCTOR_RESULT
     run_check smoke "${SCRIPTS_DIR}/lazybuddy-smoke-test.sh"     SMOKE_RESULT
@@ -332,9 +412,10 @@ if [ "$VERIFY_SUITE" != "lifecycle" ]; then
     run_check automatic_tooling_contract "${SCRIPTS_DIR}/lazybuddy-contract-check.sh" CONTRACT_RESULT
 fi
 run_regression_inventory
+run_language_tests
 
 # Build compact JSON summary
-json="{\"suite\":\"${VERIFY_SUITE}\",\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"checks\":${CHECK_DETAILS},\"all_pass\":${ALL_PASS}}"
+json="{\"suite\":\"${VERIFY_SUITE}\",\"doctor\":\"${DOCTOR_RESULT}\",\"smoke\":\"${SMOKE_RESULT}\",\"docs\":\"${DOCS_RESULT}\",\"security\":\"${SECURITY_RESULT}\",\"mcp_test\":\"${MCP_RESULT}\",\"hook_pipeline\":\"${HOOK_RESULT}\",\"load_check\":\"${LOAD_RESULT}\",\"automatic_tooling_contract\":\"${CONTRACT_RESULT}\",\"regression_inventory\":\"${REGRESSION_INVENTORY_RESULT}\",\"shell_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"node_tests\":\"${NODE_TESTS_RESULT}\",\"python_tests\":\"${PYTHON_TESTS_RESULT}\",\"automatic_tooling_regressions\":\"${AUTOMATIC_TOOLING_REGRESSIONS_RESULT}\",\"automatic_tooling_contract_parity\":\"${AUTOMATIC_TOOLING_CONTRACT_PARITY_RESULT}\",\"checks\":${CHECK_DETAILS},\"all_pass\":${ALL_PASS}}"
 
 echo "$json"
 

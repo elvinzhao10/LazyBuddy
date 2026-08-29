@@ -205,17 +205,19 @@ with open(os.environ['STATE_RUN_DIR'] + '/events.jsonl','a') as f: f.write(json.
         SF=$(resolve_run_state "$RID") || { err "invalid or unsafe run_id"; continue; }
         require_run_events "$RID" || { err "invalid or unsafe run_id"; continue; }
         export RID CWD SF STATE_RUN_DIR
-        reply "$(python3 << 'PYEOF'
+        if ! SUMMARY=$(python3 << 'PYEOF' 2>&1
 import json, os; cwd=os.environ.get('CWD','.'); rid=os.environ['RID']
 sf=os.environ['SF']
 ef=os.environ['STATE_RUN_DIR'] + '/events.jsonl'
 state=json.load(open(sf)); events=[]
 if os.path.exists(ef):
     with open(ef) as f:
-        for line in f:
+        for line_number, line in enumerate(f, 1):
             if line.strip():
-                try: events.append(json.loads(line))
-                except: pass
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    raise SystemExit(f"malformed events.jsonl line {line_number}")
 tasks=state.get('tasks',[])
 s=dict(run_id=rid, status=state.get('status','unknown'), task_count=len(tasks),
     completed_tasks=sum(1 for t in tasks if t.get('status')=='completed'),
@@ -223,7 +225,11 @@ s=dict(run_id=rid, status=state.get('status','unknown'), task_count=len(tasks),
     event_count=len(events), gates=state.get('verification_gates',[]), updated_at=state.get('updated_at',''))
 print(json.dumps(s))
 PYEOF
-)" ;;
+); then
+          err "$SUMMARY"
+          continue
+        fi
+        reply "$SUMMARY" ;;
       *) err "unknown tool: $TNAME" ;;
     esac ;;
   *) err "unsupported method: $METHOD" ;;

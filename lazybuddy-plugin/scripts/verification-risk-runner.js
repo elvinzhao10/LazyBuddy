@@ -111,6 +111,7 @@ function specifications(level) {
 }
 
 function executeGate(options, command, spec, runtimeRoot) {
+  const started = process.hrtime.bigint();
   const prefix = spec.invocationId.replaceAll(/[^a-z0-9-]/gi, '-');
   const resultFile = path.join(runtimeRoot, `${prefix}.json`);
   const stdin = path.join(runtimeRoot, `${prefix}.stdin`);
@@ -129,12 +130,14 @@ function executeGate(options, command, spec, runtimeRoot) {
     fail(`bounded runner did not write ${spec.invocationId}: exit=${result.status} ${result.stderr.trim()}`);
   }
   const bounded = readJson(resultFile, `bounded result for ${spec.invocationId}`);
+  const elapsedMs = Number(process.hrtime.bigint() - started) / 1_000_000;
   return {
     ...spec,
     outcome: bounded.status === 'pass' && result.status === 0 ? 'passed' : 'failed',
     exitCode: Number.isInteger(result.status) ? result.status : 125,
     reason: bounded.reason,
     cleanup: bounded.cleanup,
+    elapsed_ms: Math.max(0, Math.floor(elapsedMs)),
   };
 }
 
@@ -147,6 +150,7 @@ function writeReport(reportPath, report) {
 }
 
 function main() {
+  const started = process.hrtime.bigint();
   const options = parseArgs(process.argv.slice(2));
   options.target = safeDirectory(options.target);
   const commands = parseCommands(readJson(options['gate-config'], 'gate config'));
@@ -180,6 +184,10 @@ function main() {
     const report = {
       schemaVersion: 1, level, reasonCodes: [...new Set(reasonCodes)], actorCount,
       allPassed, gateResults: results,
+      elapsed_ms: Math.max(
+        results.reduce((sum, gate) => sum + gate.elapsed_ms, 0),
+        Math.floor(Number(process.hrtime.bigint() - started) / 1_000_000),
+      ),
       actualCost: {
         gateInvocations: results.length, actorCount,
         targetedInvocations: count(['targeted-tests']),

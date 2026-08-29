@@ -1,6 +1,6 @@
 # LazyBuddy Plugin
 
-## Durable v1.0.3 installation
+## Durable v1.2.0 installation
 
 **Node.js LTS 20 or newer** and **Git** are required. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use
@@ -22,7 +22,7 @@ require LazyCodex or OmO at runtime.
 
 ## Durable onboarding
 
-Bootstrap v1.0.3 once from a verified official source checkout, then use the
+Bootstrap v1.2.0 once from a verified official source checkout, then use the
 durable launcher rather than treating that checkout as the installed runtime:
 
 ```bash
@@ -118,6 +118,10 @@ cd lazybuddy-plugin
 codebuddy plugin validate .
 bash scripts/lazybuddy-load-check.sh
 bash scripts/lazybuddy-plugin-doctor.sh
+
+# Optional and explicit; the default never executes PATH codebuddy.
+bash scripts/lazybuddy-plugin-doctor.sh \
+  --host-validator "/absolute/path/to/codebuddy"
 ```
 
 ### Marketplace install
@@ -220,7 +224,8 @@ user-observed host result.
 ## Verify
 
 `scripts/lazybuddy-verify.sh` requires Python 3.10 or newer before it starts
-any Python helper. When `python3` resolves to an older interpreter, it exits
+any Python helper. The canonical `all` suite also requires pytest. When
+`python3` resolves to an older interpreter, it exits
 with `ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.`
 Set `LAZYBUDDY_PYTHON` to an explicit supported interpreter when `python3`
 cannot be updated system-wide.
@@ -240,11 +245,29 @@ bash scripts/lazybuddy-docs-check.sh
 bash lazybuddy-plugin/scripts/lazybuddy-package-verify.sh
 ```
 
-The wrapper requires npm registry access. It reads the shipped lockfile, installs
-only into a temporary root, cleans that root on exit or interruption, and keeps
+The wrapper requires npm registry access. It reads the shipped lockfile,
+installs with `npm ci --ignore-scripts` from inside a temporary root, cleans
+that root on exit or interruption, and keeps
 the extracted release unchanged. The verifier itself is local-only and bounded.
 Missing registry access must fail instead of reporting package verification
-success.
+success. Its canonical Python suite also fails closed when the selected
+supported interpreter does not provide pytest.
+
+The canonical `all` aggregate preserves explicit shell-regression
+classifications and runs those shell checks serially. It also discovers every
+`tests/*.test.js` file and
+runs Node tests with concurrency 2 by default (configurable from 1 through 4
+with `LAZYBUDDY_NODE_TEST_CONCURRENCY`), then runs
+`python -m pytest tests tooling`. Its final JSON reports `shell_regressions`,
+`node_tests`, and `python_tests`; nested verifier calls mark each as
+`skipped-nested` instead of recursively scheduling them. The `core` and
+`lifecycle` shell partitions report language suites as `skipped-suite` so
+partitioned CI does not duplicate the canonical language run.
+
+Verification-risk reports keep timing in memory and expose monotonic
+`elapsed_ms` values for the full run and each gate. The checked-in efficiency
+fixtures use `validation_elapsed_ms` so their historical validation duration
+cannot be confused with a newly measured report-run duration.
 
 The aggregate command is installed package health and does not read repository-
 root learner pages. In a repository checkout, publication validation is a

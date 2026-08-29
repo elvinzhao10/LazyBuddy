@@ -2,7 +2,27 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+PYTHON_REQUEST="${LAZYBUDDY_TEST_PYTHON:-${LAZYBUDDY_PYTHON:-python3}}"
+if ! PYTHON_BIN="$(command -v "$PYTHON_REQUEST" 2>/dev/null)"; then
+    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    exit 2
+fi
+PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0], sys.version_info[1])' 2>/dev/null || true)"
+read -r PYTHON_MAJOR PYTHON_MINOR _ <<<"$PYTHON_VERSION"
+if ! [[ "$PYTHON_MAJOR" =~ ^[0-9]+$ && "$PYTHON_MINOR" =~ ^[0-9]+$ ]] \
+    || [ "$PYTHON_MAJOR" -lt 3 ] \
+    || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
+    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    exit 2
+fi
+export PYTHON_BIN
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-verifier.XXXXXX")"
+PYTHON_SHIM_DIR="$TMP/python-bin"
+mkdir -p "$PYTHON_SHIM_DIR"
+printf '%s\n' '#!/usr/bin/env bash' 'exec "${PYTHON_BIN:?}" "$@"' >"$PYTHON_SHIM_DIR/python3"
+chmod +x "$PYTHON_SHIM_DIR/python3"
+PATH="$PYTHON_SHIM_DIR:$PATH"
+export PATH
 PASS=0
 FAIL=0
 unset CODEBUDDY_PLUGIN_ROOT CWD
@@ -78,7 +98,7 @@ grep -Fq 'VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"' "$FIXTURE/sc
 # Given the complete standalone inventory, when the aggregate verifier assigns
 # runner budgets, then only v015 readiness may exceed the 90-second default and
 # a controlled global-120 mutation must be rejected by the same policy check.
-if python3 - "$FIXTURE" "$TMP" >"$TMP/timeout-policy.out" 2>"$TMP/timeout-policy.stderr" <<'PY'
+if "$PYTHON_BIN" - "$FIXTURE" "$TMP" >"$TMP/timeout-policy.out" 2>"$TMP/timeout-policy.stderr" <<'PY'
 import json
 import os
 from pathlib import Path
@@ -176,6 +196,9 @@ def assert_scoped_policy(root, records):
     require(by_label[readiness] == "120", f"{readiness} expected 120, observed {by_label[readiness]}")
     for label in sorted(expected - {readiness}):
         require(by_label[label] == "90", f"{label} expected 90, observed {by_label[label]}")
+    by_all_labels = {label: timeout for label, timeout in records}
+    require(by_all_labels.get("node_tests") == "90", "aggregate omitted automatic Node tests")
+    require(by_all_labels.get("python_tests") == "90", "aggregate omitted automatic Python tests")
     return len(expected) - 1
 
 
@@ -183,6 +206,8 @@ production_root, production_records = capture_policy("timeout-policy-production"
 other_count = assert_scoped_policy(production_root, production_records)
 print("READINESS_TIMEOUT=120")
 print(f"OTHER_STANDALONE_TIMEOUT=90 COUNT={other_count}")
+print("NODE_TESTS=scheduled")
+print("PYTHON_TESTS=scheduled")
 
 mutant_root, mutant_records = capture_policy("timeout-policy-global-120-mutant", mutate=True)
 try:
@@ -199,6 +224,10 @@ then
     grep -Fq 'OTHER_STANDALONE_TIMEOUT=90 COUNT=' "$TMP/timeout-policy.out" \
         && pass "all other standalone regressions retain the 90-second default" \
         || fail "non-readiness standalone regression timeout budget"
+    grep -Fq 'NODE_TESTS=scheduled' "$TMP/timeout-policy.out" \
+        && grep -Fq 'PYTHON_TESTS=scheduled' "$TMP/timeout-policy.out" \
+        && pass "aggregate automatically schedules Node and Python tests" \
+        || fail "aggregate automatic language test coverage"
     grep -Fq 'GLOBAL_120_MUTANT_REJECTED=' "$TMP/timeout-policy.out" \
         && pass "global-120 standalone timeout mutant is rejected" \
         || fail "global-120 standalone timeout mutant rejection"
@@ -208,10 +237,37 @@ else
 fi
 grep -Fq 'LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90' "$FIXTURE/scripts/hook-pipeline-test.sh" && pass "hook pipeline shares finite release budget" || fail "hook pipeline default timeout budget"
 
+HOOK_PIPELINE_PYTHON="$PYTHON_BIN"
+if "$HOOK_PIPELINE_PYTHON" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' 2>/dev/null; then
+    mkdir -p "$TMP/hook-pipeline-python-bin"
+    printf '%s\n' '#!/usr/bin/env bash' \
+        'if [[ "${1:-}" == */lazybuddy-bounded-run.py ]]; then' \
+        '    printf "PATH_PYTHON3_WAS_USED_FOR_BOUNDED_RUNNER\\n" >&2' \
+        '    exit 93' \
+        'fi' \
+        'exec "${LAZYBUDDY_SELECTED_PYTHON:?}" "$@"' >"$TMP/hook-pipeline-python-bin/python3"
+    chmod +x "$TMP/hook-pipeline-python-bin/python3"
+    if CWD="$TMP/hook-pipeline-project" \
+        CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+        LAZYBUDDY_PYTHON="$HOOK_PIPELINE_PYTHON" \
+        LAZYBUDDY_SELECTED_PYTHON="$HOOK_PIPELINE_PYTHON" \
+        PATH="$TMP/hook-pipeline-python-bin:$PATH" \
+        bash "$FIXTURE/scripts/hook-pipeline-test.sh" >"$TMP/hook-pipeline-python.out" 2>"$TMP/hook-pipeline-python.err" \
+    && grep -Fq 'Hook pipeline test: ALL PASS' "$TMP/hook-pipeline-python.out" \
+    && ! grep -Fq 'SyntaxError' "$TMP/hook-pipeline-python.out" "$TMP/hook-pipeline-python.err"; then
+        pass "hook pipeline honors selected Python 3.10+ interpreter"
+    else
+        cat "$TMP/hook-pipeline-python.out" "$TMP/hook-pipeline-python.err" 2>/dev/null >&2 || true
+        fail "hook pipeline must honor selected Python 3.10+ interpreter"
+    fi
+else
+    fail "hook pipeline requires a selected Python 3.10+ interpreter"
+fi
+
 # Given a short trusted package check, when it completes before its deadline,
 # then the runner reports a normal pass.
-python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label fast --timeout 1 --result-file "$TMP/fast.json" -- bash -c 'exit 0' >"$TMP/fast.out" 2>"$TMP/fast.stderr"
-python3 - "$TMP/fast.json" <<'PY'
+"$PYTHON_BIN" "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label fast --timeout 1 --result-file "$TMP/fast.json" -- bash -c 'exit 0' >"$TMP/fast.out" 2>"$TMP/fast.stderr"
+"$PYTHON_BIN" - "$TMP/fast.json" <<'PY'
 import json
 import sys
 
@@ -224,7 +280,7 @@ grep -q '^PASS: fast$' "$TMP/fast.stderr" && pass "fast trusted command succeeds
 # Given a trusted process inspector that executes but reports failure, cleanup
 # must treat inspection as unavailable instead of interpreting empty output as
 # proof that no descendants remain.
-python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" "$FIXTURE/scripts/lazybuddy_process_lifecycle.py" <<'PY'
+"$PYTHON_BIN" - "$FIXTURE/scripts/lazybuddy-bounded-run.py" "$FIXTURE/scripts/lazybuddy_process_lifecycle.py" <<'PY'
 import importlib.util
 import importlib
 import subprocess
@@ -273,7 +329,7 @@ assert cleanup.tracked_pids == (424242,)
 PY
 pass "failed process inspection remains fail-closed"
 
-if python3 - "$FIXTURE/scripts/lazybuddy-bounded-run.py" >"$TMP/process-inspection.out" 2>&1 <<'PY'
+if "$PYTHON_BIN" - "$FIXTURE/scripts/lazybuddy-bounded-run.py" >"$TMP/process-inspection.out" 2>&1 <<'PY'
 import importlib.util
 import importlib
 import sys
@@ -297,13 +353,13 @@ fi
 # Given a command whose child remains in the runner-owned process group, when
 # its deadline expires, then cleanup terminates that group.
 GROUP_CHILD_PID="$TMP/group-child.pid"
-if CHILD_PID="$GROUP_CHILD_PID" python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label group --timeout 1 --result-file "$TMP/group.json" -- bash -c '( sleep 30 ) & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/group.out" 2>"$TMP/group.stderr"; then
+if CHILD_PID="$GROUP_CHILD_PID" "$PYTHON_BIN" "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label group --timeout 1 --result-file "$TMP/group.json" -- bash -c '( sleep 30 ) & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/group.out" 2>"$TMP/group.stderr"; then
     fail "group timeout must fail"
 else
     pass "group timeout fails"
 fi
 group_child_pid="$(cat "$GROUP_CHILD_PID")"
-python3 - "$TMP/group.json" "$group_child_pid" "$PROCESS_INSPECTION_SUPPORTED" <<'PY'
+"$PYTHON_BIN" - "$TMP/group.json" "$group_child_pid" "$PROCESS_INSPECTION_SUPPORTED" <<'PY'
 import json
 import sys
 
@@ -320,13 +376,13 @@ if kill -0 "$group_child_pid" 2>/dev/null; then fail "timeout left owned group c
 # Given a child that escapes into another process group, when the parent times
 # out, then the runner reports the still-detectable child but never signals it.
 ESCAPED_CHILD_PID="$TMP/escaped-child.pid"
-if CHILD_PID="$ESCAPED_CHILD_PID" python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label escaped --timeout 1 --result-file "$TMP/escaped.json" -- bash -c 'python3 -c "import os, time; os.setsid(); time.sleep(3)" & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/escaped.out" 2>"$TMP/escaped.stderr"; then
+if CHILD_PID="$ESCAPED_CHILD_PID" "$PYTHON_BIN" "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label escaped --timeout 1 --result-file "$TMP/escaped.json" -- bash -c '"$PYTHON_BIN" -c "import os, time; os.setsid(); time.sleep(3)" & printf "%s\n" "$!" > "$CHILD_PID"; sleep 30' >"$TMP/escaped.out" 2>"$TMP/escaped.stderr"; then
     fail "escaped timeout must fail"
 else
     pass "escaped timeout fails"
 fi
 escaped_child_pid="$(cat "$ESCAPED_CHILD_PID")"
-python3 - "$TMP/escaped.json" "$escaped_child_pid" "$PROCESS_INSPECTION_SUPPORTED" <<'PY'
+"$PYTHON_BIN" - "$TMP/escaped.json" "$escaped_child_pid" "$PROCESS_INSPECTION_SUPPORTED" <<'PY'
 import json
 import sys
 
@@ -378,7 +434,7 @@ else
     cat "$TMP/verify.stderr" >&2
     fail "missing named timeout"
 fi
-if python3 - "$TMP/verify.json" <<'PY'
+if "$PYTHON_BIN" - "$TMP/verify.json" <<'PY'
 import json
 import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -400,8 +456,8 @@ cat > "$FIXTURE/scripts/lazybuddy-smoke-test.sh" <<'SH'
 exit 0
 SH
 chmod +x "$FIXTURE/scripts/lazybuddy-smoke-test.sh"
-python3 "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label "later-check" --timeout 1 --result-file "$TMP/repeat.json" -- bash -c 'exit 0' >"$TMP/repeat.out" 2>"$TMP/repeat.stderr"
-python3 - "$TMP/repeat.json" <<'PY'
+"$PYTHON_BIN" "$FIXTURE/scripts/lazybuddy-bounded-run.py" --label "later-check" --timeout 1 --result-file "$TMP/repeat.json" -- bash -c 'exit 0' >"$TMP/repeat.out" 2>"$TMP/repeat.stderr"
+"$PYTHON_BIN" - "$TMP/repeat.json" <<'PY'
 import json
 import sys
 assert json.load(open(sys.argv[1], encoding="utf-8"))["status"] == "pass"
@@ -459,10 +515,109 @@ esac
 SH
 chmod +x "$TMP/fake-bin/codebuddy"
 
+RUNTIME_PATH="$(dirname "$(command -v node)"):$(dirname "$PYTHON_BIN"):/usr/bin:/bin"
+PATH_SPOOF_MARKER="$TMP/path-spoof.marker"
+if PATH="$TMP/fake-bin:$RUNTIME_PATH" \
+    FAKE_CODEBUDDY_MARKER="$PATH_SPOOF_MARKER" \
+    CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+    bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" >"$TMP/doctor-default.out" 2>"$TMP/doctor-default.err" \
+    && [ ! -e "$PATH_SPOOF_MARKER" ]; then
+    pass "default package doctor does not execute PATH codebuddy"
+else
+    fail "default package doctor PATH boundary"
+fi
+
+EXPLICIT_MARKER="$TMP/explicit-validator.marker"
+if PATH="$TMP/fake-bin:$RUNTIME_PATH" \
+    FAKE_CODEBUDDY_MARKER="$EXPLICIT_MARKER" \
+    CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+    bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" \
+        --host-validator "$TMP/fake-bin/codebuddy" \
+        >"$TMP/doctor-explicit.out" 2>"$TMP/doctor-explicit.err" \
+    && [ -s "$EXPLICIT_MARKER" ] \
+    && grep -q '\[PASS\] CodeBuddy manifest validator' "$TMP/doctor-explicit.out"; then
+    pass "explicit absolute host validator executes"
+else
+    fail "explicit absolute host validator boundary"
+fi
+
+mkdir "$TMP/python-spoof-bin"
+PYTHON_SPOOF_MARKER="$TMP/python-spoof.marker"
+printf '%s\n' '#!/usr/bin/env bash' \
+    ': >"${LAZYBUDDY_PYTHON_SPOOF_MARKER:?}"' \
+    'printf "%s\\n" "unexpected PATH python3 invocation" >&2' \
+    'exit 93' >"$TMP/python-spoof-bin/python3"
+chmod +x "$TMP/python-spoof-bin/python3"
+if PATH="$TMP/python-spoof-bin:$RUNTIME_PATH" \
+    LAZYBUDDY_PYTHON="$PYTHON_BIN" \
+    LAZYBUDDY_PYTHON_SPOOF_MARKER="$PYTHON_SPOOF_MARKER" \
+    FAKE_CODEBUDDY_MARKER="$EXPLICIT_MARKER" \
+    CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+    bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" \
+        --host-validator "$TMP/fake-bin/codebuddy" \
+        >"$TMP/doctor-selected-python.out" 2>"$TMP/doctor-selected-python.err" \
+    && [ ! -e "$PYTHON_SPOOF_MARKER" ] \
+    && grep -q '\[PASS\] CodeBuddy manifest validator' "$TMP/doctor-selected-python.out"; then
+    pass "doctor honors selected Python over PATH python3"
+else
+    fail "doctor selected Python boundary"
+fi
+
+MISSING_DOCTOR_PYTHON="$TMP/missing-doctor-python"
+if LAZYBUDDY_PYTHON="$MISSING_DOCTOR_PYTHON" \
+    CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+    bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" \
+    >"$TMP/doctor-missing-python.out" 2>"$TMP/doctor-missing-python.err"; then
+    missing_python_status=0
+else
+    missing_python_status=$?
+fi
+[ "$missing_python_status" -eq 2 ] \
+    && grep -Fq 'ERROR: LazyBuddy requires Python 3.10 or newer.' "$TMP/doctor-missing-python.err" \
+    && pass "doctor rejects a missing selected Python interpreter" \
+    || fail "doctor missing selected Python interpreter"
+
+UNSUPPORTED_DOCTOR_PYTHON="$TMP/unsupported-doctor-python"
+printf '%s\n' '#!/usr/bin/env bash' \
+    'if [ "${1:-}" = "-c" ]; then printf "%s\\n" "3 9"; exit 0; fi' \
+    'exit 94' >"$UNSUPPORTED_DOCTOR_PYTHON"
+chmod +x "$UNSUPPORTED_DOCTOR_PYTHON"
+if LAZYBUDDY_PYTHON="$UNSUPPORTED_DOCTOR_PYTHON" \
+    CODEBUDDY_PLUGIN_ROOT="$FIXTURE" \
+    bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" \
+    >"$TMP/doctor-unsupported-python.out" 2>"$TMP/doctor-unsupported-python.err"; then
+    unsupported_python_status=0
+else
+    unsupported_python_status=$?
+fi
+[ "$unsupported_python_status" -eq 2 ] \
+    && grep -Fq 'ERROR: LazyBuddy requires Python 3.10 or newer.' "$TMP/doctor-unsupported-python.err" \
+    && pass "doctor rejects an unsupported selected Python interpreter" \
+    || fail "doctor unsupported selected Python interpreter"
+
+if CODEBUDDY_PLUGIN_ROOT="$FIXTURE" bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" \
+    --host-validator codebuddy >"$TMP/doctor-relative.out" 2>"$TMP/doctor-relative.err"; then
+    fail "relative host validator must be rejected"
+elif grep -q -- '--host-validator must be an absolute executable file' "$TMP/doctor-relative.err"; then
+    pass "doctor rejects a relative host validator"
+else
+    fail "relative host validator rejection detail"
+fi
+
+ln -s "$TMP/fake-bin/codebuddy" "$TMP/doctor-validator-symlink"
+if CODEBUDDY_PLUGIN_ROOT="$FIXTURE" bash "$FIXTURE/scripts/lazybuddy-plugin-doctor.sh" \
+    --host-validator "$TMP/doctor-validator-symlink" >"$TMP/doctor-symlink.out" 2>"$TMP/doctor-symlink.err"; then
+    fail "symlink host validator must be rejected"
+elif grep -q -- '--host-validator must be an absolute executable file' "$TMP/doctor-symlink.err"; then
+    pass "doctor rejects a symlink host validator"
+else
+    fail "symlink host validator rejection detail"
+fi
+
 mkdir "$TMP/launch-error-bin"
 printf '%s\n' '#!/definitely/missing/lazybuddy-interpreter' > "$TMP/launch-error-bin/codebuddy"
 chmod +x "$TMP/launch-error-bin/codebuddy"
-RUNTIME_PATH="$(dirname "$(command -v node)"):$(dirname "$(command -v python3)"):/usr/bin:/bin"
+RUNTIME_PATH="$(dirname "$(command -v node)"):$(dirname "$PYTHON_BIN"):/usr/bin:/bin"
 
 run_doctor() {
     local label="$1" host="$2" mode="$3" bin_dir="$4"
@@ -480,7 +635,7 @@ run_doctor() {
     fi
 }
 
-if python3 - "$FIXTURE" "$TMP" "$RUNTIME_PATH" >"$TMP/doctor-matrix.out" 2>"$TMP/doctor-matrix.err" <<'PY'
+if "$PYTHON_BIN" - "$FIXTURE" "$TMP" "$RUNTIME_PATH" >"$TMP/doctor-matrix.out" 2>"$TMP/doctor-matrix.err" <<'PY'
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
@@ -537,8 +692,12 @@ def run(case: tuple[str, str, str, Path]) -> tuple[str, int]:
     with open(tmp / f"doctor-{label}.out", "w", encoding="utf-8") as stdout, open(
         tmp / f"doctor-{label}.out.err", "w", encoding="utf-8"
     ) as stderr:
+        command = ["bash", str(fixture / "scripts" / "lazybuddy-plugin-doctor.sh")]
+        validator = bin_dir / "codebuddy"
+        if validator.is_file():
+            command.extend(["--host-validator", str(validator)])
         completed = subprocess.run(
-            ["bash", str(fixture / "scripts" / "lazybuddy-plugin-doctor.sh")],
+            command,
             env=environment,
             stdout=stdout,
             stderr=stderr,
@@ -611,7 +770,7 @@ load_doctor package-timeout
 load_doctor package-launch
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves validator launch unavailable unchecked" || fail "package launch validator classification"
 load_doctor package-absent
-[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[UNCHECKED\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "package doctor leaves absent CLI unchecked" || fail "package absent validator classification"
+[ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[SKIP\] CodeBuddy manifest validator.*package-only default' "$DOCTOR_OUTPUT" && pass "package doctor defaults to package-only validation" || fail "package absent validator classification"
 
 load_doctor cli-pass
 [ "$DOCTOR_STATUS" -eq 0 ] && grep -q '\[PASS\] CodeBuddy manifest validator' "$DOCTOR_OUTPUT" && pass "CLI doctor accepts validator pass" || fail "CLI validator pass classification"
@@ -622,7 +781,7 @@ load_doctor cli-timeout
 load_doctor cli-launch
 [ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails validator launch unavailable" || fail "CLI launch validator classification"
 load_doctor cli-absent
-[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*CLI unavailable' "$DOCTOR_OUTPUT" && pass "CLI doctor hard-fails absent CLI" || fail "CLI absent validator classification"
+[ "$DOCTOR_STATUS" -eq 1 ] && grep -q '\[FAIL\] CodeBuddy manifest validator.*--host-validator /absolute/path is required' "$DOCTOR_OUTPUT" && pass "CLI doctor requires an explicit validator" || fail "CLI absent validator classification"
 
 DOCTOR_MARKER="$TMP/ide-validator.marker"
 rm -f "$DOCTOR_MARKER"
@@ -643,7 +802,7 @@ fi
 
 cp -R "$FIXTURE" "$TMP/custom-skills-plugin"
 cp -R "$TMP/custom-skills-plugin/skills" "$TMP/custom-skills-plugin/custom-skills"
-python3 - "$TMP/custom-skills-plugin/.codebuddy-plugin/plugin.json" <<'PY'
+"$PYTHON_BIN" - "$TMP/custom-skills-plugin/.codebuddy-plugin/plugin.json" <<'PY'
 import json
 import sys
 
@@ -660,7 +819,7 @@ if LAZYBUDDY_DOCTOR_HOST=workbuddy CODEBUDDY_PLUGIN_ROOT="$TMP/custom-skills-plu
 else
     fail "doctor valid declared CodeBuddy skills classification"
 fi
-python3 - "$TMP/custom-skills-plugin/.codebuddy-plugin/plugin.json" <<'PY'
+"$PYTHON_BIN" - "$TMP/custom-skills-plugin/.codebuddy-plugin/plugin.json" <<'PY'
 import json
 import sys
 
@@ -686,7 +845,7 @@ if LAZYBUDDY_DOCTOR_HOST=workbuddy CODEBUDDY_PLUGIN_ROOT="$TMP/broken-plugin" LA
 else
     pass "aggregate verifier stays red for an intentional package break"
 fi
-if python3 - "$TMP/broken-package.json" <<'PY'
+if "$PYTHON_BIN" - "$TMP/broken-package.json" <<'PY'
 import json
 import sys
 

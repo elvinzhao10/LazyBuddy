@@ -22,7 +22,7 @@
     { "gate": "required-evidence", "outcome": "passed" }
   ],
   "cost": {
-    "elapsed_ms": 75300,
+    "validation_elapsed_ms": 75300,
     "invocation_count": 2,
     "evidence_bytes": 5037,
     "reruns": 0,

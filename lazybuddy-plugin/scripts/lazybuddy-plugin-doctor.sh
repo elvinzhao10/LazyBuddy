@@ -19,6 +19,51 @@ PROJECT_ROOT="$(cd "${PLUGIN_ROOT}/.." && pwd)"
 RUNNER="${PLUGIN_ROOT}/scripts/lazybuddy-bounded-run.py"
 HOST_VALIDATOR_TIMEOUT="${LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS:-15}"
 DOCTOR_HOST="${LAZYBUDDY_DOCTOR_HOST:-package}"
+PYTHON_REQUEST="${LAZYBUDDY_PYTHON:-python3}"
+if ! PYTHON_BIN="$(command -v "$PYTHON_REQUEST" 2>/dev/null)"; then
+    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    exit 2
+fi
+PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0], sys.version_info[1])' 2>/dev/null || true)"
+read -r PYTHON_MAJOR PYTHON_MINOR _ <<<"$PYTHON_VERSION"
+if ! [[ "$PYTHON_MAJOR" =~ ^[0-9]+$ && "$PYTHON_MINOR" =~ ^[0-9]+$ ]] \
+    || [ "$PYTHON_MAJOR" -lt 3 ] \
+    || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
+    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    exit 2
+fi
+HOST_VALIDATOR=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --host-validator)
+            [ "$#" -ge 2 ] || {
+                printf 'ERROR: --host-validator requires an absolute path\n' >&2
+                exit 2
+            }
+            HOST_VALIDATOR="$2"
+            shift 2
+            ;;
+        *)
+            printf 'ERROR: unsupported doctor option: %s\n' "$1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [ -n "$HOST_VALIDATOR" ]; then
+    case "$HOST_VALIDATOR" in
+        /*) ;;
+        *)
+            printf 'ERROR: --host-validator must be an absolute executable file\n' >&2
+            exit 2
+            ;;
+    esac
+    if [ ! -f "$HOST_VALIDATOR" ] || [ ! -x "$HOST_VALIDATOR" ] || [ -L "$HOST_VALIDATOR" ]; then
+        printf 'ERROR: --host-validator must be an absolute executable file\n' >&2
+        exit 2
+    fi
+fi
 
 PASS=0
 FAIL=0
@@ -39,7 +84,7 @@ check() {
 
 validator_reports_success() {
     local result_file="$1"
-    python3 - "$result_file" <<'PY'
+    "$PYTHON_BIN" - "$result_file" <<'PY'
 import json
 import sys
 
@@ -130,7 +175,7 @@ for host_manifest in "CodeBuddy:${CODEBUDDY_MANIFEST}" "WorkBuddy:${WORKBUDDY_MA
     else
         check "$HOST manifest exists" "missing: $MANIFEST"
     fi
-    if python3 - "$MANIFEST" <<'PY' 2>/dev/null
+    if "$PYTHON_BIN" - "$MANIFEST" <<'PY' 2>/dev/null
 import json
 import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
@@ -146,7 +191,7 @@ PY
         FIELDS="${FIELDS} skills"
     fi
     for field in $FIELDS; do
-        if python3 - "$MANIFEST" "$field" <<'PY' 2>/dev/null
+        if "$PYTHON_BIN" - "$MANIFEST" "$field" <<'PY' 2>/dev/null
 import json
 import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
@@ -161,7 +206,7 @@ PY
     done
 done
 
-if codebuddy_skills=$(python3 - "$CODEBUDDY_MANIFEST" "$PLUGIN_ROOT" <<'PY' 2>&1
+if codebuddy_skills=$("$PYTHON_BIN" - "$CODEBUDDY_MANIFEST" "$PLUGIN_ROOT" <<'PY' 2>&1
 import json
 import os
 import sys
@@ -215,7 +260,7 @@ else
     check "CodeBuddy skills discovery" "$codebuddy_skills"
 fi
 
-if agreement=$(python3 - "$CODEBUDDY_MANIFEST" "$WORKBUDDY_MANIFEST" "${PROJECT_ROOT}/.codebuddy-plugin/marketplace.json" <<'PY' 2>&1
+if agreement=$("$PYTHON_BIN" - "$CODEBUDDY_MANIFEST" "$WORKBUDDY_MANIFEST" "${PROJECT_ROOT}/.codebuddy-plugin/marketplace.json" <<'PY' 2>&1
 import json
 import os
 import sys
@@ -252,7 +297,7 @@ else
 fi
 
 if machine_status=$(node "${PLUGIN_ROOT}/scripts/lazybuddy-machine-status.js" --json 2>&1) \
-    && python3 - "$machine_status" <<'PY'
+    && "$PYTHON_BIN" - "$machine_status" <<'PY'
 import json
 import sys
 
@@ -274,10 +319,10 @@ fi
 
 if [ "$DOCTOR_HOST" = "codebuddy-ide" ] || [ "$DOCTOR_HOST" = "workbuddy" ]; then
     echo "  [SKIP] CodeBuddy manifest validator — CLI-only validator not applicable to ${DOCTOR_HOST}"
-elif command -v codebuddy >/dev/null 2>&1; then
+elif [ -n "$HOST_VALIDATOR" ]; then
     validator_result="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-host-validator.XXXXXX")"
-    if python3 "$RUNNER" --label "CodeBuddy manifest validator" --timeout "$HOST_VALIDATOR_TIMEOUT" --result-file "$validator_result" -- codebuddy plugin validate "$PLUGIN_ROOT"; then
-        validator_output="$(python3 - "$validator_result" <<'PY'
+    if "$PYTHON_BIN" "$RUNNER" --label "CodeBuddy manifest validator" --timeout "$HOST_VALIDATOR_TIMEOUT" --result-file "$validator_result" -- "$HOST_VALIDATOR" plugin validate "$PLUGIN_ROOT"; then
+        validator_output="$("$PYTHON_BIN" - "$validator_result" <<'PY'
 import json
 import sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["tail"])
@@ -289,7 +334,7 @@ PY
             check "CodeBuddy manifest validator" "$validator_output"
         fi
     else
-        validator_state="$(python3 - "$validator_result" <<'PY'
+        validator_state="$("$PYTHON_BIN" - "$validator_result" <<'PY'
 import json
 import sys
 result = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -315,9 +360,9 @@ PY
     rm -f "$validator_result"
 else
     if [ "$DOCTOR_HOST" = "package" ]; then
-        echo "  [UNCHECKED] CodeBuddy manifest validator — codebuddy CLI unavailable"
+        echo "  [SKIP] CodeBuddy manifest validator — package-only default; pass --host-validator /absolute/path to opt in"
     else
-        check "CodeBuddy manifest validator" "codebuddy CLI unavailable"
+        check "CodeBuddy manifest validator" "--host-validator /absolute/path is required"
     fi
 fi
 
@@ -333,7 +378,7 @@ done
 # 5. Hooks scaffold exists
 if [ -f "${PLUGIN_ROOT}/hooks/hooks.json" ]; then
     check "hooks/hooks.json exists" ok
-    if python3 -c "import json; json.load(open('${PLUGIN_ROOT}/hooks/hooks.json'))" 2>/dev/null; then
+    if "$PYTHON_BIN" -c "import json; json.load(open('${PLUGIN_ROOT}/hooks/hooks.json'))" 2>/dev/null; then
         check "hooks/hooks.json is valid JSON" ok
     else
         check "hooks/hooks.json is valid JSON" "parse error"
@@ -345,7 +390,7 @@ fi
 # 6. MCP scaffold exists
 if [ -f "${PLUGIN_ROOT}/.mcp.json" ]; then
     check ".mcp.json exists" ok
-    if python3 -c "import json; json.load(open('${PLUGIN_ROOT}/.mcp.json'))" 2>/dev/null; then
+    if "$PYTHON_BIN" -c "import json; json.load(open('${PLUGIN_ROOT}/.mcp.json'))" 2>/dev/null; then
         check ".mcp.json is valid JSON" ok
     else
         check ".mcp.json is valid JSON" "parse error"
@@ -355,7 +400,7 @@ else
 fi
 
 PROFILE_VALIDATION_DATA="${TMPDIR:-/tmp}/lazybuddy-doctor-profile-data-$$"
-if profile_result=$(python3 "${PLUGIN_ROOT}/scripts/lazybuddy-mcp-profile.py" \
+if profile_result=$("$PYTHON_BIN" "${PLUGIN_ROOT}/scripts/lazybuddy-mcp-profile.py" \
     --mode orchestrated \
     --project-dir "$PROJECT_ROOT" \
     --plugin-data "$PROFILE_VALIDATION_DATA" 2>&1); then
@@ -364,7 +409,7 @@ else
     check "MCP typed profile contract" "$profile_result"
 fi
 
-if contract_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+if contract_result=$("$PYTHON_BIN" - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import hashlib
 import json
 import os
@@ -396,7 +441,7 @@ else
     check "Automatic tooling contract and provider adapter" "$contract_result"
 fi
 
-if readiness_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+if readiness_result=$("$PYTHON_BIN" - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import json
 import os
 import subprocess
@@ -429,7 +474,7 @@ else
     check "Canonical capability readiness report" "$readiness_result"
 fi
 
-if hook_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+if hook_result=$("$PYTHON_BIN" - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import json
 import os
 import shlex
@@ -538,7 +583,7 @@ else
     check "Hook command targets (25 executable)" "${hook_result}"
 fi
 
-if mcp_result=$(python3 - "${PLUGIN_ROOT}" <<'PY' 2>&1
+if mcp_result=$("$PYTHON_BIN" - "${PLUGIN_ROOT}" <<'PY' 2>&1
 import json
 import os
 import sys
@@ -657,7 +702,7 @@ for script in lazybuddy-smoke-test.sh lazybuddy-docs-check.sh; do
     fi
 done
 
-if state_result=$(python3 - "${PROJECT_ROOT}" <<'PY' 2>&1
+if state_result=$("$PYTHON_BIN" - "${PROJECT_ROOT}" <<'PY' 2>&1
 import json
 import os
 import re

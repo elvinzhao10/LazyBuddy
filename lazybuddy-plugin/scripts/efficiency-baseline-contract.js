@@ -50,13 +50,13 @@ function parseTokens(value, field) {
 
 function parseCost(value, field) {
   const cost = requireRecord(value, field);
-  const elapsed = cost.elapsed_ms;
-  if (elapsed !== null) requireInteger(elapsed, `${field}.elapsed_ms`);
+  const elapsed = cost.validation_elapsed_ms;
+  if (elapsed !== null) requireInteger(elapsed, `${field}.validation_elapsed_ms`);
   if (elapsed === null) {
     requireString(cost.elapsed_unavailable_reason, `${field}.elapsed_unavailable_reason`);
   }
   return {
-    elapsed_ms: elapsed,
+    validation_elapsed_ms: elapsed,
     ...(elapsed === null ? { elapsed_unavailable_reason: cost.elapsed_unavailable_reason } : {}),
     invocation_count: requireInteger(cost.invocation_count, `${field}.invocation_count`, 1),
     evidence_bytes: requireInteger(cost.evidence_bytes, `${field}.evidence_bytes`),

@@ -44,6 +44,9 @@ jobs:
         working-directory: lazybuddy-plugin/tooling
         run: npm ci --ignore-scripts --no-audit --fund=false
 
+      - name: Install Python test dependency
+        run: python3 -m pip install pytest==8.4.2
+
       - name: Validate release tag and package version
         run: |
           package_version="$(python3 -c 'import json; print(json.load(open("lazybuddy-plugin/.codebuddy-plugin/plugin.json"))["version"])')"
