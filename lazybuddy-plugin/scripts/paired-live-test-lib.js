@@ -196,7 +196,7 @@ function verifyArtifacts(buddyRoot, traeRoot) {
   const buddyTree = readRegular(buddyRoot, 'ordered-tree.digest').toString('utf8').trim();
   refuse(digest(buddyBytes) !== buddyManifest.archive_sha256 || buddyReceipt.archive_sha256 !== buddyManifest.archive_sha256, 'ARCHIVE_DIGEST_MISMATCH', `LazyBuddy/${buddyArchive}`);
   refuse(buddyTree !== buddyManifest.ordered_extracted_tree_sha256 || buddyReceipt.ordered_extracted_tree_sha256 !== buddyTree, 'TREE_DIGEST_MISMATCH', 'LazyBuddy');
-  refuse(buddyReceipt.status !== 'pass' || buddyManifest.release_version !== '1.2.0' || buddyReceipt.release_version !== '1.2.0', 'INVALID_RECEIPT', 'LazyBuddy status/version');
+  refuse(buddyReceipt.status !== 'pass' || buddyManifest.release_version !== '1.2.1' || buddyReceipt.release_version !== '1.2.1', 'INVALID_RECEIPT', 'LazyBuddy status/version');
   refuse(buddyReceipt.source_sha !== buddyManifest.source_sha || buddyReceipt.source_tree !== buddyManifest.source_tree, 'INVALID_RECEIPT', 'LazyBuddy source binding');
 
   const traeManifest = readJson(traeRoot, 'manifest.json');
@@ -216,7 +216,7 @@ function verifyArtifacts(buddyRoot, traeRoot) {
   const traeSidecar = readRegular(traeRoot, `${traeArchive}.sha256`).toString('utf8').trim().split(/\s+/)[0];
   refuse(digest(traeBytes) !== traeManifest.artifact.sha256 || traeReceipt.artifact?.sha256 !== traeManifest.artifact.sha256 || traeSidecar !== traeManifest.artifact.sha256, 'ARCHIVE_DIGEST_MISMATCH', `LazyTrae/${traeArchive}`);
   refuse(traeTree !== traeManifest.artifact.treeDigest || traeReceipt.artifact?.treeDigest !== traeTree, 'TREE_DIGEST_MISMATCH', 'LazyTrae');
-  refuse(traeReceipt.status !== 'pass' || traeManifest.version !== '1.2.0' || traeReceipt.version !== '1.2.0', 'INVALID_RECEIPT', 'LazyTrae status/version');
+  refuse(traeReceipt.status !== 'pass' || traeManifest.version !== '1.2.1' || traeReceipt.version !== '1.2.1', 'INVALID_RECEIPT', 'LazyTrae status/version');
   refuse(traeReceipt.source?.sha !== traeManifest.source?.sha || traeReceipt.source?.tree !== traeManifest.source?.tree, 'INVALID_RECEIPT', 'LazyTrae source binding');
   return {
     buddy: {

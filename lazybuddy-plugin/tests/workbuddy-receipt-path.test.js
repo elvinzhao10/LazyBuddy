@@ -23,7 +23,7 @@ function fixture() {
   fs.mkdirSync(projectRoot);
   const paths = prepareProductRoot({ installRoot, product: 'LazyBuddy' });
   const commitSha = 'c'.repeat(40);
-  const staged = stageRelease(paths, { sourceRoot, version: '1.2.0', commitSha });
+  const staged = stageRelease(paths, { sourceRoot, version: '1.2.1', commitSha });
   const promoted = promoteRelease(paths, {
     ...staged,
     commitSha,
@@ -31,7 +31,7 @@ function fixture() {
     manifestRelativePath: 'lazybuddy-plugin/.codebuddy-plugin/plugin.json',
     origin: 'https://github.com/elvinzhao10/LazyBuddy.git',
     runtimePath: process.execPath,
-    version: '1.2.0',
+    version: '1.2.1',
   });
   const releaseRoot = path.join(paths.releases, promoted.releaseId);
   const manifest = path.join(releaseRoot, 'lazybuddy-plugin', '.workbuddy-plugin', 'plugin.json');
@@ -48,7 +48,7 @@ function receipt(f) {
       manifest: 'lazybuddy-plugin/.workbuddy-plugin/plugin.json',
       manifest_sha256: crypto.createHash('sha256').update(fs.readFileSync(f.manifest)).digest('hex'),
       plugin: 'lazybuddy',
-      version: '1.2.0',
+      version: '1.2.1',
     },
     host: 'workbuddy',
     build: 'build:current',

@@ -4,10 +4,11 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const RELEASE_VERSION = '1.2.0';
-const PREVIOUS_VERSION = '1.1.0';
+const RELEASE_VERSION = '1.2.1';
+const PREVIOUS_VERSION = '1.2.0';
 const HISTORICAL_DIGESTS = {
   'RELEASE_NOTES-v1.1.0.md': 'c16be358bd337351bd4541b9239d5faedc7b3443dcd3e32cc1e98d8aae93ebed',
+  'RELEASE_NOTES-v1.2.0.md': '1f669dbdacaceb74782be5a99c56aba270eb58073ba305c0a60524fdbe360786',
 };
 const VERSION_JSON_PATHS = [
   ['lazybuddy-plugin/.codebuddy-plugin/plugin.json', ['version']],
@@ -41,7 +42,7 @@ function nestedValue(value, keys) {
 function walk(root, directory = root) {
   const files = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'node_modules') continue;
+    if (entry.name === '.git' || entry.name === '.omo' || entry.name === 'node_modules') continue;
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...walk(root, absolute));
     else if (entry.isFile()) files.push(path.relative(root, absolute).split(path.sep).join('/'));
@@ -50,9 +51,10 @@ function walk(root, directory = root) {
 }
 
 function previousVersionClassification(relativePath, line) {
-  if (relativePath === 'RELEASE_NOTES-v1.1.0.md' || relativePath.startsWith('docs/v1.1.0-')) return 'historical-release-document';
+  if (relativePath === 'RELEASE_NOTES-v1.2.0.md' || relativePath.startsWith('docs/v1.2.0-')) return 'historical-release-document';
+  if (relativePath === 'RELEASE_NOTES-v1.2.1.md') return 'documented-migration-boundary';
+  if (relativePath === 'README.md' && /efficiency improvements/i.test(line)) return 'historical-release-summary';
   if (relativePath === 'lazybuddy-plugin/CHANGELOG.md') return 'historical-release-history';
-  if (relativePath === 'RELEASE_NOTES-v1.2.0.md') return 'documented-migration-boundary';
   if (relativePath.includes('/contracts/fixtures/') || relativePath.includes('/tests/fixtures/')) return 'historical-or-adversarial-fixture';
   if (relativePath.includes('automatic-tooling-contract.v1') || relativePath.includes('v1.0.3-')) return 'schema-independent-contract-history';
   if (relativePath.endsWith('release-version-classifier.js')) return 'classifier-input';
@@ -60,7 +62,7 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.endsWith('lazybuddy-contract-check.sh')) return 'schema-independent-contract-test';
   if (/(?:^|\/)(?:test|tests)\//.test(relativePath) && /(previous|historical|fixture|wrong|from|upgrade|mutable|prior)/i.test(line)) return 'historical-test-input';
   if (/\bcurrent\b.*\b(?:release|version)\b/i.test(line)) return 'current-version-drift';
-  if (/(upgrade|migrat|rollback|previous|historical|prior|old release|from v?1\.1\.0|tag\/v1\.1\.0|release notes)/i.test(line)) return 'historical-migration-reference';
+  if (/(upgrade|migrat|rollback|previous|historical|prior|old release|from v?1\.2\.0|tag\/v1\.2\.0|release notes)/i.test(line)) return 'historical-migration-reference';
   return null;
 }
 

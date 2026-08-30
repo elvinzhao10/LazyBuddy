@@ -28,9 +28,9 @@ function writeFile(root, relativePath, content, mode = 0o644) {
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'paired-candidate-contract.'));
   writeFile(root, 'LazyBuddy/bin/run', '#!/bin/sh\nexit 0\n', 0o755);
-  writeFile(root, 'LazyBuddy/lazybuddy-v1.2.0.tar.gz', 'buddy archive');
+  writeFile(root, 'LazyBuddy/lazybuddy-v1.2.1.tar.gz', 'buddy archive');
   writeFile(root, 'LazyTrae/bin/run', '#!/bin/sh\nexit 0\n', 0o755);
-  writeFile(root, 'LazyTrae/lazytrae-ai-v1.2.0.tgz', 'trae archive');
+  writeFile(root, 'LazyTrae/lazytrae-ai-v1.2.1.tgz', 'trae archive');
   writeFile(root, 'detached/build-metadata.json', '{"note":"untrusted metadata is inert"}\n');
   const inventory = buildInventory(root);
   const product = (productId, prefix, archive) => {
@@ -51,11 +51,11 @@ function fixture() {
   };
   const candidate = {
     schema_version: 'lazyseries.paired-candidate.v1',
-    release_version: '1.2.0',
+    release_version: '1.2.1',
     payload_stage: 'staged',
     products: [
-      product('lazybuddy', 'LazyBuddy', 'lazybuddy-v1.2.0.tar.gz'),
-      product('lazytrae', 'LazyTrae', 'lazytrae-ai-v1.2.0.tgz'),
+      product('lazybuddy', 'LazyBuddy', 'lazybuddy-v1.2.1.tar.gz'),
+      product('lazytrae', 'LazyTrae', 'lazytrae-ai-v1.2.1.tgz'),
     ],
     shared_contract_digests: [
       { name: 'lazyseries-capability-readiness.v2.json', sha256: '2'.repeat(64) },
@@ -66,7 +66,7 @@ function fixture() {
       sha256: inventory.find((entry) => entry.path === 'detached/build-metadata.json').sha256,
     },
     host_rows: HOSTS.map((host_id) => ({ host_id, status: 'pending' })),
-    onboarding_sibling: 'live-test-v1.2.0-<combined-digest>-onboarding',
+    onboarding_sibling: 'live-test-v1.2.1-<combined-digest>-onboarding',
   };
   candidate.combined_digest = computeCombinedDigest(candidate);
   const onboarding = {
@@ -183,13 +183,13 @@ test('refuses unexpected physical modes and directory modes after final freeze',
 test('advertises a fresh-extraction LazyBuddy verification command', () => {
   // Given an extracted LazyBuddy archive whose locked tooling dependencies are not installed.
   const inventory = [{
-    path: 'LazyBuddy/lazybuddy-v1.2.0.tar.gz',
+    path: 'LazyBuddy/lazybuddy-v1.2.1.tar.gz',
     mode: '0644',
     size: 1,
     sha256: '2'.repeat(64),
   }];
   // When the paired candidate records the product self-verification contract.
-  const product = productRecord('lazybuddy', 'LazyBuddy', 'lazybuddy-v1.2.0.tar.gz', SHA, inventory);
+  const product = productRecord('lazybuddy', 'LazyBuddy', 'lazybuddy-v1.2.1.tar.gz', SHA, inventory);
   // Then the advertised command installs the locked package dependencies before verification.
   assert.equal(
     product.command,
