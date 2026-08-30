@@ -7,7 +7,8 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current stable release is [v1.2.0](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.2.0).
+v1.2.0 is prepared for release but is not published yet. The current published
+release is [v1.1.0](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.1.0).
 
 ## Recommended: install with AI help
 
