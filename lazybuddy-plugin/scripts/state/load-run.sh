@@ -20,6 +20,7 @@ CWD="${CWD:-.}"
 state_require_run_dir "$CWD" "$RUN_ID" || exit 1
 STATE_FILE="$STATE_RUN_DIR/state.json"
 
+state_recover_transaction "$STATE_RUN_DIR" || exit 1
 state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
 if [ ! -f "$STATE_FILE" ]; then
     echo "Error: state.json not found for run '$RUN_ID'" >&2

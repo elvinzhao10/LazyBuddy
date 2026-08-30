@@ -1,0 +1,25 @@
+{
+  "schema_version": "lazyseries.cost-outcome.v1",
+  "run_id": "run-contracts",
+  "project_identity": "projects/lazyseries",
+  "route": "comprehensive",
+  "risk_reason": "public-contract-change",
+  "elapsed_ms": 1250,
+  "tool_invocations": 4,
+  "agent_invocations": 1,
+  "evidence_bytes": 2048,
+  "reruns": 0,
+  "rework_count": 0,
+  "gate_outcomes": [
+    {
+      "gate_id": "contracts",
+      "outcome": "passed"
+    }
+  ],
+  "tokens": {
+    "source": "estimated",
+    "input_tokens": 120,
+    "output_tokens": 80,
+    "unavailable_reason": null
+  }
+}

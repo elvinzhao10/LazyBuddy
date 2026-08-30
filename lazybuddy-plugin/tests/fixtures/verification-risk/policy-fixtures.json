@@ -1,0 +1,44 @@
+[
+  {
+    "name": "low-risk-one-file",
+    "input": {
+      "taskCategory": "quick",
+      "changedPaths": ["src/format-label.js"],
+      "riskFlags": [],
+      "capabilityFresh": true,
+      "evidenceFresh": true,
+      "dirtyTree": false,
+      "priorOutcomes": []
+    },
+    "before": { "fullSuiteInvocations": 2, "finalAssertions": 13 },
+    "expected": { "level": "direct", "fullSuiteInvocations": 0, "finalAssertions": 13 }
+  },
+  {
+    "name": "affected-module",
+    "input": {
+      "taskCategory": "deep",
+      "changedPaths": ["src/parser/index.js"],
+      "riskFlags": ["dependency"],
+      "capabilityFresh": true,
+      "evidenceFresh": true,
+      "dirtyTree": false,
+      "priorOutcomes": []
+    },
+    "before": { "fullSuiteInvocations": 2, "finalAssertions": 28 },
+    "expected": { "level": "affected", "fullSuiteInvocations": 0, "finalAssertions": 28 }
+  },
+  {
+    "name": "release",
+    "input": {
+      "taskCategory": "quick",
+      "changedPaths": ["package.json"],
+      "riskFlags": ["release"],
+      "capabilityFresh": true,
+      "evidenceFresh": true,
+      "dirtyTree": false,
+      "priorOutcomes": []
+    },
+    "before": { "fullSuiteInvocations": 2, "finalAssertions": 57 },
+    "expected": { "level": "comprehensive", "fullSuiteInvocations": 2, "finalAssertions": 57 }
+  }
+]

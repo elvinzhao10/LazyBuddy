@@ -2,6 +2,21 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.2.0 — Evidence-bound execution and release integrity (2026-08-28)
+
+- Required fresh revision-bound completion evidence, atomic recoverable run
+  state, task-owned leases, bounded cost telemetry, and deterministic
+  risk-scaled verification.
+- Bound CodeBuddy and WorkBuddy adapters/status to current executable,
+  capability, build, and session fingerprints.
+- Hardened Python preflight, network, MCP, filesystem, dirty-tree, and
+  lifecycle ownership boundaries while preserving user-modified state.
+- Updated current plugin, marketplace, tooling, MCP, lifecycle, candidate, and
+  documentation authorities to v1.2.0; historical artifacts and independent
+  contract versions remain unchanged.
+- Added release-version classification, immutable-history checks, offline
+  package installation, and synchronized paired-product parity gates.
+
 ## v1.1.0 — Native host readiness boundaries (2026-08-19)
 
 This documentation-only release is the current human-facing status guide. It

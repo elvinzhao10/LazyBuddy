@@ -101,6 +101,7 @@ TOOL_LIST='{"tools":[
   {"name":"discover_checks","description":"Read the package-owned verification contract and return checks as JSON","inputSchema":{"type":"object","properties":{"section":{"type":"string"}}}},
   {"name":"run_check","description":"Classify a task failure and record the event","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"task_id":{"type":"string"},"error_message":{"type":"string"}},"required":["run_id","task_id","error_message"]}},
   {"name":"record_gate_result","description":"Record gate result to events.jsonl","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"gate_name":{"type":"string"},"status":{"type":"string","enum":["passed","failed"]},"result":{"type":"string"}},"required":["run_id","gate_name","status"]}},
+  {"name":"record_criterion_result","description":"Record immutable task/criterion/worker evidence with bounded flake and capacity gates","inputSchema":{"type":"object","properties":{"task_namespace":{"type":"string"},"criterion_id":{"type":"string"},"worker_id":{"type":"string"},"evidence_name":{"type":"string"},"status":{"type":"string","enum":["passed","failed"]},"bytes":{"type":"string"},"flake_assertion":{"type":"string"},"capacity":{"type":"object"}},"required":["task_namespace","criterion_id","worker_id","evidence_name","status","bytes"]}},
   {"name":"list_gate_results","description":"Read verification gates from state.json","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
   {"name":"create_repair_task","description":"Create repair task for a failed task","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"},"failed_task_id":{"type":"string"},"classification":{"type":"string"}},"required":["run_id","failed_task_id","classification"]}},
   {"name":"summarize_verification","description":"Summarize verification from state.json + events.jsonl","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}}
@@ -150,7 +151,7 @@ while IFS= read -r INPUT || [ -n "$INPUT" ]; do
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"1.1.0"}}' ;;
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"verification","version":"1.2.0"}}' ;;
   tools/list) reply "$TOOL_LIST" ;;
   tools/call)
     if ! python3 -c "import json, sys; params=json.load(sys.stdin).get('params'); assert isinstance(params, dict) and isinstance(params.get('name'), str) and isinstance(params.get('arguments', {}), dict)" 2>/dev/null <<<"$INPUT"; then
@@ -185,6 +186,13 @@ ev=dict(ts=os.environ['NOW'], run_id=rid, event='gate_result', gate=os.environ['
 with open(os.environ['STATE_RUN_DIR'] + '/events.jsonl','a') as f: f.write(json.dumps(ev)+'\n')
 "
         reply "$(result_object status ok gate "$GNAME" gate_result "$GST")" ;;
+      record_criterion_result)
+        EVIDENCE_ROOT="$CWD/.lazybuddy/evidence/runtime"
+        if ! RESULT=$(printf '%s' "$ARGS" | node "$PLUGIN_ROOT/scripts/runtime-freshness-entry.js" criterion "$EVIDENCE_ROOT" 2>&1); then
+          err "$RESULT"
+          continue
+        fi
+        reply "$RESULT" ;;
       list_gate_results)
         SF=$(resolve_run_state "$RID") || { err "invalid or unsafe run_id"; continue; }
         reply "$(python3 -c "import json; d=json.load(open('$SF')); print(json.dumps(d.get('verification_gates',[])))")" ;;
@@ -197,17 +205,19 @@ with open(os.environ['STATE_RUN_DIR'] + '/events.jsonl','a') as f: f.write(json.
         SF=$(resolve_run_state "$RID") || { err "invalid or unsafe run_id"; continue; }
         require_run_events "$RID" || { err "invalid or unsafe run_id"; continue; }
         export RID CWD SF STATE_RUN_DIR
-        reply "$(python3 << 'PYEOF'
+        if ! SUMMARY=$(python3 << 'PYEOF' 2>&1
 import json, os; cwd=os.environ.get('CWD','.'); rid=os.environ['RID']
 sf=os.environ['SF']
 ef=os.environ['STATE_RUN_DIR'] + '/events.jsonl'
 state=json.load(open(sf)); events=[]
 if os.path.exists(ef):
     with open(ef) as f:
-        for line in f:
+        for line_number, line in enumerate(f, 1):
             if line.strip():
-                try: events.append(json.loads(line))
-                except: pass
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    raise SystemExit(f"malformed events.jsonl line {line_number}")
 tasks=state.get('tasks',[])
 s=dict(run_id=rid, status=state.get('status','unknown'), task_count=len(tasks),
     completed_tasks=sum(1 for t in tasks if t.get('status')=='completed'),
@@ -215,7 +225,11 @@ s=dict(run_id=rid, status=state.get('status','unknown'), task_count=len(tasks),
     event_count=len(events), gates=state.get('verification_gates',[]), updated_at=state.get('updated_at',''))
 print(json.dumps(s))
 PYEOF
-)" ;;
+); then
+          err "$SUMMARY"
+          continue
+        fi
+        reply "$SUMMARY" ;;
       *) err "unknown tool: $TNAME" ;;
     esac ;;
   *) err "unsupported method: $METHOD" ;;

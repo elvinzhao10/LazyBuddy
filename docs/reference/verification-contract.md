@@ -6,9 +6,10 @@ the package commands from `lazybuddy-plugin/`.
 | Step | Command | Expected package evidence |
 | --- | --- | --- |
 | Package readiness | `bash scripts/lazybuddy-load-check.sh` | `PACKAGE_READINESS=full`, or a specific degraded explanation. |
-| Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS`. |
+| Package health | `bash scripts/lazybuddy-plugin-doctor.sh` | `Doctor check: ALL PASS`; package-only and no PATH host execution. |
+| Explicit host manifest validation | `bash scripts/lazybuddy-plugin-doctor.sh --host-validator "/absolute/path/to/codebuddy"` | The named executable is bounded and reports semantic validation success. |
 | MCP integration | `bash scripts/lazybuddy-mcp-test.sh` | `MCP test: ALL PASS`. |
-| Aggregate verification | `bash scripts/lazybuddy-verify.sh` | JSON containing `"all_pass":true`. |
+| Aggregate verification | `bash scripts/lazybuddy-verify.sh` | JSON containing passing `shell_regressions`, `node_tests`, `python_tests`, and `all_pass`. |
 | Publication contract | `bash tests/publication-regression.sh` | Root publications, the learner-path manifest, and contained local links pass. |
 | Cross-repository learner manifest | `bash tests/v018-docs-manifest-parity.sh --lazybuddy-root "/absolute/lazybuddy" --lazytrae-root "/absolute/lazytrae"` | Explicit roots have the same learner paths and page titles; host-specific prose may differ. |
 
@@ -31,6 +32,17 @@ fallback and a full plugin route together is unsupported because duplicate
 Skills or MCP processes can collide. Migrate by stopping the host session,
 removing only the old route's LazyBuddy entries through the host UI, choosing
 one route, starting a fresh session, and observing that route's capabilities.
+
+Verification MCP ledger parsing fails a request with
+`malformed events.jsonl line N` for any malformed nonblank event, without
+ending the stdio server or suppressing a later valid request. A missing runs
+root remains a normal no-active-run lifecycle state. A present candidate state
+that is corrupt or unreadable is a typed lifecycle error and must not cause an
+event to be appended to another run.
+
+Verification-risk reports include monotonic in-memory `elapsed_ms` for the
+whole run and each gate. Checked-in efficiency baselines use
+`validation_elapsed_ms` for the historical fixture duration.
 
 Timeouts cover trusted package-owned checks only. The runner starts each check
 in its own process group, terminates that group on deadline, and reports any

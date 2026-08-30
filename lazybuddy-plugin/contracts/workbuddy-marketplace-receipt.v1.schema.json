@@ -17,7 +17,7 @@
         "manifest": { "const": "lazybuddy-plugin/.workbuddy-plugin/plugin.json" },
         "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "plugin": { "const": "lazybuddy" },
-        "version": { "const": "1.1.0" }
+        "version": { "const": "1.2.0" }
       }
     },
     "host": { "const": "workbuddy" },

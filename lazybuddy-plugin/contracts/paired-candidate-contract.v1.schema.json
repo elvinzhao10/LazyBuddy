@@ -26,7 +26,7 @@
     "payloadDigest": "sha256('payload-v1\\n' + ordered(path + NUL + mode + NUL + size + NUL + sha256) + '\\n')",
     "combinedDigest": "sha256('lazyseries-paired-candidate-v1\\n' + canonical-json(schema version, release version, payload stage, ordered products including full source SHAs/archive/tree/payload digests/commands/runtimes, ordered shared contract digests, detached metadata binding, six pending host rows, onboarding sibling) + '\\n')",
     "staging": {
-      "name": ".live-test-v1.1.0-<combined-digest>.staging-<nonce>",
+      "name": ".live-test-v1.2.0-<combined-digest>.staging-<nonce>",
       "exclusiveCreate": true,
       "atomicRename": true,
       "refuseExistingDestination": true,
@@ -146,7 +146,7 @@
       ],
       "properties": {
         "schema_version": { "const": "lazyseries.paired-candidate.v1" },
-        "release_version": { "const": "1.1.0" },
+        "release_version": { "const": "1.2.0" },
         "payload_stage": { "enum": ["staged", "immutable-final"] },
         "products": {
           "type": "array",
@@ -178,7 +178,7 @@
           }
         },
         "host_rows": { "$ref": "#/$defs/pendingHostRows" },
-        "onboarding_sibling": { "const": "live-test-v1.1.0-<combined-digest>-onboarding" },
+        "onboarding_sibling": { "const": "live-test-v1.2.0-<combined-digest>-onboarding" },
         "combined_digest": { "$ref": "#/$defs/sha256" }
       }
     },

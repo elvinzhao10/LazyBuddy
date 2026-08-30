@@ -145,8 +145,29 @@ SHARED_FILES=(
     fixtures/host-evidence-v1/valid-onboarding-receipt.json
     paired-candidate-contract.v1.schema.json
     paired-candidate-contract.v1.schema.json.sha256
-    tests/paired-candidate-contract.test.js
     validate-paired-candidate.js
+    lazyseries-completion-evidence.v1.schema.json
+    lazyseries-cost-outcome.v1.schema.json
+    validate-lazyseries-record.js
+    tests/completion-cost-contract.test.js
+    fixtures/completion-evidence-v1/artifacts/criterion.log
+    fixtures/completion-evidence-v1/extra-key.json
+    fixtures/completion-evidence-v1/missing-review.json
+    fixtures/completion-evidence-v1/nonzero-exit.json
+    fixtures/completion-evidence-v1/same-executor-verifier.json
+    fixtures/completion-evidence-v1/sha256sums.txt
+    fixtures/completion-evidence-v1/tampered-artifact.json
+    fixtures/completion-evidence-v1/valid.json
+    fixtures/completion-evidence-v1/wrong-criterion.json
+    fixtures/completion-evidence-v1/wrong-head.json
+    fixtures/completion-evidence-v1/wrong-version.json
+    fixtures/cost-outcome-v1/estimated-token.json
+    fixtures/cost-outcome-v1/extra-key.json
+    fixtures/cost-outcome-v1/secret-home-path.json
+    fixtures/cost-outcome-v1/secret-value.json
+    fixtures/cost-outcome-v1/sha256sums.txt
+    fixtures/cost-outcome-v1/valid-native-token.json
+    fixtures/cost-outcome-v1/valid-null-token.json
 )
 
 for relative in "${SHARED_FILES[@]}"; do
@@ -189,6 +210,8 @@ for root in "$BUDDY_CONTRACTS" "$TRAE_CONTRACTS"; do
     verify_fixture_sums "$root/fixtures/readiness-v2"
     verify_fixture_sums "$root/fixtures/lifecycle-v1"
     verify_fixture_sums "$root/fixtures/lifecycle-v2"
+    verify_fixture_sums "$root/fixtures/completion-evidence-v1"
+    verify_fixture_sums "$root/fixtures/cost-outcome-v1"
 done
 
 node - "$LAZYBUDDY_ROOT" "$LAZYTRAE_ROOT" "${SHARED_FILES[@]}" <<'NODE'
@@ -310,6 +333,10 @@ run_bounded "buddy-host-evidence" env NODE_PATH="$TOOLING_MODULES" node --test \
     "$BUDDY_CONTRACTS/host-evidence-contract.test.js"
 run_bounded "trae-host-evidence" env NODE_PATH="$TOOLING_MODULES" node --test \
     "$TRAE_CONTRACTS/host-evidence-contract.test.js"
+run_bounded "buddy-completion-cost" env NODE_PATH="$TOOLING_MODULES" node --test \
+    "$BUDDY_CONTRACTS/tests/completion-cost-contract.test.js"
+run_bounded "trae-completion-cost" env NODE_PATH="$TOOLING_MODULES" node --test \
+    "$TRAE_CONTRACTS/tests/completion-cost-contract.test.js"
 run_bounded "paired-candidate-schema" env NODE_PATH="$TOOLING_MODULES" node -e '
     const fs = require("node:fs");
     const Ajv2020 = require("ajv/dist/2020");

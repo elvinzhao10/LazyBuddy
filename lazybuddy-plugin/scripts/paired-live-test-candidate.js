@@ -81,7 +81,7 @@ function verifyCandidate(candidateInput) {
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
   const combined = computeCombinedDigest(manifest);
   refuse(combined !== manifest.combined_digest, 'COMBINED_DIGEST_MISMATCH', 'manifest projection');
-  refuse(path.basename(root) !== `live-test-v1.1.0-${combined}`, 'CANDIDATE_NAME_MISMATCH', root);
+  refuse(path.basename(root) !== `live-test-v1.2.0-${combined}`, 'CANDIDATE_NAME_MISMATCH', root);
   validateCandidate(manifest, {
     payloadRoot: root,
     destination: path.join(root, '.paired-candidate-validation-destination'),
@@ -153,7 +153,7 @@ async function assemble(values) {
   refuse(!buddySchema.equals(traeSchema), 'SHARED_SCHEMA_MISMATCH', 'paired-candidate-contract.v1.schema.json');
 
   const nonce = require('node:crypto').randomBytes(16).toString('hex');
-  const transaction = { child: null, lock: '', lockOwned: false, staging: path.join(outputRoot, `.live-test-v1.1.0.prestaging-${nonce}`), stagingOwned: true };
+  const transaction = { child: null, lock: '', lockOwned: false, staging: path.join(outputRoot, `.live-test-v1.2.0.prestaging-${nonce}`), stagingOwned: true };
   fs.mkdirSync(transaction.staging, { mode: 0o700 });
   const removeSignalCleanup = installSignalCleanup(transaction);
   let destination = '';
@@ -186,7 +186,7 @@ async function assemble(values) {
     const inventory = buildInventory(transaction.staging);
     const manifest = {
       schema_version: 'lazyseries.paired-candidate.v1',
-      release_version: '1.1.0',
+      release_version: '1.2.0',
       payload_stage: 'immutable-final',
       products: [
         productRecord('lazybuddy', 'LazyBuddy', artifacts.buddy.archive, artifacts.buddy.manifest.source_sha, inventory),
@@ -196,14 +196,14 @@ async function assemble(values) {
       payload_inventory: inventory.filter((entry) => entry.path !== 'detached/build-metadata.json'),
       detached_metadata: { path: 'detached/build-metadata.json', sha256: digest(metadataBytes) },
       host_rows: HOSTS.map((host_id) => ({ host_id, status: 'pending' })),
-      onboarding_sibling: 'live-test-v1.1.0-<combined-digest>-onboarding',
+      onboarding_sibling: 'live-test-v1.2.0-<combined-digest>-onboarding',
     };
     manifest.combined_digest = computeCombinedDigest(manifest);
-    destination = path.join(outputRoot, `live-test-v1.1.0-${manifest.combined_digest}`);
+    destination = path.join(outputRoot, `live-test-v1.2.0-${manifest.combined_digest}`);
     onboardingDestination = `${destination}-onboarding`;
     refuse(fs.existsSync(destination), 'DESTINATION_EXISTS', destination);
     refuse(fs.existsSync(onboardingDestination), 'DESTINATION_EXISTS', onboardingDestination);
-    const namedStaging = path.join(outputRoot, `.live-test-v1.1.0-${manifest.combined_digest}.staging-${nonce}`);
+    const namedStaging = path.join(outputRoot, `.live-test-v1.2.0-${manifest.combined_digest}.staging-${nonce}`);
     fs.renameSync(transaction.staging, namedStaging);
     transaction.staging = namedStaging;
     validateCandidate(manifest, { payloadRoot: transaction.staging, destination, physicalStage: 'staged' });
@@ -228,7 +228,7 @@ async function assemble(values) {
     fs.renameSync(transaction.staging, destination);
     transaction.stagingOwned = false;
     published = true;
-    onboardingStaging = path.join(outputRoot, `.live-test-v1.1.0-${manifest.combined_digest}-onboarding.staging-${nonce}`);
+    onboardingStaging = path.join(outputRoot, `.live-test-v1.2.0-${manifest.combined_digest}-onboarding.staging-${nonce}`);
     fs.mkdirSync(onboardingStaging, { mode: 0o700 });
     const onboarding = pendingTemplate(manifest.combined_digest, digest(manifestBytes));
     validateOnboarding(onboarding, manifest);

@@ -137,11 +137,16 @@ def _run_doctor(tmp_path: Path, output: str) -> subprocess.CompletedProcess[str]
             "CODEBUDDY_PLUGIN_ROOT": str(plugin),
             "LAZYBUDDY_DOCTOR_HOST": "package",
             "LAZYBUDDY_HOST_VALIDATOR_TIMEOUT_SECONDS": "1",
-            "PATH": f"{fake_bin}:/usr/bin:/bin",
+            "PATH": f"{fake_bin}:{environment.get('PATH', '')}",
         },
     )
     return subprocess.run(
-        ["bash", str(plugin / "scripts" / "lazybuddy-plugin-doctor.sh")],
+        [
+            "bash",
+            str(plugin / "scripts" / "lazybuddy-plugin-doctor.sh"),
+            "--host-validator",
+            str(fake_bin / "codebuddy"),
+        ],
         text=True,
         capture_output=True,
         check=False,

@@ -55,11 +55,14 @@ fi
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
+EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
 
-python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" <<'PYEOF'
+python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" <<'PYEOF'
 import json, sys, re, os
 
-state_file, plan_path, fix, now, run_id, cwd, tmp_file = sys.argv[1:]
+state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp = sys.argv[1:]
 fix = (fix == "--fix")
 
 with open(state_file) as f:
@@ -147,19 +150,29 @@ for box in plan_boxes:
             t["status"] = want
             changed = True
 if changed:
+    statuses = {task.get("id"): task.get("status") for task in tasks}
+    for task in tasks:
+        if task.get("status") == "done":
+            incomplete = [dependency for dependency in task.get("depends_on", []) if statuses.get(dependency) != "done"]
+            if incomplete:
+                raise SystemExit("Error: dependency %s must be done before task '%s'" % (", ".join(incomplete), task.get("id", "?")))
     state["updated_at"] = now
     with open(tmp_file, "w") as f:
         json.dump(state, f, indent=2)
-    os.replace(tmp_file, state_file)
-    # append event
-    ev_file = os.path.join(os.path.dirname(state_file), "events.jsonl")
     ev = {"ts": now, "run_id": run_id, "event": "plan_state_synced", "drift_fixed": len(drift)}
-    with open(ev_file, "a") as f:
-        f.write(json.dumps(ev) + "\n")
+    with open(events_tmp, "w") as output:
+        if os.path.exists(events_file):
+            with open(events_file) as source:
+                output.write(source.read())
+        output.write(json.dumps(ev) + "\n")
     print("\nRECONCILED: progress + task statuses updated (%d drift fixed)." % len(drift))
 else:
     print("\nNothing to write (only counters/statuses are auto-fixed; plan-only tasks need manual add).")
 PYEOF
 
-rm -f "$TMP_FILE" 2>/dev/null || true
+if [ -s "$TMP_FILE" ]; then
+    state_commit_transaction "$STATE_RUN_DIR" sync_plan_state \
+        "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")" \
+        "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
+fi
 exit 0

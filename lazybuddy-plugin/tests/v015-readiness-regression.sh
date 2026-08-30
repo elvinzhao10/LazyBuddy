@@ -79,7 +79,8 @@ expect_status full-package-doctor 0 env \
     PATH="$FULL_PACKAGE_VALIDATOR_BIN:$PATH" \
     LAZYBUDDY_V015_VALIDATOR_MARKER="$FULL_PACKAGE_VALIDATOR_MARKER" \
     CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" \
-    bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+    bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh" \
+        --host-validator "$FULL_PACKAGE_VALIDATOR_BIN/codebuddy"
 expect_contains full-package-doctor '^  \[PASS\] CodeBuddy manifest validator$'
 expect_contains full-package-doctor '^  \[PASS\] Command definitions \(14\)$'
 if [ -s "$FULL_PACKAGE_VALIDATOR_MARKER" ]; then
@@ -202,15 +203,15 @@ cp "$PLUGIN_ROOT/.codebuddy-plugin/plugin.json" "$INSTALLED_PLUGIN/.codebuddy-pl
 mkdir -p "$TMP/fake-codebuddy"
 printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "Request failed with status code 500"' 'exit 0' > "$TMP/fake-codebuddy/codebuddy"
 chmod +x "$TMP/fake-codebuddy/codebuddy"
-expect_status doctor-catches-validator-exit-zero-server-error 1 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_status doctor-catches-validator-exit-zero-server-error 1 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh" --host-validator "$TMP/fake-codebuddy/codebuddy"
 expect_contains doctor-catches-validator-exit-zero-server-error 'CodeBuddy manifest validator'
 
 printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "Validation successful: 0 errors"' 'exit 0' > "$TMP/fake-codebuddy/codebuddy"
-expect_status doctor-accepts-validator-zero-errors 0 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_status doctor-accepts-validator-zero-errors 0 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh" --host-validator "$TMP/fake-codebuddy/codebuddy"
 expect_contains doctor-accepts-validator-zero-errors '^  \[PASS\] CodeBuddy manifest validator$'
 
 printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "Validation passed with no errors"' 'exit 0' > "$TMP/fake-codebuddy/codebuddy"
-expect_status doctor-accepts-validator-no-errors 0 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh"
+expect_status doctor-accepts-validator-no-errors 0 env PATH="$TMP/fake-codebuddy:$PATH" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/lazybuddy-plugin-doctor.sh" --host-validator "$TMP/fake-codebuddy/codebuddy"
 expect_contains doctor-accepts-validator-no-errors '^  \[PASS\] CodeBuddy manifest validator$'
 
 printf '%s\n' '{"plugins":[{"name":"lazybuddy","version":"0.0.0"}]}' > "$TMP/mismatched-marketplace.json"

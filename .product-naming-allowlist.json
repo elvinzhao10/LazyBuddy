@@ -1,0 +1,39 @@
+{
+  "formerDisplayNames": [
+    {
+      "path": "AGENT_ATTRIBUTION.md",
+      "text": "Trae IDE",
+      "count": 1,
+      "classification": "attribution",
+      "reason": "Verbatim implementation attribution identifies the original host session."
+    },
+    {
+      "path": "lazybuddy-plugin/tooling/test_lazybuddy_adaptive_explanation.py",
+      "text": "Trae IDE",
+      "count": 1,
+      "classification": "old-note",
+      "reason": "Historical test-placement note records the environment where the test was introduced."
+    },
+    {
+      "path": "lazybuddy-plugin/tooling/test_lazybuddy_adaptive_integration.py",
+      "text": "Trae IDE",
+      "count": 1,
+      "classification": "old-note",
+      "reason": "Historical test-placement note records the environment where the test was introduced."
+    },
+    {
+      "path": "lazybuddy-plugin/tooling/test_lazybuddy_adaptive_snapshot.py",
+      "text": "Trae IDE",
+      "count": 1,
+      "classification": "old-note",
+      "reason": "Historical test-placement note records the environment where the test was introduced."
+    }
+  ],
+  "stableIdentityFiles": [
+    {
+      "path": "lazybuddy-plugin/contracts/paired-candidate-contract.v1.schema.json",
+      "ids": { "trae-cli": 4, "trae-ide": 4, "trae-work": 4 }
+    }
+  ],
+  "currentCliPages": []
+}

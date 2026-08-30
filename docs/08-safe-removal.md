@@ -3,7 +3,7 @@
 Remove host-managed integration through its host, and remove package-owned
 tooling only when its receipt proves ownership. These are separate operations.
 
-## v1.1.0 route removal boundary
+## v1.2.0 route removal boundary
 
 For `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`, remove only LazyBuddy
 entries through the selected host UI or documented host command. Preserve
@@ -33,6 +33,26 @@ The command removes only an unmodified, receipt-owned installation. It checks
 for an exact ownership receipt and owned contents; it does not use a path name
 as proof of ownership. If a root is modified, linked, foreign, or caller-owned,
 it is preserved rather than removed.
+
+## CodeBuddy Code removal scopes
+
+CodeBuddy Code package removal, daemon removal, and optional state cleanup are
+three separate operator choices:
+
+1. Remove the CodeBuddy Code application or CLI package through the same
+   installer or platform package manager that installed it. LazyBuddy does not
+   guess that installation route or delete its package files.
+2. Run `codebuddy daemon uninstall` only when the CodeBuddy documentation for
+   the selected build calls for removing its background daemon. That command
+   removes the daemon; it does not remove the CodeBuddy Code package,
+   LazyBuddy's receipt-owned product root, or host settings.
+3. Treat optional state cleanup as a separate, explicit action after package
+   and daemon removal. Preserve credentials, settings, projects, MCP entries,
+   and unknown or modified state unless the user selects each exact scope.
+
+LazyBuddy durable `offboard` removes only its exact receipt-owned `LazyBuddy/`
+product root. It is not any of the three CodeBuddy Code removal operations
+above and never authorizes them.
 
 ## What not to remove
 

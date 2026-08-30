@@ -24,6 +24,36 @@ fail() {
     FAIL=$((FAIL + 1))
 }
 
+PACKAGE_FIXTURE="$TMP/package-verifier"
+mkdir -p "$PACKAGE_FIXTURE/scripts" "$PACKAGE_FIXTURE/tooling" "$TMP/package-fake-bin"
+cp "$PLUGIN_ROOT/scripts/lazybuddy-package-verify.sh" "$PACKAGE_FIXTURE/scripts/"
+cp "$PLUGIN_ROOT/tooling/package.json" "$PLUGIN_ROOT/tooling/package-lock.json" "$PACKAGE_FIXTURE/tooling/"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$PACKAGE_FIXTURE/scripts/lazybuddy-verify.sh"
+chmod +x "$PACKAGE_FIXTURE/scripts/lazybuddy-verify.sh"
+cat > "$TMP/package-fake-bin/npm" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD" > "$LAZYBUDDY_NPM_CWD_CAPTURE"
+printf '%s\n' "$@" > "$LAZYBUDDY_NPM_ARGV_CAPTURE"
+mkdir -p node_modules
+SH
+chmod +x "$TMP/package-fake-bin/npm"
+LAZYBUDDY_NPM_CWD_CAPTURE="$TMP/npm.cwd" \
+LAZYBUDDY_NPM_ARGV_CAPTURE="$TMP/npm.argv" \
+PATH="$TMP/package-fake-bin:$PATH" \
+bash "$PACKAGE_FIXTURE/scripts/lazybuddy-package-verify.sh"
+case "$(cat "$TMP/npm.cwd")" in
+    */lazybuddy-package-verify.*) pass "npm ci runs inside the verifier temporary directory" ;;
+    *) fail "npm ci cwd boundary" ;;
+esac
+if [ "$(sed -n '1p' "$TMP/npm.argv")" = "ci" ] \
+    && grep -Fqx -- '--ignore-scripts' "$TMP/npm.argv" \
+    && ! grep -Fqx -- '--prefix' "$TMP/npm.argv"; then
+    pass "npm 11 verifier retains ci and ignore-scripts without prefix mode"
+else
+    fail "npm 11 verifier argv"
+fi
+[ ! -d "$(cat "$TMP/npm.cwd")" ] && pass "package verifier removes its temporary directory" || fail "package verifier temporary cleanup"
+
 # Given the publication regression, when the normal package verifier inventories
 # regressions, then it classifies that check separately and never schedules it as
 # standalone package work.
@@ -127,7 +157,9 @@ for script in lazybuddy-load-check.sh lazybuddy-plugin-doctor.sh lazybuddy-mcp-t
         bash "$INSTALLED_PLUGIN/scripts/$script"
 done
 if grep -Fq '"regression_inventory":"pass"' "$TMP/copied-lazybuddy-verify.sh.out" \
-    && grep -Fq '"automatic_tooling_regressions":"skipped-nested"' "$TMP/copied-lazybuddy-verify.sh.out"; then
+    && grep -Fq '"shell_regressions":"skipped-nested"' "$TMP/copied-lazybuddy-verify.sh.out" \
+    && grep -Fq '"node_tests":"skipped-nested"' "$TMP/copied-lazybuddy-verify.sh.out" \
+    && grep -Fq '"python_tests":"skipped-nested"' "$TMP/copied-lazybuddy-verify.sh.out"; then
     pass "copied verifier validates inventory without recursive regressions"
 else
     fail "copied verifier validates inventory without recursive regressions"

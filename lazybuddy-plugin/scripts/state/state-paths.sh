@@ -10,6 +10,33 @@ state_require_safe_run_id() {
     fi
 }
 
+state_recover_transaction() {
+    local run_dir="${1:-}"
+    local state_script_dir
+    state_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    python3 "$state_script_dir/state-transaction.py" recover "$run_dir" >/dev/null
+}
+
+state_commit_transaction() {
+    local run_dir="${1:-}"
+    local operation="${2:-}"
+    shift 2
+    local state_script_dir
+    state_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    python3 "$state_script_dir/state-transaction.py" commit "$run_dir" "$operation" "$@" >/dev/null
+}
+
+state_transaction_write_arg() {
+    local relative_path="${1:-}"
+    local target_path="${2:-}"
+    local source_path="${3:-}"
+    local digest="missing"
+    if [ -f "$target_path" ]; then
+        digest="$(shasum -a 256 "$target_path" | awk '{print $1}')"
+    fi
+    printf '%s|%s|%s\n' "$relative_path" "$digest" "$source_path"
+}
+
 state_prepare_runs_dir() {
     local cwd="${1:-.}"
     local state_dir="$cwd/.lazybuddy"

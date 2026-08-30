@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="1.1.0"
+EXPECTED_VERSION="1.2.0"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
@@ -15,7 +15,7 @@ for server in run-ledger verification status-dashboard context-graph code-intel 
   }
 done
 
-grep -q "lazybuddy-docs/$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/docs/server.py"
+grep -q "lazybuddy-docs/$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/docs/network_boundary.py"
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/status-dashboard/dashboard.html"
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/hooks/session-start.sh"
 grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
@@ -64,7 +64,6 @@ current_release_patterns = (
     r"\bLazyBuddy\s+v(\d+\.\d+\.\d+)\b",
     r"\bCurrent documentation release:\s*v(\d+\.\d+\.\d+)\b",
     r"\blazybuddy@lazybuddy\b[^\n]{0,80}\bversion\s+`?v?(\d+\.\d+\.\d+)\b",
-    r"github\.com/elvinzhao10/LazyBuddy/releases/tag/v(\d+\.\d+\.\d+)\b",
 )
 for relative in ("README.md", "AGENTS.md"):
     text = (root.parent / relative).read_text(encoding="utf-8")
@@ -73,10 +72,15 @@ for relative in ("README.md", "AGENTS.md"):
         for pattern in current_release_patterns
         for match in re.findall(pattern, text, flags=re.IGNORECASE)
     }
-    assert current_versions == {expected}, (
+    expected_versions = set() if relative == "README.md" else {expected}
+    assert current_versions == expected_versions, (
         f"{relative} current LazyBuddy release references reported "
         f"{sorted(current_versions)!r}"
     )
+
+readme = (root.parent / "README.md").read_text(encoding="utf-8")
+assert "v1.2.0 is prepared for release but is not published yet." in readme
+assert "current published\nrelease is [v1.1.0]" in readme
 
 historical_heading = "### Upgrade from v1.0.2"
 assert not any(

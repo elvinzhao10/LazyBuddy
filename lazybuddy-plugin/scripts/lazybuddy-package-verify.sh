@@ -13,6 +13,6 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 cp "$PLUGIN_ROOT/tooling/package.json" "$PLUGIN_ROOT/tooling/package-lock.json" "$TOOLING_ROOT/"
-npm --prefix "$TOOLING_ROOT" ci --ignore-scripts --no-audit --no-fund >&2
+(cd "$TOOLING_ROOT" && npm ci --ignore-scripts --no-audit --no-fund) >&2
 SIX_HOST_PARITY_NODE_MODULES="$TOOLING_ROOT/node_modules" \
     bash "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"

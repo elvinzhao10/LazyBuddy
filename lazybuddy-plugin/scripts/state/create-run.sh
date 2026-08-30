@@ -29,10 +29,14 @@ state_require_safe_run_file "$STATE_FILE" "state.json" || exit 1
 state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+STATE_TMP=$(mktemp "$RUN_DIR/.state.json.XXXXXX")
+EVENTS_TMP=$(mktemp "$RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$STATE_TMP" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
 
-python3 - "$RUN_ID" "$NOW" "$OBJECTIVE" "$STATE_FILE" <<'PYEOF'
+python3 - "$RUN_ID" "$NOW" "$OBJECTIVE" "$STATE_TMP" "$EVENTS_TMP" <<'PYEOF'
 import json, sys
-run_id, now, objective, state_file = sys.argv[1:]
+run_id, now, objective, state_file, events_file = sys.argv[1:]
 state = {
     'schema_version': '2',
     'run_id': run_id,
@@ -53,16 +57,13 @@ state = {
 }
 with open(state_file, 'w') as f:
     json.dump(state, f, indent=2)
-PYEOF
-
-# Append run_created event
-python3 - "$NOW" "$RUN_ID" "$OBJECTIVE" "$EVENTS_FILE" <<'PYEOF'
-import json
-import sys
-now, run_id, objective, events_file = sys.argv[1:]
 event = {'ts': now, 'run_id': run_id, 'event': 'run_created', 'objective': objective}
 with open(events_file, 'a') as f:
     f.write(json.dumps(event) + '\n')
 PYEOF
+
+state_commit_transaction "$RUN_DIR" create_run \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$STATE_TMP")" \
+    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
 
 echo "$RUN_DIR"

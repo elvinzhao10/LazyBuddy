@@ -48,7 +48,7 @@ boundaries. Host state is deliberately outside those boundaries.
 | [01 — Execution model](01-mental-model.md) | Why are instructions, execution, state, and proof distinct layers? |
 | [02 — Request decomposition](02-first-task.md) | How does an outcome become acceptance criteria and a proof surface? |
 | [03 — Package delivery](03-install-and-host-verification.md) | What does copying a package establish, and what does it not establish? |
-| [v1.1.0 supported route](v1.1.0-supported-route.md) | Which source branch, lifecycle commands, and host proof are current? |
+| [v1.2.0 supported route](v1.2.0-supported-route.md) | Which source branch, lifecycle commands, and host proof are current? |
 | [04 — Workflow playbooks](04-workflow-playbooks.md) | How do skills, commands, and agent roles encode proportional workflow policy? |
 | [05 — Evidence and completion](05-evidence-and-completion.md) | How are checks, statuses, timeouts, and completion claims kept honest? |
 | [06 — Capabilities and approvals](06-capabilities-and-approvals.md) | How does local-first capability selection avoid persistent mutation? |
@@ -60,7 +60,7 @@ boundaries. Host state is deliberately outside those boundaries.
 | [08 — Safe removal](08-safe-removal.md) | Why does removal stop at package-owned paths? |
 | [09 — Test and release verification](09-test-and-release-verification.md) | What does each release gate prove? |
 | [10 — Host capability matrix](10-host-capability-matrix.md) | Where do CodeBuddy and WorkBuddy intentionally diverge? |
-| `RELEASE_NOTES-v1.1.0.md` | Current route, readiness, migration, security, and removal boundaries at the repository root. |
+| `RELEASE_NOTES-v1.2.0.md` | Current route, readiness, migration, security, and removal boundaries at the repository root. |
 | [v1.0.3 migration guide](v1.0.3-migration-guide.md) | Historical guide to durable onboarding, update confirmation, runtime refresh, and scoped offboard. |
 
 The lookup tables in [state artifact reference](reference/state-artifact-reference.md),

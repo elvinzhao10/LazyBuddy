@@ -38,6 +38,7 @@ import sys
 
 roots = {"LazyBuddy": Path(sys.argv[1]).resolve(), "LazyTrae": Path(sys.argv[2]).resolve()}
 heading_pattern = re.compile(r"^# (.+?)\s*$", re.MULTILINE)
+host_name_pattern = re.compile(r"\b(?:LazyBuddy|LazyTrae)\b")
 manifests = {}
 
 for name, root in roots.items():
@@ -64,7 +65,12 @@ for source, target in (("LazyBuddy", "LazyTrae"), ("LazyTrae", "LazyBuddy")):
     missing = sorted(set(manifests[source]) - set(manifests[target]))
     if missing:
         raise SystemExit(f"FAIL: {source} paths missing from {target}: {', '.join(missing)}")
-    mismatched = [path for path in sorted(manifests[source]) if manifests[source][path] != manifests[target][path]]
+    mismatched = [
+        path
+        for path in sorted(manifests[source])
+        if host_name_pattern.sub("LazyHost", manifests[source][path])
+        != host_name_pattern.sub("LazyHost", manifests[target][path])
+    ]
     if mismatched:
         path = mismatched[0]
         raise SystemExit(

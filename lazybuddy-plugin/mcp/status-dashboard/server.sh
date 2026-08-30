@@ -85,6 +85,7 @@ resolve_run() {
   local rid="${1:-$(CWD="$CWD" bash "$PLUGIN_ROOT/scripts/state/latest-run.sh" 2>/dev/null || echo "")}"
   [ -n "$rid" ] || return 1
   state_require_run_dir "$CWD" "$rid" || return 1
+  state_recover_transaction "$STATE_RUN_DIR" || return 1
   state_require_existing_run_file "$STATE_RUN_DIR/state.json" "state file" || return 1
   echo "$STATE_RUN_DIR/state.json"
 }
@@ -108,7 +109,7 @@ fi
 
 case "$METHOD" in
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.1.0"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.2.0"}}'
     ;;
   tools/list)
     reply '{"tools":[
@@ -121,10 +122,16 @@ case "$METHOD" in
   show_run_status)
     SF=$(resolve_run "$(param_raw "run_id")") || { err "invalid or unsafe run_id"; continue; }
     RESULT=$(PLUGIN_ROOT="$PLUGIN_ROOT" python3 - "$SF" <<'PYEOF'
-import json,sys,os
+import json,sys,os,subprocess
 with open(sys.argv[1]) as f: s=json.load(f); t=s.get('tasks',[]); d=sum(1 for x in t if x.get('status')=='done')
 g=s.get('verification_gates',[]); gd=sum(1 for x in g if x.get('status')=='passed')
-r={'status':s.get('status',''),'objective':s.get('objective',''),'tasks_done':d,'tasks_total':len(t),'verification_gates':f'{gd}/{len(g)}','review_status':s.get('review_status',''),'iteration_count':s.get('iteration_count',0),'last_checkpoint':s.get('last_checkpoint',''),'run_id':s.get('run_id','')}
+plugin_root=os.environ['PLUGIN_ROOT']
+project_root=os.environ['CWD']
+authority=os.path.relpath(os.path.join(os.path.dirname(sys.argv[1]), 'completion-authority.json'), project_root)
+version=json.load(open(os.path.join(plugin_root, 'tooling', 'package.json')))['version']
+completed=subprocess.run(['node', os.path.join(plugin_root, 'scripts', 'completion-assessment.js'), '--root', project_root, '--authority', authority, '--package-version', version, '--remediation', 'show_run_status'], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+assessment=json.loads(completed.stdout)
+r={'status':s.get('status',''),'persisted_status':s.get('status',''),'completion_assessment':assessment,'objective':s.get('objective',''),'tasks_done':d,'tasks_total':len(t),'verification_gates':f'{gd}/{len(g)}','review_status':s.get('review_status',''),'iteration_count':s.get('iteration_count',0),'last_checkpoint':s.get('last_checkpoint',''),'run_id':s.get('run_id','')}
 # v1.0.3 W3.5: append adaptive explanation when an adaptive block is present.
 adaptive = s.get('adaptive')
 if isinstance(adaptive, dict):

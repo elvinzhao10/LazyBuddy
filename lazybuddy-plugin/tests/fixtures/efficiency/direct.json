@@ -1,0 +1,33 @@
+{
+  "contract_version": "lazyseries-efficiency-baseline.v1",
+  "product": "lazybuddy",
+  "scenario": "direct",
+  "route": { "classification": "direct-path-complete", "actor_count": 1 },
+  "quality": {
+    "assertions_expected": 13,
+    "completion": "complete",
+    "assertion_output": "lazybuddy-liveeval/lazybuddy/raw/direct/test-output.txt",
+    "assertion_manifest": [
+      { "file": "lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.py", "count": 13, "sha256": "991f1d8bc4e5b79433ef27d3705be4866d2a2951c90d738b24a5628556fc7afd" }
+    ],
+    "required_evidence": [
+      { "file": "lazybuddy-liveeval/lazybuddy/raw/direct/test-output.txt", "bytes": 1316, "sha256": "23431390d57198f3f55571b424226a06886ceee349fbe6bf0035d7f6bc565826" },
+      { "file": "lazybuddy-liveeval/lazybuddy/raw/direct/final-diff.txt", "bytes": 1170, "sha256": "67b6fcc5d7957d683ffc4e3d42ff4acda403c2d25d036fdb230b4d80d9da76d9" },
+      { "file": "lazybuddy-liveeval/lazybuddy/raw/direct/adaptive-directive.json", "bytes": 2285, "sha256": "4c307d8a426cf8147816c1094f8931a53c4368ffadcfb914e2c1b8e6b8daa3a7" }
+    ]
+  },
+  "gate_outcomes": [
+    { "gate": "exact-test-assertions", "outcome": "passed" },
+    { "gate": "completion-classification", "outcome": "passed" },
+    { "gate": "required-evidence", "outcome": "passed" }
+  ],
+  "cost": {
+    "validation_elapsed_ms": 75300,
+    "invocation_count": 2,
+    "evidence_bytes": 5037,
+    "reruns": 0,
+    "rework": 0,
+    "concurrency": 1,
+    "tokens": { "available": false, "total": null, "reason": "host did not expose token telemetry" }
+  }
+}

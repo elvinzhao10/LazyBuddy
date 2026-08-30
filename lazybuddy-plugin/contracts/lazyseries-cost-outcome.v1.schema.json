@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lazyseries.dev/contracts/lazyseries-cost-outcome.v1.schema.json",
+  "title": "LazySeries Cost and Outcome v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "run_id", "project_identity", "route", "risk_reason",
+    "elapsed_ms", "tool_invocations", "agent_invocations", "evidence_bytes",
+    "reruns", "rework_count", "gate_outcomes", "tokens"
+  ],
+  "properties": {
+    "schema_version": { "const": "lazyseries.cost-outcome.v1" },
+    "run_id": { "$ref": "#/$defs/identity" },
+    "project_identity": { "$ref": "#/$defs/relative_path" },
+    "route": { "enum": ["direct", "affected", "comprehensive"] },
+    "risk_reason": { "$ref": "#/$defs/identity" },
+    "elapsed_ms": { "$ref": "#/$defs/nonnegative_integer" },
+    "tool_invocations": { "$ref": "#/$defs/nonnegative_integer" },
+    "agent_invocations": { "$ref": "#/$defs/nonnegative_integer" },
+    "evidence_bytes": { "$ref": "#/$defs/nonnegative_integer" },
+    "reruns": { "$ref": "#/$defs/nonnegative_integer" },
+    "rework_count": { "$ref": "#/$defs/nonnegative_integer" },
+    "gate_outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate_id", "outcome"],
+        "properties": {
+          "gate_id": { "$ref": "#/$defs/identity" },
+          "outcome": { "enum": ["passed", "failed", "skipped"] }
+        }
+      }
+    },
+    "tokens": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "input_tokens", "output_tokens", "unavailable_reason"],
+          "properties": {
+            "source": { "const": "native" },
+            "input_tokens": { "$ref": "#/$defs/nonnegative_integer" },
+            "output_tokens": { "$ref": "#/$defs/nonnegative_integer" },
+            "unavailable_reason": { "type": "null" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "input_tokens", "output_tokens", "unavailable_reason"],
+          "properties": {
+            "source": { "const": "unavailable" },
+            "input_tokens": { "type": "null" },
+            "output_tokens": { "type": "null" },
+            "unavailable_reason": { "type": "string", "minLength": 1, "maxLength": 240 }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+      "maxLength": 160
+    },
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!~)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$",
+      "maxLength": 320
+    },
+    "nonnegative_integer": { "type": "integer", "minimum": 0 }
+  }
+}

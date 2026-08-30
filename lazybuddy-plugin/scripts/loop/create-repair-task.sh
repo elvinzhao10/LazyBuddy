@@ -31,6 +31,9 @@ fi
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
+EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
+cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
+trap cleanup_transaction_temps EXIT
 
 case "$CLASSIFICATION" in
     retry|fallback|ask-user|human-needed) ;;
@@ -40,12 +43,13 @@ case "$CLASSIFICATION" in
         ;;
 esac
 
-python3 - "$STATE_FILE" "$TMP_FILE" "$NOW" "$FAILED_TASK_ID" "$CLASSIFICATION" <<'PYEOF'
+python3 - "$STATE_FILE" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$NOW" "$RUN_ID" "$FAILED_TASK_ID" "$CLASSIFICATION" <<'PYEOF'
 import json
+import os
 import sys
 import uuid
 
-state_file, tmp_file, now, failed_task_id, classification = sys.argv[1:]
+state_file, tmp_file, events_file, events_tmp, now, run_id, failed_task_id, classification = sys.argv[1:]
 state = json.load(open(state_file))
 
 if classification in ('retry', 'fallback'):
@@ -76,15 +80,14 @@ else:
 state['updated_at'] = now
 with open(tmp_file, 'w') as handle:
     json.dump(state, handle, indent=2)
-PYEOF
-mv "$TMP_FILE" "$STATE_FILE"
-
-# Append repair_task_created event
-python3 - "$NOW" "$RUN_ID" "$FAILED_TASK_ID" "$CLASSIFICATION" "$EVENTS_FILE" <<'PYEOF'
-import json
-import sys
-now, run_id, failed_task_id, classification, events_file = sys.argv[1:]
 event = {'ts': now, 'run_id': run_id, 'event': 'repair_task_created', 'failed_task_id': failed_task_id, 'classification': classification}
-with open(events_file, 'a') as f:
-    f.write(json.dumps(event) + '\n')
+with open(events_tmp, 'w') as output:
+    if os.path.exists(events_file):
+        with open(events_file) as source:
+            output.write(source.read())
+    output.write(json.dumps(event) + '\n')
 PYEOF
+
+state_commit_transaction "$STATE_RUN_DIR" create_repair_task \
+    "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")" \
+    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"

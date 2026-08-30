@@ -15,6 +15,7 @@ Usage:
   lazybuddy-tooling.sh <remote-status|remote-doctor|remote-export-mcp> --tooling-root ABSOLUTE_DIRECTORY
   lazybuddy-tooling.sh <remote-enable|remote-disable> --tooling-root ABSOLUTE_DIRECTORY <context7|grep_app>
   lazybuddy-tooling.sh verify --target ABSOLUTE_TARGET_DIRECTORY <--dry-run|--run> [lint|typecheck|test|build ...]
+  lazybuddy-tooling.sh verification-risk --target ABSOLUTE_TARGET_DIRECTORY --input JSON_FILE --gate-config JSON_FILE --report JSON_FILE --timeout SECONDS
   lazybuddy-tooling.sh <lsp-status|lsp-install|lsp-doctor|lsp-uninstall> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
   lazybuddy-tooling.sh <codegraph-status|codegraph-install|codegraph-init|codegraph-enable|codegraph-doctor|codegraph-uninstall|codegraph-export-mcp> --target ABSOLUTE_TARGET_DIRECTORY --tooling-root ABSOLUTE_DIRECTORY
   lazybuddy-tooling.sh setup --non-interactive --json
@@ -1815,6 +1816,7 @@ case "$COMMAND" in
         esac
         ;;
     verify) parse_verify "$@"; verify_target ;;
+    verification-risk) exec node "$PLUGIN_ROOT/scripts/verification-risk-runner.js" "$@" ;;
     lsp-status|lsp-install|lsp-doctor|lsp-uninstall)
         parse_lsp "$@"
         case "$COMMAND" in

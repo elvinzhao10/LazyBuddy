@@ -4,7 +4,7 @@ Completion is a claim backed by evidence, not a green-looking status message.
 LazyBuddy separates package readiness from live-host behavior; that distinction
 is the most important rule for interpreting results.
 
-For the current v1.1.0 human-facing boundary, the route IDs are
+For the current v1.2.0 human-facing boundary, the route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 uses native modes
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels `documented-tested`, `documented-untested`,
