@@ -230,11 +230,29 @@ grep -Fxq 'outside' "$SYMLINK_TARGET" || fail 'symlink target was changed'
 
 HARDLINK_ROOT="$TMP/hardlink-receipt"
 HARDLINK_TARGET="$TMP/hardlink-target.json"
+LINUX_STAT_BIN="$TMP/linux-stat-bin"
+mkdir "$LINUX_STAT_BIN"
+cat > "$LINUX_STAT_BIN/stat" <<'SH'
+#!/usr/bin/env bash
+if [ "${1:-}" = "-f" ]; then
+    printf '%s\n' 'linux filesystem metadata'
+    exit 0
+fi
+if [ "${1:-}" = "-c" ] && [ "${2:-}" = '%h' ]; then
+    printf '%s\n' 2
+    exit 0
+fi
+exec /usr/bin/stat "$@"
+SH
+chmod +x "$LINUX_STAT_BIN/stat"
 install_owned "$HARDLINK_ROOT"
 mv "$HARDLINK_ROOT/.lazybuddy-tooling-receipt.json" "$HARDLINK_TARGET"
 ln "$HARDLINK_TARGET" "$HARDLINK_ROOT/.lazybuddy-tooling-receipt.json"
 expect_refusal 'hardlink-receipt-refusal' "$HARDLINK_ROOT"
-[ "$(stat -f '%l' "$HARDLINK_TARGET" 2>/dev/null || stat -c '%h' "$HARDLINK_TARGET")" = 2 ] || fail 'hardlink receipt was changed'
+hardlink_count() {
+    stat -c '%h' "$1" 2>/dev/null || stat -f '%l' "$1"
+}
+[ "$(PATH="$LINUX_STAT_BIN:$PATH" hardlink_count "$HARDLINK_TARGET")" = 2 ] || fail 'hardlink receipt was changed'
 pass 'tampered, unknown, symlinked, and hardlinked roots are preserved'
 
 # Given a caller-owned pre-existing CodeGraph index and a matching receipt that

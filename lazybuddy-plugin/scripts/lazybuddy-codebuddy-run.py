@@ -165,7 +165,7 @@ def preflight_resume(args: argparse.Namespace) -> None:
     if not any(binding_values): return
     if not all(binding_values) or args.state_file is None: raise AdapterError("incomplete_session_binding")
     try:
-        with tempfile.TemporaryDirectory(prefix="lazybuddy-resume-", dir="/private/tmp") as temporary:
+        with tempfile.TemporaryDirectory(prefix="lazybuddy-resume-") as temporary:
             probe_state = Path(temporary) / "state.json"
             probe_state.write_bytes(args.state_file.read_bytes())
             completed = subprocess.run(binding_command(args, probe_state, args.resume), check=False, capture_output=True, text=True, timeout=10)
@@ -239,7 +239,7 @@ def main() -> int:
         write_result(args.result_file, {"status": "fail", "reason": reason})
         return 2
     schema_text = json.dumps(schema, sort_keys=True, separators=(",", ":")) if schema is not None else None; bounded = Path(__file__).resolve().parent / "lazybuddy-bounded-run.py"
-    with tempfile.TemporaryDirectory(prefix="lazybuddy-codebuddy-", dir="/private/tmp") as temporary:
+    with tempfile.TemporaryDirectory(prefix="lazybuddy-codebuddy-") as temporary:
         root = Path(temporary)
         stdin_file = args.input_file if args.input_format == "stream-json" else root / "stdin"
         if args.input_format == "text": stdin_file.write_bytes(b"")

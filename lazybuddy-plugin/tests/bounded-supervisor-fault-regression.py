@@ -43,7 +43,7 @@ def run_fault_case(
     configure: Callable[[ExitStack], None],
     target_must_start: bool,
 ) -> None:
-    with tempfile.TemporaryDirectory(prefix=f"todo13-{name}-", dir="/private/tmp") as temporary:
+    with tempfile.TemporaryDirectory(prefix=f"todo13-{name}-") as temporary:
         root = Path(temporary)
         result_path = root / "result.json"
         target_started = root / "target-started"

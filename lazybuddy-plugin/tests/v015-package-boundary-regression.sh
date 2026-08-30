@@ -37,8 +37,18 @@ printf '%s\n' "$@" > "$LAZYBUDDY_NPM_ARGV_CAPTURE"
 mkdir -p node_modules
 SH
 chmod +x "$TMP/package-fake-bin/npm"
+cat > "$TMP/package-fake-bin/mktemp" <<'SH'
+#!/usr/bin/env bash
+template="${!#}"
+case "$template" in
+    /private/tmp/*) exit 73 ;;
+esac
+exec /usr/bin/mktemp "$@"
+SH
+chmod +x "$TMP/package-fake-bin/mktemp"
 LAZYBUDDY_NPM_CWD_CAPTURE="$TMP/npm.cwd" \
 LAZYBUDDY_NPM_ARGV_CAPTURE="$TMP/npm.argv" \
+TMPDIR= \
 PATH="$TMP/package-fake-bin:$PATH" \
 bash "$PACKAGE_FIXTURE/scripts/lazybuddy-package-verify.sh"
 case "$(cat "$TMP/npm.cwd")" in

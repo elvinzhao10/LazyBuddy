@@ -175,7 +175,7 @@ while True:
     encoding="utf-8",
 )
 provider.chmod(0o755)
-session = LspSession(str(provider), "typescript", project, 2)
+session = LspSession("./transient-lsp.py", "typescript", project, 2)
 try:
     session.initialize()
     session.open_file(usage)

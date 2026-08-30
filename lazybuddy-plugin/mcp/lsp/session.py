@@ -17,8 +17,11 @@ SEMANTIC_METHODS = frozenset({
 
 def provider_environment(command: str) -> dict[str, str]:
     environment = os.environ.copy()
-    runtime_root = Path(command).parent.parents[3] / ".lazybuddy-lsp-npm-runtime"
-    if not all((runtime_root / name).is_dir() and not (runtime_root / name).is_symlink() for name in ("home", "cache", "config", "tmp")):
+    for directory in (Path(command).parent, *Path(command).parent.parents):
+        runtime_root = directory / ".lazybuddy-lsp-npm-runtime"
+        if all((runtime_root / name).is_dir() and not (runtime_root / name).is_symlink() for name in ("home", "cache", "config", "tmp")):
+            break
+    else:
         return environment
     for name in tuple(environment):
         if name.lower().startswith("npm_config_"):
