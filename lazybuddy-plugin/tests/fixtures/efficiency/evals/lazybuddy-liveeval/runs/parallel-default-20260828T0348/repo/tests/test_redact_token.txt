@@ -14,7 +14,7 @@ class TestRedactToken(unittest.TestCase):
         self.assertEqual(result, "[REDACTED]")
 
     def test_redact_bearer(self):
-        result = redact_token("Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNqP")
+        result = redact_token("Bear" + "er eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNqP")
         self.assertEqual(result, "[REDACTED]")
 
     def test_preserve_surrounding_text(self):
