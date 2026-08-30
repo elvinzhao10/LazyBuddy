@@ -227,7 +227,7 @@ test('rejects assertion symlink resolving into sibling product namespace', (t) =
   fs.mkdirSync(ownRoot);
   fs.mkdirSync(siblingRoot);
   const siblingFile = path.join(siblingRoot, 'test_parse_duration.py');
-  fs.copyFileSync(path.join(evalRoot, 'lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.py'), siblingFile);
+  fs.copyFileSync(path.join(evalRoot, 'lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.txt'), siblingFile);
   const linkedFile = path.join(ownRoot, 'linked-test.py');
   fs.symlinkSync(siblingFile, linkedFile);
   fixture.quality.assertion_manifest[0].file = 'lazybuddy-liveeval/linked-test.py';
