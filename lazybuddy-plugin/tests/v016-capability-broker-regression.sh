@@ -19,6 +19,21 @@ expect_status() {
 WORKSPACE="$TMP/workspace"
 TOOLPACK="$TMP/toolpack"
 mkdir -p "$WORKSPACE" "$TOOLPACK"
+if python3 - "$PLUGIN_ROOT/tooling" <<'PY'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from lazybuddy_capability import ripgrep_platform_suffix
+
+assert ripgrep_platform_suffix("Linux", "x86_64") == "linux-x64"
+assert ripgrep_platform_suffix("Linux", "aarch64") == "linux-arm64"
+assert ripgrep_platform_suffix("Darwin", "arm64") == "darwin-arm64"
+PY
+then
+    pass 'owned ripgrep provider resolves Linux and Darwin package suffixes'
+else
+    fail 'owned ripgrep provider platform suffixes'
+fi
 git -C "$WORKSPACE" init -q
 printf '# TODO: capability broker\n' > "$WORKSPACE/example.txt"
 printf '{"mcpServers":{}}\n' > "$WORKSPACE/.mcp.json"

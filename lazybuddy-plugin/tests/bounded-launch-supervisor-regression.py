@@ -58,7 +58,7 @@ def load_supervisor(path: Path):
 supervisor = Path(sys.argv[1]).resolve(strict=True)
 load_supervisor(supervisor)
 contract_module = importlib.import_module("lazybuddy_supervisor_contract")
-with tempfile.TemporaryDirectory(prefix="todo13-supervisor-", dir="/private/tmp") as temporary:
+with tempfile.TemporaryDirectory(prefix="todo13-supervisor-") as temporary:
     root = Path(temporary)
     status_path = root / "status.json"
     ack_path = root / "ack.json"

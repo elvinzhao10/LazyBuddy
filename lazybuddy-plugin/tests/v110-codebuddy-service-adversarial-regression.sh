@@ -4,7 +4,7 @@ set -euo pipefail
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 ADAPTER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-service.py"
 FAKE="$PLUGIN_ROOT/tests/fixtures/fake-codebuddy-service.py"
-TMP=$(mktemp -d /private/tmp/lazybuddy-service-adversarial.XXXXXX)
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-service-adversarial.XXXXXX")
 active_names=""
 cleanup() {
   local rc=$? name

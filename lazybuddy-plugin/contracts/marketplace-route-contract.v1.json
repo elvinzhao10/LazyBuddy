@@ -16,7 +16,7 @@
     "roots": ["skills", "commands", "agents", "hooks", "mcp"],
     "files": [".mcp.json"],
     "file_count": 61,
-    "inventory_sha256": "b431ed2152ead8becaf7a0aa47580142c61401cd5df048d9791808c4b13fe877"
+    "inventory_sha256": "ae20b5592a52ec1d3a7a50d82a6345427aac515240fa7e34701ea0519c5bedc5"
   },
   "default_routes": {
     "codebuddy-ide": "codebuddy-marketplace",

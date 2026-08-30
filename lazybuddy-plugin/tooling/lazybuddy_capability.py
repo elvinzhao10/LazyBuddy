@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import re
 import shutil
 import sys
@@ -43,10 +44,20 @@ def absolute_directory(raw: str, label: str) -> Path:
     return path.resolve()
 
 
+def ripgrep_platform_suffix(system: str, machine: str) -> str | None:
+    if system == "Darwin":
+        return "darwin-arm64" if machine == "arm64" else "darwin-x64" if machine == "x86_64" else None
+    if system == "Linux":
+        return "linux-arm64" if machine in {"aarch64", "arm64"} else "linux-x64" if machine == "x86_64" else None
+    return None
+
+
 def installed_provider(root: Path, capability: str) -> str | None:
     providers = root / "providers"
     if capability == "local_search":
-        suffix = "darwin-arm64" if os.uname().machine == "arm64" else "darwin-x64"
+        suffix = ripgrep_platform_suffix(platform.system(), platform.machine())
+        if suffix is None:
+            return None
         candidate = providers / "node_modules" / "@vscode" / f"ripgrep-{suffix}" / "bin" / "rg"
     else:
         candidate = providers / "node_modules" / "@ast-grep" / "cli" / "ast-grep"

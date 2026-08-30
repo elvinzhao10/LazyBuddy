@@ -3,7 +3,7 @@ set -euo pipefail
 
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 RUNNER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-run.py"
-TMP=$(mktemp -d /private/tmp/lazybuddy-codebuddy-runner.XXXXXX)
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-codebuddy-runner.XXXXXX")
 cleanup() {
   local rc=$?
   if [ "${PRESERVE_TODO13_TMP:-0}" = 1 ]; then
@@ -29,7 +29,10 @@ git -C "$TMP/project with spaces" add .gitignore
 git -C "$TMP/project with spaces" commit -qm fixture
 printf '{"mcpServers":{}}\n' > "$TMP/mcp config.json"
 printf '{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"]}\n' > "$TMP/schema.json"
-printf 'spaces ; $(touch /private/tmp/todo13-injected) `false`\n' > "$TMP/prompt.txt"
+INJECTED_PROMPT_PATH="$TMP/todo13-injected"
+INJECTED_OUTPUT_PATH="$TMP/todo13-output-injected"
+export INJECTED_OUTPUT_PATH
+printf 'spaces ; $(touch %s) `false`\n' "$INJECTED_PROMPT_PATH" > "$TMP/prompt.txt"
 
 python3 "$PLUGIN_ROOT/tests/bounded-lifecycle-state-machine-regression.py" \
   "$PLUGIN_ROOT/scripts/lazybuddy_process_lifecycle.py"
@@ -49,7 +52,7 @@ import json, os, pathlib, subprocess, sys, time
 pathlib.Path(os.environ["ARGV_LOG"]).write_text(json.dumps(sys.argv[1:]), encoding="utf-8")
 mode = os.environ.get("FAKE_MODE", "json")
 if mode == "json":
-    print(json.dumps({"session_id":"session-exact-13","result":"ok","structured_output":{"answer":"safe"},"future_field":{"kept":True,"untrusted":"$(touch /private/tmp/todo13-output-injected)"}}))
+    print(json.dumps({"session_id":"session-exact-13","result":"ok","structured_output":{"answer":"safe"},"future_field":{"kept":True,"untrusted":f"$(touch {os.environ['INJECTED_OUTPUT_PATH']})"}}))
 elif mode == "stream":
     print(json.dumps({"type":"system","subtype":"init","session_id":"session-stream-13","future":"kept"}))
     print(json.dumps({"type":"stream_event","event":{"type":"content_block_delta","delta":{"text":"par"}}}))
@@ -117,8 +120,8 @@ assert result['status']=='pass' and result['session_id']=='session-exact-13'
 assert result['response']['future_field']['kept'] is True
 assert result['response']['future_field']['untrusted'].startswith('$(touch ')
 PY
-test ! -e /private/tmp/todo13-injected || fail 'prompt metacharacters executed'
-test ! -e /private/tmp/todo13-output-injected || fail 'output prompt injection executed'
+test ! -e "$INJECTED_PROMPT_PATH" || fail 'prompt metacharacters executed'
+test ! -e "$INJECTED_OUTPUT_PATH" || fail 'output prompt injection executed'
 pass 'text/json exact argv preserves spaces, metacharacters, schema and unknown fields'
 
 ARGV_LOG="$TMP/exited-parent-argv.json" FAKE_MODE=exited-parent-open-pipes python3 "$RUNNER" \

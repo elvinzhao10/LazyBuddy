@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-TOOLING_ROOT="$(mktemp -d "${TMPDIR:-/private/tmp}/lazybuddy-package-verify.XXXXXX")"
+TOOLING_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-package-verify.XXXXXX")"
 
 cleanup() {
     rm -rf -- "$TOOLING_ROOT"
