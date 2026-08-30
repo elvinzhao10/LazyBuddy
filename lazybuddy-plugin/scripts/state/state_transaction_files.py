@@ -16,6 +16,7 @@ class OwnedDirectory(NamedTuple):
     parent_descriptor: int
     descriptor: int
     name: str
+    path: Path
 
     def require_current(self) -> None:
         try:
@@ -46,7 +47,7 @@ def open_owned_directory(path: Path) -> OwnedDirectory:
     except OSError:
         os.close(parent_descriptor)
         raise
-    owned = OwnedDirectory(parent_descriptor, descriptor, path.name)
+    owned = OwnedDirectory(parent_descriptor, descriptor, path.name, path)
     owned.require_current()
     return owned
 
@@ -91,24 +92,42 @@ def write_durable(path: Path, content: bytes, *, owner: Optional[OwnedDirectory]
 def replace_durable(path: Path, content: bytes, *, owner: Optional[OwnedDirectory] = None) -> None:
     if owner is not None:
         owner.require_current()
-        temporary = f".{path.name}.{os.urandom(16).hex()}"
         try:
-            descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=owner.descriptor)
-            with os.fdopen(descriptor, "wb") as handle:
+            relative = path.relative_to(owner.path)
+        except ValueError as error:
+            raise TransactionError("transaction target is unsafe") from error
+        descriptor = owner.descriptor
+        opened: list[int] = []
+        temporary: str | None = None
+        try:
+            for component in relative.parts[:-1]:
+                try:
+                    child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+                except FileNotFoundError:
+                    os.mkdir(component, mode=0o700, dir_fd=descriptor)
+                    child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+                opened.append(child)
+                descriptor = child
+            temporary = f".{relative.name}.{os.urandom(16).hex()}"
+            file_descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=descriptor)
+            with os.fdopen(file_descriptor, "wb") as handle:
                 handle.write(content)
                 handle.flush()
                 os.fsync(handle.fileno())
             owner.require_current()
-            os.replace(temporary, path.name, src_dir_fd=owner.descriptor, dst_dir_fd=owner.descriptor)
+            os.replace(temporary, relative.name, src_dir_fd=descriptor, dst_dir_fd=descriptor)
             owner.require_current()
-            os.fsync(owner.descriptor)
+            os.fsync(descriptor)
         except OSError as error:
             raise TransactionError("transaction journal is unsafe") from error
         finally:
-            try:
-                os.unlink(temporary, dir_fd=owner.descriptor)
-            except FileNotFoundError:
-                pass
+            if temporary is not None:
+                try:
+                    os.unlink(temporary, dir_fd=descriptor)
+                except FileNotFoundError:
+                    pass
+            for child in reversed(opened):
+                os.close(child)
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
