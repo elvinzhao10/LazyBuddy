@@ -45,7 +45,7 @@ test('validates exact marketplace identities and byte-equivalent canonical paylo
   const result = validateMarketplaceRoutes(root);
 
   // Then: CodeBuddy and WorkBuddy retain distinct manifests over one canonical payload.
-  assert.equal(result.version, '1.2.0');
+  assert.equal(result.version, '1.2.1');
   assert.equal(result.codebuddy.plugin, 'lazybuddy@lazybuddy');
   assert.equal(result.workbuddy.plugin, 'lazybuddy');
   assert.deepEqual(result.codebuddy.payload_inventory, result.workbuddy.payload_inventory);
@@ -91,7 +91,7 @@ test('refuses altered marketplace identity and host-manifest version independent
 
 test('treats fallback as generated recovery and conflicts with either marketplace plugin route', () => {
   // Given: both full-plugin routes and the manual recovery route.
-  const releaseRoot = '/durable/LazyBuddy/releases/v1.2.0-aaaaaaaaaaaa';
+  const releaseRoot = '/durable/LazyBuddy/releases/v1.2.1-aaaaaaaaaaaa';
   const projectRoot = '/project';
 
   // When: fallback metadata and both coexistence selections are evaluated.

@@ -35,8 +35,8 @@ function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\
   fs.mkdirSync(path.join(packageRoot, '.workbuddy-plugin'), { recursive: true });
   fs.mkdirSync(path.join(packageRoot, 'scripts'), { recursive: true });
   fs.mkdirSync(contracts, { recursive: true });
-  fs.writeFileSync(path.join(packageRoot, '.codebuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.2.0"}\n');
-  fs.writeFileSync(path.join(packageRoot, '.workbuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.2.0"}\n');
+  fs.writeFileSync(path.join(packageRoot, '.codebuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.2.1"}\n');
+  fs.writeFileSync(path.join(packageRoot, '.workbuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.2.1"}\n');
   fs.writeFileSync(path.join(packageRoot, 'scripts', 'lazybuddy-lifecycle.js'), "console.log('fixture-launch-ok')\n");
   fs.writeFileSync(path.join(packageRoot, 'scripts', 'lifecycle-self-test.js'), selfTest);
   for (const name of ['lazy-harness-lifecycle.v1.schema.json', 'lazy-harness-lifecycle.v1.example.json']) {
@@ -61,7 +61,7 @@ function fixture() {
   git(source, ['add', 'lazybuddy-plugin']);
   git(source, ['commit', '-m', 'fixture v1']);
   git(source, ['branch', '-M', 'main']);
-  git(source, ['tag', 'v1.2.0']);
+  git(source, ['tag', 'v1.2.1']);
   git(sandbox, ['clone', '--bare', source, remote]);
   return {
     paths: prepareProductRoot({ installRoot: path.join(sandbox, 'durable root'), product: 'LazyBuddy' }),
@@ -125,14 +125,14 @@ function treeSnapshot(root) {
 
 test('parses only canonical official HTTPS source forms for the selected product', () => {
   const accepted = [
-    ['https://github.com/elvinzhao10/LazyBuddy', 'v1.2.0'],
-    ['https://github.com/elvinzhao10/LazyBuddy.git', 'v1.2.0'],
-    ['https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.2.0', 'release/v1.2.0'],
+    ['https://github.com/elvinzhao10/LazyBuddy', 'v1.2.1'],
+    ['https://github.com/elvinzhao10/LazyBuddy.git', 'v1.2.1'],
+    ['https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.2.1', 'release/v1.2.1'],
   ];
   const rejected = [
     'http://github.com/elvinzhao10/LazyBuddy',
     'https://github.com/elvinzhao10/LazyBuddy/',
-    'https://github.com/elvinzhao10/LazyBuddy?ref=v1.2.0',
+    'https://github.com/elvinzhao10/LazyBuddy?ref=v1.2.1',
     'https://github.com/elvinzhao10/LazyBuddy#readme',
     'https://user@github.com/elvinzhao10/LazyBuddy',
     'https://github.com:443/elvinzhao10/LazyBuddy',
@@ -172,7 +172,7 @@ test('resolves, verifies, self-tests, and promotes a local fixture under an offi
     commit_sha: expectedSha,
     status: 'ready',
     test_status: 'passed',
-    version: '1.2.0',
+    version: '1.2.1',
   });
   assert.equal(launched.status, 0, launched.stderr);
   assert.equal(launched.stdout.trim(), 'fixture-launch-ok');
@@ -183,7 +183,7 @@ test('resolves, verifies, self-tests, and promotes a local fixture under an offi
 test('repo, tag, branch, and full-SHA sources resolve through Git to the same immutable commit', () => {
   const sources = [
     'https://github.com/elvinzhao10/LazyBuddy',
-    'https://github.com/elvinzhao10/LazyBuddy/tree/v1.2.0',
+    'https://github.com/elvinzhao10/LazyBuddy/tree/v1.2.1',
     'https://github.com/elvinzhao10/LazyBuddy/tree/main',
   ];
   for (const sourceUrl of sources) {

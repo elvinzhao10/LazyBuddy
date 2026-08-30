@@ -303,7 +303,7 @@ import sys
 
 status = json.loads(sys.argv[1])
 assert status.get("schema_version") == 2
-assert status.get("version") == "1.2.0"
+assert status.get("version") == "1.2.1"
 assert status.get("package_readiness") == {"status": "ready", "scope": "package"}
 assert status.get("host_readiness") == {"status": "pending"}
 hosts = status.get("hosts")

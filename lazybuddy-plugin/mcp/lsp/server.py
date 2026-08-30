@@ -153,7 +153,7 @@ def handle(request: dict[str, object], notification: bool) -> None:
     request_id = request.get("id", 0)
     method = request.get("method")
     if method == "initialize":
-        mcp_result(request_id, {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "lazybuddy-lsp", "version": "1.2.0"}}, notification)
+        mcp_result(request_id, {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "lazybuddy-lsp", "version": "1.2.1"}}, notification)
         return
     status = tooling_status()
     operations, bridge_error = bridge_capabilities(status) if status.get("STATE") == "ready" else (["lsp_status"], None)

@@ -134,7 +134,7 @@ copy_publication_fixture() {
     mkdir -p "$fixture_root/lazybuddy-plugin"
     cp -R "$REPOSITORY_ROOT/docs" "$fixture_root/docs"
     cp "$REPOSITORY_ROOT/README.md" "$REPOSITORY_ROOT/AGENTS.md" "$REPOSITORY_ROOT/CONTRIBUTING.md" \
-        "$REPOSITORY_ROOT/SECURITY.md" "$REPOSITORY_ROOT/RELEASE_NOTES-v1.2.0.md" \
+        "$REPOSITORY_ROOT/SECURITY.md" "$REPOSITORY_ROOT/RELEASE_NOTES-v1.2.1.md" \
         "$REPOSITORY_ROOT/lazybuddy-evaluation.md" "$fixture_root/"
     cp "$REPOSITORY_ROOT/LICENSE" "$REPOSITORY_ROOT/NOTICE" "$REPOSITORY_ROOT/lazybuddy-banner.jpg" "$fixture_root/"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/README.md" "$fixture_root/lazybuddy-plugin/README.md"

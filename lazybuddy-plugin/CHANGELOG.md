@@ -2,6 +2,15 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.2.1 — Compatibility and release verification (2026-08-30)
+
+- Added a blocking cross-platform PR safety net and weekly Node compatibility
+  coverage, including stabilized macOS Node 26 module behavior.
+- Made efficiency evaluations standalone and corrected diagnostic and security
+  fixtures while preserving their evidence and product-boundary checks.
+- Advanced current package, runtime, release, and documentation authorities to
+  v1.2.1 while retaining v1.2.0 history and migration semantics.
+
 ## v1.2.0 — Evidence-bound execution and release integrity (2026-08-28)
 
 - Required fresh revision-bound completion evidence, atomic recoverable run

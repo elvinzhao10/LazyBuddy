@@ -49,7 +49,7 @@ test('machine status publishes authoritative v1.1 three-host route boundaries', 
   const report = JSON.parse(result.stdout);
   assert.equal(report.schema_version, 2);
   assert.equal(report.contract_version, '2.0.0');
-  assert.equal(report.version, '1.2.0');
+  assert.equal(report.version, '1.2.1');
   assert.deepEqual(report.package_readiness, { status: 'ready', scope: 'package' });
   assert.deepEqual(report.host_readiness, { status: 'pending' });
   assert.deepEqual(report.hosts.map((row) => [row.host, row.route, row.native_mode, row.public_label]), expectedHosts);
@@ -86,8 +86,8 @@ test('authoritative version fields advance without rewriting historical v1.0.3 f
     return value.version ?? value.plugins?.[0]?.version ?? value.packages?.['']?.version;
   });
 
-  // Then: every current authority is v1.2.0 and the historical receipt remains v1.0.3.
-  assert.deepEqual(versions, Array(currentFiles.length).fill('1.2.0'));
+  // Then: every current authority is v1.2.1 and the historical receipt remains v1.0.3.
+  assert.deepEqual(versions, Array(currentFiles.length).fill('1.2.1'));
   assert.equal(historical.manifest.version, '1.0.3');
   assert.match(historical.release.id, /^1\.0\.3-/);
 });

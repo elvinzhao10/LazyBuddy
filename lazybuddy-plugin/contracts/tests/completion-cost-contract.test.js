@@ -13,7 +13,7 @@ const validatorPath = path.join(contracts, 'validate-lazyseries-record.js');
 const context = {
   projectRoot: completionFixtures,
   repoHead: 'a'.repeat(40),
-  packageVersion: '1.2.0',
+  packageVersion: '1.2.1',
   criterionId: 'criterion-contracts',
 };
 

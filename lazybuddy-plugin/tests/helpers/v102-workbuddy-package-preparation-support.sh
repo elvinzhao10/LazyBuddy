@@ -52,7 +52,7 @@ assert paths["pluginRoot"] == str(plugin_root), paths
 assert paths["releaseRoot"] == str(plugin_root.parent), paths
 assert paths["projectRoot"] == project_root, paths
 assert paths["cacheTarget"] == str(
-    fixture_home / ".workbuddy" / "plugins" / "cache" / "lazybuddy" / "lazybuddy" / "1.2.0"
+    fixture_home / ".workbuddy" / "plugins" / "cache" / "lazybuddy" / "lazybuddy" / "1.2.1"
 ), paths
 assert paths["registryTarget"] == str(
     fixture_home / ".workbuddy" / "plugins" / "installed_plugins.json"
