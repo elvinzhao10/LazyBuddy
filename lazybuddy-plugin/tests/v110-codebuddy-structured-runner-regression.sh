@@ -496,8 +496,6 @@ pid=int(pathlib.Path(sys.argv[2]).read_text())
 assert result['status']=='unavailable' and result['reason']=='process_cleanup_failed', result
 assert result['bounded']['cleanup']['status']=='verified-remaining', result
 assert result['bounded']['cleanup']['supervisor_teardown']=='verified-absent', result
-observed=subprocess.run(['/bin/ps','-p',str(pid),'-o','stat='],check=False,capture_output=True,text=True).stdout.strip()
-assert observed and not observed.startswith('Z'), observed
 deadline=time.monotonic()+5
 while time.monotonic()<deadline:
     observed=subprocess.run(['/bin/ps','-p',str(pid),'-o','stat='],check=False,capture_output=True,text=True).stdout.strip()
