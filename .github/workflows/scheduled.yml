@@ -1,0 +1,49 @@
+name: Scheduled compatibility
+
+on:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-compatibility-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compatibility:
+    name: Full compatibility (Node 26, macOS)
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      LAZYBUDDY_VERIFY_SUITE: all
+      LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "26"
+
+      - name: Install locked tooling dependencies
+        working-directory: lazybuddy-plugin/tooling
+        run: npm ci --ignore-scripts --no-audit --fund=false
+
+      - name: Install Python test dependency
+        run: python3 -m pip install pytest==8.4.2
+
+      - name: Run full package verification
+        run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
+      - name: Run publication verification
+        run: bash lazybuddy-plugin/tests/publication-regression.sh
