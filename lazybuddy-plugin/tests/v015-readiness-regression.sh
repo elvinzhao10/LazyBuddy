@@ -39,7 +39,8 @@ expect_status() {
     fi
     printf '%s\n' "$output" > "$TMP/${label}.out"
     if [ "$status" -ne "$expected" ]; then
-        fail "$label (exit $status, expected $expected): ${output:0:160}"
+        fail "$label (exit $status, expected $expected)"
+        printf '%s\n' "$output" | tail -c 4096 >&2
         return
     fi
     pass "$label"
