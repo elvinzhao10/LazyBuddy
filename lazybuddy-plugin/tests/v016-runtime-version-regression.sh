@@ -79,8 +79,8 @@ for relative in ("README.md", "AGENTS.md"):
     )
 
 readme = (root.parent / "README.md").read_text(encoding="utf-8")
-assert "v1.2.0 is prepared for release but is not published yet." in readme
-assert "current published\nrelease is [v1.1.0]" in readme
+assert "The current stable release is [v1.2.0]" in readme
+assert "prepared for release but is not published yet" not in readme
 
 historical_heading = "### Upgrade from v1.0.2"
 assert not any(
