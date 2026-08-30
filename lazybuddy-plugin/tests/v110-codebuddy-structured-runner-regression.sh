@@ -3,7 +3,12 @@ set -euo pipefail
 
 PLUGIN_ROOT=$(cd "$(dirname "$0")/.." && pwd -P)
 RUNNER="$PLUGIN_ROOT/scripts/lazybuddy-codebuddy-run.py"
-TMP=$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-codebuddy-runner.XXXXXX")
+if [ -d /private/tmp ]; then
+  export TMPDIR=/private/tmp
+else
+  export TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"
+fi
+TMP=$(mktemp -d "$TMPDIR/lazybuddy-codebuddy-runner.XXXXXX")
 cleanup() {
   local rc=$?
   if [ "${PRESERVE_TODO13_TMP:-0}" = 1 ]; then
