@@ -81,10 +81,19 @@ done
 
 WORKFLOW="$REPOSITORY_ROOT/.github/workflows/ci.yml"
 grep -Eq '^  validate:$' "$WORKFLOW"
+grep -Eq '^  core:$' "$WORKFLOW"
+grep -Eq '^  core-current:$' "$WORKFLOW"
 grep -Eq '^  lifecycle:$' "$WORKFLOW"
+grep -Fq 'needs: [core, core-current, lifecycle]' "$WORKFLOW"
+grep -Fq 'if: ${{ always() }}' "$WORKFLOW"
 grep -Fq 'LAZYBUDDY_VERIFY_SUITE: core' "$WORKFLOW"
 grep -Fq 'LAZYBUDDY_VERIFY_SUITE: lifecycle' "$WORKFLOW"
-grep -Fq 'continue-on-error: true' "$WORKFLOW"
+grep -Fq 'node-version: "22"' "$WORKFLOW"
+grep -Fq 'node-version: "24"' "$WORKFLOW"
+if grep -Fq 'continue-on-error:' "$WORKFLOW"; then
+    printf 'FAIL CI must not mask blocking lifecycle failures\n' >&2
+    exit 1
+fi
 grep -Fq 'LAZYBUDDY_VERIFY_SUITE: all' "$REPOSITORY_ROOT/.github/workflows/release.yml"
 
 printf 'PASS CI separates deterministic and lifecycle regression suites\n'

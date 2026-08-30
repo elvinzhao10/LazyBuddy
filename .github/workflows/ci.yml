@@ -15,10 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Deterministic validation
-    runs-on: macos-15
-    timeout-minutes: 25
+  core:
+    name: Core verification (Node 22)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     env:
       LAZYBUDDY_VERIFY_SUITE: core
       LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 180
@@ -35,7 +35,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install locked tooling dependencies
         working-directory: lazybuddy-plugin/tooling
@@ -47,11 +47,39 @@ jobs:
       - name: Run publication verification
         run: bash lazybuddy-plugin/tests/publication-regression.sh
 
+  core-current:
+    name: Core verification (Node 24)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      LAZYBUDDY_VERIFY_SUITE: core
+      LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24"
+
+      - name: Install locked tooling dependencies
+        working-directory: lazybuddy-plugin/tooling
+        run: npm ci --ignore-scripts --no-audit --fund=false
+
+      - name: Run package verification
+        run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
   lifecycle:
-    name: Lifecycle regressions (advisory)
+    name: Lifecycle regressions (macOS)
     runs-on: macos-15
     timeout-minutes: 30
-    continue-on-error: true
     env:
       LAZYBUDDY_VERIFY_SUITE: lifecycle
       LAZYBUDDY_VERIFY_TIMEOUT_SECONDS: 240
@@ -68,7 +96,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install locked tooling dependencies
         working-directory: lazybuddy-plugin/tooling
@@ -76,3 +104,20 @@ jobs:
 
       - name: Run timing-sensitive lifecycle regressions
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+
+  validate:
+    name: Deterministic validation
+    if: ${{ always() }}
+    needs: [core, core-current, lifecycle]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all blocking jobs to succeed
+        env:
+          CORE_RESULT: ${{ needs.core.result }}
+          CORE_CURRENT_RESULT: ${{ needs.core-current.result }}
+          LIFECYCLE_RESULT: ${{ needs.lifecycle.result }}
+        run: |
+          test "$CORE_RESULT" = success
+          test "$CORE_CURRENT_RESULT" = success
+          test "$LIFECYCLE_RESULT" = success
