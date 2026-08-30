@@ -353,16 +353,16 @@ def commit_locked(run_dir: Path, operation: str, writes: Sequence[Write]) -> int
     journal_owner.unlink(_flat_material(run_dir, "preparing").name)
     _fault("after-journal")
     write_durable(_flat_material(run_dir, "committed"), b"committed\n", owner=journal_owner)
-    journal_owner.close()
     _fault("after-commit")
     for index, (entry, write) in enumerate(zip(entries, writes), start=1):
-        replace_durable(checked_target(run_dir, entry["path"]), write.content)
+        replace_durable(checked_target(run_dir, entry["path"]), write.content, owner=journal_owner)
         _fault(f"after-install:{index}")
-    replace_durable(run_dir / REVISION_NAME, f"{revision_before + 1}\n".encode())
+    replace_durable(run_dir / REVISION_NAME, f"{revision_before + 1}\n".encode(), owner=journal_owner)
     if any(file_sha256(checked_target(run_dir, entry["path"])) != entry["after_sha256"] for entry in entries):
         raise TransactionError("transaction install verification failed")
     if read_revision(run_dir) != revision_before + 1:
         raise TransactionError("transaction revision verification failed")
+    journal_owner.close()
     _remove_flat_journal(run_dir)
     return revision_before + 1
 

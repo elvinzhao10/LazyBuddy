@@ -88,7 +88,28 @@ def write_durable(path: Path, content: bytes, *, owner: Optional[OwnedDirectory]
         os.fsync(owner.descriptor)
 
 
-def replace_durable(path: Path, content: bytes) -> None:
+def replace_durable(path: Path, content: bytes, *, owner: Optional[OwnedDirectory] = None) -> None:
+    if owner is not None:
+        owner.require_current()
+        temporary = f".{path.name}.{os.urandom(16).hex()}"
+        try:
+            descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=owner.descriptor)
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            owner.require_current()
+            os.replace(temporary, path.name, src_dir_fd=owner.descriptor, dst_dir_fd=owner.descriptor)
+            owner.require_current()
+            os.fsync(owner.descriptor)
+        except OSError as error:
+            raise TransactionError("transaction journal is unsafe") from error
+        finally:
+            try:
+                os.unlink(temporary, dir_fd=owner.descriptor)
+            except FileNotFoundError:
+                pass
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:

@@ -233,6 +233,52 @@ then
 fi
 cat "$TMP/descriptor-relative-staging.out"
 
+new_run "$PROJECT" install-run-swap
+RUN="$PROJECT/.lazybuddy/runs/install-run-swap"
+if ! python3 - "$STATE_DIR" "$RUN" "$TMP" >"$TMP/install-run-swap.out" 2>"$TMP/install-run-swap.err" <<'PY'
+import sys
+from pathlib import Path
+
+state_dir, run_text, tmp_text = sys.argv[1:]
+sys.path.insert(0, state_dir)
+import state_transaction
+
+run = Path(run_text)
+foreign = Path(tmp_text) / "foreign-install-run-swap"
+foreign.mkdir()
+detached = run.with_name("install-run-swap-detached")
+original = state_transaction.replace_durable
+swapped = False
+
+def swap_before_install(path, content, **kwargs):
+    global swapped
+    if not swapped and path.name == "owned.txt":
+        swapped = True
+        run.rename(detached)
+        run.symlink_to(foreign, target_is_directory=True)
+    return original(path, content, **kwargs)
+
+state_transaction.replace_durable = swap_before_install
+try:
+    state_transaction.commit(run, "install-run-swap", (state_transaction.Write("owned.txt", b"payload\n"),))
+except state_transaction.TransactionError as error:
+    assert "unsafe" in str(error), error
+else:
+    raise AssertionError("run replacement unexpectedly accepted")
+finally:
+    state_transaction.replace_durable = original
+
+assert swapped
+assert not (foreign / "owned.txt").exists(), "payload reached foreign replacement directory"
+assert not (detached / "owned.txt").exists(), "transaction installed after run replacement"
+print("PASS install-run-replacement=rejected foreign_payload=absent")
+PY
+then
+    cat "$TMP/install-run-swap.out" "$TMP/install-run-swap.err" >&2
+    exit 1
+fi
+cat "$TMP/install-run-swap.out"
+
 new_run "$PROJECT" duplicate-target
 RUN="$PROJECT/.lazybuddy/runs/duplicate-target"
 printf 'old\n' > "$RUN/duplicate-target.txt"
