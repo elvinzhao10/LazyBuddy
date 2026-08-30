@@ -12,17 +12,7 @@ const runner = path.join(pluginRoot, 'scripts', 'efficiency-baseline-runner.js')
 const fixtures = path.join(__dirname, 'fixtures', 'efficiency');
 const { validateResult } = require(runner);
 
-function findEvalRoot(start) {
-  let current = start;
-  while (path.dirname(current) !== current) {
-    const candidate = path.join(current, 'evals');
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) return candidate;
-    current = path.dirname(current);
-  }
-  throw new Error('evals directory not found in workspace ancestors');
-}
-
-const evalRoot = findEvalRoot(pluginRoot);
+const evalRoot = path.join(fixtures, 'evals');
 
 function invoke(fixturePath, rootPath = evalRoot) {
   return spawnSync(process.execPath, [runner, fixturePath, '--eval-root', rootPath], {

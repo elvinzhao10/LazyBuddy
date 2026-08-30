@@ -1,0 +1,93 @@
+{
+ "workers": [
+  {
+   "module": "slugify",
+   "agent_id": "agent-c8541311",
+   "started_monotonic": 532250.274678208,
+   "finished_monotonic": 532300.801552625,
+   "edits": 1,
+   "tests_run": 9,
+   "files_read": [
+    "tests/test_slugify.py",
+    "utility_pack/slugify.py"
+   ],
+   "duration_s": 50.527
+  },
+  {
+   "module": "normalize_email",
+   "agent_id": "agent-c67e72af",
+   "started_monotonic": 532250.50973475,
+   "finished_monotonic": 532284.34640125,
+   "edits": 1,
+   "tests_run": 9,
+   "files_read": [
+    "tests/test_normalize_email.py",
+    "utility_pack/normalize_email.py"
+   ],
+   "duration_s": 33.837
+  },
+  {
+   "module": "chunk_items",
+   "agent_id": "agent-8a03c8b7",
+   "started_monotonic": 532250.254581708,
+   "finished_monotonic": 532283.302577041,
+   "edits": 1,
+   "tests_run": 9,
+   "files_read": [
+    "tests/test_chunk_items.py",
+    "utility_pack/chunk_items.py"
+   ],
+   "duration_s": 33.048
+  },
+  {
+   "module": "redact_token",
+   "agent_id": "agent-27033fb8",
+   "started_monotonic": 532257.810571291,
+   "finished_monotonic": 532290.844093833,
+   "edits": 1,
+   "tests_run": 6,
+   "files_read": [
+    "tests/test_redact_token.py",
+    "utility_pack/redact_token.py"
+   ],
+   "duration_s": 33.034
+  },
+  {
+   "module": "retry_delay",
+   "agent_id": "agent-fc15ae9a",
+   "started_monotonic": 532250.427112708,
+   "finished_monotonic": 532283.935303333,
+   "edits": 1,
+   "tests_run": 12,
+   "files_read": [
+    "tests/test_retry_delay.py",
+    "utility_pack/retry_delay.py"
+   ],
+   "duration_s": 33.508
+  },
+  {
+   "module": "parse_size",
+   "agent_id": "agent-97d0038e",
+   "started_monotonic": 532249.52404675,
+   "finished_monotonic": 532292.64067475,
+   "edits": 1,
+   "tests_run": 12,
+   "files_read": [
+    "tests/test_parse_size.py",
+    "utility_pack/parse_size.py"
+   ],
+   "duration_s": 43.117
+  }
+ ],
+ "summary": {
+  "worker_sum_ms": 227071,
+  "worker_union_ms": 51278,
+  "speedup_proxy": 4.428,
+  "overlap_ratio": 0.774,
+  "max_active_concurrency": 6,
+  "overlap_window_all6_s": [
+   532257.811,
+   532283.303
+  ]
+ }
+}
