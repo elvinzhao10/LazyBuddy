@@ -1,0 +1,28 @@
+diff --git a/duration_parser/parse_duration.py b/duration_parser/parse_duration.py
+index bef79d0..3281533 100644
+--- a/duration_parser/parse_duration.py
++++ b/duration_parser/parse_duration.py
+@@ -1,7 +1,16 @@
+ def parse_duration(value: str) -> int:
+-    amount = int(value[:-1])
+-    return amount * {
+-        "s": 1_000,
+-        "m": 60_000,
+-        "h": 3_600_000,
+-    }[value[-1]]
+\ No newline at end of file
++    """Parse a human duration string (e.g. "250ms", "2s", "3m", "1h") into
++    integer milliseconds. Raises ValueError for malformed durations and
++    TypeError for non-string inputs."""
++    if not isinstance(value, str):
++        raise TypeError("duration must be a string")
++    text = value.strip()
++    if not text:
++        raise ValueError("duration must not be empty")
++    for unit, factor in (("ms", 1), ("s", 1_000), ("m", 60_000), ("h", 3_600_000)):
++        if text.endswith(unit):
++            amount = text[: -len(unit)]
++            if not amount.isdigit():
++                raise ValueError(f"invalid duration amount: {amount!r}")
++            return int(amount) * factor
++    raise ValueError(f"unknown duration unit in {value!r}")

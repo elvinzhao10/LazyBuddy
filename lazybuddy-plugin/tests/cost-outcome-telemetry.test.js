@@ -12,17 +12,7 @@ const pluginRoot = path.resolve(__dirname, '..');
 const runner = path.join(pluginRoot, 'scripts', 'efficiency-baseline-runner.js');
 const fixtureRoot = path.join(__dirname, 'fixtures', 'efficiency');
 
-function findEvalRoot(start) {
-  let current = start;
-  while (path.dirname(current) !== current) {
-    const candidate = path.join(current, 'evals');
-    if (fs.existsSync(candidate)) return candidate;
-    current = path.dirname(current);
-  }
-  throw new Error('evals directory not found');
-}
-
-const evalRoot = findEvalRoot(pluginRoot);
+const evalRoot = path.join(fixtureRoot, 'evals');
 
 function invoke(projectRoot, scenario, runId, env = {}) {
   return spawnSync(process.execPath, [

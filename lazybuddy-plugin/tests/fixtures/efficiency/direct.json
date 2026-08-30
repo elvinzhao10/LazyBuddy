@@ -8,7 +8,7 @@
     "completion": "complete",
     "assertion_output": "lazybuddy-liveeval/lazybuddy/raw/direct/test-output.txt",
     "assertion_manifest": [
-      { "file": "lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.py", "count": 13, "sha256": "991f1d8bc4e5b79433ef27d3705be4866d2a2951c90d738b24a5628556fc7afd" }
+      { "file": "lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.txt", "count": 13, "sha256": "991f1d8bc4e5b79433ef27d3705be4866d2a2951c90d738b24a5628556fc7afd" }
     ],
     "required_evidence": [
       { "file": "lazybuddy-liveeval/lazybuddy/raw/direct/test-output.txt", "bytes": 1316, "sha256": "23431390d57198f3f55571b424226a06886ceee349fbe6bf0035d7f6bc565826" },

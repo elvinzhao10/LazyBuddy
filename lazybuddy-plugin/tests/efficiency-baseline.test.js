@@ -12,17 +12,7 @@ const runner = path.join(pluginRoot, 'scripts', 'efficiency-baseline-runner.js')
 const fixtures = path.join(__dirname, 'fixtures', 'efficiency');
 const { validateResult } = require(runner);
 
-function findEvalRoot(start) {
-  let current = start;
-  while (path.dirname(current) !== current) {
-    const candidate = path.join(current, 'evals');
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) return candidate;
-    current = path.dirname(current);
-  }
-  throw new Error('evals directory not found in workspace ancestors');
-}
-
-const evalRoot = findEvalRoot(pluginRoot);
+const evalRoot = path.join(fixtures, 'evals');
 
 function invoke(fixturePath, rootPath = evalRoot) {
   return spawnSync(process.execPath, [runner, fixturePath, '--eval-root', rootPath], {
@@ -237,7 +227,7 @@ test('rejects assertion symlink resolving into sibling product namespace', (t) =
   fs.mkdirSync(ownRoot);
   fs.mkdirSync(siblingRoot);
   const siblingFile = path.join(siblingRoot, 'test_parse_duration.py');
-  fs.copyFileSync(path.join(evalRoot, 'lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.py'), siblingFile);
+  fs.copyFileSync(path.join(evalRoot, 'lazybuddy-liveeval/runs/direct-20260828T0348/repo/tests/test_parse_duration.txt'), siblingFile);
   const linkedFile = path.join(ownRoot, 'linked-test.py');
   fs.symlinkSync(siblingFile, linkedFile);
   fixture.quality.assertion_manifest[0].file = 'lazybuddy-liveeval/linked-test.py';
