@@ -387,7 +387,7 @@ cross-file relationship questions. It is disabled by default. LazyBuddy keeps
 `context-graph` available as a clearly labeled grep-based heuristic fallback;
 it is not represented as semantic CodeGraph analysis.
 
-CodeGraph is pinned to `@colbymchenry/codegraph@1.5.0` and can only be
+CodeGraph is pinned to `@colbymchenry/codegraph@1.6.0` and can only be
 provisioned in an explicit empty caller-owned tooling root. The lifecycle does
 not invoke upstream `codegraph install` or `codegraph uninstall`, download a
 fallback platform binary, enable CodeGraph telemetry, or change host MCP
