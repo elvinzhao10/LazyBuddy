@@ -30,7 +30,7 @@
         "source_markers": ["py", "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"],
         "command": "basedpyright-langserver",
         "arguments": ["--stdio"],
-        "fallback_packages": ["basedpyright@1.39.9"],
+        "fallback_packages": ["basedpyright@1.39.10"],
         "provider_order": ["project", "host", "owned"]
       }
     ],

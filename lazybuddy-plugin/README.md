@@ -376,7 +376,7 @@ bash scripts/lazybuddy-tooling.sh lsp-uninstall \
 
 The locked TS/JS provider is `typescript-language-server@5.3.0` with
 `typescript@6.0.3`; it requires Node.js 20 or newer. The locked Python
-provider is `basedpyright@1.39.9`. Missing, unsupported, and incompatible
+provider is `basedpyright@1.39.10`. Missing, unsupported, and incompatible
 providers are non-blocking readiness states. No target manifest, lockfile,
 source file, global path, or host-managed configuration is modified.
 
