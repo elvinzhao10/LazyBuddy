@@ -7,6 +7,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "basedpyright": "1.39.9"
+    "basedpyright": "1.39.10"
   }
 }
