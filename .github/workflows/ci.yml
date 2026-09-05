@@ -15,6 +15,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  supported-floor:
+    name: Supported floor (Node 20)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "20.0.0"
+      - run: node lazybuddy-plugin/scripts/verify-supported-floor.mjs --expected-runtime 20.0.0 --exercise package,install,onboarding,lsp-provider
+
   core:
     name: Core verification (Node 22)
     runs-on: ubuntu-24.04
@@ -108,16 +121,18 @@ jobs:
   validate:
     name: Deterministic validation
     if: ${{ always() }}
-    needs: [core, core-current, lifecycle]
+    needs: [supported-floor, core, core-current, lifecycle]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require all blocking jobs to succeed
         env:
+          SUPPORTED_FLOOR_RESULT: ${{ needs.supported-floor.result }}
           CORE_RESULT: ${{ needs.core.result }}
           CORE_CURRENT_RESULT: ${{ needs.core-current.result }}
           LIFECYCLE_RESULT: ${{ needs.lifecycle.result }}
         run: |
+          test "$SUPPORTED_FLOOR_RESULT" = success
           test "$CORE_RESULT" = success
           test "$CORE_CURRENT_RESULT" = success
           test "$LIFECYCLE_RESULT" = success

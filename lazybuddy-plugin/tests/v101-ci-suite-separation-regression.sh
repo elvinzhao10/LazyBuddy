@@ -81,15 +81,20 @@ done
 
 WORKFLOW="$REPOSITORY_ROOT/.github/workflows/ci.yml"
 grep -Eq '^  validate:$' "$WORKFLOW"
+grep -Eq '^  supported-floor:$' "$WORKFLOW"
 grep -Eq '^  core:$' "$WORKFLOW"
 grep -Eq '^  core-current:$' "$WORKFLOW"
 grep -Eq '^  lifecycle:$' "$WORKFLOW"
-grep -Fq 'needs: [core, core-current, lifecycle]' "$WORKFLOW"
+grep -Fq 'needs: [supported-floor, core, core-current, lifecycle]' "$WORKFLOW"
 grep -Fq 'if: ${{ always() }}' "$WORKFLOW"
 grep -Fq 'LAZYBUDDY_VERIFY_SUITE: core' "$WORKFLOW"
 grep -Fq 'LAZYBUDDY_VERIFY_SUITE: lifecycle' "$WORKFLOW"
 grep -Fq 'node-version: "22"' "$WORKFLOW"
 grep -Fq 'node-version: "24"' "$WORKFLOW"
+grep -Fq 'node-version: "20.0.0"' "$WORKFLOW"
+grep -Fq 'node lazybuddy-plugin/scripts/verify-supported-floor.mjs --expected-runtime 20.0.0 --exercise package,install,onboarding,lsp-provider' "$WORKFLOW"
+grep -Fq 'SUPPORTED_FLOOR_RESULT: ${{ needs.supported-floor.result }}' "$WORKFLOW"
+grep -Fq 'test "$SUPPORTED_FLOOR_RESULT" = success' "$WORKFLOW"
 if grep -Fq 'continue-on-error:' "$WORKFLOW"; then
     printf 'FAIL CI must not mask blocking lifecycle failures\n' >&2
     exit 1
