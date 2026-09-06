@@ -64,6 +64,25 @@ PY
 }
 
 PROJECT="$TMP/project"
+INTERRUPTED_RUN="$PROJECT/.lazybuddy/runs/interrupted-create"
+mkdir -p "$PROJECT"
+printf 'caller-owned\n' > "$PROJECT/caller.txt"
+if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-stage bash "$STATE_DIR/create-run.sh" interrupted-create "interrupted create" >"$TMP/interrupted-create.out" 2>"$TMP/interrupted-create.err"; then
+    echo "interrupted create unexpectedly succeeded" >&2
+    exit 1
+fi
+[ ! -e "$INTERRUPTED_RUN/state.json" ]
+if CWD="$PROJECT" bash "$STATE_DIR/recover-run.sh" interrupted-create >"$TMP/interrupted-recover.out" 2>"$TMP/interrupted-recover.err"; then
+    echo "checkpoint recovery unexpectedly succeeded without state" >&2
+    exit 1
+fi
+[ ! -e "$INTERRUPTED_RUN/.transaction-journal" ]
+[ -z "$(find "$INTERRUPTED_RUN" -maxdepth 1 -name '.transaction-journal-*' -print -quit)" ]
+[ "$(cat "$PROJECT/caller.txt")" = "caller-owned" ]
+CWD="$PROJECT" bash "$STATE_DIR/create-run.sh" interrupted-create "retry after recovery" >/dev/null
+grep -q '"run_id": "interrupted-create"' "$INTERRUPTED_RUN/state.json"
+echo 'PASS interrupted-create source recovery=rollback retry=created caller=preserved'
+
 if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-commit bash "$STATE_DIR/create-run.sh" startup "startup recovery" >"$TMP/startup.out" 2>"$TMP/startup.err"; then
     echo "create-run fault unexpectedly succeeded" >&2
     exit 1
