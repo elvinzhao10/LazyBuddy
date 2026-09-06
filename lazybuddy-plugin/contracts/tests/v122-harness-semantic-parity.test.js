@@ -66,7 +66,7 @@ test('v1.2.2 public completion adapter rejects stale identity', () => {
   // Given: the canonical completion fixture and its real artifact tree.
   const root = path.join(pluginRoot, 'contracts', 'fixtures', 'completion-evidence-v1');
   const common = ['completion', '--project-root', root, '--repo-head', 'a'.repeat(40),
-    '--package-version', '1.2.0', '--criterion-id', 'criterion-contracts'];
+    '--package-version', '1.2.2', '--criterion-id', 'criterion-contracts'];
   // When: the shipped completion adapter assesses current and stale authority.
   const current = run(process.execPath, [completion, ...common, path.join(root, 'valid.json')]);
   const stale = run(process.execPath, [completion, ...common, path.join(root, 'wrong-head.json')]);

@@ -4,7 +4,7 @@
   "task_id": "task-1",
   "criterion_id": "criterion-contracts",
   "repo_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "package_version": "1.2.0",
+  "package_version": "1.2.2",
   "command": "node --test contracts/tests/completion-cost-contract.test.js",
   "exit_code": 7,
   "started_at": "2026-08-28T00:00:00Z",
