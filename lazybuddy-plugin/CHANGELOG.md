@@ -14,6 +14,12 @@
 - Package versions, generated metadata, current documentation, and release
   guidance now identify v1.2.2. Versioned root release-note files are retired;
   their history remains in Git and this changelog.
+- Added compact `TASK/DELTA/REFS/VERIFY` execution dispatch with read-only
+  pre-task provenance, stored-plan command binding, safe argv validation,
+  runtime/stateful evidence requirements, and identity-bound terminal-result
+  recovery. Review reruns retain unaffected current lanes.
+- Hardened interrupted pre-state `create-run` recovery: transaction residue is
+  rolled back without touching caller files, and the run can be retried.
 
 ## v1.2.1 — Compatibility and release verification (2026-08-30)
 

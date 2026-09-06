@@ -87,6 +87,24 @@ LazyBuddy provides a workflow harness for CodeBuddy and WorkBuddy. WorkBuddy plu
 - **5-agent parallel review** (`/lazybuddy:lazy-review-work`) — goal/QA/code/security/context; all 5 must pass
 - **Ultrawork mode** (`/lazybuddy:lazy-ultrawork`) — binding directive with tier triage and Manual-QA discipline
 
+### Execution evidence and recovery
+
+`lazy-start-work` dispatches a compact `TASK/DELTA/REFS/VERIFY` record rather
+than copying the whole plan into each worker prompt. The record binds the
+current run/task/revision and criteria to an owned-path delta, read-only
+pre-task provenance, artifact references, and once-validated plan argv. The
+validator rejects shell composition plus destructive, remote, host-mutating,
+or approval-requiring argv before dispatch; it does not execute those commands.
+
+Runtime criteria need a real package/public entry artifact, and stateful
+criteria also need a before/after transition artifact. A lost worker result can
+update memory only through a complete, current identity-bound terminal report
+whose artifact references are readable. Five-lane review retains unaffected
+current PASS lanes and reruns only failed, missing, stale, or input-affected
+lanes. If `create-run` is interrupted before `state.json` exists,
+`recover-run.sh` rolls back only its transaction material, preserves caller
+files, and leaves the run eligible for retry.
+
 ## Component Map
 
 | Directory | Purpose | Status |

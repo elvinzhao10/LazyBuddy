@@ -38,6 +38,27 @@ explains the initial route.
 planning until the user explicitly starts the plan. This prevents a plan from
 quietly becoming unreviewed implementation.
 
+## Compact execution dispatch and recovery
+
+`lazy-start-work` records one `TASK/DELTA/REFS/VERIFY` packet before worker
+dispatch. It carries the current run/task/revision and criterion IDs, an exact
+owned-path delta, artifact references, read-only pre-task status provenance,
+and once-validated plan argv. It intentionally does not repeat the whole plan,
+shared rules, or prior logs in every worker prompt.
+
+The validator rejects shell composition and command classes that would delete,
+reach remote systems, mutate host state, or require approval; it also binds the
+recorded argv to the stored plan list. It validates the record rather than
+executing a command. Runtime criteria require a real entry artifact, while
+stateful criteria also require a before/after transition artifact.
+
+If a worker reply is lost, only a complete terminal report with current
+identity, the exact criterion set, and readable artifact references can be
+accepted. The five review lanes keep an unaffected current PASS and rerun only
+failed, missing, stale, or input-affected lanes. If `create-run` stops before
+`state.json` exists, `recover-run.sh` removes only its transaction residue;
+caller files remain intact and a fresh retry is allowed.
+
 ## Command and skill inventory
 
 The package contains 14 portable `lazy-` skills and 14 current command

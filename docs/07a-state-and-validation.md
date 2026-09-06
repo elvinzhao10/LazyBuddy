@@ -48,6 +48,31 @@ This produces three useful properties:
 3. **Recoverability:** `recover-run.sh` and `summarize-run.sh` can work from
    durable artifacts after a session ends.
 
+### Interrupted creation before state exists
+
+An interrupted `create-run.sh` may leave a run directory before its
+`state.json` has been committed. That is not recoverable run state.
+`recover-run.sh` first removes only the package transaction journal and staged
+transaction material, then requires a real `state.json` before continuing.
+The caller workspace is not a cleanup target. After rollback, a retry may
+create the run normally; it does not reuse the incomplete pre-state directory
+as evidence.
+
+## Execution-context validation
+
+Before an orchestrator dispatches workers, it records a compact
+`TASK/DELTA/REFS/VERIFY` execution context. This stores identity, exact owned
+paths, read-only pre-task provenance, artifact references, criteria, and
+once-validated plan argv. The validator requires regular in-project artifact
+files, rejects unsafe shell composition and mutation/remote/approval command
+classes, and can bind argv exactly to the stored plan list. Validation does not
+run the command.
+
+Runtime criteria need a real entry artifact; stateful criteria additionally
+need a transition artifact. A recovered terminal report may update memory only
+when its run, task, revision, criterion IDs, and regular artifact references
+still match the current execution context.
+
 ## Bounded-run result contract
 
 `lazybuddy-bounded-run.py` writes one JSON object to the requested result file.

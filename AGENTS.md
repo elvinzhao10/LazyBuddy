@@ -19,6 +19,16 @@ choose the smallest sufficient workflow. Until the selected host is observed,
 that result is selection-only: it does not claim native workflow loading or
 dispatch, and **HOST READINESS: PENDING** remains authoritative.
 
+For orchestrated package work, dispatch only the compact
+`TASK/DELTA/REFS/VERIFY` record: current identity, owned-path delta, artifact
+references, read-only pre-task provenance, and once-validated plan argv. Reject
+shell composition and destructive, remote, host-mutating, or approval-required
+argv before dispatch. Runtime criteria need a real entry artifact; stateful
+criteria also need a before/after transition. Recover a lost result only when a
+complete terminal report still matches the current run/task/revision/criteria
+and has readable artifacts. If run creation is interrupted before `state.json`,
+recover only its transaction material, preserve caller files, then retry.
+
 ## Durable onboarding (start here)
 
 Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from

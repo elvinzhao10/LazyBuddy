@@ -77,6 +77,20 @@ performed, and any remaining risk. A verifier should independently reproduce
 the claimed checks and classify each outcome as pass, failure, warning,
 not-applicable, or skipped with a reason.
 
+For orchestrated work, the evidence starts before dispatch. The compact
+`TASK/DELTA/REFS/VERIFY` record binds current run/task/revision and criterion
+IDs to the owned paths, read-only status provenance, artifacts, and
+once-validated stored-plan argv. Validation rejects shell composition,
+destructive/remote/host-mutating/approval-required command classes without
+executing them. Runtime criteria require a real entry artifact; stateful
+criteria also require before/after transition evidence.
+
+Result recovery is deliberately narrow: a terminal report is accepted only
+when its status, current identity, exact criterion IDs, and readable artifact
+references validate together. Otherwise memory remains unchanged. The final
+five review lanes retain unaffected current PASS results and rerun only failed,
+missing, stale, or input-affected lanes; a generic rerun is not stronger proof.
+
 `lazy-ulw-loop` turns open-ended work into goals with explicit success
 criteria. `lazy-start-work` coordinates plan execution, evidence, verification,
 and review. `lazy-review-work` passes only when all five lanes pass. These are

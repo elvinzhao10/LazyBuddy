@@ -14,6 +14,21 @@ and current host observation remain separate authorities.
 - Matching identity resumes current adaptive state; stale, dirty, terminal,
   malformed, or misleading status inputs are rejected or reclassified instead
   of reusing completion authority.
+- Orchestrated work now uses a compact `TASK/DELTA/REFS/VERIFY` execution
+  packet: task identity, owned-path delta, artifact references, and a
+  once-validated command argv replace repeated plan and log text. Read-only
+  pre-task status provenance is recorded before dispatch.
+- Dispatch validation rejects shell composition, destructive, remote,
+  host-mutating, and approval-requiring commands. A runtime criterion requires
+  a real entry artifact; a stateful criterion also requires a before/after
+  transition artifact.
+- Lost worker output is recoverable only from a complete identity-bound
+  terminal report with current criterion IDs and readable artifacts. Review
+  reruns retain unaffected current PASS lanes and rerun only missing, stale,
+  failed, or input-affected lanes.
+- Interrupted run creation that has not yet written `state.json` now rolls back
+  only its transaction material, preserves caller files, and permits a clean
+  retry instead of treating the partial directory as recoverable state.
 
 ## Measured efficiency
 
@@ -51,6 +66,9 @@ observe the selected route before reporting host readiness.
   not imply a token or host-worker reduction.
 - Same-version ref movement, a changed runtime/executable, or changed host
   fingerprint invalidates prior evidence and requires re-verification.
+- Execution-context validation is a local dispatch boundary, not a permission
+  to run a host action or an assurance that an external command is safe beyond
+  its recorded argv class.
 
 ## Rollback
 

@@ -38,6 +38,14 @@ on the same stdio session. Lifecycle hooks preserve the silent no-run behavior
 when `.lazybuddy/runs` is absent, but corrupt or unreadable candidate state is
 a typed error and cannot redirect a record into another run.
 
+Execution-context contract tests separately prove that compact dispatch records
+retain their identity/provenance bounds, reject unsafe and plan-substituted argv
+without executing them, require regular in-project artifact references, and
+require real-entry plus state-transition evidence where applicable. State
+transaction regressions also cover interruption before `state.json`: recovery
+removes only the partial transaction material, preserves caller files, and
+allows a retry.
+
 ## Regression families
 
 The `tests/v*.sh` inventory covers copied-package boundaries, manifest and readiness structure, hook inputs, path policy, MCP protocol handling, tooling receipts, provider lifecycle, CodeGraph cleanup, and security regressions such as documentation-MCP SSRF and secret-target handling. Tests construct temporary fixtures so a pass means the package can stand alone rather than relying on the repository's current checkout.
@@ -86,6 +94,8 @@ by an implementation detail. For example:
 | hook/security | structured tool payloads and secret-like paths | Treating arbitrary text as a write target or command authority. |
 | MCP params/SSRF | malformed JSON-RPC and attacker-controlled metadata | Stream poisoning or registry metadata becoming a network target. |
 | tooling/receipt | empty, linked, modified, and foreign roots | A lifecycle command deleting data it did not create. |
+| execution-context | compact dispatch, command, provenance, and artifact fixtures | Running an unbound or unsafe argv, accepting stale/misidentified recovery, or promoting test prose to runtime evidence. |
+| state transaction | faulted `create-run` before/after state commit | Treating a partial pre-state directory as a valid run or deleting caller files during recovery. |
 | bounded verifier | timeout and process fixtures | Reporting timeout as success or claiming guaranteed cleanup. |
 
 When a regression fails, start from its fixture and expected assertion, then

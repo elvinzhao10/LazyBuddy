@@ -19,6 +19,13 @@ checks do not by themselves publish a tag or prove a host loaded it.
   change: a 648-byte, **28.36%** reduction. Required safety, approval,
   evidence, review, and completion gates are unchanged; the release quality
   assertions remain unchanged.
+- Orchestrated execution sends a compact identity, delta, artifact-reference,
+  and validated-command packet instead of repeating the whole plan. It records
+  read-only pre-task provenance; runtime work needs a real entry artifact and
+  stateful work also needs a before/after transition. Lost results are accepted
+  only when their identity and artifacts still match, while unaffected review
+  lanes are retained. An interrupted pre-state run rolls back its own temporary
+  transaction material and can be retried without changing caller files.
 
 ## Efficiency improvements in v1.2.0
 

@@ -30,7 +30,8 @@ boundaries. Host state is deliberately outside those boundaries.
 1. [00 — Architecture tour](00-learning-path.md) identifies the package
    boundary and the request-to-evidence path.
 2. [01 — Execution model](01-mental-model.md) explains workflow text, agents,
-   hooks, scripts, and proof as separate layers.
+   hooks, scripts, and proof as separate layers; [04 — Workflow playbooks](04-workflow-playbooks.md)
+   adds compact execution dispatch, recovery, and selective review reruns.
 3. [07 — Package map](07-package-map.md) maps those layers to files; follow it
    with [07a — State and validation](07a-state-and-validation.md) and
    [07b — MCP lifecycle](07b-mcp-lifecycle.md).
@@ -49,13 +50,13 @@ boundaries. Host state is deliberately outside those boundaries.
 | [02 — Request decomposition](02-first-task.md) | How does an outcome become acceptance criteria and a proof surface? |
 | [03 — Package delivery](03-install-and-host-verification.md) | What does copying a package establish, and what does it not establish? |
 | [v1.2.2 supported route](v1.2.2-supported-route.md) | Which source branch, lifecycle commands, and host proof are current? |
-| [04 — Workflow playbooks](04-workflow-playbooks.md) | How do skills, commands, and agent roles encode proportional workflow policy? |
-| [05 — Evidence and completion](05-evidence-and-completion.md) | How are checks, statuses, timeouts, and completion claims kept honest? |
+| [04 — Workflow playbooks](04-workflow-playbooks.md) | How do skills, commands, and agent roles encode proportional workflow policy, compact dispatch, and recovery? |
+| [05 — Evidence and completion](05-evidence-and-completion.md) | How are checks, statuses, runtime/state-transition evidence, and completion claims kept honest? |
 | [06 — Capabilities and approvals](06-capabilities-and-approvals.md) | How does local-first capability selection avoid persistent mutation? |
 | [06a — Security and authority](06a-security-and-authority.md) | Which inputs, paths, registries, and user decisions are trusted? |
 | [06b — Receipts and owned tooling](06b-receipts-and-owned-tooling.md) | How does tooling record and later prove limited ownership? |
 | [07 — Package map](07-package-map.md) | Which source directories implement each runtime surface? |
-| [07a — State and validation](07a-state-and-validation.md) | Which artifacts are durable, validated, and safe to mutate? |
+| [07a — State and validation](07a-state-and-validation.md) | Which artifacts are durable, validated, safely recovered, and safe to mutate? |
 | [07b — MCP lifecycle](07b-mcp-lifecycle.md) | How does a declaration become a JSON-RPC process without becoming host proof? |
 | [08 — Safe removal](08-safe-removal.md) | Why does removal stop at package-owned paths? |
 | [09 — Test and release verification](09-test-and-release-verification.md) | What does each release gate prove? |
