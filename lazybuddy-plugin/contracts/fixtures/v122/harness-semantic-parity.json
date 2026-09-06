@@ -1,0 +1,56 @@
+{
+  "schema_version": "lazyseries.harness-semantic-parity.v1",
+  "native_state_format": "lazybuddy-run-authority",
+  "semantic_projection": {
+    "safety_approval_classes": [
+      "browser-or-desktop-control",
+      "credentials-auth-or-paid-service",
+      "host-mcp-settings-mutation",
+      "remote-data-egress"
+    ],
+    "max_auto_escalations": 2,
+    "done_claim": [
+      "artifact-backed-evidence",
+      "independent-verifier",
+      "approved-review"
+    ],
+    "manual_qa": "artifact-backed-surface-evidence-required",
+    "product_review_roles": [
+      "goal-verification",
+      "manual-qa",
+      "code-quality",
+      "security",
+      "context-mining"
+    ],
+    "context_identity": [
+      "task-id",
+      "run-id",
+      "criterion-id",
+      "repo-head",
+      "package-version"
+    ],
+    "memory_acceptance": "accepted-boundary-only",
+    "completion_authority": "current-identity-and-evidence-only"
+  },
+  "cases": {
+    "valid": {
+      "adaptive": { "mode": "direct", "approval": "not-required", "escalation_count": 0 },
+      "completion": { "status": "ready", "reason_code": "READY" }
+    },
+    "stale": {
+      "adaptive": { "continuation": "reclassified", "prior_completion": "rejected", "approval": "re-evaluated" },
+      "completion": { "status": "stale", "reason_code": "REPO_HEAD_STALE" }
+    },
+    "missing_identity": {
+      "adaptive": { "continuation": "rejected" },
+      "completion": { "status": "blocked", "reason_code": "EVIDENCE_IDENTITY_MISMATCH" }
+    },
+    "resumed": {
+      "adaptive": { "mode": "long-horizon", "continuation": "resumed", "preserves_current_stage": true }
+    },
+    "completed": {
+      "completion": { "status": "ready", "reason_code": "READY" },
+      "memory": "accepted-boundary-only"
+    }
+  }
+}
