@@ -24,7 +24,7 @@ from lazybuddy_adaptive_state import (
 
 
 ACTION_PATTERN: Final = re.compile(
-    r"\b(?:add|build|change|configure|correct|create|debug|deploy|diagnose|export|fix|implement|install|migrate|plan|publish|refactor|release|resume|review|send|setup|update|upload|use)\b|"
+    r"\b(?:add|analyze|audit|build|change|configure|correct|create|debug|deploy|diagnose|export|fix|implement|install|investigate|migrate|plan|publish|refactor|release|remove|rename|resume|review|send|setup|simplify|streamline|test|update|upload|use|validate)\b|"
     r"/?lazy-(?:init-deep|review-work|start-work|ultrawork|ulw-loop|ulw-plan|verifier)\b",
     re.I,
 )
@@ -219,12 +219,21 @@ def _runtime_mapping(decision: dict, confirmed: bool, host_name: str) -> dict:
     explicit = decision.get("explicitWorkflow")
     if isinstance(explicit, str):
         workflow_surfaces = [explicit]
-    if (
-        not confirmed
-        or decision["approval_required"]
-        or isinstance(decision["snapshot"].get("blocker"), dict)
+    if decision["approval_required"] or isinstance(
+        decision["snapshot"].get("blocker"), dict
     ):
         workflow_surfaces = []
+    if not confirmed:
+        return {
+            "agents": [],
+            "degraded": False,
+            "hooks": [],
+            "host": host_name,
+            "hostReadiness": "pending",
+            "mcpServers": [],
+            "route": "selection-only",
+            "workflowSurfaces": [],
+        }
     return {
         "agents": list(selected["agents"]),
         "degraded": selected["degraded"],
@@ -235,6 +244,18 @@ def _runtime_mapping(decision: dict, confirmed: bool, host_name: str) -> dict:
         "route": selected["route"],
         "workflowSurfaces": workflow_surfaces,
     }
+
+
+def _workflow_selection(decision: dict) -> list[str]:
+    if decision["approval_required"] or isinstance(
+        decision["snapshot"].get("blocker"), dict
+    ):
+        return []
+    explicit = decision.get("explicitWorkflow")
+    if isinstance(explicit, str):
+        return [explicit]
+    routes = map_adaptive_decision_to_hosts(decision)
+    return list(routes["skills_mcp_only_fallback"]["skills"])
 
 
 def _selected_binding_fingerprint(
@@ -320,6 +341,7 @@ def build_directive(hook_input: HookInput) -> dict:
     state_resolution = resolve_active_state(
         hook_input.project_root,
         request_digest(hook_input.prompt),
+        hook_input.session_id,
     )
     target = state_resolution.target
     target_state = target.state if target is not None else None
@@ -356,30 +378,22 @@ def build_directive(hook_input: HookInput) -> dict:
                     stale = True
     revision = snapshot["revisionFingerprint"]
     runtime = _runtime_mapping(decision, confirmed, host_name)
-    dispatched = (
-        "presented-to-host"
-        if confirmed
-        else "blocked:host-readiness-pending"
-    )
+    dispatched = "presented-to-host" if confirmed else "selected:host-unobserved"
     if not binding_available:
         dispatched = "blocked:runtime-fingerprint-unavailable"
         persistence = "skipped:runtime-fingerprint-unavailable"
     elif revision["status"] != "available":
-        dispatched = "blocked:revision-unavailable"
+        dispatched = "inactive:revision-unavailable"
         persistence = "skipped:revision-unavailable"
     elif state_resolution.status == "unsafe-state-path":
         dispatched = "blocked:unsafe-state-path"
         persistence = "blocked:unsafe-state-path"
     elif decision["approval_required"]:
         dispatched = "blocked:approval-required"
-        persistence = f"skipped:{state_resolution.status}" if target is None else f"persisted:{target.run_id}"
-        if target is not None:
-            persist_snapshot(target, snapshot)
+        persistence = "skipped:approval-required"
     elif isinstance(snapshot.get("blocker"), dict):
         dispatched = "blocked:escalation-bound"
-        persistence = f"skipped:{state_resolution.status}" if target is None else f"persisted:{target.run_id}"
-        if target is not None:
-            persist_snapshot(target, snapshot)
+        persistence = "skipped:escalation-bound"
     elif stale:
         persistence = "skipped:stale-state-preserved"
     elif target is not None:
@@ -399,12 +413,24 @@ def build_directive(hook_input: HookInput) -> dict:
             "verificationLevel": decision["verification_level"],
         },
         "dispatched": dispatched,
-        "explanation": adaptive_explanation_fields(snapshot),
         "kind": "lazybuddy-adaptive-directive",
         "persistence": persistence,
         "runtime": runtime,
+        "selection": {"workflowSurfaces": _workflow_selection(decision)},
         "snapshot": snapshot,
     }
+    if target is not None:
+        directive["explanation"] = adaptive_explanation_fields(snapshot)
+    if dispatched == "inactive:revision-unavailable":
+        directive["identity"] = {
+            "hostFingerprint": snapshot["hostFingerprint"],
+            "requestDigest": snapshot["requestDigest"],
+            "revisionFingerprint": snapshot["revisionFingerprint"],
+            "scopeFingerprint": snapshot["scopeFingerprint"],
+        }
+        directive["nextAction"] = snapshot["nextAction"]
+        directive.pop("explanation", None)
+        directive.pop("snapshot")
     if SECRET_PATTERN.search(hook_input.prompt):
         directive["inputWarning"] = "secret-like-content-redacted"
     return directive

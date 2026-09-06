@@ -113,6 +113,7 @@ def test_installed_hook_keeps_bare_named_workflow_authoritative(
     assert directive["decision"]["mode"] == expected_mode
     assert expected_surfaces == [workflow]
     assert directive["runtime"]["workflowSurfaces"] == []
+    assert directive["selection"]["workflowSurfaces"] == [workflow]
     assert directive["runtime"]["hostReadiness"] == "pending"
     if workflow == "lazy-ulw-plan":
         assert directive["decision"]["stages"] == ["understand", "plan"]
