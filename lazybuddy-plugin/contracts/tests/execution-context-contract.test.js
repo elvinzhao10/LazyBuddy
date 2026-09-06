@@ -12,7 +12,7 @@ const validatorPath = path.join(contracts, 'validate-lazyseries-record.js');
 const HEAD = 'a'.repeat(40);
 const LANES = ['goal-verification', 'manual-qa', 'code-quality', 'security', 'context-mining'];
 
-function record() {
+function record(artifactRef = 'lazybuddy-plugin/contracts/tests/execution-context-contract.test.js') {
   return {
     schema_version: 'lazyseries.execution-context.v1',
     fixed_contract: 'TASK/DELTA/REFS/VERIFY',
@@ -21,7 +21,7 @@ function record() {
       criterion_ids: ['criterion-runtime', 'criterion-state'],
     },
     delta: { summary: 'Exercise the public adapter.', owned_paths: ['src/adapter.js'] },
-    artifact_refs: ['.lazybuddy/evidence/task-9/baseline.json'],
+    artifact_refs: [artifactRef],
     pre_task: {
       mutation: 'none', status_porcelain_sha256: 'b'.repeat(64),
       owned_paths: [{ path: 'src/adapter.js', status: 'tracked-clean' }],
@@ -31,8 +31,8 @@ function record() {
       commands: [{ source: 'plan', argv: ['node', '--test', 'test/adapter.test.js'], status: 'validated' }],
     },
     criteria: [
-      { criterion_id: 'criterion-runtime', kind: 'runtime', observations: ['real-entry'], artifact_refs: ['.lazybuddy/evidence/task-9/runtime.json'] },
-      { criterion_id: 'criterion-state', kind: 'stateful', observations: ['real-entry', 'state-transition'], artifact_refs: ['.lazybuddy/evidence/task-9/state.json'] },
+      { criterion_id: 'criterion-runtime', kind: 'runtime', observations: ['real-entry'], artifact_refs: [artifactRef] },
+      { criterion_id: 'criterion-state', kind: 'stateful', observations: ['real-entry', 'state-transition'], artifact_refs: [artifactRef] },
     ],
     recovery: { attempted: false, accepted: false },
     memory_update: 'unchanged',
@@ -76,6 +76,84 @@ test('rejects mutating provenance and unsafe shell control syntax before dispatc
   assert.match(results.flatMap(({ errors }) => errors).join('\n'), /pre_task\.mutation|unsafe shell token/);
 });
 
+test('rejects destructive remote mutating and approval-requiring plan argv without executing it', (t) => {
+  // Given: unsafe argv classes and an owned file that validation must never mutate.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-command-safety-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const owned = path.join(root, 'owned.txt');
+  fs.writeFileSync(owned, 'preserve\n');
+  const unsafeArgv = [
+    ['rm', 'owned.txt'],
+    ['curl', 'https://example.invalid/report'],
+    ['git', 'push', 'origin', 'main'],
+    ['git', 'reset', '--hard'],
+    ['npm', 'install'],
+    ['npm', 'publish'],
+    ['sudo', 'touch', 'owned.txt'],
+    ['codebuddy', 'plugin', 'install', 'lazybuddy@lazybuddy'],
+  ];
+  // When: each argv-only packet crosses the direct validator boundary.
+  const results = unsafeArgv.map((argv) => {
+    const input = record('owned.txt');
+    input.command_validation.commands[0].argv = argv;
+    return validator().validateExecutionContext(input, { projectRoot: root });
+  });
+  // Then: every unsafe class is rejected and no command was executed.
+  assert.equal(results.every(({ ok }) => ok === false), true);
+  assert.equal(fs.readFileSync(owned, 'utf8'), 'preserve\n');
+});
+
+test('accepts benign argv and binds it to the trusted stored plan command list', () => {
+  // Given: safe local read-only/test commands and a trusted plan command list.
+  const safeArgv = [
+    ['node', '--test', 'test/adapter.test.js'],
+    ['git', 'status', '--short'],
+    ['npm', 'test'],
+  ];
+  // When: matching commands and an arbitrary command substitution are validated.
+  const accepted = safeArgv.map((argv) => {
+    const input = record();
+    input.command_validation.commands[0].argv = argv;
+    return validator().validateExecutionContext(input, { projectRoot: process.cwd(), planCommands: [argv] });
+  });
+  const substituted = record();
+  substituted.command_validation.commands[0].argv = ['node', '--version'];
+  const rejected = validator().validateExecutionContext(substituted, {
+    projectRoot: process.cwd(),
+    planCommands: [['node', '--test', 'test/adapter.test.js']],
+  });
+  // Then: benign exact matches pass while unbound replacement argv fails closed.
+  assert.equal(accepted.every(({ ok }) => ok), true);
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.errors.join('\n'), /stored plan command list/);
+});
+
+test('requires every execution and criterion artifact ref to be a regular in-scope file', (t) => {
+  // Given: one real artifact plus missing, symlinked, and symlink-escaped references.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-artifact-boundary-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-artifact-outside-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(root, 'valid.txt'), 'preserve\n');
+  fs.writeFileSync(path.join(outside, 'outside.txt'), 'outside\n');
+  fs.symlinkSync('valid.txt', path.join(root, 'linked.txt'));
+  fs.symlinkSync(outside, path.join(root, 'escaped'));
+  const missing = record('missing.txt');
+  const linked = record('valid.txt');
+  linked.criteria[0].artifact_refs = ['linked.txt'];
+  const escaped = record('valid.txt');
+  escaped.criteria[1].artifact_refs = ['escaped/outside.txt'];
+  // When: valid and invalid reference packets cross the filesystem boundary.
+  const valid = validator().validateExecutionContext(record('valid.txt'), { projectRoot: root });
+  const rejected = [missing, linked, escaped]
+    .map((input) => validator().validateExecutionContext(input, { projectRoot: root }));
+  // Then: only the current regular in-scope artifact passes and validation is read-only.
+  assert.deepEqual(valid, { ok: true, errors: [] });
+  assert.equal(rejected.every(({ ok }) => ok === false), true);
+  assert.match(rejected.flatMap(({ errors }) => errors).join('\n'), /missing|regular file|escapes project root/);
+  assert.equal(fs.readFileSync(path.join(root, 'valid.txt'), 'utf8'), 'preserve\n');
+});
+
 test('requires real entry and state-transition artifacts for runtime criteria', () => {
   // Given: runtime and stateful criteria missing their observable boundary evidence.
   const runtime = record();
@@ -95,7 +173,7 @@ test('accepts memory only from a complete identity-bound terminal report', (t) =
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-terminal-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   for (const relative of ['runtime.json', 'state.json']) fs.writeFileSync(path.join(root, relative), '{}\n');
-  const accepted = record();
+  const accepted = record('runtime.json');
   accepted.recovery = {
     attempted: true,
     accepted: true,
@@ -157,7 +235,7 @@ test('exposes execution-context validation through the existing public record CL
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-execution-cli-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const input = path.join(root, 'execution.json');
-  fs.writeFileSync(input, `${JSON.stringify(record())}\n`);
+  fs.writeFileSync(input, `${JSON.stringify(record('execution.json'))}\n`);
   // When: the existing public record CLI validates it.
   const result = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', root, input], { encoding: 'utf8' });
   // Then: the process reports an execution record pass.

@@ -37,6 +37,9 @@ const REVIEW_LANES = [
 ];
 const UNSAFE_ARGV = new Set([';', '&&', '||', '|', '>', '>>', '<', '<<']);
 const SHELLS = new Set(['bash', 'sh', 'zsh', 'cmd', 'cmd.exe', 'powershell', 'pwsh']);
+const NON_DISPATCHABLE = new Set(['rm', 'sudo', 'curl', 'wget', 'ssh', 'scp', 'open', 'osascript']);
+const MUTATING_GIT = new Set(['push', 'reset', 'clean', 'checkout', 'restore', 'commit', 'rebase', 'merge', 'tag']);
+const MUTATING_PACKAGES = new Set(['install', 'ci', 'publish', 'uninstall', 'update']);
 
 function fieldPath(error) {
   const base = error.instancePath.replaceAll('/', '.').replace(/^\./, '');
@@ -132,24 +135,62 @@ function sameMembers(left, right) {
     && [...left].sort().every((value, index) => value === [...right].sort()[index]);
 }
 
+function validateArtifactRefs(refs, root, field, errors) {
+  for (const artifact of refs) {
+    const target = path.resolve(root, artifact);
+    if (!target.startsWith(`${root}${path.sep}`)) {
+      errors.push(`${field}: ${artifact} escapes project root`);
+      continue;
+    }
+    try {
+      const stat = fs.lstatSync(target);
+      if (!stat.isFile() || stat.isSymbolicLink()) {
+        errors.push(`${field}: ${artifact} is not a regular file`);
+      } else if (!fs.realpathSync(target).startsWith(`${root}${path.sep}`)) {
+        errors.push(`${field}: ${artifact} escapes project root`);
+      }
+    } catch (error) {
+      if (error && error.code === 'ENOENT') errors.push(`${field}: ${artifact} is missing`);
+      else throw error;
+    }
+  }
+}
+
 function validateExecutionContext(record, context) {
   if (!validateExecutionSchema(record)) return { ok: false, errors: schemaErrors(validateExecutionSchema) };
   const errors = [];
+  const root = fs.realpathSync(context.projectRoot);
+  validateArtifactRefs(record.artifact_refs, root, 'artifact_refs', errors);
   if (!sameMembers(record.delta.owned_paths, record.pre_task.owned_paths.map(({ path: ownedPath }) => ownedPath))) {
     errors.push('pre_task.owned_paths: must cover exactly the task-owned paths');
   }
   for (const command of record.command_validation.commands) {
     const executable = path.basename(command.argv[0]).toLowerCase();
+    const subcommand = (command.argv[1] || '').toLowerCase();
     const evaluatesCode = SHELLS.has(executable)
       && command.argv.slice(1).some((part) => ['-c', '/c', '-command'].includes(part.toLowerCase()));
     if (evaluatesCode || command.argv.some((part) => UNSAFE_ARGV.has(part) || /[\r\n]/.test(part))) {
       errors.push('command_validation.commands.argv: unsafe shell token');
     }
+    const packageMutation = ['npm', 'npm.cmd', 'pnpm', 'yarn'].includes(executable)
+      && MUTATING_PACKAGES.has(subcommand);
+    const hostMutation = executable === 'codebuddy' && command.argv.includes('plugin')
+      && command.argv.some((part) => ['add', 'install', 'uninstall', 'remove'].includes(part.toLowerCase()));
+    if (NON_DISPATCHABLE.has(executable)
+      || (executable === 'git' && MUTATING_GIT.has(subcommand))
+      || packageMutation || hostMutation) {
+      errors.push('command_validation.commands.argv: mutation, remote access, or approval required');
+    }
+  }
+  if (context.planCommands
+    && JSON.stringify(record.command_validation.commands.map(({ argv }) => argv)) !== JSON.stringify(context.planCommands)) {
+    errors.push('command_validation.commands: must match the stored plan command list');
   }
   if (!sameMembers(record.task.criterion_ids, record.criteria.map(({ criterion_id: id }) => id))) {
     errors.push('criteria: must cover exactly task.criterion_ids');
   }
   for (const criterion of record.criteria) {
+    validateArtifactRefs(criterion.artifact_refs, root, `${criterion.criterion_id}.artifact_refs`, errors);
     if (['runtime', 'stateful'].includes(criterion.kind)
       && !criterion.observations.includes('real-entry')) {
       errors.push(`${criterion.criterion_id}: runtime evidence requires real-entry`);
@@ -171,24 +212,7 @@ function validateExecutionContext(record, context) {
       if (!sameMembers(terminal.criterion_ids, record.task.criterion_ids)) {
         errors.push('terminal_report.criterion_ids: must cover exactly current criteria');
       }
-      const root = fs.realpathSync(context.projectRoot);
-      for (const artifact of terminal.artifact_refs) {
-        const target = path.resolve(root, artifact);
-        if (!target.startsWith(`${root}${path.sep}`)) {
-          errors.push(`terminal_report.artifact_refs: ${artifact} escapes project root`);
-          continue;
-        }
-        try {
-          const stat = fs.lstatSync(target);
-          if (!stat.isFile() || stat.isSymbolicLink()) {
-            errors.push(`terminal_report.artifact_refs: ${artifact} is not a regular file`);
-          }
-        } catch (error) {
-          if (error && error.code === 'ENOENT') {
-            errors.push(`terminal_report.artifact_refs: ${artifact} is missing`);
-          } else throw error;
-        }
-      }
+      validateArtifactRefs(terminal.artifact_refs, root, 'terminal_report.artifact_refs', errors);
     }
   }
   if ((record.memory_update === 'accepted') !== record.recovery.accepted) {
