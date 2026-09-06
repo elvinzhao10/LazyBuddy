@@ -7,7 +7,18 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current stable release is [v1.2.1](https://github.com/elvinzhao10/LazyBuddy/releases/tag/v1.2.1).
+The current release package is v1.2.2. It is prepared for publication; package
+checks do not by themselves publish a tag or prove a host loaded it.
+
+## v1.2.2 adaptive context
+
+- Automatic selection chooses the smallest sufficient existing workflow from
+  task risk and complexity; it is selection-only until host readiness is
+  observed, so it never claims a workflow was loaded or dispatched by a host.
+- Current compact task packets are 1,637 bytes versus 2,285 bytes before the
+  change: a 648-byte, **28.36%** reduction. Required safety, approval,
+  evidence, review, and completion gates are unchanged; the release quality
+  assertions remain unchanged.
 
 ## Efficiency improvements in v1.2.0
 
@@ -26,7 +37,7 @@ You do not need to manually work through every setup detail. Open an AI coding
 assistant in your project and paste this:
 
 > Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
-> this project. Use the stable v1.2.1 route. Run safe package checks first,
+> this project. Use the v1.2.2 route. Run safe package checks first,
 > explain each step plainly, and ask me before changing marketplace, plugin,
 > Skills, MCP, account, credential, or trust settings.
 
@@ -124,9 +135,9 @@ runtime.
 ## Learn more
 
 - [Install and verify a host](docs/03-install-and-host-verification.md)
-- [Supported v1.2.1 route](docs/v1.2.1-supported-route.md)
+- [Supported v1.2.2 route](docs/v1.2.2-supported-route.md)
 - [Host routes and recovery](docs/reference/host-routes.md)
-- [Release notes](RELEASE_NOTES-v1.2.1.md)
+- [Release notes](RELEASE_NOTES.md)
 - [Documentation index](docs/README.md)
 
 ## License

@@ -4,9 +4,9 @@ This document records public, present-tense evidence for the LazyBuddy package.
 It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
 plugin. Verification is on macOS only.
 
-## Current documentation status: v1.2.1
+## Current documentation status: v1.2.2
 
-The v1.2.1 documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
+The v1.2.2 documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
 `workbuddy`; it does not publish or alter a package. For CodeBuddy IDE and
 WorkBuddy, marketplace is the default full-plugin route. The manual
 Skills/MCP route is recovery-only and mutually exclusive with the full-plugin
@@ -94,9 +94,14 @@ registration, or a claim that a live host loaded the package.
 
 ## Optional capability policy
 
-Automatic task routing is temporary and nonpersistent. It selects the lightest
-eligible local capability for the task without writing host/project
-configuration or lockfiles. Context7 and experimental, unpinned `grep_app`
+Automatic task routing is temporary and nonpersistent. Automatic workflow
+selection chooses the smallest sufficient existing workflow from risk and
+complexity, but is selection-only until a host is observed; it does not claim
+native workflow loading or dispatch. The current compact task packet is 1,637
+bytes rather than 2,285 bytes (648 bytes / 28.36% smaller), while required
+safety and quality gates are unchanged. It selects the lightest eligible local
+capability for the task without writing host/project configuration or lockfiles.
+Context7 and experimental, unpinned `grep_app`
 are remote exports that require explicit selection; any export is namespaced,
 manual to merge, and contains no credential. Remote calls can egress data or
 incur cost.

@@ -4,7 +4,7 @@ Completion is a claim backed by evidence, not a green-looking status message.
 LazyBuddy separates package readiness from live-host behavior; that distinction
 is the most important rule for interpreting results.
 
-For the current v1.2.1 human-facing boundary, the route IDs are
+For the current v1.2.2 human-facing boundary, the route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 uses native modes
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels `documented-tested`, `documented-untested`,
@@ -13,6 +13,10 @@ public labels `documented-tested`, `documented-untested`,
 for CodeBuddy IDE and WorkBuddy. Skills/manual MCP is recovery-only and
 mutually exclusive with the full-plugin route; package readiness does not prove
 a live host.
+
+Automatic workflow selection is package behavior, not host proof. It selects
+the smallest sufficient existing workflow from risk and complexity, then stays
+selection-only until a fresh host session is observed.
 
 The capability contract names four evidence scopes: `package-ready`,
 `observed-build-route`, `manual-skills-mcp-fallback`, and `live-host-proof`.

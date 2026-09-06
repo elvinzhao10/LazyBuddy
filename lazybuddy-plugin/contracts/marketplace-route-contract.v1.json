@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "1.2.1",
+  "version": "1.2.2",
   "identity": {
     "marketplace": "lazybuddy",
     "owner": "LazyBuddy",
@@ -8,15 +8,15 @@
     "codebuddy_install_id": "lazybuddy@lazybuddy"
   },
   "artifacts": {
-    ".codebuddy-plugin/marketplace.json": "96fbeac1378b0ce490a65f2e587eb04e486ea796df1920ae8b093296b54c88c2",
-    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "3a7ae2a747cb3dd8ca1d8c078d4292477dcbabb4bbc80e3ce9c4c47f75b0523b",
-    "lazybuddy-plugin/.workbuddy-plugin/plugin.json": "e0b43c778e88e9e75623a5917fdac6f9631aa6bcb71bcaefc01ea16fb490e7f3"
+    ".codebuddy-plugin/marketplace.json": "abff630891640ecfbbfc81b8740e6458faf4ef4b263fb313483b006cafddfebf",
+    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "13399949f19039edd6a6fac6562b929da0501fd132c5da237ec78854ca3c2cec",
+    "lazybuddy-plugin/.workbuddy-plugin/plugin.json": "c4bb3ec0d7827a299bd5ae73521478ec9f9f16ec3c4cf3ce6c177aa76a363a43"
   },
   "payload": {
     "roots": ["skills", "commands", "agents", "hooks", "mcp"],
     "files": [".mcp.json"],
     "file_count": 61,
-    "inventory_sha256": "7874bcd324a698e1acaebde04655c00b86f0fa38eeb467f83f12df7b6c5ca08f"
+    "inventory_sha256": "cdfe914dcd38d9736aa8302db58822fe390a42c900d3378296c8c6c74a8b6fc0"
   },
   "default_routes": {
     "codebuddy-ide": "codebuddy-marketplace",

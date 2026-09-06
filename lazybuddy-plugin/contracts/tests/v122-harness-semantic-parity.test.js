@@ -9,7 +9,7 @@ function readJson(...segments) {
   return JSON.parse(fs.readFileSync(path.join(fixtureRoot, ...segments), 'utf8'));
 }
 
-test('v1.2.1 semantic projection compares decisions without host state bytes', () => {
+test('v1.2.2 semantic projection compares decisions without host state bytes', () => {
   const parity = readJson('v122', 'harness-semantic-parity.json');
   const valid = readJson('v103', '01-direct-localized-fix.json');
   const stale = readJson('v103', '10-responsibility-ownership.json');

@@ -4,10 +4,10 @@ LazyBuddy deliberately aligns policy and package safety across hosts while keepi
 
 ## Onboarding baseline
 
-## Current v1.2.1 evidence boundary
+## Current v1.2.2 evidence boundary
 
 This documentation release covers `codebuddy-cli`, `codebuddy-ide`, and
-`workbuddy`; it does not publish a v1.2.1 package or claim a host has loaded
+`workbuddy`; it does not publish a v1.2.2 package or claim a host has loaded
 one. Marketplace is the default full-plugin route for CodeBuddy IDE and
 WorkBuddy. The Skills/manual-MCP route is recovery-only and mutually exclusive
 with a full-plugin route in the same project.
@@ -26,6 +26,10 @@ and plan-first `offboard` with
 and survives source deletion. Moving a same-version ref requires full-SHA
 confirmation; stale runtime recovery is scoped offboard/re-onboard. None of
 this proves a host: **HOST READINESS: PENDING** until observation.
+
+Automatic selection chooses the smallest sufficient existing workflow from task
+risk and complexity. It remains selection-only until host readiness is observed;
+selection never proves native workflow loading or host dispatch.
 
 Open or link the durable release selected by `status` in the selected host, give the agent
 `https://github.com/elvinzhao10/LazyBuddy`, and type `onboard`. The agent
