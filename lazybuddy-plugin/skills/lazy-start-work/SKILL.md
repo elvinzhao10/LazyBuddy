@@ -24,6 +24,8 @@ Before executing:
 - Read `.lazybuddy/runs/<run_id>/state.json` if resuming
 - Read `workbuddy.md` for project conventions
 - Read `.workbuddy/rules/lazybuddy-verification.md` for evidence standards
+- Treat those files as orchestrator context. Workers receive the fixed contract,
+  task delta, and artifact references below, never a copy of the full plan.
 
 ## Tool Access
 
@@ -56,8 +58,31 @@ Write `.lazybuddy/runs/<run_id>/state.json` with:
 1. Find the first unchecked checkbox in the plan
 2. Classify tier (LIGHT/HEAVY) per ultrawork triage rules
 3. Decompose into atomic sub-tasks
-4. **DELEGATE EVERYTHING.** Spawn worker subagents for ALL independent sub-tasks in parallel using WorkBuddy Agent tool. Each subagent message must include: TASK, DELIVERABLE, SCOPE, VERIFY.
-5. For LIGHT: direct implementation. For HEAVY: failing-first proof then implementation.
+4. Before any dispatch, capture `git status --porcelain=v1` and the status of
+   every task-owned path without editing, staging, stashing, or cleaning. Store
+   the status digest and owned-path provenance in the execution-context record.
+5. Parse each plan-named verification command into argv, reject shell control
+   syntax or a command that would mutate user/host state, resolve its executable,
+   and perform one bounded syntax/dry-run smoke check. Record the plan digest and
+   `validated_once: true`; reuse that record rather than revalidating per worker.
+6. Validate the record with `node ${CODEBUDDY_PLUGIN_ROOT}/contracts/validate-lazyseries-record.js execution --project-root <project-root> <record.json>`.
+7. **DELEGATE EVERYTHING.** Spawn worker subagents for ALL independent sub-tasks in parallel using WorkBuddy Agent tool.
+8. For LIGHT: direct implementation. For HEAVY: failing-first proof then implementation.
+
+#### Compact worker contract
+
+Every dispatch uses the fixed `TASK/DELTA/REFS/VERIFY` contract. Send only:
+
+- task/run/revision identity and criterion IDs;
+- the task-specific goal delta and exact owned paths;
+- artifact references for plan, baseline, provenance, and prior accepted evidence;
+- the once-validated command argv and the Manual-QA observable;
+- constraints that differ from the referenced plan/rules.
+
+Do not paste the plan, repository overview, shared safety rules, unchanged test
+output, or prior worker prose. The worker already has the fixed agent contract.
+The dispatch record must validate against
+`contracts/lazyseries-execution-context.v1.schema.json` before Agent is called.
 
 #### Coupled implementation bundles (narrow exception)
 
@@ -86,14 +111,14 @@ changes. It does not allow root product edits and does not bypass the normal
 tests, Manual-QA, applicable adversarial probes, independent verifier verdict,
 or final review gates.
 
-**Each subagent task message must include:**
-- Goal and exact files/directories in scope
+**Each subagent task delta must include:**
+- Task/run/revision identity, criterion IDs, and exact files/directories in scope
 - For a coupled bundle only: the coupled dispatch record above, with no broader scope
-- Baseline characterization test (if touching existing behavior)
-- Implementation constraints from plan and project rules
-- Automated verification commands
+- References to the plan, baseline artifact, and project rules
+- Only task-specific constraints not present in those references
+- Once-validated automated verification argv
 - One Manual-QA channel (exact tool + exact invocation + binary observable)
-- The 9 adversarial classes that apply to this sub-task
+- Only applicable adversarial classes and a reference to the fixed nine-class list
 
 **The 9 adversarial classes** (from earlier host implementation `start-work` source line 118; a class applies when its trigger fact holds — probe each applicable one, record non-applicable with a one-line reason):
 1. `malformed_input` — new input parsing
@@ -116,6 +141,18 @@ For each checkbox, complete FIVE gates:
 5. **Cleanup:** Tear down QA resources; capture receipts
 
 Append evidence to `.lazybuddy/runs/<run_id>/events.jsonl`.
+
+Classify every criterion as `static`, `runtime`, or `stateful`. A runtime
+criterion cannot pass without a real public/installed entry artifact. A
+stateful criterion additionally requires an artifact showing the before/after
+state transition. Test output or success prose is not a substitute.
+
+If a worker result is lost, accept recovery only from a terminal report with
+`status: complete`, the current run/task/repository revision, the exact current
+criterion-ID set, and readable artifact references. Missing, partial, stale, or
+identity-mismatched reports are unaccepted boundaries: preserve state and do not
+write memory. Append a memory update only after the execution-context validator
+accepts the terminal report.
 
 **Sisyphus completion contract:**
 - Worker returns `DoneClaim` → Verifier runs `AdversarialVerify` → `confirmed` → `FullyDone`
@@ -155,7 +192,9 @@ When all checkboxes + Final Verification Wave are done:
 ## Failure Behavior
 
 - If a subagent's DoneClaim fails AdversarialVerify: re-dispatch with exact failure feedback
-- If a subagent times out or returns inconclusive: respawn smaller scoped task
+- If a subagent times out or returns inconclusive: first validate an available
+  identity-bound terminal report; otherwise preserve memory and respawn the
+  smaller scoped task
 - If iteration cap hit: pause; record `run_paused` event
 - If state corruption: restore from latest checkpoint
 

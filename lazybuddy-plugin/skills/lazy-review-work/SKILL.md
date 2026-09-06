@@ -35,7 +35,8 @@ The 5 agents cover complementary concerns that together form a comprehensive rev
 - **BACKGROUND**: Why this work was needed; business context, related systems
 - **CHANGED_FILES**: Auto-collected via `git diff --name-only` against base
 - **DIFF**: Auto-collected via `git diff` against base
-- **FILE_CONTENTS**: Full content of every changed file (oracle agents cannot read files)
+- **CONTEXT_REFS**: Paths to the diff, changed-file manifest, plan criteria, and
+  prior lane artifacts. Do not paste full file contents or the full plan.
 - **RUN_COMMAND**: How to start the app (from package.json, Makefile, or user)
 
 Use a dedicated review worktree for PR/branch reviews: `git worktree add <path> <branch>`. The main worktree is read-only context; never checkout or edit the review branch there.
@@ -54,12 +55,25 @@ Use a dedicated review worktree for PR/branch reviews: `git worktree add <path> 
 1. Extract GOAL, CONSTRAINTS, BACKGROUND from conversation history (ask only if truly missing)
 2. Collect CHANGED_FILES: `git diff --name-only HEAD~1` (or against appropriate base)
 3. Collect DIFF: `git diff HEAD~1` (or against appropriate base)
-4. Read FILE_CONTENTS for all changed files
+4. Write/read artifact references for the diff and changed files; keep dispatch
+   to the fixed contract plus this review lane's delta
 5. Detect RUN_COMMAND from project manifests
+6. Load prior lane reports and mark a lane affected only when it previously
+   failed, is missing, is stale for the current revision, or its declared inputs
+   changed. Preserve every other current PASS result.
 
 ### Phase 1: Launch All 5 Agents in Parallel
 
-Launch ALL 5 in a single turn via the WorkBuddy Agent tool, each with `run_in_background=true`. No sequential launches. No waiting between them.
+On the first review, launch ALL 5 in a single turn via the WorkBuddy Agent tool,
+each with `run_in_background=true`. On a review rerun, launch only failed,
+missing, stale, or input-affected lanes in one turn. Record retained PASS lanes
+beside rerun lanes; never rerun an unaffected current PASS lane.
+
+Every lane receives the fixed contract, its review-specific delta, and artifact
+references. Every lane returns a terminal report with `status`, current
+`run_id`, `task_id`, full `repo_head`, exact `criterion_ids`, verdict, and
+artifact references. Do not paste the full plan, diff, file contents, or prior
+lane prose into either packet.
 
 **Agent 1 — Goal & Constraint Verification (Oracle, read-only prompt context)**
 Verify the implementation against the original goal and constraints. Check: goal completeness (every sub-requirement), constraint compliance, requirement gaps, over-engineering, edge cases (5+ traced), behavioral correctness (3+ scenarios). Output: verdict (PASS/FAIL), confidence (HIGH/MED/LOW), goal breakdown, constraint compliance, findings, blocking issues.
@@ -92,6 +106,11 @@ Track each lane independently:
 
 Do NOT deliver the final report until ALL 5 lanes reach a terminal state (PASS/FAIL/INCONCLUSIVE). If a lane is silent, send a follow-up; if still unfinished, mark INCONCLUSIVE and respawn a smaller agent for that lane (max 3 retries per lane). Do not spin in repeated wait cycles.
 
+A lost lane response may be recovered only from a complete terminal report
+bound to the current task, repository revision, and criterion set with readable
+artifact references. Ack-only, partial, mismatched, or stale reports remain
+missing. Recovery never substitutes the executor for an independent reviewer.
+
 ### Phase 3: Deliver Verdict
 
 ```
@@ -112,16 +131,18 @@ Compile the report: overall verdict, per-agent verdict table with confidence, ag
 
 ## Verification Gates
 
-1. All 5 agents launched in parallel (not sequentially)
+1. Initial review launches all 5 agents in parallel; reruns launch only affected lanes
 2. All 5 lanes have a terminal verdict (PASS/FAIL/INCONCLUSIVE)
 3. Every PASS has supporting evidence from the agent's output
 4. INCONCLUSIVE lanes have been retried with max budget (3)
 5. Retry budget honored: respawned smaller agents for missing deliverables
 6. Final report includes all lanes with evidence
+7. Retained and rerun results together contain five current PASS verdicts before approval
 
 ## Failure Behavior
 
-- If a lane returns FAIL: record specific findings; do not merge or hand off
+- If a lane returns FAIL: record specific findings; rerun that lane after its
+  inputs change, without rerunning unaffected PASS lanes
 - If a lane is INCONCLUSIVE: retry with smaller agent (up to 3 times); if still inconclusive, record as not approved and emit the aggregate result
 - If an agent times out or returns ack-only: do not count as PASS; follow up; if no deliverable after follow-up, mark INCONCLUSIVE
 - If all lanes INCONCLUSIVE after full retry budget: emit REVIEW INCONCLUSIVE with per-lane status and retry count

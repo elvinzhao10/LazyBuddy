@@ -70,11 +70,19 @@ Every PASS must point to a non-empty artifact. Write artifacts to `.lazybuddy/ev
 When invoked by the orchestrator, receive a self-contained TASK/DELIVERABLE/SCOPE/VERIFY block. Return a DoneClaim with:
 
 ```
-VERDICT: PASS | FAIL
-artifacts: [list of evidence paths]
-unexecutableCases: [list with blockers]
-risks: [list of observed concerns]
+TERMINAL_REPORT
+status: complete | blocked
+run_id: <current run>
+task_id: <current task>
+repo_head: <full current revision>
+criterion_ids: [<exact assigned criteria>]
+verdict: PASS | FAIL
+artifact_refs: [<surface and transition evidence paths>]
+risks: [<observed concerns>]
 ```
+
+Do not repeat the plan or dispatch prose. Runtime criteria require a real-entry
+artifact; stateful criteria also require a before/after transition artifact.
 
 ## Verification responsibility
 

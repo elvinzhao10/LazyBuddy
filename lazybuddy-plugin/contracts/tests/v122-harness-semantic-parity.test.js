@@ -1,43 +1,78 @@
+'use strict';
+
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 
-const fixtureRoot = path.join(__dirname, '..', 'fixtures');
+const pluginRoot = path.resolve(__dirname, '..', '..');
+const hook = path.join(pluginRoot, 'scripts', 'hooks', 'user-prompt-submit.sh');
+const completion = path.join(pluginRoot, 'contracts', 'validate-lazyseries-record.js');
 
-function readJson(...segments) {
-  return JSON.parse(fs.readFileSync(path.join(fixtureRoot, ...segments), 'utf8'));
+function run(command, args, options = {}) {
+  return spawnSync(command, args, { encoding: 'utf8', ...options });
 }
 
-test('v1.2.2 semantic projection compares decisions without host state bytes', () => {
-  const parity = readJson('v122', 'harness-semantic-parity.json');
-  const valid = readJson('v103', '01-direct-localized-fix.json');
-  const stale = readJson('v103', '10-responsibility-ownership.json');
-  const resumed = readJson('v103', '06-long-horizon-migration.json');
-  const completionReasons = readJson('v120', 'completion-assessment-reasons.json');
+function createProject(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-v122-public-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (const args of [
+    ['init', '-q'],
+    ['config', 'user.email', 'parity@example.invalid'],
+    ['config', 'user.name', 'Parity Fixture'],
+  ]) {
+    const result = run('/usr/bin/git', ['-C', root, ...args]);
+    assert.equal(result.status, 0, result.stderr);
+  }
+  fs.writeFileSync(path.join(root, '.gitignore'), '.lazybuddy/\n');
+  fs.writeFileSync(path.join(root, 'tracked.txt'), 'clean\n');
+  const staged = run('/usr/bin/git', ['-C', root, 'add', '.gitignore', 'tracked.txt']);
+  assert.equal(staged.status, 0, staged.stderr);
+  const saved = run('/usr/bin/git', ['-C', root, 'commit', '-qm', 'fixture']);
+  assert.equal(saved.status, 0, saved.stderr);
+  return root;
+}
 
-  assert.equal(parity.schema_version, 'lazyseries.harness-semantic-parity.v1');
-  assert.equal(parity.native_state_format, 'lazybuddy-run-authority');
-  assert.deepEqual(parity.cases.valid.adaptive, {
-    mode: valid.expected_decision.mode,
-    approval: valid.expected_decision.approval_required ? 'pending' : 'not-required',
-    escalation_count: valid.expected_snapshot.adaptive.escalationCount,
+function adaptive(root, prompt, adaptiveContext) {
+  const input = JSON.stringify({
+    event: 'user_prompt_submit', cwd: root, session_id: 'public-adapter-test', prompt,
+    adaptive_context: adaptiveContext,
   });
-  assert.deepEqual(parity.cases.stale.adaptive, {
-    continuation: 'reclassified',
-    prior_completion: stale.continuation_case.priorCompletionEvidence,
-    approval: 're-evaluated',
+  const result = run('bash', [hook], {
+    cwd: root, env: { ...process.env, CODEBUDDY_PLUGIN_ROOT: pluginRoot, CWD: root }, input,
   });
-  assert.deepEqual(parity.cases.resumed.adaptive, {
-    mode: resumed.expected_decision.mode,
-    continuation: 'resumed',
-    preserves_current_stage: true,
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+test('v1.2.2 public adaptive adapter selects behavior without fixture projection', (t) => {
+  // Given: a real clean Git project and ordinary simple and cross-file requests.
+  const root = createProject(t);
+  // When: both requests cross the shipped UserPromptSubmit adapter.
+  const simple = adaptive(root, 'Rename the local heading.', { scope: 'localized', file_count: 1 });
+  const complex = adaptive(root, 'Implement the cache correction across parser and renderer.', {
+    scope: 'cross-file', file_count: 4,
   });
-  assert.equal(completionReasons.includes(parity.cases.stale.completion.reason_code), true);
-  assert.equal(completionReasons.includes(parity.cases.missing_identity.completion.reason_code), true);
-  assert.deepEqual(parity.cases.valid.completion, parity.cases.completed.completion);
-  assert.equal(parity.semantic_projection.max_auto_escalations, 2);
-  assert.equal(parity.semantic_projection.product_review_roles.length, 5);
-  assert.equal(new Set(parity.semantic_projection.product_review_roles).size, 5);
-  assert.equal(parity.cases.completed.memory, parity.semantic_projection.memory_acceptance);
+  // Then: the public decisions select the smallest sufficient existing workflows.
+  assert.equal(simple.decision.mode, 'direct');
+  assert.deepEqual(simple.selection.workflowSurfaces, []);
+  assert.equal(complex.decision.mode, 'assisted');
+  assert.deepEqual(complex.selection.workflowSurfaces, ['lazy-start-work']);
+});
+
+test('v1.2.2 public completion adapter rejects stale identity', () => {
+  // Given: the canonical completion fixture and its real artifact tree.
+  const root = path.join(pluginRoot, 'contracts', 'fixtures', 'completion-evidence-v1');
+  const common = ['completion', '--project-root', root, '--repo-head', 'a'.repeat(40),
+    '--package-version', '1.2.0', '--criterion-id', 'criterion-contracts'];
+  // When: the shipped completion adapter assesses current and stale authority.
+  const current = run(process.execPath, [completion, ...common, path.join(root, 'valid.json')]);
+  const stale = run(process.execPath, [completion, ...common, path.join(root, 'wrong-head.json')]);
+  // Then: current evidence is ready while a mismatched revision fails closed.
+  assert.equal(current.status, 0, current.stderr);
+  assert.equal(current.stdout, 'PASS: completion record valid\n');
+  assert.notEqual(stale.status, 0);
+  assert.match(stale.stderr, /repo_head/);
 });
