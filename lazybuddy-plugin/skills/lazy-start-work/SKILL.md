@@ -63,9 +63,10 @@ Write `.lazybuddy/runs/<run_id>/state.json` with:
    the status digest and owned-path provenance in the execution-context record.
 5. Parse each plan-named verification command into argv, reject shell control
    syntax or a command that would mutate user/host state, resolve its executable,
-   and perform one bounded syntax/dry-run smoke check. Record the plan digest and
-   `validated_once: true`; reuse that record rather than revalidating per worker.
-6. Validate the record with `node ${CODEBUDDY_PLUGIN_ROOT}/contracts/validate-lazyseries-record.js execution --project-root <project-root> <record.json>`.
+   and perform one bounded syntax/dry-run smoke check. Record `validated_once: true`,
+   persist the exact argv arrays in a regular project-local
+   `plan-commands.json`, set `plan_sha256` to that file's SHA-256, and reuse it.
+6. Validate the record with `node ${CODEBUDDY_PLUGIN_ROOT}/contracts/validate-lazyseries-record.js execution --project-root <project-root> --plan-commands-file <plan-commands.json> <record.json>`.
 7. **DELEGATE EVERYTHING.** Spawn worker subagents for ALL independent sub-tasks in parallel using WorkBuddy Agent tool.
 8. For LIGHT: direct implementation. For HEAVY: failing-first proof then implementation.
 

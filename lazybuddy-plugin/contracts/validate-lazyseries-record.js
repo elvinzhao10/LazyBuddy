@@ -40,6 +40,16 @@ const SHELLS = new Set(['bash', 'sh', 'zsh', 'cmd', 'cmd.exe', 'powershell', 'pw
 const NON_DISPATCHABLE = new Set(['rm', 'sudo', 'curl', 'wget', 'ssh', 'scp', 'open', 'osascript']);
 const MUTATING_GIT = new Set(['push', 'reset', 'clean', 'checkout', 'restore', 'commit', 'rebase', 'merge', 'tag']);
 const MUTATING_PACKAGES = new Set(['install', 'ci', 'publish', 'uninstall', 'update']);
+const GIT_OPTIONS_WITH_VALUES = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--super-prefix', '--config-env']);
+const INTERPRETER_EVAL = new Map([
+  ['node', new Set(['-e', '--eval', '-p', '--print'])],
+  ['node.exe', new Set(['-e', '--eval', '-p', '--print'])],
+  ['python', new Set(['-c'])],
+  ['python3', new Set(['-c'])],
+  ['python.exe', new Set(['-c'])],
+  ['ruby', new Set(['-e'])],
+  ['perl', new Set(['-e'])],
+]);
 
 function fieldPath(error) {
   const base = error.instancePath.replaceAll('/', '.').replace(/^\./, '');
@@ -156,6 +166,17 @@ function validateArtifactRefs(refs, root, field, errors) {
   }
 }
 
+function gitSubcommand(argv) {
+  for (let index = 1; index < argv.length; index += 1) {
+    const token = argv[index];
+    const option = token.split('=', 1)[0];
+    if (GIT_OPTIONS_WITH_VALUES.has(option)) {
+      if (!token.includes('=')) index += 1;
+    } else if (!token.startsWith('-')) return token.toLowerCase();
+  }
+  return '';
+}
+
 function validateExecutionContext(record, context) {
   if (!validateExecutionSchema(record)) return { ok: false, errors: schemaErrors(validateExecutionSchema) };
   const errors = [];
@@ -167,8 +188,11 @@ function validateExecutionContext(record, context) {
   for (const command of record.command_validation.commands) {
     const executable = path.basename(command.argv[0]).toLowerCase();
     const subcommand = (command.argv[1] || '').toLowerCase();
-    const evaluatesCode = SHELLS.has(executable)
-      && command.argv.slice(1).some((part) => ['-c', '/c', '-command'].includes(part.toLowerCase()));
+    const evaluatesCode = command.argv.slice(1).some((part) => {
+      const flag = part.toLowerCase();
+      return (SHELLS.has(executable) && ['-c', '/c', '-command'].includes(flag))
+        || (INTERPRETER_EVAL.get(executable)?.has(flag) ?? false);
+    });
     if (evaluatesCode || command.argv.some((part) => UNSAFE_ARGV.has(part) || /[\r\n]/.test(part))) {
       errors.push('command_validation.commands.argv: unsafe shell token');
     }
@@ -177,14 +201,18 @@ function validateExecutionContext(record, context) {
     const hostMutation = executable === 'codebuddy' && command.argv.includes('plugin')
       && command.argv.some((part) => ['add', 'install', 'uninstall', 'remove'].includes(part.toLowerCase()));
     if (NON_DISPATCHABLE.has(executable)
-      || (executable === 'git' && MUTATING_GIT.has(subcommand))
+      || (executable === 'git' && MUTATING_GIT.has(gitSubcommand(command.argv)))
       || packageMutation || hostMutation) {
       errors.push('command_validation.commands.argv: mutation, remote access, or approval required');
     }
   }
-  if (context.planCommands
-    && JSON.stringify(record.command_validation.commands.map(({ argv }) => argv)) !== JSON.stringify(context.planCommands)) {
+  if (!Array.isArray(context.planCommands)) {
+    errors.push('command_validation.commands: trusted stored plan commands are required');
+  } else if (JSON.stringify(record.command_validation.commands.map(({ argv }) => argv)) !== JSON.stringify(context.planCommands)) {
     errors.push('command_validation.commands: must match the stored plan command list');
+  }
+  if (record.command_validation.plan_sha256 !== context.planSha256) {
+    errors.push('command_validation.plan_sha256: must match the stored plan command list');
   }
   if (!sameMembers(record.task.criterion_ids, record.criteria.map(({ criterion_id: id }) => id))) {
     errors.push('criteria: must cover exactly task.criterion_ids');
@@ -253,6 +281,24 @@ function parseArguments(argv) {
   return { kind, file, options };
 }
 
+function executionContext(options) {
+  if (!options.planCommandsFile) throw new Error('execution: trusted plan commands file (--plan-commands-file) is required');
+  const root = fs.realpathSync(options.projectRoot);
+  const target = path.resolve(options.projectRoot, options.planCommandsFile);
+  const stat = fs.lstatSync(target);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error('plan commands file must be a regular in-scope file');
+  }
+  if (!fs.realpathSync(target).startsWith(`${root}${path.sep}`)) throw new Error('plan commands file escapes project root');
+  const planCommands = JSON.parse(fs.readFileSync(target, 'utf8'));
+  if (!Array.isArray(planCommands) || planCommands.length === 0 || planCommands.length > 64
+    || planCommands.some((argv) => !Array.isArray(argv) || argv.length === 0 || argv.length > 128
+      || argv.some((part) => typeof part !== 'string' || part.length === 0 || part.length > 1024))) {
+    throw new Error('plan commands file must contain bounded argv arrays');
+  }
+  return { ...options, planCommands, planSha256: digest(target) };
+}
+
 function main(argv) {
   try {
     const { kind, file, options } = parseArguments(argv);
@@ -260,7 +306,7 @@ function main(argv) {
     const result = kind === 'completion'
       ? validateCompletionEvidence(record, options)
       : kind === 'execution'
-        ? validateExecutionContext(record, options)
+        ? validateExecutionContext(record, executionContext(options))
         : validateCostOutcome(record);
     if (!result.ok) {
       process.stderr.write(`${result.errors.join('\n')}\n`);
