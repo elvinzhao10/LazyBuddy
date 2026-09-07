@@ -2,6 +2,25 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.2.2 — Streamlined adaptive context (2026-09-05)
+
+- Automatic workflow selection now chooses the smallest sufficient existing
+  workflow from task risk and complexity without requiring a special command.
+  Selection remains selection-only until current host readiness is observed;
+  it does not claim host workflow loading or dispatch.
+- Current compact task packets are 1,637 bytes rather than 2,285 bytes, a
+  648-byte / 28.36% reduction. Required safety, approval, evidence, review,
+  and completion gates, plus quality assertions, are unchanged.
+- Package versions, generated metadata, current documentation, and release
+  guidance now identify v1.2.2. Versioned root release-note files are retired;
+  their history remains in Git and this changelog.
+- Added compact `TASK/DELTA/REFS/VERIFY` execution dispatch with read-only
+  pre-task provenance, stored-plan command binding, safe argv validation,
+  runtime/stateful evidence requirements, and identity-bound terminal-result
+  recovery. Review reruns retain unaffected current lanes.
+- Hardened interrupted pre-state `create-run` recovery: transaction residue is
+  rolled back without touching caller files, and the run can be retried.
+
 ## v1.2.1 — Compatibility and release verification (2026-08-30)
 
 - Added a blocking cross-platform PR safety net and weekly Node compatibility

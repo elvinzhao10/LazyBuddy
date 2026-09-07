@@ -159,22 +159,18 @@ def test_installed_hook_does_not_claim_dispatch_for_unobserved_host(
 
     # Then
     assert directive["kind"] == "lazybuddy-adaptive-directive"
-    assert directive["dispatched"] == "blocked:host-readiness-pending"
+    assert directive["dispatched"] == "selected:host-unobserved"
     assert directive["decision"]["mode"] == "planned"
     assert directive["runtime"]["host"] == "not-observed"
     assert directive["runtime"]["hostReadiness"] == "pending"
-    assert directive["runtime"]["route"] == "fallback-degraded"
+    assert directive["runtime"]["route"] == "selection-only"
     assert directive["runtime"]["workflowSurfaces"] == []
+    assert directive["selection"]["workflowSurfaces"] == [
+        "lazy-ulw-plan",
+        "lazy-start-work",
+    ]
     assert directive["persistence"] == "skipped:no-active-state"
-    assert set(directive["explanation"]) == {
-        "approval",
-        "capabilityClasses",
-        "evidenceImpact",
-        "mode",
-        "notSelected",
-        "responsibilities",
-        "stages",
-    }
+    assert "explanation" not in directive
 
 
 def test_security_review_is_automatic_when_no_concrete_action_requires_approval(
@@ -194,7 +190,7 @@ def test_security_review_is_automatic_when_no_concrete_action_requires_approval(
         "requiredClasses": [],
         "status": "not-required",
     }
-    assert directive["dispatched"] == "blocked:host-readiness-pending"
+    assert directive["dispatched"] == "selected:host-unobserved"
 
 
 def test_explicit_named_workflow_is_presented_unchanged(tmp_path: Path) -> None:
@@ -209,6 +205,7 @@ def test_explicit_named_workflow_is_presented_unchanged(tmp_path: Path) -> None:
     assert directive["decision"]["explicitWorkflow"] == "lazy-ulw-plan"
     assert directive["decision"]["stages"] == ["understand", "plan"]
     assert directive["runtime"]["workflowSurfaces"] == []
+    assert directive["selection"]["workflowSurfaces"] == ["lazy-ulw-plan"]
 
 
 def test_remote_data_egress_reaches_approval_gate(tmp_path: Path) -> None:
@@ -353,7 +350,7 @@ def test_logical_macos_system_temp_alias_is_accepted_without_persistence(
     )
 
     # Then
-    assert directive["dispatched"] == "blocked:host-readiness-pending"
+    assert directive["dispatched"] == "selected:host-unobserved"
     assert directive["persistence"] == "skipped:no-active-state"
     assert not (project / ".lazybuddy").exists()
 
@@ -454,9 +451,10 @@ def test_non_git_revision_fails_closed(tmp_path: Path) -> None:
     directive = _run(project, payload)
 
     # Then
-    assert directive["dispatched"] == "blocked:revision-unavailable"
-    assert directive["snapshot"]["revisionFingerprint"] == {
+    assert directive["dispatched"] == "inactive:revision-unavailable"
+    assert directive["identity"]["revisionFingerprint"] == {
         "digest": None,
         "status": "unavailable",
     }
+    assert "snapshot" not in directive
     assert directive["persistence"] == "skipped:revision-unavailable"

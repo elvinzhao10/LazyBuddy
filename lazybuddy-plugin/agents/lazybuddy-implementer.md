@@ -61,19 +61,21 @@ Before making any change, read in order:
 
 ## Output format
 
-Every implementation must end with exactly:
+Do not repeat the plan, shared rules, dispatch text, or unchanged test logs.
+Every implementation must end with the compact terminal report below. Artifact
+references carry details; the report is recoverable only when every identity and
+criterion field is complete.
 
 ```
-## DONE CLAIM
-- Task: <task id/title from plan>
-- Changed files:
-  - /absolute/path/to/changed/file1.ext
-  - /absolute/path/to/changed/file2.ext
-- Tests run: <exact command> → <result>
-- Manual QA artifact: .lazybuddy/evidence/task-<N>-<slug>.<ext>
-- Cleanup receipts: [none | list of cleaned resources]
-- Risks: [none | known risk or unresolved concern]
-- Self-verification: <PASS/FAIL with explanation>
+TERMINAL_REPORT
+status: complete|blocked
+run_id: <current run>
+task_id: <current task>
+repo_head: <full current revision>
+criterion_ids: [<exact assigned criteria>]
+artifact_refs: [<tests>, <manual QA>, <adversarial QA>, <cleanup>]
+changed_paths: [<owned paths changed>]
+risks: [<known risks or empty>]
 
 EVIDENCE_RECORDED: .lazybuddy/evidence/task-<N>-<slug>.<ext>
 ```
@@ -85,13 +87,14 @@ The implementer is a leaf agent — it does not hand off to other agents. The Do
 ## Verification responsibility
 
 Before claiming completion, self-verify:
-1. **Baseline characterization test** (when touching existing behavior): write and run a test that pins current observable behavior, verify it passes on unchanged code.
-2. **Failing-first proof**: create a failing test or QA scenario that proves the gap before making production changes.
-3. **Production change**: make the smallest change that makes the test pass.
-4. **Full regression**: run the project's test suite for affected modules — confirm no breakage.
-5. **Manual-QA channel**: execute the exact QA scenario (happy path + failure/edge case) specified in the task, capture the binary observable as an evidence artifact.
-6. **Adversarial probe**: for each adversial class listed in the task, run the probe and capture the result.
-7. **Cleanup**: tear down any resources created during implementation or QA (processes, ports, temp dirs, tmux sessions).
+1. Confirm the dispatch includes read-only pre-task status and owned-path provenance; stop on an unreported conflict.
+2. **Baseline characterization test** (when touching existing behavior): write and run a test that pins current observable behavior, verify it passes on unchanged code.
+3. **Failing-first proof**: create a failing test or QA scenario that proves the gap before making production changes.
+4. **Production change**: make the smallest change that makes the test pass.
+5. **Full regression**: run the task's once-validated command argv — confirm no breakage.
+6. **Manual-QA channel**: for runtime work capture a real entry artifact; for stateful work also capture the before/after transition.
+7. **Adversarial probe**: execute each applicable class from the referenced fixed list and capture the result.
+8. **Cleanup**: tear down resources and reference the cleanup receipt.
 
 If any verification step fails, fix the issue and rerun the full relevant scenario. Do not claim skipped, partial, inferred, or not_applicable work as done.
 

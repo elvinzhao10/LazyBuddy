@@ -76,9 +76,31 @@ def _related(candidate: ActiveState, current_request_digest: str) -> bool:
     )
 
 
+def _matches_compaction_identity(
+    candidate: ActiveState,
+    session_id: str | None,
+) -> bool:
+    if "last_compaction" not in candidate.state:
+        return True
+    session_ids = candidate.state.get("session_ids")
+    bindings = candidate.state.get("runtime_fingerprints")
+    if (
+        session_id is None
+        or not isinstance(session_ids, list)
+        or session_id not in session_ids
+        or not isinstance(bindings, list)
+    ):
+        return False
+    return any(
+        isinstance(binding, dict) and binding.get("session_id") == session_id
+        for binding in bindings
+    )
+
+
 def resolve_active_state(
     project_root: Path,
     current_request_digest: str,
+    session_id: str | None = None,
 ) -> StateResolution:
     state_root = project_root / ".lazybuddy"
     runs_root = state_root / "runs"
@@ -103,8 +125,15 @@ def resolve_active_state(
     related = [candidate for candidate in active if _related(candidate, current_request_digest)]
     if not related:
         return StateResolution(status="unrelated-active-state")
+    current = [
+        candidate
+        for candidate in related
+        if _matches_compaction_identity(candidate, session_id)
+    ]
+    if not current:
+        return StateResolution(status="stale-compaction-state")
     selected = max(
-        related,
+        current,
         key=lambda candidate: str(candidate.state.get("updated_at", "")),
     )
     return StateResolution(status="target", target=selected)

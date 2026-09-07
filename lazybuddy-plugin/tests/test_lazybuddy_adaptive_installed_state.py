@@ -243,7 +243,7 @@ def test_scope_or_host_mismatch_reclassifies_without_mutating_stale_state(
     assert directive["changedMaterial"] == ["scopeFingerprint"]
     assert directive["runtime"]["host"] == "not-observed"
     assert directive["runtime"]["hostReadiness"] == "pending"
-    assert directive["runtime"]["route"] == "fallback-degraded"
+    assert directive["runtime"]["route"] == "selection-only"
     assert directive["persistence"] == "skipped:stale-state-preserved"
     assert state_path.read_bytes() == before
 

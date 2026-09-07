@@ -1,15 +1,10 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const RELEASE_VERSION = '1.2.1';
-const PREVIOUS_VERSION = '1.2.0';
-const HISTORICAL_DIGESTS = {
-  'RELEASE_NOTES-v1.1.0.md': 'c16be358bd337351bd4541b9239d5faedc7b3443dcd3e32cc1e98d8aae93ebed',
-  'RELEASE_NOTES-v1.2.0.md': '1f669dbdacaceb74782be5a99c56aba270eb58073ba305c0a60524fdbe360786',
-};
+const RELEASE_VERSION = '1.2.2';
+const PREVIOUS_VERSION = '1.2.1';
 const VERSION_JSON_PATHS = [
   ['lazybuddy-plugin/.codebuddy-plugin/plugin.json', ['version']],
   ['lazybuddy-plugin/.workbuddy-plugin/plugin.json', ['version']],
@@ -51,8 +46,7 @@ function walk(root, directory = root) {
 }
 
 function previousVersionClassification(relativePath, line) {
-  if (relativePath === 'RELEASE_NOTES-v1.2.0.md' || relativePath.startsWith('docs/v1.2.0-')) return 'historical-release-document';
-  if (relativePath === 'RELEASE_NOTES-v1.2.1.md') return 'documented-migration-boundary';
+  if (relativePath.startsWith('docs/v1.2.1-')) return 'historical-release-document';
   if (relativePath === 'README.md' && /efficiency improvements/i.test(line)) return 'historical-release-summary';
   if (relativePath === 'lazybuddy-plugin/CHANGELOG.md') return 'historical-release-history';
   if (relativePath.includes('/contracts/fixtures/') || relativePath.includes('/tests/fixtures/')) return 'historical-or-adversarial-fixture';
@@ -62,7 +56,7 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.endsWith('lazybuddy-contract-check.sh')) return 'schema-independent-contract-test';
   if (/(?:^|\/)(?:test|tests)\//.test(relativePath) && /(previous|historical|fixture|wrong|from|upgrade|mutable|prior)/i.test(line)) return 'historical-test-input';
   if (/\bcurrent\b.*\b(?:release|version)\b/i.test(line)) return 'current-version-drift';
-  if (/(upgrade|migrat|rollback|previous|historical|prior|old release|from v?1\.2\.0|tag\/v1\.2\.0|release notes)/i.test(line)) return 'historical-migration-reference';
+  if (/(upgrade|migrat|rollback|previous|historical|prior|old release|from v?1\.2\.[01]|tag\/v1\.2\.[01]|release notes)/i.test(line)) return 'historical-migration-reference';
   return null;
 }
 
@@ -76,7 +70,7 @@ function classify(root) {
   const runtimeVersion = require(path.join(root, 'lazybuddy-plugin/scripts/lifecycle/version.js')).CURRENT_VERSION;
   if (runtimeVersion !== RELEASE_VERSION) failures.push(`PACKAGE_RUNTIME_MISMATCH runtime expected ${RELEASE_VERSION}, got ${runtimeVersion}`);
 
-  const notesPath = path.join(root, `RELEASE_NOTES-v${RELEASE_VERSION}.md`);
+  const notesPath = path.join(root, 'RELEASE_NOTES.md');
   if (!fs.existsSync(notesPath)) failures.push(`MISSING_RELEASE_NOTE RELEASE_NOTES-v${RELEASE_VERSION}.md`);
   else {
     const notes = fs.readFileSync(notesPath, 'utf8');
@@ -85,12 +79,10 @@ function classify(root) {
     }
   }
 
-  for (const [relativePath, expected] of Object.entries(HISTORICAL_DIGESTS)) {
-    const actual = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, relativePath))).digest('hex');
-    if (actual !== expected) failures.push(`CHANGED_HISTORICAL_FIXTURE ${relativePath}`);
-  }
-
   for (const relativePath of walk(root)) {
+    if (/^RELEASE_NOTES-v.+\.md$/.test(relativePath)) {
+      failures.push(`VERSIONED_RELEASE_NOTE_PRESENT ${relativePath}`);
+    }
     let contents;
     try { contents = fs.readFileSync(path.join(root, relativePath), 'utf8'); } catch { continue; }
     if (!contents.includes(PREVIOUS_VERSION)) continue;

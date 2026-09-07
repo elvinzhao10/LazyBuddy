@@ -4,15 +4,30 @@ LazyBuddy supports CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. It is verified
 on macOS only. Package files, host settings, credentials, marketplace state,
 and live sessions remain separate authorities.
 
-## Current documentation release: v1.2.1
+## Current documentation release: v1.2.2
 
-This v1.2.1 guide names current human-facing boundaries only. It does not
+This v1.2.2 guide names current human-facing boundaries only. It does not
 publish a package or promote package evidence to host proof. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels are `documented-tested`, `documented-untested`,
 `observed-build-specific`, and `unavailable`; evidence scopes are `package`,
 `probe`, and `current-session`.
+
+Automatic workflow selection uses existing risk and complexity signals to
+choose the smallest sufficient workflow. Until the selected host is observed,
+that result is selection-only: it does not claim native workflow loading or
+dispatch, and **HOST READINESS: PENDING** remains authoritative.
+
+For orchestrated package work, dispatch only the compact
+`TASK/DELTA/REFS/VERIFY` record: current identity, owned-path delta, artifact
+references, read-only pre-task provenance, and once-validated plan argv. Reject
+shell composition and destructive, remote, host-mutating, or approval-required
+argv before dispatch. Runtime criteria need a real entry artifact; stateful
+criteria also need a before/after transition. Recover a lost result only when a
+complete terminal report still matches the current run/task/revision/criteria
+and has readable artifacts. If run creation is interrupted before `state.json`,
+recover only its transaction material, preserve caller files, then retry.
 
 ## Durable onboarding (start here)
 
@@ -153,7 +168,7 @@ numbered item is a separate action:
    directory** GUI to select the absolute release root containing
    `.codebuddy-plugin/marketplace.json`; then wait for inspection.
 2. Observe the version the current marketplace actually displays. Do not infer
-   v1.2.1 publication from this documentation boundary. Do not install in the
+   v1.2.2 publication from this documentation boundary. Do not install in the
    discovery action. If discovery is unavailable, record the
    host version/build and exact error, keep **HOST READINESS: PENDING**, and use
    the fallback below only after selecting it explicitly.

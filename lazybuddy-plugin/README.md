@@ -1,6 +1,6 @@
 # LazyBuddy Plugin
 
-## Durable v1.2.1 installation
+## Durable v1.2.2 installation
 
 **Node.js LTS 20 or newer** and **Git** are required. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use
@@ -22,7 +22,7 @@ require LazyCodex or OmO at runtime.
 
 ## Durable onboarding
 
-Bootstrap v1.2.1 once from a verified official source checkout, then use the
+Bootstrap v1.2.2 once from a verified official source checkout, then use the
 durable launcher rather than treating that checkout as the installed runtime:
 
 ```bash
@@ -86,6 +86,24 @@ LazyBuddy provides a workflow harness for CodeBuddy and WorkBuddy. WorkBuddy plu
 - **Verified completion loop** (`/lazybuddy:lazy-ulw-loop`) — evidence-backed done claims with adversarial verification
 - **5-agent parallel review** (`/lazybuddy:lazy-review-work`) — goal/QA/code/security/context; all 5 must pass
 - **Ultrawork mode** (`/lazybuddy:lazy-ultrawork`) — binding directive with tier triage and Manual-QA discipline
+
+### Execution evidence and recovery
+
+`lazy-start-work` dispatches a compact `TASK/DELTA/REFS/VERIFY` record rather
+than copying the whole plan into each worker prompt. The record binds the
+current run/task/revision and criteria to an owned-path delta, read-only
+pre-task provenance, artifact references, and once-validated plan argv. The
+validator rejects shell composition plus destructive, remote, host-mutating,
+or approval-requiring argv before dispatch; it does not execute those commands.
+
+Runtime criteria need a real package/public entry artifact, and stateful
+criteria also need a before/after transition artifact. A lost worker result can
+update memory only through a complete, current identity-bound terminal report
+whose artifact references are readable. Five-lane review retains unaffected
+current PASS lanes and reruns only failed, missing, stale, or input-affected
+lanes. If `create-run` is interrupted before `state.json` exists,
+`recover-run.sh` rolls back only its transaction material, preserves caller
+files, and leaves the run eligible for retry.
 
 ## Component Map
 
@@ -316,6 +334,13 @@ Make targets. Dry runs do not change the target. Runs do not install target
 dependencies or guess commands; a timed-out selected check exits `124`.
 
 ### Automatic capability selection and approvals
+
+Automatic workflow selection chooses the smallest sufficient existing workflow
+from task risk and complexity. It is selection-only until host readiness is
+observed: package output must not claim native workflow loading or host
+dispatch. The compact task packet is 1,637 bytes rather than 2,285 bytes
+(648 bytes / 28.36% smaller); required safety, approval, evidence, review, and
+completion gates are unchanged.
 
 The installed package carries the versioned automatic-tooling contract and its
 provider-policy adapter. Start with an offline status check or create the

@@ -22,10 +22,11 @@ RUN_DIR="$STATE_RUN_DIR"
 STATE_FILE="$RUN_DIR/state.json"
 CKPTS_DIR="$RUN_DIR/checkpoints"
 EVENTS_FILE="$RUN_DIR/events.jsonl"
-state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
+state_require_safe_run_file "$STATE_FILE" "state.json" || exit 1
 state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
 state_require_safe_run_directory "$CKPTS_DIR" "checkpoints directory" || exit 1
 state_recover_transaction "$RUN_DIR" || exit 1
+state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
 
 # Find latest checkpoint
 LATEST_CKPT=""

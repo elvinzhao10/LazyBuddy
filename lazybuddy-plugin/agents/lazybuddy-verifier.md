@@ -91,52 +91,33 @@ Confidence is computed as: `passing_checks / total_checks * 0.7 + adversarial_pr
 ## Required context files
 
 Before verification, read in order:
-1. The DoneClaim from the orchestrator's message — task id, changed files, claimed tests, evidence paths, risks.
-2. The plan task specification — acceptance criteria, QA scenarios, adversial classes, Must-NOT-Do constraints.
-3. Every changed file listed in the DoneClaim (full content) — verify the diff matches the task's intent.
+1. The compact execution-context record from the orchestrator.
+2. Its plan, criteria, provenance, diff, and terminal-report artifact references.
+3. Every changed file named by the referenced task delta.
 4. Every evidence artifact path claimed — verify the file exists, is non-empty, and contains the claimed observable.
-5. The project's test runner configuration and commands — to reproduce tests independently.
+5. The once-validated command argv — reproduce tests independently.
 6. Adjacent files that could be affected by the change — to check for regressions.
+
+Do not require the plan, diff, file contents, test logs, or prior worker prose to
+be pasted into the dispatch. Resolve them from the bounded artifact references.
 
 ## Output format
 
+Write detailed reproduction and adversarial results to the evidence artifact.
+Do not repeat the plan, dispatch, full logs, or artifact contents in the reply.
 Every verification must end with exactly:
 
 ```
-## VERIFICATION VERDICT
-
-- Task: <task id/title>
-- Executor DoneClaim: <summary of what was claimed>
-- Verdict: confirmed | false-positive | needs-fix | needs-human-review
-- Confidence: <0.0 - 1.0>
-
-### Evidence review
-- [PASS/FAIL] Claimed tests reproduced: <exact commands run + results>
-- [PASS/FAIL] Manual-QA (happy path): <exact invocation + binary observable captured>
-- [PASS/FAIL] Manual-QA (failure/edge): <exact invocation + binary observable captured>
-- [PASS/FAIL] Artifacts present and non-empty: <list of paths checked>
-
-### Adversarial probe results
-| Class | Trigger | Probe executed | Result | Verdict |
-|-------|---------|---------------|--------|---------|
-| malformed_input | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| prompt_injection | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| cancel_resume | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| stale_state | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| dirty_worktree | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| hung_commands | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| flaky_tests | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| misleading_output | <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-| repeated_interrupts| <yes/no> | <command> | <observable> | PASS/FAIL/NOT_APPLICABLE |
-
-### Acceptance criteria coverage
-- [ ] Criterion 1: <status — PASS/FAIL with evidence reference>
-- [ ] Criterion 2: <status — PASS/FAIL with evidence reference>
-- ...
-
-### Blockers (if needs-fix or needs-human-review)
-1. <specific issue + exact reproduction command + what must change>
-2. ...
+TERMINAL_REPORT
+status: complete | blocked
+run_id: <current run>
+task_id: <current task>
+repo_head: <full current revision>
+criterion_ids: [<exact verified criteria>]
+verdict: confirmed | false-positive | needs-fix | needs-human-review
+confidence: <0.0 - 1.0>
+artifact_refs: [<reproduction>, <manual QA>, <adversarial QA>]
+blockers: [<specific blockers or empty>]
 ```
 
 ## Handoff format

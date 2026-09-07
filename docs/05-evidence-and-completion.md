@@ -4,7 +4,7 @@ Completion is a claim backed by evidence, not a green-looking status message.
 LazyBuddy separates package readiness from live-host behavior; that distinction
 is the most important rule for interpreting results.
 
-For the current v1.2.1 human-facing boundary, the route IDs are
+For the current v1.2.2 human-facing boundary, the route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 uses native modes
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels `documented-tested`, `documented-untested`,
@@ -13,6 +13,10 @@ public labels `documented-tested`, `documented-untested`,
 for CodeBuddy IDE and WorkBuddy. Skills/manual MCP is recovery-only and
 mutually exclusive with the full-plugin route; package readiness does not prove
 a live host.
+
+Automatic workflow selection is package behavior, not host proof. It selects
+the smallest sufficient existing workflow from risk and complexity, then stays
+selection-only until a fresh host session is observed.
 
 The capability contract names four evidence scopes: `package-ready`,
 `observed-build-route`, `manual-skills-mcp-fallback`, and `live-host-proof`.
@@ -72,6 +76,20 @@ commands and results, real-surface/manual-QA observation where needed, cleanup
 performed, and any remaining risk. A verifier should independently reproduce
 the claimed checks and classify each outcome as pass, failure, warning,
 not-applicable, or skipped with a reason.
+
+For orchestrated work, the evidence starts before dispatch. The compact
+`TASK/DELTA/REFS/VERIFY` record binds current run/task/revision and criterion
+IDs to the owned paths, read-only status provenance, artifacts, and
+once-validated stored-plan argv. Validation rejects shell composition,
+destructive/remote/host-mutating/approval-required command classes without
+executing them. Runtime criteria require a real entry artifact; stateful
+criteria also require before/after transition evidence.
+
+Result recovery is deliberately narrow: a terminal report is accepted only
+when its status, current identity, exact criterion IDs, and readable artifact
+references validate together. Otherwise memory remains unchanged. The final
+five review lanes retain unaffected current PASS results and rerun only failed,
+missing, stale, or input-affected lanes; a generic rerun is not stronger proof.
 
 `lazy-ulw-loop` turns open-ended work into goals with explicit success
 criteria. `lazy-start-work` coordinates plan execution, evidence, verification,

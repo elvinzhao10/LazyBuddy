@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lazyseries.dev/contracts/lazyseries-execution-context.v1.schema.json",
+  "title": "LazySeries Execution Context v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "fixed_contract", "task", "delta", "artifact_refs",
+    "pre_task", "command_validation", "criteria", "recovery", "memory_update", "review"
+  ],
+  "properties": {
+    "schema_version": { "const": "lazyseries.execution-context.v1" },
+    "fixed_contract": { "const": "TASK/DELTA/REFS/VERIFY" },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "task_id", "repo_head", "criterion_ids"],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/identity" },
+        "task_id": { "$ref": "#/$defs/identity" },
+        "repo_head": { "$ref": "#/$defs/revision" },
+        "criterion_ids": {
+          "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identity" }
+        }
+      }
+    },
+    "delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "owned_paths"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "owned_paths": {
+          "type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/relative_path" }
+        }
+      }
+    },
+    "artifact_refs": { "$ref": "#/$defs/paths" },
+    "pre_task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutation", "status_porcelain_sha256", "owned_paths"],
+      "properties": {
+        "mutation": { "const": "none" },
+        "status_porcelain_sha256": { "$ref": "#/$defs/sha256" },
+        "owned_paths": {
+          "type": "array", "minItems": 1, "maxItems": 128,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["path", "status"],
+            "properties": {
+              "path": { "$ref": "#/$defs/relative_path" },
+              "status": { "enum": ["tracked-clean", "tracked-modified", "untracked", "absent"] }
+            }
+          }
+        }
+      }
+    },
+    "command_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_sha256", "validated_once", "commands"],
+      "properties": {
+        "plan_sha256": { "$ref": "#/$defs/sha256" },
+        "validated_once": { "const": true },
+        "commands": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["source", "argv", "status"],
+            "properties": {
+              "source": { "const": "plan" },
+              "argv": {
+                "type": "array", "minItems": 1, "maxItems": 128,
+                "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+              },
+              "status": { "const": "validated" }
+            }
+          }
+        }
+      }
+    },
+    "criteria": {
+      "type": "array", "minItems": 1, "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["criterion_id", "kind", "observations", "artifact_refs"],
+        "properties": {
+          "criterion_id": { "$ref": "#/$defs/identity" },
+          "kind": { "enum": ["static", "runtime", "stateful"] },
+          "observations": {
+            "type": "array", "uniqueItems": true,
+            "items": { "enum": ["real-entry", "state-transition"] }
+          },
+          "artifact_refs": { "$ref": "#/$defs/paths" }
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "accepted"],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "accepted": { "type": "boolean" },
+        "terminal_report": {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "run_id", "task_id", "repo_head", "criterion_ids", "artifact_refs"],
+          "properties": {
+            "status": { "const": "complete" },
+            "run_id": { "$ref": "#/$defs/identity" },
+            "task_id": { "$ref": "#/$defs/identity" },
+            "repo_head": { "$ref": "#/$defs/revision" },
+            "criterion_ids": {
+              "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true,
+              "items": { "$ref": "#/$defs/identity" }
+            },
+            "artifact_refs": { "$ref": "#/$defs/paths" }
+          }
+        }
+      }
+    },
+    "memory_update": { "enum": ["accepted", "unchanged"] },
+    "review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["complete", "lanes"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "lanes": {
+          "type": "array", "minItems": 5, "maxItems": 5,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["lane_id", "previous", "stale", "input_affected", "rerun", "current"],
+            "properties": {
+              "lane_id": { "enum": ["goal-verification", "manual-qa", "code-quality", "security", "context-mining"] },
+              "previous": { "enum": ["PASS", "FAIL", "INCONCLUSIVE", "MISSING"] },
+              "stale": { "type": "boolean" },
+              "input_affected": { "type": "boolean" },
+              "rerun": { "type": "boolean" },
+              "current": { "enum": ["PASS", "FAIL", "INCONCLUSIVE", "PENDING"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$", "maxLength": 160 },
+    "revision": { "type": "string", "pattern": "^[a-f0-9]{40}(?:[a-f0-9]{24})?$" },
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!~)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$",
+      "maxLength": 1024
+    },
+    "paths": {
+      "type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/relative_path" }
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

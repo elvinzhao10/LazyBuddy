@@ -20,6 +20,20 @@ fail() {
 cp -R "$PLUGIN_ROOT" "$TMP/installed-plugin"
 INSTALLED_PLUGIN="$(cd "$TMP/installed-plugin" && pwd)"
 mkdir -p "$PROJECT"
+printf 'caller-owned\n' > "$PROJECT/caller.txt"
+if CWD="$PROJECT" LAZYBUDDY_TX_FAULT=after-stage bash "$INSTALLED_PLUGIN/scripts/state/create-run.sh" interrupted-installed 'installed interruption' >"$TMP/interrupted.out" 2>"$TMP/interrupted.err"; then
+    fail 'interrupted installed create unexpectedly succeeded'
+fi
+INTERRUPTED_RUN="$PROJECT/.lazybuddy/runs/interrupted-installed"
+if CWD="$PROJECT" bash "$INSTALLED_PLUGIN/scripts/state/recover-run.sh" interrupted-installed >"$TMP/recover.out" 2>"$TMP/recover.err"; then
+    fail 'installed recovery unexpectedly succeeded without state'
+fi
+test ! -e "$INTERRUPTED_RUN/.transaction-journal" || fail 'installed recovery retained transaction journal'
+test -z "$(find "$INTERRUPTED_RUN" -maxdepth 1 -name '.transaction-journal-*' -print -quit)" || fail 'installed recovery retained staged transaction material'
+test "$(cat "$PROJECT/caller.txt")" = 'caller-owned' || fail 'installed recovery changed caller file'
+CWD="$PROJECT" bash "$INSTALLED_PLUGIN/scripts/state/create-run.sh" interrupted-installed 'installed retry' >/dev/null
+grep -q '"run_id": "interrupted-installed"' "$INTERRUPTED_RUN/state.json" || fail 'installed retry did not create state'
+
 CWD="$PROJECT" CODEBUDDY_PLUGIN_ROOT="$INSTALLED_PLUGIN" bash "$INSTALLED_PLUGIN/scripts/state/create-run.sh" "$RUN_ID" 'installed root checkpoint test' >/dev/null
 
 python3 - "$PROJECT/.lazybuddy/runs/$RUN_ID/state.json" <<'PY'
