@@ -66,6 +66,42 @@ function writePlanCommands(root, input, name = 'plan-commands.json') {
   return file;
 }
 
+function writeExecutionAuthority(root, input, name = 'plan-commands.json') {
+  const planReference = '.lazybuddy/plans/current.md';
+  const plan = path.join(root, planReference);
+  const run = path.join(root, '.lazybuddy', 'runs', input.task.run_id);
+  const commandsRelative = path.posix.join('.lazybuddy', 'runs', input.task.run_id, name);
+  const commands = path.join(root, commandsRelative);
+  fs.mkdirSync(path.dirname(plan), { recursive: true });
+  fs.mkdirSync(run, { recursive: true });
+  fs.writeFileSync(plan, '# Current plan\n');
+  const content = `${JSON.stringify(input.command_validation.commands.map(({ argv }) => argv))}\n`;
+  fs.writeFileSync(commands, content);
+  const planSha256 = crypto.createHash('sha256').update(fs.readFileSync(plan)).digest('hex');
+  const commandsSha256 = crypto.createHash('sha256').update(content).digest('hex');
+  input.command_validation.plan_sha256 = planSha256;
+  const state = {
+    run_id: input.task.run_id,
+    status: 'executing',
+    updated_at: '2026-09-06T12:00:00Z',
+    plan_reference: planReference,
+    tasks: [{
+      id: input.task.task_id,
+      status: 'running',
+      execution_authority: {
+        repo_head: input.task.repo_head,
+        criterion_ids: input.task.criterion_ids,
+        plan_reference: planReference,
+        plan_sha256: planSha256,
+        plan_commands_path: commandsRelative,
+        plan_commands_sha256: commandsSha256,
+      },
+    }],
+  };
+  fs.writeFileSync(path.join(run, 'state.json'), `${JSON.stringify(state)}\n`);
+  return commands;
+}
+
 test('accepts a compact fixed dispatch with read-only provenance and once-validated argv', () => {
   // Given: the compact task delta, references, provenance, and command boundary.
   const input = record();
@@ -261,7 +297,7 @@ test('exposes execution-context validation through the existing public record CL
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const input = path.join(root, 'execution.json');
   const value = record('execution.json');
-  const planCommands = writePlanCommands(root, value);
+  const planCommands = writeExecutionAuthority(root, value);
   fs.writeFileSync(input, `${JSON.stringify(value)}\n`);
   // When: the existing public record CLI validates it.
   const result = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', root,
@@ -281,19 +317,19 @@ test('public execution CLI rejects missing or mismatched plan authority and obsc
   const gitReset = record('artifact.txt');
   gitReset.command_validation.commands[0].argv = ['git', '-C', root, 'reset', '--hard'];
   const safe = record('artifact.txt');
-  const safePlan = writePlanCommands(root, safe, 'safe-plan.json');
-  const nodePlan = writePlanCommands(root, nodeEval, 'node-plan.json');
-  const gitPlan = writePlanCommands(root, gitReset, 'git-plan.json');
-  for (const [name, value] of Object.entries({ nodeEval, gitReset, safe })) {
-    fs.writeFileSync(path.join(root, `${name}.json`), `${JSON.stringify(value)}\n`);
-  }
   // When: each hostile record crosses the shipped CLI rather than the internal function alone.
+  const safePlan = writeExecutionAuthority(root, safe, 'safe-plan.json');
+  fs.writeFileSync(path.join(root, 'nodeEval.json'), `${JSON.stringify(nodeEval)}\n`);
   const unbound = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', root,
     path.join(root, 'nodeEval.json')], { encoding: 'utf8' });
   const mismatched = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', root,
     '--plan-commands-file', safePlan, path.join(root, 'nodeEval.json')], { encoding: 'utf8' });
+  const nodePlan = writeExecutionAuthority(root, nodeEval, 'node-plan.json');
+  fs.writeFileSync(path.join(root, 'nodeEval.json'), `${JSON.stringify(nodeEval)}\n`);
   const boundEval = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', root,
     '--plan-commands-file', nodePlan, path.join(root, 'nodeEval.json')], { encoding: 'utf8' });
+  const gitPlan = writeExecutionAuthority(root, gitReset, 'git-plan.json');
+  fs.writeFileSync(path.join(root, 'gitReset.json'), `${JSON.stringify(gitReset)}\n`);
   const obscured = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', root,
     '--plan-commands-file', gitPlan, path.join(root, 'gitReset.json')], { encoding: 'utf8' });
   // Then: all fail closed and no certified command is executed.
@@ -307,4 +343,38 @@ test('public execution CLI rejects missing or mismatched plan authority and obsc
   assert.match(obscured.stderr, /mutation, remote access, or approval required/);
   assert.equal(fs.existsSync(path.join(root, 'pwned')), false);
   assert.equal(fs.readFileSync(path.join(root, 'artifact.txt'), 'utf8'), 'preserve\n');
+});
+
+test('public execution CLI rejects caller-manufactured and external hard-linked plan authority', (t) => {
+  // Given: one matching caller-owned record/file pair and one current authority hard-linked outside its project.
+  const attackerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-execution-attacker-'));
+  const linkedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-execution-hardlink-'));
+  const outside = path.join(os.tmpdir(), `lazybuddy-plan-outside-${process.pid}-${Date.now()}.json`);
+  t.after(() => {
+    fs.rmSync(attackerRoot, { recursive: true, force: true });
+    fs.rmSync(linkedRoot, { recursive: true, force: true });
+    fs.rmSync(outside, { force: true });
+  });
+  for (const root of [attackerRoot, linkedRoot]) fs.writeFileSync(path.join(root, 'artifact.txt'), 'preserve\n');
+  const attacker = record('artifact.txt');
+  const attackerPlan = writePlanCommands(attackerRoot, attacker);
+  fs.writeFileSync(path.join(attackerRoot, 'execution.json'), `${JSON.stringify(attacker)}\n`);
+  const linked = record('artifact.txt');
+  const linkedPlan = writeExecutionAuthority(linkedRoot, linked);
+  fs.renameSync(linkedPlan, outside);
+  fs.linkSync(outside, linkedPlan);
+  linked.command_validation.plan_sha256 = crypto.createHash('sha256').update(fs.readFileSync(linkedPlan)).digest('hex');
+  fs.writeFileSync(path.join(linkedRoot, 'execution.json'), `${JSON.stringify(linked)}\n`);
+  // When: both cross the shipped public CLI with their matching caller-selected command files.
+  const manufactured = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', attackerRoot,
+    '--plan-commands-file', attackerPlan, path.join(attackerRoot, 'execution.json')], { encoding: 'utf8' });
+  const hardLinked = spawnSync(process.execPath, [validatorPath, 'execution', '--project-root', linkedRoot,
+    '--plan-commands-file', linkedPlan, path.join(linkedRoot, 'execution.json')], { encoding: 'utf8' });
+  // Then: neither self-consistency nor an in-root name for an external inode grants dispatch authority.
+  assert.equal([manufactured.status, hardLinked.status].every((status) => status !== 0), true,
+    `manufactured=${manufactured.stdout || manufactured.stderr}; hard-linked=${hardLinked.stdout || hardLinked.stderr}`);
+  assert.match(manufactured.stderr, /current run|execution authority/i);
+  assert.match(hardLinked.stderr, /multiple links|authority/i);
+  assert.equal(fs.readFileSync(path.join(attackerRoot, 'artifact.txt'), 'utf8'), 'preserve\n');
+  assert.equal(fs.readFileSync(path.join(linkedRoot, 'artifact.txt'), 'utf8'), 'preserve\n');
 });
