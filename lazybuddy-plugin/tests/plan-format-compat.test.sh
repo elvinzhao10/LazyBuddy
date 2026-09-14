@@ -40,7 +40,7 @@ make_run() {
 # run_sync <root>  -> echoes "exit=<n>|<stdout+stderr>"
 run_sync() {
   local root="$1"
-  local out; out="$(cd "$root" && bash "$SYNC" r1 2>&1)"; local rc=$?
+  local out; out="$(cd "$root" && CWD="$root" bash "$SYNC" r1 2>&1)"; local rc=$?
   printf '%s|%s' "$rc" "$out"
 }
 
@@ -150,7 +150,7 @@ printf '%s\n' '## TODOs
 - [ ] T1: implement auth
 - [ ] T2: refactor auth
 ' > "$UP_ROOT/.lazybuddy/runs/r1/plan.md"
-UP_OUT="$(cd "$UP_ROOT" && bash "$UPDATE" r1 auth 2>&1)"; UP_RC=$?
+UP_OUT="$(cd "$UP_ROOT" && CWD="$UP_ROOT" bash "$UPDATE" r1 auth 2>&1)"; UP_RC=$?
 if [ "$UP_RC" = "0" ]; then
   bad "update-plan-checkbox multiple-match: expected non-zero exit, got 0"
 elif ! printf '%s' "$UP_OUT" | grep -q "more specific label"; then
@@ -164,13 +164,13 @@ echo ""
 expect_sync_err "empty plan rejected" "$(make_run '' "$EMPTY_STATE")" "no checkboxes parsed"
 expect_sync_ok "nested acceptance boxes ignored" "$(make_run $'## TODOs\n- [ ] T1: work\n  - [ ] acceptance criterion' "$STATE_2T")" 1
 LEGACY_ROOT="$(make_run $'## Todos\n- [x] A1. legacy work' '{"plan_reference":".lazybuddy/runs/r1/plan.md","progress":{},"tasks":[{"id":"A1","status":"pending"}]}')"
-(cd "$LEGACY_ROOT" && bash "$SYNC" r1 --fix >/dev/null 2>&1)
+(cd "$LEGACY_ROOT" && CWD="$LEGACY_ROOT" bash "$SYNC" r1 --fix >/dev/null 2>&1)
 if python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["tasks"][0]["status"] == "done"' "$LEGACY_ROOT/.lazybuddy/runs/r1/state.json"; then ok "legacy A1 reconciles state"; else bad "legacy A1 reconciles state"; fi
 rm -rf "$LEGACY_ROOT"
 
 CHECKED_ROOT="$(make_run $'## TODOs\n- [x] T1: done' '{"plan_reference":".lazybuddy/runs/r1/plan.md","tasks":[{"id":"T1","title":"done","status":"pending"}]}')"
 CHECKED_BEFORE="$(cat "$CHECKED_ROOT/.lazybuddy/runs/r1/state.json")"
-CHECKED_OUT="$(cd "$CHECKED_ROOT" && bash "$UPDATE" r1 T1 2>&1)"; CHECKED_RC=$?
+CHECKED_OUT="$(cd "$CHECKED_ROOT" && CWD="$CHECKED_ROOT" bash "$UPDATE" r1 T1 2>&1)"; CHECKED_RC=$?
 if [ "$CHECKED_RC" != 0 ] && [[ "$CHECKED_OUT" == *"already checked"* ]] && [ "$CHECKED_BEFORE" = "$(cat "$CHECKED_ROOT/.lazybuddy/runs/r1/state.json")" ] && [ ! -s "$CHECKED_ROOT/.lazybuddy/runs/r1/events.jsonl" ]; then ok "already checked refuses without state/event mutation"; else bad "already checked refuses without state/event mutation"; fi
 rm -rf "$CHECKED_ROOT"
 
@@ -179,7 +179,7 @@ expect_update_rejected_unchanged() {
   local root out rc file
   root="$(make_run "$plan" '{"plan_reference":".lazybuddy/runs/r1/plan.md","tasks":[{"id":"T1","title":"target","status":"pending"}]}')"
   for file in plan.md state.json events.jsonl; do cp "$root/.lazybuddy/runs/r1/$file" "$root/$file.before"; done
-  out="$(cd "$root" && bash "$UPDATE" r1 "$label" 2>&1)"; rc=$?
+  out="$(cd "$root" && CWD="$root" bash "$UPDATE" r1 "$label" 2>&1)"; rc=$?
   if [ "$rc" = 0 ] || ! printf '%s' "$out" | grep -qE "$pattern"; then
     bad "$name: expected actionable rejection, got $rc: $out"
   elif ! cmp -s "$root/plan.md.before" "$root/.lazybuddy/runs/r1/plan.md" || ! cmp -s "$root/state.json.before" "$root/.lazybuddy/runs/r1/state.json" || ! cmp -s "$root/events.jsonl.before" "$root/.lazybuddy/runs/r1/events.jsonl"; then
@@ -194,7 +194,7 @@ expect_update_rejected_unchanged "idless final verification is not a state task"
 expect_update_rejected_unchanged "fenced example is not a state task" $'## TODOs\n- [ ] T2: valid\n```markdown\n- [ ] T1: target\n```' target 'no task checkbox matching'
 
 LEGACY_UPDATE_ROOT="$(make_run $'## Todos\n- [ ]\tA1. target\n  - [ ] acceptance\n## Final Verification Wave\n- [ ] final check' '{"plan_reference":".lazybuddy/runs/r1/plan.md","tasks":[{"id":"A1","title":"different state title","status":"pending"}]}')"
-if (cd "$LEGACY_UPDATE_ROOT" && bash "$UPDATE" r1 target >/dev/null) && python3 - "$LEGACY_UPDATE_ROOT/.lazybuddy/runs/r1" <<'PY'
+if (cd "$LEGACY_UPDATE_ROOT" && CWD="$LEGACY_UPDATE_ROOT" bash "$UPDATE" r1 target >/dev/null) && python3 - "$LEGACY_UPDATE_ROOT/.lazybuddy/runs/r1" <<'PY'
 import json
 import sys
 from pathlib import Path
