@@ -86,7 +86,7 @@ test('authoritative version fields advance without rewriting historical v1.0.3 f
     return value.version ?? value.plugins?.[0]?.version ?? value.packages?.['']?.version;
   });
 
-  // Then: every current authority is v1.2.2 and the historical receipt remains v1.0.3.
+  // Then: every current authority is v1.2.3 and the historical receipt remains v1.0.3.
   assert.deepEqual(versions, Array(currentFiles.length).fill('1.2.3'));
   assert.equal(historical.manifest.version, '1.0.3');
   assert.match(historical.release.id, /^1\.0\.3-/);
