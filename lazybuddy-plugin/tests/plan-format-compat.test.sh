@@ -174,6 +174,40 @@ CHECKED_OUT="$(cd "$CHECKED_ROOT" && bash "$UPDATE" r1 T1 2>&1)"; CHECKED_RC=$?
 if [ "$CHECKED_RC" != 0 ] && [[ "$CHECKED_OUT" == *"already checked"* ]] && [ "$CHECKED_BEFORE" = "$(cat "$CHECKED_ROOT/.lazybuddy/runs/r1/state.json")" ] && [ ! -s "$CHECKED_ROOT/.lazybuddy/runs/r1/events.jsonl" ]; then ok "already checked refuses without state/event mutation"; else bad "already checked refuses without state/event mutation"; fi
 rm -rf "$CHECKED_ROOT"
 
+expect_update_rejected_unchanged() {
+  local name="$1" plan="$2" label="$3" pattern="$4"
+  local root out rc file
+  root="$(make_run "$plan" '{"plan_reference":".lazybuddy/runs/r1/plan.md","tasks":[{"id":"T1","title":"target","status":"pending"}]}')"
+  for file in plan.md state.json events.jsonl; do cp "$root/.lazybuddy/runs/r1/$file" "$root/$file.before"; done
+  out="$(cd "$root" && bash "$UPDATE" r1 "$label" 2>&1)"; rc=$?
+  if [ "$rc" = 0 ] || ! printf '%s' "$out" | grep -qE "$pattern"; then
+    bad "$name: expected actionable rejection, got $rc: $out"
+  elif ! cmp -s "$root/plan.md.before" "$root/.lazybuddy/runs/r1/plan.md" || ! cmp -s "$root/state.json.before" "$root/.lazybuddy/runs/r1/state.json" || ! cmp -s "$root/events.jsonl.before" "$root/.lazybuddy/runs/r1/events.jsonl"; then
+    bad "$name: rejection changed plan/state/events"
+  else ok "$name"; fi
+  rm -rf "$root"
+}
+expect_update_rejected_unchanged "missing task ID cannot update state" $'## TODOs\n- [ ] target' target 'missing a task id'
+expect_update_rejected_unchanged "appendix checkbox cannot update state" $'## TODOs\n- [ ] T2: valid\n## Appendix\n- [ ] T1: target' target 'no task checkbox matching'
+expect_update_rejected_unchanged "duplicate ID with different title cannot bypass validation" $'## TODOs\n- [ ] T1: target\n- [ ] T1. other' target 'duplicate task id'
+expect_update_rejected_unchanged "idless final verification is not a state task" $'## TODOs\n- [ ] T2: valid\n## Final Verification Wave\n- [ ] target' target 'no task checkbox matching'
+expect_update_rejected_unchanged "fenced example is not a state task" $'## TODOs\n- [ ] T2: valid\n```markdown\n- [ ] T1: target\n```' target 'no task checkbox matching'
+
+LEGACY_UPDATE_ROOT="$(make_run $'## Todos\n- [ ]\tA1. target\n  - [ ] acceptance\n## Final Verification Wave\n- [ ] final check' '{"plan_reference":".lazybuddy/runs/r1/plan.md","tasks":[{"id":"A1","title":"different state title","status":"pending"}]}')"
+if (cd "$LEGACY_UPDATE_ROOT" && bash "$UPDATE" r1 target >/dev/null) && python3 - "$LEGACY_UPDATE_ROOT/.lazybuddy/runs/r1" <<'PY'
+import json
+import sys
+from pathlib import Path
+run = Path(sys.argv[1])
+assert json.loads((run / 'state.json').read_text())['tasks'][0]['status'] == 'done'
+assert '- [x]\tA1. target' in (run / 'plan.md').read_text()
+assert '- [ ] acceptance' in (run / 'plan.md').read_text()
+assert '- [ ] final check' in (run / 'plan.md').read_text()
+assert len((run / 'events.jsonl').read_text().splitlines()) == 1
+PY
+then ok "legacy task update uses identity and preserves verification criteria"; else bad "legacy task update uses identity and preserves verification criteria"; fi
+rm -rf "$LEGACY_UPDATE_ROOT"
+
 echo "=== plan-format-compat results ==="
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

@@ -197,6 +197,7 @@ run_regression_inventory() {
     # The normal release gate owns every package-local *-regression.sh. The
     # explicit-root parity checks intentionally remain release-only.
     local core_tests=(
+        "plan-format-compat.test.sh"
         "v015-consumer-agents-regression.sh"
         "v015-cwd-injection-regression.sh"
         "v015-finalize-sections-regression.sh"
