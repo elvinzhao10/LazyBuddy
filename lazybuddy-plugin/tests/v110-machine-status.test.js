@@ -33,8 +33,8 @@ test('package load check keeps package-ready separate from pending host proof', 
   assert.doesNotMatch(result.stdout, /HOST_READINESS=(?:ready|observed)/);
 });
 
-test('machine status publishes authoritative v1.1 three-host route boundaries', () => {
-  // Given: the checked-in v1.1 package and its marketplace route declarations.
+test('machine status publishes authoritative v1.2.3 three-host route boundaries', () => {
+  // Given: the checked-in v1.2.3 package and its marketplace route declarations.
   const expectedHosts = [
     ['codebuddy-cli', 'codebuddy-marketplace', 'invoke-documented', 'documented-tested'],
     ['codebuddy-ide', 'codebuddy-marketplace', 'invoke-documented', 'documented-tested'],
