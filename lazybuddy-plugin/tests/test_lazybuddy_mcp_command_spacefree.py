@@ -133,8 +133,57 @@ def test_malformed_transport_is_not_a_traceback() -> None:
     assert collect_command_errors(declaration, REPO_ROOT)
 
 
+def test_bundled_traversal_rejected() -> None:
+    # Given a private executable outside the package, referenced by traversal.
+    with tempfile.TemporaryDirectory(prefix="buddy boundary ") as folder:
+        root = Path(folder) / "plugin"
+        root.mkdir()
+        outside = Path(folder) / "private executable"
+        original = b"#!/bin/sh\nexit 0\n"
+        outside.write_bytes(original)
+        outside.chmod(0o700)
+        reference = "${CODEBUDDY_PLUGIN_ROOT}/../private executable"
+        for server in ({"command": reference}, {"command": "bash", "args": [reference]}):
+            # When the package validates either execution position.
+            errors = collect_command_errors({"mcpServers": {"escape": server}}, root)
+            # Then the boundary fails without changing the private file.
+            assert outside.read_bytes() == original
+            assert _has(errors, "MCP_LAUNCHER_OUTSIDE_PLUGIN"), errors
+
+
+def test_bundled_symlink_escape_rejected() -> None:
+    # Given an in-package symlink to an external private executable.
+    with tempfile.TemporaryDirectory(prefix="buddy symlink ") as folder:
+        root = Path(folder) / "plugin"
+        root.mkdir()
+        outside = Path(folder) / "private executable"
+        original = b"#!/bin/sh\nexit 0\n"
+        outside.write_bytes(original)
+        outside.chmod(0o700)
+        (root / "launcher").symlink_to(outside)
+        reference = "${CODEBUDDY_PLUGIN_ROOT}/launcher"
+        for server in ({"command": reference}, {"command": "bash", "args": [reference]}):
+            # When the package resolves either execution position.
+            errors = collect_command_errors({"mcpServers": {"escape": server}}, root)
+            # Then canonical containment rejects it and preserves caller bytes.
+            assert outside.read_bytes() == original
+            assert _has(errors, "MCP_LAUNCHER_OUTSIDE_PLUGIN"), errors
+
+
+def test_explicit_invalid_transport_rejected() -> None:
+    # Given otherwise usable stdio declarations with explicit malformed types.
+    for transport in (None, [], {}, 42, True, "", "unknown"):
+        declaration = {"mcpServers": {"bad": {"type": transport, "command": "bash"}}}
+        # When checked, then each returns a typed transport error.
+        errors = collect_command_errors(declaration, REPO_ROOT)
+        assert _has(errors, "MCP_TRANSPORT_INVALID"), errors
+
+
 TESTS = [
     test_stock_passes,
+    test_bundled_traversal_rejected,
+    test_bundled_symlink_escape_rejected,
+    test_explicit_invalid_transport_rejected,
     test_empty_inventory_rejected,
     test_invalid_commands_rejected,
     test_plugin_placeholder_with_spaces_resolves,

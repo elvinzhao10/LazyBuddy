@@ -42,6 +42,8 @@ class CommandError(TypedDict):
 MCP_COMMAND_EMPTY: Final = "MCP_COMMAND_EMPTY"
 MCP_ARGS_INVALID: Final = "MCP_ARGS_INVALID"
 MCP_LAUNCHER_MISSING: Final = "MCP_LAUNCHER_MISSING"
+MCP_LAUNCHER_OUTSIDE_PLUGIN: Final = "MCP_LAUNCHER_OUTSIDE_PLUGIN"
+MCP_TRANSPORT_INVALID: Final = "MCP_TRANSPORT_INVALID"
 MCP_HTTP_URL_REQUIRED: Final = "MCP_HTTP_URL_REQUIRED"
 _PLUGIN_ROOT: Final = "${CODEBUDDY_PLUGIN_ROOT}"
 
@@ -51,6 +53,9 @@ def _server_errors(name: str, server: JsonValue, plugin_root: Path) -> list[Comm
     if not isinstance(server, dict):
         return [{"code": MCP_COMMAND_EMPTY, "server": name, "message": "server must be an object"}]
     transport = server.get("type")
+    if "type" in server and transport not in ("stdio", "http", "sse"):
+        return [{"code": MCP_TRANSPORT_INVALID, "server": name,
+                 "message": "type must be stdio, http, or sse when supplied"}]
     if transport in ("http", "sse") or (transport is None and "url" in server):
         url = server.get("url")
         if not isinstance(url, str) or not url.strip():
@@ -71,7 +76,17 @@ def _server_errors(name: str, server: JsonValue, plugin_root: Path) -> list[Comm
     for value in paths:
         if not value.startswith(_PLUGIN_ROOT + "/"):
             continue
-        resolved = Path(value.replace(_PLUGIN_ROOT, str(plugin_root)))
+        try:
+            root = plugin_root.resolve()
+            resolved = Path(value.replace(_PLUGIN_ROOT, str(root))).resolve()
+        except (OSError, RuntimeError):
+            errors.append({"code": MCP_LAUNCHER_MISSING, "server": name,
+                           "message": "bundled launcher path cannot be resolved"})
+            continue
+        if not path_contains(root, resolved):
+            errors.append({"code": MCP_LAUNCHER_OUTSIDE_PLUGIN, "server": name,
+                           "message": "bundled launcher must resolve inside the plugin root"})
+            continue
         if not resolved.is_file() or (value == command and not os.access(resolved, os.X_OK)):
             errors.append({"code": MCP_LAUNCHER_MISSING, "server": name,
                            "message": f"bundled launcher is unavailable: {resolved}; ship the referenced file"})
