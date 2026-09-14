@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
-from typing import Final, TypedDict
+from typing import Final, TypedDict, Union
 
 
 class LspDeclaration(TypedDict):
@@ -22,9 +22,96 @@ class LspDeclaration(TypedDict):
 
 
 class ProfileError(Exception):
-    def __init__(self, message: str, exit_code: int = 2) -> None:
+    def __init__(self, message: str, exit_code: int = 2, code: str | None = None) -> None:
         super().__init__(message)
         self.exit_code = exit_code
+        self.code = code
+
+
+# JSON is parsed at the declaration boundary without adding runtime dependencies.
+# Union keeps this runtime alias importable by the system Python used by LSP probes.
+JsonValue = Union[str, int, float, bool, None, list["JsonValue"], dict[str, "JsonValue"]]
+
+
+class CommandError(TypedDict):
+    code: str
+    server: str
+    message: str
+
+
+MCP_COMMAND_EMPTY: Final = "MCP_COMMAND_EMPTY"
+MCP_ARGS_INVALID: Final = "MCP_ARGS_INVALID"
+MCP_LAUNCHER_MISSING: Final = "MCP_LAUNCHER_MISSING"
+MCP_HTTP_URL_REQUIRED: Final = "MCP_HTTP_URL_REQUIRED"
+_PLUGIN_ROOT: Final = "${CODEBUDDY_PLUGIN_ROOT}"
+
+
+def _server_errors(name: str, server: JsonValue, plugin_root: Path) -> list[CommandError]:
+    """Check a declaration as argv data, never as a shell command line."""
+    if not isinstance(server, dict):
+        return [{"code": MCP_COMMAND_EMPTY, "server": name, "message": "server must be an object"}]
+    transport = server.get("type")
+    if transport in ("http", "sse") or (transport is None and "url" in server):
+        url = server.get("url")
+        if not isinstance(url, str) or not url.strip():
+            return [{"code": MCP_HTTP_URL_REQUIRED, "server": name,
+                     "message": "HTTP transport requires a non-empty url"}]
+        return []
+    command = server.get("command")
+    if not isinstance(command, str) or not command.strip() or "\0" in command:
+        return [{"code": MCP_COMMAND_EMPTY, "server": name,
+                 "message": "stdio command must be a non-empty executable name or path; put arguments in args"}]
+    args = server.get("args", [])
+    if not isinstance(args, list) or any(not isinstance(arg, str) or "\0" in arg for arg in args):
+        return [{"code": MCP_ARGS_INVALID, "server": name, "message": "args must be an array of strings"}]
+    errors: list[CommandError] = []
+    # Only a leading plugin-root path denotes a bundled file. Interpolated flags
+    # and runtime project/data paths are host inputs, not package launchers.
+    paths = [command] + [arg for arg in args if isinstance(arg, str)]
+    for value in paths:
+        if not value.startswith(_PLUGIN_ROOT + "/"):
+            continue
+        resolved = Path(value.replace(_PLUGIN_ROOT, str(plugin_root)))
+        if not resolved.is_file() or (value == command and not os.access(resolved, os.X_OK)):
+            errors.append({"code": MCP_LAUNCHER_MISSING, "server": name,
+                           "message": f"bundled launcher is unavailable: {resolved}; ship the referenced file"})
+    return errors
+
+
+def collect_command_errors(declaration: JsonValue, plugin_root: Path) -> list[CommandError]:
+    """Validate stdio argv and HTTP declarations without running a server."""
+    if not isinstance(declaration, dict):
+        return [{"code": MCP_COMMAND_EMPTY, "server": "<root>",
+                 "message": "MCP declaration must be an object with mcpServers"}]
+    servers = declaration.get("mcpServers")
+    if not isinstance(servers, dict) or not servers:
+        return [{"code": MCP_COMMAND_EMPTY, "server": "<root>",
+                 "message": "mcpServers must be a non-empty object"}]
+    errors: list[CommandError] = []
+    for name, server in servers.items():
+        errors.extend(_server_errors(name, server, plugin_root))
+    return errors
+
+
+def validate_declaration_commands(plugin_root: Path) -> list[CommandError]:
+    """Load the plugin's .mcp.json and validate its server commands."""
+    path = plugin_root / ".mcp.json"
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ProfileError(f"MCP declaration is unavailable: {error}", code=MCP_COMMAND_EMPTY) from None
+    return collect_command_errors(document, plugin_root)
+
+
+def run_validate_commands() -> int:
+    plugin_root = Path(__file__).resolve().parent.parent
+    errors = validate_declaration_commands(plugin_root)
+    if errors:
+        for error in errors:
+            print(f"{error['code']} server={error['server']}: {error['message']}", file=sys.stderr)
+        return 2
+    print("ok: MCP declarations valid and bundled launchers resolvable")
+    return 0
 
 
 SERVER_NAMES: Final = (
@@ -250,13 +337,20 @@ def run(arguments: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", required=True)
-    parser.add_argument("--project-dir", required=True)
-    parser.add_argument("--plugin-data", required=True)
+    parser.add_argument("--mode")
+    parser.add_argument("--project-dir")
+    parser.add_argument("--plugin-data")
     parser.add_argument("--request-server")
     parser.add_argument("--detect-lsp", action="store_true")
+    parser.add_argument("--validate-commands", action="store_true")
     try:
-        return run(parser.parse_args())
+        args = parser.parse_args()
+        if args.validate_commands:
+            return run_validate_commands()
+        if not args.mode or not args.project_dir or not args.plugin_data:
+            print("missing required args: --mode, --project-dir, --plugin-data", file=sys.stderr)
+            return 2
+        return run(args)
     except ProfileError as error:
         print(str(error), file=sys.stderr)
         return error.exit_code

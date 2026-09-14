@@ -53,3 +53,13 @@ endpoint. They do not provision dependencies, register themselves with a host,
 or write credentials. That small surface is what makes a copied package
 testable: the declaration is static, process lifetime is host-owned, and each
 server's mutable behavior remains behind a dedicated path/receipt boundary.
+
+## Host enablement and connection
+
+LazyBuddy targets CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. Follow the selected
+route in [Host routes](reference/host-routes.md). A valid declaration, marketplace
+listing, or accepted trust prompt does not prove that a server connected. Verify
+the expected MCP tools in the current host session before reporting host readiness.
+
+Trae's project-level MCP toggle belongs to LazyTrae's installation flow; it is
+not a LazyBuddy setup step or a restriction to copy into Buddy validation.
