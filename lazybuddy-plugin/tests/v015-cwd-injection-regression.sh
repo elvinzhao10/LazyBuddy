@@ -88,7 +88,7 @@ NORMAL_CWD="$TMP/normal"
 CWD="$NORMAL_CWD" bash "$STATE_DIR/create-run.sh" plan-ref 'plan reference security' >/dev/null
 NORMAL_STATE="$NORMAL_CWD/.lazybuddy/runs/plan-ref/state.json"
 OUTSIDE_PLAN="$TMP/outside.md"
-printf '%s\n' '## TODOs' '- [ ] outside task' > "$OUTSIDE_PLAN"
+printf '%s\n' '## TODOs' '- [ ] T1: outside task' > "$OUTSIDE_PLAN"
 
 set_plan_reference() {
     python3 - "$NORMAL_STATE" "$1" <<'PY'
@@ -132,7 +132,7 @@ expect_checkpoint_rejected symlink '.lazybuddy/plans-link.md'
 
 VALID_PLAN="$NORMAL_CWD/.lazybuddy/plans/valid.md"
 mkdir -p "$(dirname "$VALID_PLAN")"
-printf '%s\n' '## TODOs' '- [ ] in-bound task' > "$VALID_PLAN"
+printf '%s\n' '## TODOs' '- [ ] T1: in-bound task' > "$VALID_PLAN"
 set_plan_reference '.lazybuddy/plans/valid.md'
 CWD="$NORMAL_CWD" bash "$STATE_DIR/sync-plan-state.sh" plan-ref >"$TMP/valid-plan.out"
 grep -q 'plan: 1 checkboxes' "$TMP/valid-plan.out" || fail 'valid in-bound plan_reference was not read'

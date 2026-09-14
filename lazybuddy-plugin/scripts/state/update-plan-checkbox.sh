@@ -45,19 +45,33 @@ trap cleanup_transaction_temps EXIT
 
 python3 - "$PLAN_FILE" "$PLAN_TMP" "$STATE_FILE" "$STATE_TMP" "$EVENTS_FILE" "$EVENTS_TMP" "$NOW" "$RUN_ID" "$TASK_LABEL" <<'PYEOF'
 import json
+import re
 import sys
 
 plan_file, plan_tmp, state_file, state_tmp, events_file, events_tmp, now, run_id, task_label = sys.argv[1:]
 label = task_label.lower()
 with open(plan_file) as handle:
     lines = handle.readlines()
-plan_matches = [index for index, line in enumerate(lines) if line.strip().startswith('- [ ] ') and label in line.lower()]
+checkbox_re = re.compile(r'^- \[([ xX])\]\s+(.+)$')
+# Match EVERY checkbox (checked or unchecked) so a label that collides across two
+# checkboxes is detected instead of silently updating the first/wrong one.
+plan_matches = [index for index, line in enumerate(lines)
+                if checkbox_re.match(line.rstrip()) and label in line.lower()]
 if not plan_matches:
-    raise SystemExit(f'Error: no unchecked checkbox matching "{task_label}" found in plan.md')
+    raise SystemExit(f'Error: no checkbox matching "{task_label}" found in plan.md')
 if len(plan_matches) != 1:
-    raise SystemExit(f'Error: multiple unchecked checkboxes match "{task_label}" in plan.md')
+    listing = "\n  - ".join(lines[i].strip() for i in plan_matches)
+    raise SystemExit(
+        f'Error: {len(plan_matches)} checkboxes match "{task_label}" in plan.md '
+        f'— use a more specific label:\n  - {listing}'
+    )
+selected = checkbox_re.match(lines[plan_matches[0]].rstrip())
+if selected.group(1).lower() == 'x':
+    raise SystemExit(f'Error: checkbox matching "{task_label}" is already checked; use sync-plan-state.sh to reconcile drift')
+identity = re.match(r'^([A-Za-z]*\d+)\s*[:.]\s*.+$', selected.group(2))
 state = json.load(open(state_file))
-task_matches = [task for task in state.get('tasks', []) if label in task.get('title', '').lower() or label in task.get('id', '').lower()]
+
+task_matches = [task for task in state.get('tasks', []) if (task.get('id') == identity.group(1) if identity else label in task.get('title', '').lower() or label in task.get('id', '').lower())]
 if not task_matches:
     raise SystemExit(f'Error: no task matching "{task_label}" found in state.json')
 if len(task_matches) != 1:
