@@ -66,7 +66,7 @@ for index, line in enumerate(lines):
         token = marker.group(1)
         if fence is None:
             fence = token
-        elif token[0] == fence[0] and len(token) >= len(fence):
+        elif token[0] == fence[0] and len(token) >= len(fence) and stripped == token:
             fence = None
         continue
     if fence is not None:

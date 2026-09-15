@@ -224,6 +224,12 @@ expect_sync_fence_unchanged "sync ignores backtick example without mutation" $'#
 expect_sync_fence_unchanged "sync ignores tilde example and enclosed headings" $'## Todos\n~~~markdown\n## Appendix\n- [ ] A1. example\n~~~\n- [ ] T1. real'
 expect_sync_fence_unchanged "sync ignores unclosed fenced example" $'## TODOs\n- [ ] T1: real\n```markdown\n- [ ] no task identity'
 
+expect_sync_fence_unchanged "sync ignores pseudo-closing backtick fence" $'## TODOs\n- [ ] T1: real\n```markdown\n```not-a-closing-fence\n- [x] T2: example\n```'
+expect_sync_fence_unchanged "sync ignores pseudo-closing tilde fence" $'## Todos\n- [ ] T1. real\n~~~markdown\n~~~~not-a-closing-fence\n- [x] T2. example\n~~~'
+expect_update_rejected_unchanged "update ignores pseudo-closing backtick fence" $'## TODOs\n- [ ] T2: real\n```markdown\n```not-a-closing-fence\n- [ ] T1: target\n```' target 'no task checkbox matching'
+expect_update_rejected_unchanged "update ignores pseudo-closing tilde fence" $'## Todos\n- [ ] T2. real\n~~~markdown\n~~~~not-a-closing-fence\n- [ ] T1. target\n~~~' target 'no task checkbox matching'
+expect_sync_fence_unchanged "sync accepts longer closing fence with trailing whitespace" $'## TODOs\n```markdown\n- [x] T2: example\n```` \t\n- [ ] T1: real'
+
 echo "=== plan-format-compat results ==="
 echo "Passed: $PASS"
 echo "Failed: $FAIL"
