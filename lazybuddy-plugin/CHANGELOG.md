@@ -2,6 +2,23 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## v1.2.3 — Platform compatibility patch (2026-09-14)
+
+- Host MCP declarations are validated before use: stdio servers require
+  a non-empty executable name or path (spaces are supported), string arguments,
+  and resolvable bundled launcher paths. HTTP transports require a URL.
+  Violations report a typed error naming the server and the remediation, and
+  stock declarations continue to pass.
+- Setup and status output is actionable. The load check prints the remaining
+  step per host and states that enabling a project-scoped MCP surface is a host
+  setting rather than an observed connection. Package readiness and host
+  readiness remain separate authorities.
+- Plan parsing accepts both `## TODOs` and the legacy `## Todos` heading. A
+  non-empty plan that parses zero tasks now fails with an actionable error, and
+  missing or duplicate task identifiers are reported instead of guessed.
+- Workflow and decision-memory features are deferred to v1.3.0 and are not part
+  of this patch.
+
 ## v1.2.2 — Streamlined adaptive context (2026-09-05)
 
 - Automatic workflow selection now chooses the smallest sufficient existing

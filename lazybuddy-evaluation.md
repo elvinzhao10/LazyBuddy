@@ -4,9 +4,9 @@ This document records public, present-tense evidence for the LazyBuddy package.
 It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
 plugin. Verification is on macOS only.
 
-## Current documentation status: v1.2.2
+## Current documentation status: v1.2.3
 
-The v1.2.2 documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
+The v1.2.3 documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
 `workbuddy`; it does not publish or alter a package. For CodeBuddy IDE and
 WorkBuddy, marketplace is the default full-plugin route. The manual
 Skills/MCP route is recovery-only and mutually exclusive with the full-plugin

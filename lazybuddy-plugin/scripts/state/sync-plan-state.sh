@@ -70,28 +70,86 @@ with open(state_file) as f:
 with open(plan_path) as f:
     plan_lines = f.readlines()
 
-# Parse checkboxes from ## TODOs and ## Final Verification Wave sections
-headings = {"TODOs", "Final Verification Wave"}
+# Parse checkboxes from plan sections. Heading match is EXACT (case-sensitive):
+#   "TODOs"      -> canonical heading
+#   "Todos"      -> legacy heading (accepted for plan-format compatibility)
+#   "Final Verification Wave" -> verification section
+# Arbitrary casing is intentionally NOT accepted.
+headings = {"TODOs", "Todos", "Final Verification Wave"}
+TASK_SECTIONS = {"TODOs", "Todos"}
 in_section = False
-plan_boxes = []  # {id, title, checked, section}
+current_section = None
+plan_boxes = []  # {id, id_key, title, checked, section}
+fence = None
 for line in plan_lines:
     s = line.strip()
+    marker = re.match(r'^ {0,3}(`{3,}|~{3,})', line)
+    if marker:
+        token = marker.group(1)
+        if fence is None:
+            fence = token
+        elif token[0] == fence[0] and len(token) >= len(fence) and s == token:
+            fence = None
+        continue
+    if fence is not None:
+        continue
     if s.startswith("## "):
-        in_section = s[3:].strip() in headings
+        current_section = s[3:].strip()
+        in_section = current_section in headings
         continue
     if not in_section:
         continue
-    m = re.match(r"^-\s+\[([ xX])\]\s+(.+)$", s)
+    m = re.match(r"^-\s+\[([ xX])\]\s+(.+)$", line.rstrip())
     if m:
         checked = m.group(1).lower() == "x"
         title = m.group(2).strip()
-        # extract task id prefix like "T1:" if present
-        mid = re.match(r"^([A-Za-z]*\d+)\s*:\s*(.+)$", title)
+        # Preserve canonical and legacy identity (T1:, T1., A1.).
+        mid = re.match(r"^([A-Za-z]*\d+)\s*[:.]\s*(.+)$", title)
         tid = mid.group(1) if mid else None
-        plan_boxes.append({"id": tid, "title": title, "checked": checked})
+        # identity key for duplicate/missing detection: any "Letter+digit" prefix
+        # (covers canonical "T1:" and legacy "A1." style prefixes)
+        kid = mid
+        id_key = kid.group(1) if kid else None
+        plan_boxes.append({"id": tid, "id_key": id_key, "title": title,
+                           "checked": checked, "section": current_section})
 
 total = len(plan_boxes)
 completed = sum(1 for b in plan_boxes if b["checked"])
+
+# --- plan-format compatibility guards (T4: never silently succeed on 0 tasks) ---
+# Zero-task guard: a plan that yields no parsed checkboxes means the
+# heading format is wrong (e.g. "## Todos" was not recognised). Fail loudly.
+if total == 0:
+    print("Error: no checkboxes parsed — check plan heading format "
+          "(expected '## TODOs' or '## Todos', with '- [ ] Task' lines)",
+          file=sys.stderr)
+    sys.exit(1)
+
+if not any(box['section'] in TASK_SECTIONS for box in plan_boxes):
+    raise SystemExit("Error: no task checkboxes parsed — add a task under '## TODOs' or '## Todos'")
+
+# Duplicate task id detection — preserves task identity.
+seen_ids = {}
+for box in plan_boxes:
+    if not box["id_key"]:
+        continue
+    seen_ids.setdefault(box["id_key"], []).append(box["title"])
+for dup_id, titles in seen_ids.items():
+    if len(titles) > 1:
+        print("Error: duplicate task id '%s' in plan (%d checkboxes share it):"
+              % (dup_id, len(titles)), file=sys.stderr)
+        for t in titles:
+            print("  - " + t[:80], file=sys.stderr)
+        sys.exit(1)
+
+# Missing task id in a task section. The Final Verification Wave section
+# legitimately uses id-less checkboxes, so it is exempt from this check.
+for box in plan_boxes:
+    if box["section"] in TASK_SECTIONS and not box["id_key"]:
+        print("Error: checkbox in '%s' is missing a task id "
+              "(expected a 'T1:'-style prefix): %s"
+              % (box["section"], box["title"][:80]), file=sys.stderr)
+        sys.exit(1)
 
 tasks = state.get("tasks", [])
 tasks_by_id = {t.get("id"): t for t in tasks if t.get("id")}

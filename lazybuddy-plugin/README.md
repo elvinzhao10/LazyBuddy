@@ -1,6 +1,6 @@
 # LazyBuddy Plugin
 
-## Durable v1.2.2 installation
+## Durable v1.2.3 installation
 
 **Node.js LTS 20 or newer** and **Git** are required. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use
@@ -22,7 +22,7 @@ require LazyCodex or OmO at runtime.
 
 ## Durable onboarding
 
-Bootstrap v1.2.2 once from a verified official source checkout, then use the
+Bootstrap v1.2.3 once from a verified official source checkout, then use the
 durable launcher rather than treating that checkout as the installed runtime:
 
 ```bash

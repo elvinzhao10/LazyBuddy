@@ -1,9 +1,9 @@
 # Host routes
 
-## Current v1.2.2 route and evidence status
+## Current v1.2.3 route and evidence status
 
-This guide is the current v1.2.2 documentation boundary for `codebuddy-cli`,
-`codebuddy-ide`, and `workbuddy`; it does not publish a v1.2.2 package.
+This guide is the current v1.2.3 documentation boundary for `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`; it does not publish a v1.2.3 package.
 Marketplace is the default full-plugin route for CodeBuddy IDE and WorkBuddy.
 The manual Skills/MCP route is recovery-only and mutually exclusive with a
 full-plugin route for one project.
@@ -81,7 +81,7 @@ inspect before the next:
 1. After approval, open the host's **Plugins / Marketplace → Add local
    directory** GUI, choose the absolute release root containing
    `.codebuddy-plugin/marketplace.json`, and wait.
-2. Inspect the version the marketplace actually displays; do not infer v1.2.2
+2. Inspect the version the marketplace actually displays; do not infer v1.2.3
    publication from this documentation boundary or install in the discovery
    action. If the control or marketplace is absent, record the
    current host version/build and exact error as `UNAVAILABLE`, leave **HOST

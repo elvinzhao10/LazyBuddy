@@ -393,7 +393,7 @@ if CWD="$PROJECT" bash "$STATE_DIR/update-plan-checkbox.sh" no-match absent >"$T
 fi
 after="$(shasum -a 256 "$RUN/state.json" "$RUN/plan.md" "$RUN/events.jsonl")"
 [ "$before" = "$after" ]
-grep -q 'no unchecked checkbox matching' "$TMP/no-match.err"
+grep -q 'no task checkbox matching' "$TMP/no-match.err"
 
 new_run "$PROJECT" dependencies
 if CWD="$PROJECT" bash "$STATE_DIR/update-task.sh" dependencies T2 done >"$TMP/deps.out" 2>"$TMP/deps.err"; then

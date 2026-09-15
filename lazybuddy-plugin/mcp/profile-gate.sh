@@ -15,3 +15,14 @@ lazybuddy_require_mcp_profile() {
         *) printf 'MCP_PROFILE_DEFERRED server=%s mode=%s\n' "$server" "$mode" >&2; return 3 ;;
     esac
 }
+
+# Validate stdio executable/argv declarations and bundled launcher paths.
+# Executable paths may contain spaces. HTTP transports require a URL.
+# Validation is local and never launches a server or changes host settings.
+lazybuddy_validate_mcp_commands() {
+    local plugin_root="${LAZYBUDDY_PLUGIN_ROOT:-}"
+    if [ -z "$plugin_root" ]; then
+        plugin_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    fi
+    "${LAZYBUDDY_PYTHON:-python3}" "${plugin_root}/scripts/lazybuddy-mcp-profile.py" --validate-commands
+}

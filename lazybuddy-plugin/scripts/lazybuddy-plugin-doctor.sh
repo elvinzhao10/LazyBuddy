@@ -303,7 +303,7 @@ import sys
 
 status = json.loads(sys.argv[1])
 assert status.get("schema_version") == 2
-assert status.get("version") == "1.2.2"
+assert status.get("version") == "1.2.3"
 assert status.get("package_readiness") == {"status": "ready", "scope": "package"}
 assert status.get("host_readiness") == {"status": "pending"}
 hosts = status.get("hosts")
@@ -648,6 +648,13 @@ PY
     check "MCP server scripts (6 executable)" ok
 else
     check "MCP server scripts (6 executable)" "${mcp_result}"
+fi
+
+# 6b. CodeBuddy executable/argv declarations and bundled launcher availability.
+if cmd_result=$("$PYTHON_BIN" "${PLUGIN_ROOT}/scripts/lazybuddy-mcp-profile.py" --validate-commands 2>&1); then
+    check "MCP declarations valid + bundled launchers resolvable" ok
+else
+    check "MCP declarations valid + bundled launchers resolvable" "$cmd_result"
 fi
 
 if [ -d "${PLUGIN_ROOT}/commands" ]; then
