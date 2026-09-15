@@ -184,6 +184,7 @@ def assert_scoped_policy(root, records):
         for path in (root / "tests").glob("*-regression.sh")
         if path.name != "publication-regression.sh" and path.name not in paired_only
     }
+    expected.add(f"{prefix}plan-format-compat.test.sh")
     observed = [(label, timeout) for label, timeout in records if label.startswith(prefix)]
     require(len(observed) == len(expected), "standalone regression timeout capture was incomplete or duplicated")
     by_label = dict(observed)
