@@ -230,6 +230,52 @@ expect_update_rejected_unchanged "update ignores pseudo-closing backtick fence" 
 expect_update_rejected_unchanged "update ignores pseudo-closing tilde fence" $'## Todos\n- [ ] T2. real\n~~~markdown\n~~~~not-a-closing-fence\n- [ ] T1. target\n~~~' target 'no task checkbox matching'
 expect_sync_fence_unchanged "sync accepts longer closing fence with trailing whitespace" $'## TODOs\n```markdown\n- [x] T2: example\n```` \t\n- [ ] T1: real'
 
+expect_sync_fence_unchanged "sync ignores four-space backtick pseudo-close" $'## TODOs\n- [ ] T1: real\n```markdown\n    ```\n- [x] T2: example\n```'
+expect_sync_fence_unchanged "sync ignores tab-indented tilde pseudo-close" $'## Todos\n- [ ] T1. real\n~~~markdown\n\t~~~\n- [x] T2. example\n~~~'
+expect_update_rejected_unchanged "update ignores four-space backtick pseudo-close" $'## TODOs\n- [ ] T2: real\n```markdown\n    ```\n- [ ] T1: target\n```' target 'no task checkbox matching'
+expect_update_rejected_unchanged "update ignores tab-indented tilde pseudo-close" $'## Todos\n- [ ] T2. real\n~~~markdown\n\t~~~\n- [ ] T1. target\n~~~' target 'no task checkbox matching'
+expect_sync_fence_unchanged "sync accepts three-space opening and closing delimiters" $'## TODOs\n   ```markdown\n- [x] T2: example\n   ```\n- [ ] T1: real'
+THREE_SPACE_ROOT="$(make_run $'## Todos\n   ~~~markdown\n- [ ] T2. example\n   ~~~~ \t\n- [ ] T1. target' '{"plan_reference":".lazybuddy/runs/r1/plan.md","tasks":[{"id":"T1","status":"pending"}]}')"
+if CWD="$THREE_SPACE_ROOT" bash "$UPDATE" r1 target >/dev/null && python3 - "$THREE_SPACE_ROOT/.lazybuddy/runs/r1" <<'PY'
+import json
+import sys
+from pathlib import Path
+run = Path(sys.argv[1])
+assert json.loads((run / 'state.json').read_text())['tasks'][0]['status'] == 'done'
+assert '- [x] T1. target' in (run / 'plan.md').read_text()
+assert '- [ ] T2. example' in (run / 'plan.md').read_text()
+assert len((run / 'events.jsonl').read_text().splitlines()) == 1
+PY
+then ok "update accepts three-space delimiters and preserves example"; else bad "update accepts three-space delimiters and preserves example"; fi
+rm -rf "$THREE_SPACE_ROOT"
+
+expect_completion_consumers() {
+  local name="$1" plan="$2" root hook_out final_out rc file
+  root="$(make_run "$plan" '{"status":"created","plan_reference":".lazybuddy/runs/r1/plan.md","progress":{"total_checkboxes":1,"completed_checkboxes":1},"tasks":[],"review_status":"accepted","verification_gates":[{"name":"qa","status":"passed"}]}')"
+  for file in plan.md state.json events.jsonl; do cp "$root/.lazybuddy/runs/r1/$file" "$root/$file.before"; done
+  hook_out="$(printf '{"cwd":"%s"}' "$root" | bash "$PLUGIN_ROOT/scripts/hooks/stop-gate.sh")"
+  if [ -n "$hook_out" ]; then bad "$name: Stop blocked example: $hook_out"; else ok "$name: Stop allows completed tasks"; fi
+  for file in plan.md state.json events.jsonl; do cmp -s "$root/$file.before" "$root/.lazybuddy/runs/r1/$file" || bad "$name: Stop mutated $file"; done
+  final_out="$(CWD="$root" bash "$PLUGIN_ROOT/scripts/loop/finalize-run.sh" r1 2>&1)"; rc=$?
+  if [ "$rc" != 0 ]; then bad "$name: finalizer blocked: $final_out"; else
+    if python3 - "$root/.lazybuddy/runs/r1" <<'PY'
+import json
+import sys
+from pathlib import Path
+run = Path(sys.argv[1])
+assert json.loads((run / 'state.json').read_text())['status'] == 'complete'
+assert [json.loads(line)['event'] for line in (run / 'events.jsonl').read_text().splitlines()] == ['run_completed']
+PY
+    then ok "$name: finalizer completes"; else bad "$name: finalizer transition incorrect"; fi
+  fi
+  cmp -s "$root/plan.md.before" "$root/.lazybuddy/runs/r1/plan.md" || bad "$name: finalizer changed plan"
+  rm -rf "$root"
+}
+expect_completion_consumers "legacy plan" $'## Todos\n- [x] A1. done'
+expect_completion_consumers "backtick example" $'## TODOs\n- [x] T1: done\n```markdown\n- [ ] T2: example\n```'
+expect_completion_consumers "tilde pseudo-close and indentation" $'## Todos\n- [x] A1. done\n   ~~~markdown\n~~~not-close\n    ~~~\n\t~~~\n- [ ] T2. example\n   ~~~~'
+expect_completion_consumers "nested acceptance and appendix excluded" $'## TODOs\n- [x] T1: done\n  - [ ] acceptance\n## Appendix\n- [ ] other'
+
 echo "=== plan-format-compat results ==="
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

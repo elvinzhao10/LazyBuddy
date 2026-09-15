@@ -61,7 +61,7 @@ section = None
 fence = None
 for index, line in enumerate(lines):
     stripped = line.strip()
-    marker = re.match(r'^(`{3,}|~{3,})', stripped)
+    marker = re.match(r'^ {0,3}(`{3,}|~{3,})', line)
     if marker:
         token = marker.group(1)
         if fence is None:

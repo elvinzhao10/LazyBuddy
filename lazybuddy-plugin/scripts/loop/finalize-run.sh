@@ -30,6 +30,7 @@ state_recover_transaction "$STATE_RUN_DIR" || exit 1
 RESULT=$(python3 - "$STATE_FILE" "$PLAN_FILE" <<'PY'
 import json
 import os
+import re
 import sys
 
 state_file, plan_file = sys.argv[1:]
@@ -58,15 +59,26 @@ if active:
 if os.path.isfile(plan_file):
     with open(plan_file) as f:
         lines = f.readlines()
-    headings_to_count = {'TODOs', 'Final Verification Wave'}
+    headings_to_count = {'TODOs', 'Todos', 'Final Verification Wave'}
     unchecked = []
     if not any(line.strip().startswith('## ') for line in lines):
         reasons.append('plan.md has no level-2 headings (expected TODOs or Final Verification Wave)')
     else:
         in_section = False
         has_recognized_section = False
+        fence = None
         for line in lines:
             stripped = line.strip()
+            marker = re.match(r'^ {0,3}(`{3,}|~{3,})', line)
+            if marker:
+                token = marker.group(1)
+                if fence is None:
+                    fence = token
+                elif token[0] == fence[0] and len(token) >= len(fence) and stripped == token:
+                    fence = None
+                continue
+            if fence is not None:
+                continue
             if stripped.startswith('## '):
                 heading = stripped[3:]
                 in_section = heading in headings_to_count
@@ -74,8 +86,9 @@ if os.path.isfile(plan_file):
                 continue
             if not in_section:
                 continue
-            if stripped.startswith('- [ ] '):
-                unchecked.append(stripped[6:60])
+            checkbox = re.match(r'^-\s+\[ \]\s+(.+)$', line.rstrip())
+            if checkbox:
+                unchecked.append(checkbox.group(1)[:54])
         if not has_recognized_section:
             reasons.append('plan.md has no recognized sections (expected TODOs or Final Verification Wave)')
     if unchecked:

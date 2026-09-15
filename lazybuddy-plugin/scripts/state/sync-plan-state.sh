@@ -83,7 +83,7 @@ plan_boxes = []  # {id, id_key, title, checked, section}
 fence = None
 for line in plan_lines:
     s = line.strip()
-    marker = re.match(r'^(`{3,}|~{3,})', s)
+    marker = re.match(r'^ {0,3}(`{3,}|~{3,})', line)
     if marker:
         token = marker.group(1)
         if fence is None:

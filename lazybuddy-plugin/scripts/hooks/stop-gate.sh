@@ -69,37 +69,43 @@ if [ ! -f "$PLAN_PATH" ]; then
     exit 0  # Plan file missing — allow stop
 fi
 
-# Count unchecked checkboxes in ## TODOs and ## Final Verification Wave sections
-UNCHECKED=$(python3 -c "
+# Count top-level work outside fenced examples in supported plan sections.
+UNCHECKED=$(python3 - "$PLAN_PATH" <<'PY' 2>/dev/null
+import re
 import sys
-with open('$PLAN_PATH') as f:
-    lines = f.readlines()
-
-headings_to_count = {'TODOs', 'Final Verification Wave'}
-in_section = not any(l.strip().startswith('## ') and l.strip()[3:] in headings_to_count for l in lines)
-remaining = 0
-next_task = None
-
+with open(sys.argv[1]) as handle:
+    lines = handle.readlines()
+headings_to_count = {'TODOs', 'Todos', 'Final Verification Wave'}
+in_section = False
+fence = None
+unchecked = []
 for line in lines:
     stripped = line.strip()
+    marker = re.match(r'^ {0,3}(`{3,}|~{3,})', line)
+    if marker:
+        token = marker.group(1)
+        if fence is None:
+            fence = token
+        elif token[0] == fence[0] and len(token) >= len(fence) and stripped == token:
+            fence = None
+        continue
+    if fence is not None:
+        continue
     if stripped.startswith('## '):
-        heading = stripped[3:]
-        in_section = heading in headings_to_count
+        in_section = stripped[3:].strip() in headings_to_count
         continue
     if not in_section:
         continue
-    if stripped.startswith('- [ ] '):
-        remaining += 1
-        if next_task is None:
-            next_task = stripped[6:]
-            if len(next_task) > 80:
-                next_task = next_task[:77] + '...'
-
-if remaining > 0:
-    print(f'{remaining} {next_task}')
+    checkbox = re.match(r'^-\s+\[ \]\s+(.+)$', line.rstrip())
+    if checkbox:
+        unchecked.append(checkbox.group(1))
+if unchecked:
+    title = unchecked[0]
+    print(f"{len(unchecked)} {title[:77] + '...' if len(title) > 80 else title}")
 else:
     print('0')
-" 2>/dev/null || echo "0")
+PY
+) || UNCHECKED=0
 
 if [ "$UNCHECKED" = "0" ]; then
     exit 0  # All checkboxes done — allow stop
