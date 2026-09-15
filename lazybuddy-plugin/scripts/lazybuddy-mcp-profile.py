@@ -42,6 +42,7 @@ class CommandError(TypedDict):
 MCP_COMMAND_EMPTY: Final = "MCP_COMMAND_EMPTY"
 MCP_ARGS_INVALID: Final = "MCP_ARGS_INVALID"
 MCP_LAUNCHER_MISSING: Final = "MCP_LAUNCHER_MISSING"
+MCP_LAUNCHER_INVALID: Final = "MCP_LAUNCHER_INVALID"
 MCP_LAUNCHER_OUTSIDE_PLUGIN: Final = "MCP_LAUNCHER_OUTSIDE_PLUGIN"
 MCP_TRANSPORT_INVALID: Final = "MCP_TRANSPORT_INVALID"
 MCP_HTTP_URL_REQUIRED: Final = "MCP_HTTP_URL_REQUIRED"
@@ -74,11 +75,16 @@ def _server_errors(name: str, server: JsonValue, plugin_root: Path) -> list[Comm
     # and runtime project/data paths are host inputs, not package launchers.
     paths = [command] + [arg for arg in args if isinstance(arg, str)]
     for value in paths:
-        if not value.startswith(_PLUGIN_ROOT + "/"):
+        if not value.startswith("${CODEBUDDY_PLUGIN_ROOT"):
+            continue
+        relative = value.removeprefix(_PLUGIN_ROOT + "/")
+        if relative == value or not relative or relative.startswith("/") or "${" in relative:
+            errors.append({"code": MCP_LAUNCHER_INVALID, "server": name,
+                           "message": "bundled launcher must use ${CODEBUDDY_PLUGIN_ROOT}/relative-file"})
             continue
         try:
             root = plugin_root.resolve()
-            resolved = Path(value.replace(_PLUGIN_ROOT, str(root))).resolve()
+            resolved = (root / relative).resolve()
         except (OSError, RuntimeError):
             errors.append({"code": MCP_LAUNCHER_MISSING, "server": name,
                            "message": "bundled launcher path cannot be resolved"})

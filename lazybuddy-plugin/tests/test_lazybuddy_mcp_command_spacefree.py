@@ -11,6 +11,8 @@ Run standalone: python3 test_lazybuddy_mcp_command_spacefree.py
 from __future__ import annotations
 
 import importlib.util
+import json
+import shutil
 import subprocess
 import tempfile
 import sys
@@ -179,8 +181,34 @@ def test_explicit_invalid_transport_rejected() -> None:
         assert _has(errors, "MCP_TRANSPORT_INVALID"), errors
 
 
+def test_bundled_placeholder_grammar_at_public_validator() -> None:
+    # Given the real doctor validator installed in a minimal temporary package.
+    with tempfile.TemporaryDirectory(prefix="buddy validator ") as folder:
+        root = Path(folder)
+        scripts = root / "scripts"
+        scripts.mkdir()
+        validator = scripts / SCRIPT.name
+        shutil.copyfile(SCRIPT, validator)
+        declaration = root / ".mcp.json"
+        for reference in ("${CODEBUDDY_PLUGIN_ROOT}", "${CODEBUDDY_PLUGIN_ROOT}bad",
+                          "${CODEBUDDY_PLUGIN_ROOT", "${CODEBUDDY_PLUGIN_ROOT}/",
+                          "${CODEBUDDY_PLUGIN_ROOT}//server"):
+            for server in ({"command": reference}, {"command": "bash", "args": [reference]}):
+                original = json.dumps({"mcpServers": {"invalid": server}}).encode()
+                declaration.write_bytes(original)
+                # When the same public command used by doctor validates the file.
+                result = subprocess.run([sys.executable, str(validator), "--validate-commands"],
+                                        capture_output=True, text=True, check=False)
+                # Then it fails explicitly without rewriting declaration bytes.
+                assert declaration.read_bytes() == original
+                assert result.returncode == 2, (reference, result.stdout, result.stderr)
+                assert "MCP_LAUNCHER_INVALID" in result.stderr, result.stderr
+                assert "Traceback" not in result.stderr
+
+
 TESTS = [
     test_stock_passes,
+    test_bundled_placeholder_grammar_at_public_validator,
     test_bundled_traversal_rejected,
     test_bundled_symlink_escape_rejected,
     test_explicit_invalid_transport_rejected,
