@@ -208,6 +208,22 @@ PY
 then ok "legacy task update uses identity and preserves verification criteria"; else bad "legacy task update uses identity and preserves verification criteria"; fi
 rm -rf "$LEGACY_UPDATE_ROOT"
 
+expect_sync_fence_unchanged() {
+  local name="$1" plan="$2" root out rc file
+  root="$(make_run "$plan" '{"plan_reference":".lazybuddy/runs/r1/plan.md","progress":{"total_checkboxes":1,"completed_checkboxes":0},"tasks":[{"id":"T1","status":"pending"}]}')"
+  for file in plan.md state.json events.jsonl; do cp "$root/.lazybuddy/runs/r1/$file" "$root/$file.before"; done
+  out="$(CWD="$root" bash "$SYNC" r1 --fix 2>&1)"; rc=$?
+  if [ "$rc" != 0 ] || ! printf '%s' "$out" | grep -q 'NO DRIFT'; then
+    bad "$name: expected no drift, got $rc: $out"
+  elif ! cmp -s "$root/plan.md.before" "$root/.lazybuddy/runs/r1/plan.md" || ! cmp -s "$root/state.json.before" "$root/.lazybuddy/runs/r1/state.json" || ! cmp -s "$root/events.jsonl.before" "$root/.lazybuddy/runs/r1/events.jsonl"; then
+    bad "$name: fenced example changed plan/state/events"
+  else ok "$name"; fi
+  rm -rf "$root"
+}
+expect_sync_fence_unchanged "sync ignores backtick example without mutation" $'## TODOs\n- [ ] T1: real\n```markdown\n- [x] T2: example\n```'
+expect_sync_fence_unchanged "sync ignores tilde example and enclosed headings" $'## Todos\n~~~markdown\n## Appendix\n- [ ] A1. example\n~~~\n- [ ] T1. real'
+expect_sync_fence_unchanged "sync ignores unclosed fenced example" $'## TODOs\n- [ ] T1: real\n```markdown\n- [ ] no task identity'
+
 echo "=== plan-format-compat results ==="
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

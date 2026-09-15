@@ -80,8 +80,19 @@ TASK_SECTIONS = {"TODOs", "Todos"}
 in_section = False
 current_section = None
 plan_boxes = []  # {id, id_key, title, checked, section}
+fence = None
 for line in plan_lines:
     s = line.strip()
+    marker = re.match(r'^(`{3,}|~{3,})', s)
+    if marker:
+        token = marker.group(1)
+        if fence is None:
+            fence = token
+        elif token[0] == fence[0] and len(token) >= len(fence):
+            fence = None
+        continue
+    if fence is not None:
+        continue
     if s.startswith("## "):
         current_section = s[3:].strip()
         in_section = current_section in headings
