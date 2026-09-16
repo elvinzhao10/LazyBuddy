@@ -13,6 +13,7 @@ from lazybuddy_adaptive_decision_fields import (
     runtime_resolution,
 )
 from lazybuddy_adaptive_fingerprint import canonical_fingerprint, request_digest
+from lazybuddy_adaptive_routing import classify_request_route
 from lazybuddy_adaptive_policy import (
     PolicySelection,
     approval_classes,
@@ -213,6 +214,7 @@ def classify_adaptive_decision(request: str, context: dict | None = None) -> dic
         "decisionId": decision_id,
         "escalationCount": len(history),
         "escalationHistory": history,
+        "executionIntent": classify_request_route(request).execution_intent,
         "hostFingerprint": fingerprints["hostFingerprint"],
         "mode": policy.mode,
         "nextAction": selected_next_action,

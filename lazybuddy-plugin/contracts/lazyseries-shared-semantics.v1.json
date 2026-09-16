@@ -1,0 +1,88 @@
+{
+  "$schema": "lazyseries-shared-semantics.v1.schema.json",
+  "schema": "lazy-series.shared-semantics",
+  "schema_version": 1,
+  "contract_version": "1.3.0",
+  "title": "LazySeries v1.3.0 shared contract and state version semantics",
+  "plan_ref": "lazyseries-v1.3.0-adaptive-planning-and-memory",
+  "generated": "2026-09-14",
+  "shared_across_repos": [
+    "LazyBuddy/lazybuddy-plugin/contracts/lazyseries-shared-semantics.v1.json",
+    "LazyTrae/lazytrae-plugin/packages/cli/contracts/lazyseries-shared-semantics.v1.json",
+    "LazyQoder/lazyqoder-plugin/contracts/lazyseries-shared-semantics.v1.json"
+  ],
+  "note": "Byte-identical in both repositories. Defines the additive v1.3.0 state fields and the migration/version-refusal rules. Host-specific implementation and readiness claims live elsewhere and are not part of this shared contract.",
+  "contract_versions": {
+    "adaptive_harness": "v1",
+    "automatic_tooling": "1.1.0",
+    "capability_readiness": "2.0.0",
+    "lifecycle": "v2",
+    "shared_semantics": "1.3.0"
+  },
+  "state_versions": {
+    "active_plan": "1.2.3",
+    "run_state": "1.2.3",
+    "decision_ledger": "1.3.0"
+  },
+  "additive_fields_v1_3_0": {
+    "execution_intent": {
+      "introduced_in": "1.3.0",
+      "type": "enum<plan_only|execute>",
+      "distinct_from": "workflow_mode",
+      "description": "Persisted separately from workflow mode and current stage. plan_only preserves the explicit plan-only state until the user actually requests execution; a mere file edit, quoted example, or ambiguous 'yes' with multiple pending questions cannot set this to execute.",
+      "default": "plan_only"
+    },
+    "workflow_mode": {
+      "description": "Unchanged internal mode selection (assisted|direct|planned|long-horizon|orchestrated). Kept internal; present by tier (small/medium/complex).",
+      "values": [
+        "assisted",
+        "direct",
+        "planned",
+        "long-horizon",
+        "orchestrated"
+      ]
+    },
+    "milestone_flags": {
+      "introduced_in": "1.3.0",
+      "fields": {
+        "provisional": {
+          "type": "boolean",
+          "description": "Later milestones may be provisional. A provisional milestone and its tasks MUST NOT dispatch."
+        },
+        "parent_plan_id": {
+          "type": "string",
+          "description": "Authoritative parent plan identifier for child plans."
+        },
+        "dependency_links": {
+          "type": "array<string>",
+          "description": "Task/milestone dependency links; cycles and dangling links are rejected."
+        }
+      }
+    },
+    "decision_ledger_schema": {
+      "introduced_in": "1.3.0",
+      "schema_name": "decisions/ledger.jsonl",
+      "description": "Versioned immutable event ledger for cross-plan decisions and corrections. See lazyseries-v130-scenarios.v1.json canonical_formats.decision_ledger."
+    }
+  },
+  "migration": {
+    "old_state_readable": {
+      "rule": "States declaring a known major version (1.x) remain readable; missing additive fields default to their schema defaults (execution_intent=plan_only, milestone.provisional=false).",
+      "refuse": false
+    },
+    "unknown_newer_major_version": {
+      "rule": "States declaring a major version greater than the implemented major version (e.g. 2.x when running 1.x) are REFUSED.",
+      "refuse": true,
+      "diagnostic": "unsupported state major version: found <found_major>.X but this runtime implements major <implemented_major>; migrate or upgrade before loading. Refusing to read newer state to avoid silent data loss.",
+      "fail_closed": true
+    },
+    "same_major_additive": {
+      "rule": "Within the same major version, unknown additive fields are ignored (forward-compatible) but not required.",
+      "refuse": false
+    }
+  },
+  "version_parsing": {
+    "semver_major_field": "contract_version / state_versions entries use MAJOR.MINOR.PATCH",
+    "major_compare": "only the MAJOR component gates refusal; MINOR/PATCH are additive within a major."
+  }
+}

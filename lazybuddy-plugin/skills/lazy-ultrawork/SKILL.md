@@ -302,3 +302,15 @@ See earlier host implementation source: ultrawork lines 330-337
 
 ---
 _This package preserves the PIN→RED→GREEN→SURFACE→CLEAN loop, tier triage rules, Manual-QA channel taxonomy, verification gate trigger, output discipline, and stop rules. WorkBuddy-native tool mappings are documented above. For workflow limitations, record the Manual-QA evidence required by the package-owned verification contract._
+
+## Verification tiers (v1.3.0)
+
+Pick the tier from the changed boundary + risk, then verify each changed
+boundary once. Do not let iteration count or "complex" framing inflate ceremony.
+
+- **V0 inspect** — docs/metadata/formatting/inert fixtures: static checks only; no new test required.
+- **V1 focused** — localized reversible behavior: the cheapest faithful channel that proves the user-facing result.
+- **V2 integrated** — cross-module/state/parser/migration/lifecycle/host-routing: focused checks + one real consumer scenario.
+- **V3 comprehensive** — security/trust/release-packaging/shared-contract/broad-infra, or an unexplained focused failure: comprehensive gate once, preferably protected CI.
+
+Rules: lowest sufficient tier by default; counts and naming do not promote. Reuse green receipts — a green command on an unchanged tree/env/input is not rerun for a new phase or reviewer. One failure reruns only itself plus directly affected integration checks; protected CI owns the comprehensive gate when the diff qualifies.

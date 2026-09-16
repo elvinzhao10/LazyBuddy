@@ -7,50 +7,59 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current release package is v1.2.3. It is prepared for publication; package
+The current release package is v1.3.0. It is prepared for publication; package
 checks do not by themselves publish a tag or prove a host loaded it.
 
-## v1.2.3 platform compatibility
+## New in v1.3.0: work the way you talk
 
-- Host MCP declarations are validated before they are trusted: stdio servers
-  must use a non-empty executable name or path (spaces are supported), with
-  string arguments and resolvable bundled launcher paths, and a violation reports a typed error naming the server and the fix.
-- Setup output is actionable. Status and load-check print the remaining step
-  per host and keep package readiness separate from host readiness, so enabling
-  a host toggle is never reported as a live connection.
-- Plan parsing accepts the canonical `## TODOs` heading and the legacy
-  `## Todos` form, and a non-empty plan that parses zero tasks now fails with
-  an actionable error instead of succeeding silently.
-- Workflow and decision-memory features are not part of this patch; they are
-  scheduled for v1.3.0.
+v1.3.0 is a major workflow release. You no longer need to remember commands —
+the harness meets you at the level of your request.
 
-## Adaptive context since v1.2.2
+### Just ask, or use a command — both work
 
-- Automatic selection chooses the smallest sufficient existing workflow from
-  task risk and complexity; it is selection-only until host readiness is
-  observed, so it never claims a workflow was loaded or dispatched by a host.
-- Current compact task packets are 1,637 bytes versus 2,285 bytes before the
-  change: a 648-byte, **28.36%** reduction. Required safety, approval,
-  evidence, review, and completion gates are unchanged; the release quality
-  assertions remain unchanged.
-- Orchestrated execution sends a compact identity, delta, artifact-reference,
-  and validated-command packet instead of repeating the whole plan. It records
-  read-only pre-task provenance; runtime work needs a real entry artifact and
-  stateful work also needs a before/after transition. Lost results are accepted
-  only when their identity and artifacts still match, while unaffected review
-  lanes are retained. An interrupted pre-state run rolls back its own temporary
-  transaction material and can be retried without changing caller files.
+Two entry routes converge on the same execution authority and gates:
 
-## Efficiency improvements in v1.2.0
+- **Natural language**: describe the work plainly — "Fix the typo in the
+  welcome label" — and the smallest sufficient workflow is selected and run.
+- **Explicit command**: `/lazy-start-work <plan>` for known plans, or the
+  planner command for new ones. Same authority, same gates.
 
-- Verification is selected by deterministic risk: focused checks cover small,
-  low-risk work, while release, security, stale-evidence, and public-contract
-  changes always run the comprehensive gate.
-- The verifier reports shell, Node, and Python results separately, uses
-  bounded Node concurrency, and keeps classification-sensitive shell checks
-  serial for reliable outcomes.
-- Redacted cost/outcome records make invocations, reruns, rework, concurrency,
-  and evidence volume visible without estimating unavailable token data.
+No slash command is required for a clear implementation request. Conversely,
+asking to *explain*, quoting a command, or saying "plan only" never touches
+your files: the persisted `execution_intent` stays `plan_only` until you
+actually ask for execution, and a vague "ok" with several open questions never
+grants execution by itself.
+
+### Plans you can edit while work runs
+
+Plans are Markdown you own. Edit them mid-run; the harness reconciles your
+changes at execution boundaries instead of overwriting them:
+
+- Cosmetic edits (wording, reordering, checking a box) keep all evidence.
+- Semantic edits (acceptance, dependencies, verification commands) invalidate
+  only the affected task and its dependents — unrelated work is untouched.
+- Your checkbox is an *assertion*, not a verdict: a checked box alone never
+  counts as verified completion, and unchecking reopens the task.
+
+### Decisions the harness remembers
+
+Cross-plan decisions live in a durable ledger (`.lazybuddy/decisions/ledger.jsonl`).
+When plan two hits a question plan one already answered — with evidence — it
+recalls the decision instead of re-asking you. Contradictions are surfaced as
+supersessions, defects become scoped corrections that block only the affected
+work, and nothing in memory can override your current instructions.
+
+### Verification sized to the change
+
+Checks run once, at the right tier: documentation edits get a light inspect
+(V0), small changes a focused check (V1), cross-module behavior an integration
+scenario (V2), and security/release boundaries the comprehensive gate (V3,
+normally in CI). A green check is reused while its inputs are unchanged — the
+same test is never rerun just because a phase changed.
+
+Milestones, decision gates, and full state/version semantics are shared
+byte-identically with LazyTrae and LazyQoder (see
+`lazybuddy-plugin/contracts/lazyseries-shared-semantics.v1.json`).
 
 ## Recommended: install with AI help
 
@@ -58,7 +67,7 @@ You do not need to manually work through every setup detail. Open an AI coding
 assistant in your project and paste this:
 
 > Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
-> this project. Use the v1.2.3 route. Run safe package checks first,
+> this project. Use the v1.3.0 route. Run safe package checks first,
 > explain each step plainly, and ask me before changing marketplace, plugin,
 > Skills, MCP, account, credential, or trust settings.
 
@@ -112,7 +121,7 @@ and start a new session to verify it.
 Start with the result you want and how you will know it worked. Then use the
 smallest amount of structure that fits the task. You can simply describe the
 work in plain language; the modes are guidance, not commands you need to
-memorize.
+memorize. The v1.3.0 dual-entry routing picks one of these for you.
 
 | Mode | Use it when | Example request |
 | --- | --- | --- |
@@ -156,7 +165,10 @@ runtime.
 ## Learn more
 
 - [Install and verify a host](docs/03-install-and-host-verification.md)
-- [Supported v1.2.3 route](docs/v1.2.3-supported-route.md)
+- [Supported v1.3.0 route](docs/v1.3.0-supported-route.md)
+- [Workflow playbooks — how the modes pick work](docs/04-workflow-playbooks.md)
+- [Evidence and completion — what "done" proves](docs/05-evidence-and-completion.md)
+- [State and validation — how plan edits reconcile](docs/07a-state-and-validation.md)
 - [Host routes and recovery](docs/reference/host-routes.md)
 - [Release notes](RELEASE_NOTES.md)
 - [Documentation index](docs/README.md)

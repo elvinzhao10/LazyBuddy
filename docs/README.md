@@ -49,7 +49,7 @@ boundaries. Host state is deliberately outside those boundaries.
 | [01 — Execution model](01-mental-model.md) | Why are instructions, execution, state, and proof distinct layers? |
 | [02 — Request decomposition](02-first-task.md) | How does an outcome become acceptance criteria and a proof surface? |
 | [03 — Package delivery](03-install-and-host-verification.md) | What does copying a package establish, and what does it not establish? |
-| [v1.2.3 supported route](v1.2.3-supported-route.md) | Which source branch, lifecycle commands, and host proof are current? |
+| [v1.3.0 supported route](v1.3.0-supported-route.md) | Which source branch, lifecycle commands, and host proof are current? |
 | [04 — Workflow playbooks](04-workflow-playbooks.md) | How do skills, commands, and agent roles encode proportional workflow policy, compact dispatch, and recovery? |
 | [05 — Evidence and completion](05-evidence-and-completion.md) | How are checks, statuses, runtime/state-transition evidence, and completion claims kept honest? |
 | [06 — Capabilities and approvals](06-capabilities-and-approvals.md) | How does local-first capability selection avoid persistent mutation? |

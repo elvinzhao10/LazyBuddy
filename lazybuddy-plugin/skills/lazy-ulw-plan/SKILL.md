@@ -69,15 +69,29 @@ Brief summary of what this plan builds and why.
 
 ## TODOs
 
-- [ ] T1: Task 1
+- [ ] T1: Discovery & scaffold (provisional: false, depends_on: [])
   - Acceptance: ...
   - QA: ...
   - Commit: ...
 
-- [ ] T2: Task 2
+- [ ] T2: Billing integration (provisional: true, depends_on: T1, parent_plan_id: plan-x)
   - Acceptance: ...
   - QA: ...
   - Commit: ...
+
+## Decision Gates
+
+### G-billing-provider
+- question: Which billing provider should the billing milestone integrate?
+- recommendation: Provider X (existing contract, lowest integration cost).
+- alternatives:
+  - id: provider-x — Existing contract provider (Lower cost, fewer features)
+  - id: provider-y — New provider (More features, new procurement)
+- owner: product-owner
+- affected_tasks: [billing-integration]
+- needed_by: milestone-billing
+- status: open   # stays open until a REAL answer — a recommendation never auto-approves
+- assumptions: [Billing is the only consequential product decision surfaced now.]
 
 ## Final Verification Wave
 
@@ -95,6 +109,31 @@ Brief summary of what this plan builds and why.
   Legacy `A<n>.` id prefixes are also accepted. The `Final Verification Wave`
   section may use id-less checkboxes.
 - The verification section heading MUST be `## Final Verification Wave`.
+
+### Milestone flags (v1.3.0 — progressive milestones)
+
+Complex work uses ONE parent plan with milestones. Each task checkbox MAY carry
+trailing milestone flags in parentheses (parsed and validated by `sync-plan-state.sh`):
+
+- `provisional: true|false` — a provisional milestone and its tasks MUST NOT
+  dispatch. The NEXT non-provisional milestone is executable; distant
+  provisional milestones are intentionally not demanded upfront.
+- `depends_on: T1,T2` — dependency links. Cycles, missing IDs, and dangling
+  child links are rejected at sync time (the run fails visibly, never silently).
+- `parent_plan_id: <plan-id>` — authoritative parent plan id for child plans.
+
+### Decision gates (v1.3.0 — scoped gates)
+
+Consequential product decisions are recorded as decision gates with the canonical
+shape (see scenario fixture `canonical_formats.decision_gate`):
+
+- required: `question`, `recommendation`, `alternatives`, `owner`, `needed_by`, `status`
+- `alternatives` MUST include at least one NON-recommended option
+- `status` ∈ {open, answered, blocked, superseded}
+- **A recommendation NEVER becomes owner approval automatically** — `status`
+  stays `open` until a real answer exists.
+- Only tasks in `affected_tasks` (and their transitive dependents) block;
+  independent work proceeds.
 
 The plan must be **decision-complete** — the executor needs ZERO judgment calls.
 

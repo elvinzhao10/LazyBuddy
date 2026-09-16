@@ -21,6 +21,7 @@ from lazybuddy_adaptive_state import (
     persist_snapshot,
     resolve_active_state,
 )
+from lazybuddy_adaptive_routing import classify_request_route
 
 
 ACTION_PATTERN: Final = re.compile(
@@ -378,6 +379,7 @@ def build_directive(hook_input: HookInput) -> dict:
                     stale = True
     revision = snapshot["revisionFingerprint"]
     runtime = _runtime_mapping(decision, confirmed, host_name)
+    route_decision = classify_request_route(hook_input.prompt, hook_supported=confirmed)
     dispatched = "presented-to-host" if confirmed else "selected:host-unobserved"
     if not binding_available:
         dispatched = "blocked:runtime-fingerprint-unavailable"
@@ -413,8 +415,11 @@ def build_directive(hook_input: HookInput) -> dict:
             "verificationLevel": decision["verification_level"],
         },
         "dispatched": dispatched,
+        "executionIntent": route_decision.execution_intent,
+        "hookStatus": route_decision.hook_status,
         "kind": "lazybuddy-adaptive-directive",
         "persistence": persistence,
+        "route": route_decision.route,
         "runtime": runtime,
         "selection": {"workflowSurfaces": _workflow_selection(decision)},
         "snapshot": snapshot,

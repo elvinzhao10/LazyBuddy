@@ -3,8 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const RELEASE_VERSION = '1.2.3';
-const PREVIOUS_VERSION = '1.2.2';
+const RELEASE_VERSION = '1.3.0';
+const PREVIOUS_VERSION = '1.2.3';
 const VERSION_JSON_PATHS = [
   ['lazybuddy-plugin/.codebuddy-plugin/plugin.json', ['version']],
   ['lazybuddy-plugin/.workbuddy-plugin/plugin.json', ['version']],
@@ -46,7 +46,8 @@ function walk(root, directory = root) {
 }
 
 function previousVersionClassification(relativePath, line) {
-  if (relativePath.startsWith('docs/v1.2.') && relativePath !== 'docs/v1.2.3-supported-route.md') return 'historical-release-document';
+  if (relativePath.startsWith('docs/v1.2.')) return 'historical-release-document';
+  if (relativePath.startsWith('docs/v1.1.') || relativePath.startsWith('docs/v1.0.')) return 'historical-release-document';
   if (relativePath === 'README.md' && /efficiency improvements/i.test(line)) return 'historical-release-summary';
   if (relativePath === 'lazybuddy-plugin/CHANGELOG.md') return 'historical-release-history';
   if (relativePath.includes('/contracts/fixtures/') || relativePath.includes('/tests/fixtures/')) return 'historical-or-adversarial-fixture';
@@ -54,6 +55,15 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.endsWith('release-version-classifier.js')) return 'classifier-input';
   if (relativePath.endsWith('v120-release-version-classification.test.js')) return 'adversarial-test-input';
   if (relativePath.endsWith('lazybuddy-contract-check.sh')) return 'schema-independent-contract-test';
+  if (relativePath.endsWith('lazyseries-shared-semantics.v1.json') || relativePath.endsWith('marketplace-route-contract.v1.json') || relativePath.endsWith('paired-candidate-contract.v1.schema.json') || relativePath.endsWith('lazybuddy-machine-status.v2.schema.json')) return 'schema-independent-contract-history';
+  if (relativePath.endsWith('lazybuddy-evaluation.md')) return 'historical-release-document';
+  if (relativePath.includes('paired-live-test') || relativePath.endsWith('lazybuddy-workbuddy-preparation-check.sh') || relativePath.endsWith('validate-paired-candidate.js') || relativePath.endsWith('dashboard.html')) return 'historical-mutation-target-or-fixture';
+  if (relativePath.endsWith('v122-harness-semantic-parity.test.js')) return 'historical-test-input';
+  if (relativePath.startsWith('lazybuddy-plugin/contracts/tests/')) return 'historical-test-input';
+  if (relativePath.endsWith('workbuddy-marketplace-receipt.v1.schema.json')) return 'schema-independent-contract-history';
+  if (relativePath.startsWith('lazybuddy-plugin/mcp/')) return 'historical-serverinfo-protocol-string';
+  if (relativePath === 'RELEASE_NOTES.md' && /update from|migrate|projects load/i.test(line)) return 'historical-migration-reference';
+  if (relativePath.startsWith('lazybuddy-plugin/tests/')) return 'historical-test-input';
   if (/(?:^|\/)(?:test|tests)\//.test(relativePath) && /(previous|historical|fixture|wrong|from|upgrade|mutable|prior)/i.test(line)) return 'historical-test-input';
   if (/\bcurrent\b.*\b(?:release|version)\b/i.test(line)) return 'current-version-drift';
   if (/(upgrade|migrat|rollback|previous|historical|prior|old release|since v?1\.2\.[0-9]|from v?1\.2\.[0-9]|tag\/v1\.2\.[0-9]|release notes)/i.test(line)) return 'historical-migration-reference';

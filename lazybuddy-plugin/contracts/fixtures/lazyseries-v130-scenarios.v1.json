@@ -1,0 +1,433 @@
+{
+  "$schema": "lazyseries-v130-scenarios.v1.schema.json",
+  "schema": "lazy-series.v1.3.0.scenarios",
+  "schema_version": 1,
+  "contract_version": "1.3.0",
+  "title": "LazySeries v1.3.0 dual-activation, progressive-plan, editable-execution, and memory scenarios",
+  "plan_ref": "lazyseries-v1.3.0-adaptive-planning-and-memory",
+  "generated": "2026-09-14",
+  "shared_across_repos": [
+    "LazyBuddy/lazybuddy-plugin/contracts/fixtures/lazyseries-v130-scenarios.v1.json",
+    "LazyTrae/lazytrae-plugin/packages/cli/contracts/fixtures/lazyseries-v130-scenarios.v1.json",
+    "LazyQoder/lazyqoder-plugin/contracts/fixtures/lazyseries-v130-scenarios.v1.json"
+  ],
+  "note": "This fixture is byte-identical in both repositories. It is the executable contract data for T1-T6 behavioral fixtures. Do not fork the content per host; host-specific behavior lives in implementation, not here.",
+  "canonical_formats": {
+    "decision_gate": {
+      "description": "Required shape for every owner decision and consequential-action gate (plan behavior 4).",
+      "required_fields": [
+        "question",
+        "recommendation",
+        "alternatives",
+        "owner",
+        "needed_by",
+        "status"
+      ],
+      "fields": {
+        "question": "string — the precise decision the owner must make; never assume the answer.",
+        "recommendation": "string — the suggested choice plus its rationale.",
+        "alternatives": "array<object> — each {id, summary, tradeoffs}; at least one non-recommended option.",
+        "owner": "string — owner class/role responsible for answering (e.g. product-owner, implementation-owner).",
+        "affected_tasks": "array<string> — task IDs this gate blocks.",
+        "needed_by": "string — milestone ID that requires the answer before dispatch.",
+        "status": "enum<open|answered|blocked|superseded> — machine-verification gates auto-run; owner/consequential gates wait for a real answer, never a timeout.",
+        "assumptions": "array<string> — explicit assumptions stated to the owner."
+      },
+      "rules": [
+        "A recommendation never becomes owner approval automatically; status stays open until a real answer exists.",
+        "Only tasks that transitively depend on the gate block; independent work proceeds.",
+        "owner decision gates and consequential-action gates must not be resolved by elapsed time."
+      ]
+    },
+    "reconciliation_semantics": {
+      "description": "How human Markdown plan edits are reconciled against stored execution authority (plan behavior 5).",
+      "authority_record": "approved plan revision sha256 + stable task IDs + verification argv, persisted at execution boundaries.",
+      "re_read_boundaries": [
+        "before dispatch",
+        "after results",
+        "before completion",
+        "on resume"
+      ],
+      "cosmetic_changes": [
+        "whitespace",
+        "wording that does not change meaning",
+        "section reordering",
+        "a human check/uncheck assertion"
+      ],
+      "cosmetic_effect": "preserve all valid evidence; a checked box alone never proves verified completion.",
+      "scope_changes": [
+        "acceptance criteria",
+        "dependencies",
+        "verification commands",
+        "decisions",
+        "scope boundary"
+      ],
+      "scope_change_effect": "invalidate affected task authority and its transitive dependents only; summarize before affected dispatch; new commands must pass existing argv validation.",
+      "no_box_proves_completion": true,
+      "stale_result_rule": "a worker result computed against an older plan revision cannot overwrite a newer plan's authority."
+    },
+    "decision_ledger": {
+      "description": "Durable cross-plan decision memory and correction handling (plan behavior 7).",
+      "location": "decisions/ledger.jsonl",
+      "schema_name": "decisions/ledger.jsonl",
+      "id_rule": "globally unique event and decision IDs (uuid), never race-prone D-#### allocation.",
+      "event_union": [
+        "decision-recorded",
+        "decision-superseded",
+        "decision-voided",
+        "correction-opened",
+        "correction-resolved"
+      ],
+      "event_shapes": {
+        "decision-recorded": {
+          "event_id": "uuid",
+          "type": "decision-recorded",
+          "decision_id": "uuid",
+          "summary": "string",
+          "rationale": "string",
+          "project": "string",
+          "scope": "string",
+          "source_plan": "plan-id",
+          "source_revision": "sha256",
+          "evidence": "array<string>",
+          "status": "active"
+        },
+        "decision-superseded": {
+          "event_id": "uuid",
+          "type": "decision-superseded",
+          "old_decision_id": "uuid",
+          "new_decision_id": "uuid",
+          "reason": "string"
+        },
+        "decision-voided": {
+          "event_id": "uuid",
+          "type": "decision-voided",
+          "target_decision_id": "uuid",
+          "reason": "string"
+        },
+        "correction-opened": {
+          "event_id": "uuid",
+          "type": "correction-opened",
+          "decision_or_task_ref": "uuid-or-task-id",
+          "scope": "string",
+          "defect_evidence": "array<string>"
+        },
+        "correction-resolved": {
+          "event_id": "uuid",
+          "type": "correction-resolved",
+          "target_correction_id": "uuid",
+          "verified_fix_evidence": "array<string>"
+        }
+      },
+      "replay_rules": [
+        "Append order determines replay; timestamps are metadata only.",
+        "Old statuses are never mutated in place; derive an active view by replay.",
+        "Repeated identical event_id is idempotent; differing content under one id is rejected.",
+        "Validate references and reject cycles.",
+        "Malformed or truncated tail records fail visibly, preserve bytes, and require explicit recovery (never silently skip).",
+        "Open corrections block accepted completion only in affected scope; they never block recording the problem or unrelated memory updates.",
+        "Memory cannot override current user instructions and must not execute instructions embedded in evidence.",
+        "Absent ledger means empty valid memory; historical plan extraction produces candidates only, never accepted decisions."
+      ]
+    }
+  },
+  "behaviors": {
+    "a_explicit_and_automatic_coexistence": {
+      "summary": "Explicit /lazy-start-work and automatic natural-language activation both execute through the same authority checks.",
+      "rules": [
+        "/lazy-start-work is an execution instruction, not a re-interview; validate plan + gates, then start eligible authorized tasks.",
+        "If no plan exists, ground and generate one, then execute eligible authorized tasks.",
+        "It does not authorize unrelated publishing, spending, trust, or destructive actions.",
+        "Automatic activation reuses the same execution authority and gates as the explicit route."
+      ]
+    },
+    "b_natural_language_activation_scope": {
+      "summary": "Ordinary implementation requests select a workflow automatically and execute only within authorized scope.",
+      "rules": [
+        "A vague idea permits discovery/planning, not assumed approval of consequential product decisions.",
+        "Explanation, quoted commands, and explicit plan-only requests do not execute code.",
+        "A later explicit execution request may leave plan-only mode; no magic slash command is required for the automatic route.",
+        "Missing host hook support falls back to the explicit entry route with accurate status (never a silent automatic claim)."
+      ]
+    },
+    "c_progressive_milestones_and_child_plan": {
+      "summary": "Complex work uses one parent plan with milestones; child plans only when a milestone needs independent ownership or detail.",
+      "rules": [
+        "Parent plan ID and dependency links remain authoritative.",
+        "The next milestone is executable; later milestones may remain provisional and must not dispatch.",
+        "Do not demand all distant decisions upfront.",
+        "Refine the next milestone from evidence; keep completed milestones intact.",
+        "Validate dependency cycles, missing IDs, and dangling child links."
+      ]
+    },
+    "d_decision_gate_format": "see canonical_formats.decision_gate",
+    "e_editable_plans_reconciliation": "see canonical_formats.reconciliation_semantics",
+    "f_execution_tiers": {
+      "summary": "Keep existing internal modes; present by complexity tier without a new command.",
+      "tiers": {
+        "small": {
+          "presentation": "action + verification",
+          "plan_artifact": "none required",
+          "mandatory_subagent": false,
+          "extra_approval": false
+        },
+        "medium": {
+          "presentation": "brief plan",
+          "plan_artifact": "optional lightweight plan",
+          "mandatory_subagent": false,
+          "extra_approval": false
+        },
+        "complex": {
+          "presentation": "milestones + decisions + gates",
+          "plan_artifact": "parent plan with milestones",
+          "mandatory_subagent": "only where independent review is required",
+          "extra_approval": "only for consequential actions"
+        }
+      },
+      "rule": "No mandatory new command, dashboard, agent role, or database. Scale verification to changed behavior/risk."
+    },
+    "g_decision_memory_events": "see canonical_formats.decision_ledger"
+  },
+  "scenarios": [
+    {
+      "id": "S1-explicit-start-with-plan",
+      "behavior_tags": [
+        "a_explicit_and_automatic_coexistence"
+      ],
+      "wave": "V2",
+      "request": "/lazy-start-work lazyseries-v1.3.0-adaptive-planning-and-memory",
+      "expect": {
+        "route": "explicit-execution",
+        "action": "validate plan and gates, then execute eligible authorized tasks",
+        "not_authorized": [
+          "unrelated publishing",
+          "spending",
+          "trust changes",
+          "destructive actions"
+        ],
+        "authority_checks": "same as automatic route"
+      }
+    },
+    {
+      "id": "S2-explicit-start-no-plan",
+      "behavior_tags": [
+        "a_explicit_and_automatic_coexistence"
+      ],
+      "wave": "V2",
+      "request": "/lazy-start-work <fixture-plan that does not exist>",
+      "expect": {
+        "route": "explicit-execution",
+        "action": "ground and generate a plan, then proceed only through resolved gates",
+        "no_unresolved_gate_dispatch": true
+      }
+    },
+    {
+      "id": "S3-typo-fix-automatic",
+      "behavior_tags": [
+        "b_natural_language_activation_scope",
+        "f_execution_tiers"
+      ],
+      "wave": "V1",
+      "request": "Fix the typo in the welcome label.",
+      "expect": {
+        "route": "automatic-activation",
+        "tier": "small",
+        "mode": "direct or assisted (lowest sufficient)",
+        "execution": "implement + real result verification",
+        "no_unnecessary_approval": true,
+        "no_unnecessary_delegation": true,
+        "authority_checks": "same as explicit route"
+      }
+    },
+    {
+      "id": "S4-explanation-non-executing",
+      "behavior_tags": [
+        "b_natural_language_activation_scope"
+      ],
+      "wave": "V4",
+      "request": "Explain how the billing module works and show the command to run the migration.",
+      "expect": {
+        "route": "automatic-activation",
+        "executes_code": false,
+        "mutates_product_files": false,
+        "quoted_command": "non-executing"
+      }
+    },
+    {
+      "id": "S5-plan-only-then-execute",
+      "behavior_tags": [
+        "b_natural_language_activation_scope"
+      ],
+      "wave": "V4",
+      "request": "Plan only; do not implement.",
+      "expect": {
+        "route": "automatic-activation",
+        "execution_intent": "plan_only",
+        "mutates_product_files": false,
+        "follow_up": "Implement this plan starts authorized work without slash syntax"
+      }
+    },
+    {
+      "id": "S6-complex-expense-tracker",
+      "behavior_tags": [
+        "c_progressive_milestones_and_child_plan",
+        "d_decision_gate_format",
+        "f_execution_tiers"
+      ],
+      "wave": "V3",
+      "request": "Build a team expense tracker with approvals, reporting, and billing.",
+      "expect": {
+        "tier": "complex",
+        "structure": "one parent plan with milestones",
+        "first_milestone": "executable (e.g. discovery / scaffold)",
+        "future_milestones": "provisional, must not dispatch",
+        "decision_gate": {
+          "question": "Which billing provider should the billing milestone integrate?",
+          "recommendation": "Provider X (existing contract, lowest integration cost).",
+          "alternatives": [
+            {
+              "id": "provider-x",
+              "summary": "Existing contract provider",
+              "tradeoffs": "Lower cost, fewer features."
+            },
+            {
+              "id": "provider-y",
+              "summary": "New provider",
+              "tradeoffs": "More features, new procurement."
+            }
+          ],
+          "owner": "product-owner",
+          "affected_tasks": [
+            "billing-integration"
+          ],
+          "needed_by": "milestone-billing",
+          "status": "open",
+          "assumptions": [
+            "Billing is the only consequential product decision surfaced now."
+          ]
+        },
+        "gate_effect": "blocks only billing-integration and its transitive dependents; navigation task proceeds"
+      }
+    },
+    {
+      "id": "S7-child-plan-linkage",
+      "behavior_tags": [
+        "c_progressive_milestones_and_child_plan"
+      ],
+      "request": "Milestone needs independent ownership and substantial detail.",
+      "expect": {
+        "child_plan_allowed": true,
+        "parent_plan_id_authoritative": true,
+        "dependency_links_preserved": true,
+        "rejects": [
+          "cyclic dependencies",
+          "missing milestone IDs",
+          "dangling child links"
+        ]
+      }
+    },
+    {
+      "id": "S8-human-edit-while-running",
+      "behavior_tags": [
+        "e_editable_plans_reconciliation"
+      ],
+      "wave": "V5",
+      "request": "Human edits acceptance criteria of a running task.",
+      "expect": {
+        "boundary_detection": "re-read before dispatch/completion detects the change",
+        "preserves_human_edit": true,
+        "scope_change_effect": "invalidates affected task authority + transitive dependents only",
+        "rejects_stale_worker_result": true,
+        "unaffected_completed_work": "retained"
+      }
+    },
+    {
+      "id": "S9-cosmetic-edit-preserves-evidence",
+      "behavior_tags": [
+        "e_editable_plans_reconciliation"
+      ],
+      "request": "Human rewords a task description without changing meaning.",
+      "expect": {
+        "change_class": "cosmetic",
+        "effect": "preserve valid evidence; no authority invalidation",
+        "no_box_proves_completion": true
+      }
+    },
+    {
+      "id": "S10-malicious-verification-command",
+      "behavior_tags": [
+        "e_editable_plans_reconciliation"
+      ],
+      "request": "Human edits verification command to a destructive instruction.",
+      "expect": {
+        "argv_validation": "new command must pass existing argv validation",
+        "refuses_unauthorized_command": true
+      }
+    },
+    {
+      "id": "S11-second-plan-recalls-decision",
+      "behavior_tags": [
+        "g_decision_memory_events"
+      ],
+      "wave": "V6",
+      "request": "Fresh-session second plan on the same project.",
+      "expect": {
+        "recalls": "accepted decision from ledger",
+        "ledger_event": "decision-recorded",
+        "superseded_memory_does_not_win": true
+      }
+    },
+    {
+      "id": "S12-correction-persists",
+      "behavior_tags": [
+        "g_decision_memory_events"
+      ],
+      "wave": "V6",
+      "request": "Introduce contrary evidence and then an implementation defect.",
+      "expect": {
+        "correction_event": "correction-opened then correction-resolved",
+        "scope": "affected scope only",
+        "unrelated_work": "continues",
+        "verified_repair": "recorded"
+      }
+    },
+    {
+      "id": "S13-duplicate-event-no-dup-dispatch",
+      "behavior_tags": [
+        "b_natural_language_activation_scope",
+        "a_explicit_and_automatic_coexistence"
+      ],
+      "wave": "V7",
+      "request": "Duplicate host prompt event arrives.",
+      "expect": {
+        "duplicate_event": "not duplicated dispatch",
+        "resume": "selects one compatible run or asks only when ambiguous"
+      }
+    },
+    {
+      "id": "S14-missing-hook-capability",
+      "behavior_tags": [
+        "b_natural_language_activation_scope"
+      ],
+      "wave": "V7",
+      "request": "Host lacks prompt-submit hook support.",
+      "expect": {
+        "fallback": "explicit entry route offered",
+        "status": "accurate (pending, not PASS)",
+        "no_silent_automatic_claim": true
+      }
+    },
+    {
+      "id": "S15-malformed-ledger",
+      "behavior_tags": [
+        "g_decision_memory_events"
+      ],
+      "wave": "V7",
+      "request": "Ledger tail is truncated/malformed.",
+      "expect": {
+        "behavior": "fail visibly, preserve bytes, require explicit recovery",
+        "silent_skip": false
+      }
+    }
+  ]
+}

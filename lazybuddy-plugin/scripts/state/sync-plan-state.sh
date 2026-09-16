@@ -17,6 +17,9 @@ FIX="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state-paths.sh"
 
+# Tooling dir (v1.3.0): milestone/decision-gate validation lives in Python.
+TOOLING_DIR="$(cd "$SCRIPT_DIR/../../tooling" && pwd)"
+
 if ! state_require_safe_run_id "$RUN_ID"; then
     exit 1
 fi
@@ -59,16 +62,92 @@ EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
 cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
 trap cleanup_transaction_temps EXIT
 
-python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" <<'PYEOF'
-import json, sys, re, os
+python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$TOOLING_DIR" <<'PYEOF'
+import json, sys, re, os, hashlib
 
-state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp = sys.argv[1:]
+state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp, tooling_dir = sys.argv[1:]
+sys.path.insert(0, tooling_dir)
 fix = (fix == "--fix")
 
 with open(state_file) as f:
     state = json.load(f)
 with open(plan_path) as f:
-    plan_lines = f.readlines()
+    plan_text = f.read()
+    plan_lines = plan_text.splitlines(keepends=True)
+
+# --- v1.3.0 T4: approved-plan-revision reconciliation at the sync boundary ---
+# The approved revision text is snapshotted once (checkpoints/plan-revision.md).
+# Every later sync compares the current plan against that snapshot:
+#   cosmetic/unchanged edits preserve all evidence;
+#   semantic edits invalidate ONLY affected tasks + transitive dependents;
+#   a human uncheck reopens the task for reconciliation.
+run_dir = os.path.dirname(state_file)
+revision_path = os.path.join(run_dir, "checkpoints", "plan-revision.md")
+reconciliation_event = None
+try:
+    from lazybuddy_plan_reconcile import classify_plan_edits
+    if os.path.exists(revision_path):
+        with open(revision_path) as f:
+            approved_text = f.read()
+        if hashlib.sha256(plan_text.encode()).hexdigest() != hashlib.sha256(approved_text.encode()).hexdigest():
+            reconciliation = classify_plan_edits(approved_text, plan_text)
+            reconciliation_event = {
+                "ts": now, "run_id": run_id, "event": "plan_reconciled",
+                "classification": reconciliation["classification"],
+                "invalidations": reconciliation["invalidations"],
+                "reopen": reconciliation["reopen"],
+                "added": reconciliation["added"],
+                "removed": reconciliation["removed"],
+                "summary": reconciliation["summary"],
+            }
+            print("=== plan reconciliation ===")
+            print("classification: %s" % reconciliation["classification"])
+            for line in reconciliation["summary"]:
+                print("  - " + line)
+            if fix and reconciliation["classification"] == "semantic":
+                # Scoped invalidation: affected + transitive dependents only.
+                invalidated_ids = {i["task"] for i in reconciliation["invalidations"]}
+                for task in state.get("tasks", []):
+                    tid = task.get("id")
+                    if tid in invalidated_ids:
+                        if task.get("status") == "done":
+                            task["status"] = "queued"
+                            task["evidence"] = []
+                            task["reconciled_reopened"] = True
+                # human uncheck reopens even when the edit is otherwise cosmetic
+            if fix and reconciliation["reopen"]:
+                for task in state.get("tasks", []):
+                    if task.get("id") in reconciliation["reopen"] and task.get("status") == "done":
+                        task["status"] = "queued"
+                        task["reconciled_reopened"] = True
+            # Adopt the edited plan as the new approved revision once reconciled.
+            if fix:
+                os.makedirs(os.path.dirname(revision_path), exist_ok=True)
+                rev_tmp = revision_path + ".tmp"
+                with open(rev_tmp, "w") as f:
+                    f.write(plan_text)
+                os.replace(rev_tmp, revision_path)
+    else:
+        # First sync: snapshot the approved revision.
+        if fix:
+            os.makedirs(os.path.dirname(revision_path), exist_ok=True)
+            rev_tmp = revision_path + ".tmp"
+            with open(rev_tmp, "w") as f:
+                f.write(plan_text)
+            os.replace(rev_tmp, revision_path)
+except Exception as exc:  # pragma: no cover - defensive
+    print("Error: plan reconciliation unavailable: %s" % exc, file=sys.stderr)
+    sys.exit(1)
+
+# --- stale-result guard (T4): results carry the plan sha they were dispatched
+# under; a result whose sha differs from the current approved revision cannot
+# update this (newer) plan state. Applied when an incoming result names this run.
+try:
+    from lazybuddy_plan_reconcile import accept_result
+    state["_approved_plan_sha256"] = hashlib.sha256(plan_text.encode()).hexdigest()
+except Exception:
+    pass
+
 
 # Parse checkboxes from plan sections. Heading match is EXACT (case-sensitive):
 #   "TODOs"      -> canonical heading
@@ -151,6 +230,57 @@ for box in plan_boxes:
               % (box["section"], box["title"][:80]), file=sys.stderr)
         sys.exit(1)
 
+# --- v1.3.0 progressive milestones: parse + validate milestone_flags ---
+# Each task checkbox MAY carry trailing milestone flags in parentheses, e.g.:
+#   - [ ] T2: Billing (provisional: true, depends_on: T1, parent_plan_id: plan-x)
+# These are parsed into a milestone graph and validated (behavior c):
+#   - dependency cycles are rejected;
+#   - missing IDs (links to non-existent nodes) are rejected;
+#   - dangling child links are rejected.
+# Validation fails visibly and never silently skips the sync.
+PROVISIONAL_RE = re.compile(r"provisional\s*:\s*(true|false)", re.I)
+DEPENDS_RE = re.compile(r"depends_on\s*:\s*([^\),]+)")
+PARENT_RE = re.compile(r"parent_plan_id\s*:\s*(\S+)")
+milestone_nodes = []
+for box in plan_boxes:
+    if not box["id_key"]:
+        continue
+    title = box["title"]
+    provisional = False
+    m = PROVISIONAL_RE.search(title)
+    if m:
+        provisional = m.group(1).lower() == "true"
+    deps = []
+    dm = DEPENDS_RE.search(title)
+    if dm:
+        deps = [
+            tok.strip().strip("[]")
+            for tok in dm.group(1).split(",")
+            if tok.strip().strip("[]")
+        ]
+    parent = None
+    pm = PARENT_RE.search(title)
+    if pm:
+        parent = pm.group(1).rstrip(")")
+    milestone_nodes.append({
+        "id": box["id_key"],
+        "provisional": provisional,
+        "parent_plan_id": parent,
+        "dependency_links": deps,
+    })
+
+try:
+    from lazybuddy_plan_milestones import validate_milestone_graph
+    milestone_errors = validate_milestone_graph(milestone_nodes)
+except Exception as exc:  # pragma: no cover - defensive
+    print("Error: milestone validation unavailable: %s" % exc, file=sys.stderr)
+    sys.exit(1)
+if milestone_errors:
+    print("Error: milestone graph validation failed:", file=sys.stderr)
+    for err in milestone_errors:
+        print("  - " + err, file=sys.stderr)
+    sys.exit(1)
+
 tasks = state.get("tasks", [])
 tasks_by_id = {t.get("id"): t for t in tasks if t.get("id")}
 
@@ -218,6 +348,8 @@ if changed:
     with open(tmp_file, "w") as f:
         json.dump(state, f, indent=2)
     ev = {"ts": now, "run_id": run_id, "event": "plan_state_synced", "drift_fixed": len(drift)}
+    if reconciliation_event is not None:
+        ev["reconciliation"] = reconciliation_event
     with open(events_tmp, "w") as output:
         if os.path.exists(events_file):
             with open(events_file) as source:
