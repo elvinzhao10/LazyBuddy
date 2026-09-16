@@ -17,6 +17,9 @@ FIX="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state-paths.sh"
 
+# Tooling dir (v1.3.0): milestone/decision-gate validation lives in Python.
+TOOLING_DIR="$(cd "$SCRIPT_DIR/../../tooling" && pwd)"
+
 if ! state_require_safe_run_id "$RUN_ID"; then
     exit 1
 fi
@@ -59,10 +62,11 @@ EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
 cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
 trap cleanup_transaction_temps EXIT
 
-python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" <<'PYEOF'
+python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$TOOLING_DIR" <<'PYEOF'
 import json, sys, re, os
 
-state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp = sys.argv[1:]
+state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp, tooling_dir = sys.argv[1:]
+sys.path.insert(0, tooling_dir)
 fix = (fix == "--fix")
 
 with open(state_file) as f:
@@ -150,6 +154,57 @@ for box in plan_boxes:
               "(expected a 'T1:'-style prefix): %s"
               % (box["section"], box["title"][:80]), file=sys.stderr)
         sys.exit(1)
+
+# --- v1.3.0 progressive milestones: parse + validate milestone_flags ---
+# Each task checkbox MAY carry trailing milestone flags in parentheses, e.g.:
+#   - [ ] T2: Billing (provisional: true, depends_on: T1, parent_plan_id: plan-x)
+# These are parsed into a milestone graph and validated (behavior c):
+#   - dependency cycles are rejected;
+#   - missing IDs (links to non-existent nodes) are rejected;
+#   - dangling child links are rejected.
+# Validation fails visibly and never silently skips the sync.
+PROVISIONAL_RE = re.compile(r"provisional\s*:\s*(true|false)", re.I)
+DEPENDS_RE = re.compile(r"depends_on\s*:\s*([^\),]+)")
+PARENT_RE = re.compile(r"parent_plan_id\s*:\s*(\S+)")
+milestone_nodes = []
+for box in plan_boxes:
+    if not box["id_key"]:
+        continue
+    title = box["title"]
+    provisional = False
+    m = PROVISIONAL_RE.search(title)
+    if m:
+        provisional = m.group(1).lower() == "true"
+    deps = []
+    dm = DEPENDS_RE.search(title)
+    if dm:
+        deps = [
+            tok.strip().strip("[]")
+            for tok in dm.group(1).split(",")
+            if tok.strip().strip("[]")
+        ]
+    parent = None
+    pm = PARENT_RE.search(title)
+    if pm:
+        parent = pm.group(1).rstrip(")")
+    milestone_nodes.append({
+        "id": box["id_key"],
+        "provisional": provisional,
+        "parent_plan_id": parent,
+        "dependency_links": deps,
+    })
+
+try:
+    from lazybuddy_plan_milestones import validate_milestone_graph
+    milestone_errors = validate_milestone_graph(milestone_nodes)
+except Exception as exc:  # pragma: no cover - defensive
+    print("Error: milestone validation unavailable: %s" % exc, file=sys.stderr)
+    sys.exit(1)
+if milestone_errors:
+    print("Error: milestone graph validation failed:", file=sys.stderr)
+    for err in milestone_errors:
+        print("  - " + err, file=sys.stderr)
+    sys.exit(1)
 
 tasks = state.get("tasks", [])
 tasks_by_id = {t.get("id"): t for t in tasks if t.get("id")}
