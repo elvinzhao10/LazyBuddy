@@ -46,7 +46,7 @@ function walk(root, directory = root) {
 }
 
 function previousVersionClassification(relativePath, line) {
-  if (relativePath.startsWith('docs/v1.2.') && relativePath !== 'docs/v1.2.3-supported-route.md') return 'historical-release-document';
+  if (relativePath.startsWith('docs/v1.2.')) return 'historical-release-document';
   if (relativePath.startsWith('docs/v1.1.') || relativePath.startsWith('docs/v1.0.')) return 'historical-release-document';
   if (relativePath === 'README.md' && /efficiency improvements/i.test(line)) return 'historical-release-summary';
   if (relativePath === 'lazybuddy-plugin/CHANGELOG.md') return 'historical-release-history';
@@ -56,7 +56,7 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.endsWith('v120-release-version-classification.test.js')) return 'adversarial-test-input';
   if (relativePath.endsWith('lazybuddy-contract-check.sh')) return 'schema-independent-contract-test';
   if (relativePath.endsWith('lazyseries-shared-semantics.v1.json') || relativePath.endsWith('marketplace-route-contract.v1.json') || relativePath.endsWith('paired-candidate-contract.v1.schema.json') || relativePath.endsWith('lazybuddy-machine-status.v2.schema.json')) return 'schema-independent-contract-history';
-  if (relativePath.endsWith('docs/v1.2.3-supported-route.md') || relativePath.endsWith('lazybuddy-evaluation.md')) return 'historical-release-document';
+  if (relativePath.endsWith('lazybuddy-evaluation.md')) return 'historical-release-document';
   if (relativePath.includes('paired-live-test') || relativePath.endsWith('lazybuddy-workbuddy-preparation-check.sh') || relativePath.endsWith('validate-paired-candidate.js') || relativePath.endsWith('dashboard.html')) return 'historical-mutation-target-or-fixture';
   if (relativePath.endsWith('v122-harness-semantic-parity.test.js')) return 'historical-test-input';
   if (relativePath.startsWith('lazybuddy-plugin/contracts/tests/')) return 'historical-test-input';
