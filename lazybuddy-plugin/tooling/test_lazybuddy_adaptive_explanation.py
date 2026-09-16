@@ -28,6 +28,7 @@ def _snapshot(**overrides):
         "decisionId": "dec-001",
         "escalationCount": 0,
         "escalationHistory": [],
+        "executionIntent": "execute",
         "hostFingerprint": "sha256:" + "1" * 64,
         "mode": "planned",
         "nextAction": "implement approved stage 2",
