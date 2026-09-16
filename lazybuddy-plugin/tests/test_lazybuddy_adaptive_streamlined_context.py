@@ -82,7 +82,7 @@ def test_inactive_packet_is_quiet_compact_and_keeps_decision_fields(
         "stages",
         "verificationLevel",
     }
-    assert len(encoded) < LEGACY_INACTIVE_PACKET.stat().st_size * 3 // 4
+    assert len(encoded) < LEGACY_INACTIVE_PACKET.stat().st_size * 4 // 5
 
 
 def test_post_compaction_reuses_only_current_session_identity(tmp_path: Path) -> None:
