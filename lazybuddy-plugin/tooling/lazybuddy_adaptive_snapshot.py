@@ -18,6 +18,7 @@ SNAPSHOT_REQUIRED_FIELDS: Final = (
     "decisionId",
     "escalationCount",
     "escalationHistory",
+    "executionIntent",
     "hostFingerprint",
     "mode",
     "nextAction",
@@ -31,6 +32,7 @@ SNAPSHOT_REQUIRED_FIELDS: Final = (
     "verificationLevel",
     "version",
 )
+EXECUTION_INTENTS: Final = {"plan_only", "execute"}
 SINGLE_WRITER: Final = "orchestrator"
 MODES: Final = {"direct", "assisted", "planned", "orchestrated", "long-horizon"}
 RISKS: Final = {"low", "standard", "material", "high"}
@@ -251,6 +253,8 @@ def validate_adaptive_snapshot(snapshot: object) -> bool:
     if not _is_portable_text(snapshot.get("nextAction")):
         return False
     if not _valid_blocker(snapshot.get("blocker")):
+        return False
+    if snapshot.get("executionIntent") not in EXECUTION_INTENTS:
         return False
     return all(
         _is_digest(snapshot.get(field))
