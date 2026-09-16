@@ -247,6 +247,19 @@ def mark_event_dispatched(seen: set[str], identity: str) -> None:
     seen.add(identity)
 
 
+def select_verification_tier(changed_boundary: str | None, risk: dict | None = None) -> str:
+    """T6 touchpoint: route a change to its lowest-sufficient verification tier.
+
+    Delegates to :mod:`lazybuddy_verification_tiers` so the dual-entry router
+    and the verification tier selector share one definition. Counts, plan size,
+    agent count, and "complex" naming never promote the tier here — only the
+    changed boundary or a genuine risk flag does.
+    """
+    from lazybuddy_verification_tiers import select_tier  # local import; avoids cycle at module load
+
+    return select_tier(changed_boundary, risk)
+
+
 def select_resume_candidate(
     candidates: list[dict],
     session_id: str | None = None,

@@ -294,3 +294,16 @@ See earlier host implementation source: start-work SKILL.md lines 136-160
 ---
 
 _Adapted from earlier host implementation start-work. Preserved: orchestrator-delegate discipline, 5 verification gates, Sisyphus completion contract, Boulder state, evidence ledger. Adapted: all Codex tool names → WorkBuddy equivalents; `.lazybuddy/` → `.lazybuddy/`; plan scaffolding script → inline plan reading. The "NO DIRECT IMPLEMENTATION" rule is preserved verbatim._
+
+## Verification tiers (v1.3.0)
+
+Scale ceremony to the changed boundary, not to the size of the plan. Select
+**once** from changed behavior + risk; reuse green receipts; reviewers inspect
+evidence rather than rerun.
+
+- **V0 inspect** — docs/metadata/formatting/inert fixtures: syntax/schema/static checks only; no new test by default.
+- **V1 focused** — localized reversible behavior: the smallest existing test or direct user-surface scenario for the changed boundary.
+- **V2 integrated** — cross-module/state/parser/migration/lifecycle/host-routing: focused checks + one real consumer/integration scenario.
+- **V3 comprehensive** — security/trust boundary, release packaging, shared contract/schema change, broad infra, or an unexplained focused failure: the comprehensive gate once, preferably protected CI.
+
+Rules: default to the **lowest sufficient** tier — test count, file count, plan size, agent count, or a "complex" label never promote verification. A failing focused check triggers diagnosis, not every suite: rerun only the failed check, then any directly affected integration check. Identical green commands are never rerun solely because a phase or agent changed. Verifier/reviewer read the receipt's `artifact_ref` instead of re-executing.
