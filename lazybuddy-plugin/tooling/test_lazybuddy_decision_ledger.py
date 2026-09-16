@@ -26,6 +26,19 @@ from lazybuddy_decision_ledger import (  # noqa: E402
 )
 from lazybuddy_decision_ledger import validate_event  # noqa: E402
 
+@pytest.fixture()
+def tmp_path(tmp_path_factory=None):
+    """Host-portable tmp_path: repo-local temp dir (brokered host denies
+    pytest's default /private/var basetemp). Cleans up after each test."""
+    import shutil
+    import tempfile
+    base = Path(__file__).resolve().parent / ".pytest-tmp"
+    if not base.exists():
+        base.mkdir()
+    d = Path(tempfile.mkdtemp(dir=str(base)))
+    yield d
+    shutil.rmtree(d, ignore_errors=True)
+
 
 def _recorded(decision_id=None, scope="billing", project="lazyseries", evidence=None,
               review_by=None, summary="Use provider X for billing."):
