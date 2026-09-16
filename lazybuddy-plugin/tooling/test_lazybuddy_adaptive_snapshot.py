@@ -37,6 +37,7 @@ def _valid_snapshot():
         "decisionId": "dec-001",
         "escalationCount": 0,
         "escalationHistory": [],
+        "executionIntent": "execute",
         "hostFingerprint": "sha256:" + "1" * 64,
         "mode": "planned",
         "nextAction": "implement approved stage 2",
@@ -179,10 +180,10 @@ def test_atomic_write_no_tempfile_leak_on_error(tmp_path):
 
 
 def test_schema_has_all_portable_required_fields():
-    assert len(SNAPSHOT_REQUIRED_FIELDS) == 20
+    assert len(SNAPSHOT_REQUIRED_FIELDS) == 21
     expected = {
         "approval", "blocker", "capabilityClasses", "capabilitySubstitutions",
-        "currentStage", "decisionId", "escalationCount", "escalationHistory",
+        "currentStage", "decisionId", "escalationCount", "escalationHistory", "executionIntent",
         "hostFingerprint", "mode", "nextAction", "reasons", "requestDigest",
         "responsibilities", "revisionFingerprint", "risk", "scopeFingerprint",
         "stages", "verificationLevel", "version",
