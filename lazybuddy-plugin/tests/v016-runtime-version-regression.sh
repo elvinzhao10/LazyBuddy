@@ -79,7 +79,7 @@ for relative in ("README.md", "AGENTS.md"):
     )
 
 readme = (root.parent / "README.md").read_text(encoding="utf-8")
-assert "The current release package is v1.2.3." in readme
+assert "The current release package is v1.3.0." in readme
 assert "prepared for release but is not published yet" not in readme
 
 historical_heading = "### Upgrade from v1.0.2"
@@ -94,4 +94,4 @@ assert {
     for match in re.findall(pattern, misleading_identity, flags=re.IGNORECASE)
 } == {"1.0.2"}, "misleading current-release prose must remain detectable"
 PY
-printf 'v1.2.3 runtime version regression: PASS\n'
+printf 'v1.3.0 runtime version regression: PASS\n'
