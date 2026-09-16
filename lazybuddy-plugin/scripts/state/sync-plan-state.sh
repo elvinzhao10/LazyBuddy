@@ -63,7 +63,7 @@ cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
 trap cleanup_transaction_temps EXIT
 
 python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$TOOLING_DIR" <<'PYEOF'
-import json, sys, re, os
+import json, sys, re, os, hashlib
 
 state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp, tooling_dir = sys.argv[1:]
 sys.path.insert(0, tooling_dir)
@@ -72,7 +72,82 @@ fix = (fix == "--fix")
 with open(state_file) as f:
     state = json.load(f)
 with open(plan_path) as f:
-    plan_lines = f.readlines()
+    plan_text = f.read()
+    plan_lines = plan_text.splitlines(keepends=True)
+
+# --- v1.3.0 T4: approved-plan-revision reconciliation at the sync boundary ---
+# The approved revision text is snapshotted once (checkpoints/plan-revision.md).
+# Every later sync compares the current plan against that snapshot:
+#   cosmetic/unchanged edits preserve all evidence;
+#   semantic edits invalidate ONLY affected tasks + transitive dependents;
+#   a human uncheck reopens the task for reconciliation.
+run_dir = os.path.dirname(state_file)
+revision_path = os.path.join(run_dir, "checkpoints", "plan-revision.md")
+reconciliation_event = None
+try:
+    from lazybuddy_plan_reconcile import classify_plan_edits
+    if os.path.exists(revision_path):
+        with open(revision_path) as f:
+            approved_text = f.read()
+        if hashlib.sha256(plan_text.encode()).hexdigest() != hashlib.sha256(approved_text.encode()).hexdigest():
+            reconciliation = classify_plan_edits(approved_text, plan_text)
+            reconciliation_event = {
+                "ts": now, "run_id": run_id, "event": "plan_reconciled",
+                "classification": reconciliation["classification"],
+                "invalidations": reconciliation["invalidations"],
+                "reopen": reconciliation["reopen"],
+                "added": reconciliation["added"],
+                "removed": reconciliation["removed"],
+                "summary": reconciliation["summary"],
+            }
+            print("=== plan reconciliation ===")
+            print("classification: %s" % reconciliation["classification"])
+            for line in reconciliation["summary"]:
+                print("  - " + line)
+            if fix and reconciliation["classification"] == "semantic":
+                # Scoped invalidation: affected + transitive dependents only.
+                invalidated_ids = {i["task"] for i in reconciliation["invalidations"]}
+                for task in state.get("tasks", []):
+                    tid = task.get("id")
+                    if tid in invalidated_ids:
+                        if task.get("status") == "done":
+                            task["status"] = "queued"
+                            task["evidence"] = []
+                            task["reconciled_reopened"] = True
+                # human uncheck reopens even when the edit is otherwise cosmetic
+            if fix and reconciliation["reopen"]:
+                for task in state.get("tasks", []):
+                    if task.get("id") in reconciliation["reopen"] and task.get("status") == "done":
+                        task["status"] = "queued"
+                        task["reconciled_reopened"] = True
+            # Adopt the edited plan as the new approved revision once reconciled.
+            if fix:
+                os.makedirs(os.path.dirname(revision_path), exist_ok=True)
+                rev_tmp = revision_path + ".tmp"
+                with open(rev_tmp, "w") as f:
+                    f.write(plan_text)
+                os.replace(rev_tmp, revision_path)
+    else:
+        # First sync: snapshot the approved revision.
+        if fix:
+            os.makedirs(os.path.dirname(revision_path), exist_ok=True)
+            rev_tmp = revision_path + ".tmp"
+            with open(rev_tmp, "w") as f:
+                f.write(plan_text)
+            os.replace(rev_tmp, revision_path)
+except Exception as exc:  # pragma: no cover - defensive
+    print("Error: plan reconciliation unavailable: %s" % exc, file=sys.stderr)
+    sys.exit(1)
+
+# --- stale-result guard (T4): results carry the plan sha they were dispatched
+# under; a result whose sha differs from the current approved revision cannot
+# update this (newer) plan state. Applied when an incoming result names this run.
+try:
+    from lazybuddy_plan_reconcile import accept_result
+    state["_approved_plan_sha256"] = hashlib.sha256(plan_text.encode()).hexdigest()
+except Exception:
+    pass
+
 
 # Parse checkboxes from plan sections. Heading match is EXACT (case-sensitive):
 #   "TODOs"      -> canonical heading
@@ -273,6 +348,8 @@ if changed:
     with open(tmp_file, "w") as f:
         json.dump(state, f, indent=2)
     ev = {"ts": now, "run_id": run_id, "event": "plan_state_synced", "drift_fixed": len(drift)}
+    if reconciliation_event is not None:
+        ev["reconciliation"] = reconciliation_event
     with open(events_tmp, "w") as output:
         if os.path.exists(events_file):
             with open(events_file) as source:

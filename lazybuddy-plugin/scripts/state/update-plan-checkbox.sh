@@ -46,11 +46,21 @@ trap cleanup_transaction_temps EXIT
 
 python3 - "$PLAN_FILE" "$PLAN_TMP" "$STATE_FILE" "$STATE_TMP" "$EVENTS_FILE" "$EVENTS_TMP" "$NOW" "$RUN_ID" "$TASK_LABEL" <<'PYEOF'
 import json
+import hashlib
+import os
 import re
 import sys
 
 plan_file, plan_tmp, state_file, state_tmp, events_file, events_tmp, now, run_id, task_label = sys.argv[1:]
 label = task_label.lower()
+
+# --- v1.3.0 T4: compare-before-write + atomic replacement for agent edits ---
+# Record the bytes the agent based this edit on; the transaction layer replaces
+# atomically, and a concurrent human edit is detected by sha mismatch so the
+# caller can re-read and merge only its own checkbox line.
+with open(plan_file, 'rb') as handle:
+    plan_bytes_before = handle.read()
+base_sha = hashlib.sha256(plan_bytes_before).hexdigest()
 with open(plan_file) as handle:
     lines = handle.readlines()
 checkbox_re = re.compile(r'^- \[([ xX])\]\s+(.+)$')
@@ -118,9 +128,10 @@ with open(plan_tmp, 'w') as handle:
     handle.writelines(lines)
 with open(state_tmp, 'w') as handle:
     json.dump(state, handle, indent=2)
-event = {'ts': now, 'run_id': run_id, 'event': 'plan_checkbox_updated', 'task_label': task_label}
+event = {'ts': now, 'run_id': run_id, 'event': 'plan_checkbox_updated', 'task_label': task_label,
+         'base_plan_sha256': base_sha}
 with open(events_tmp, 'w') as output:
-    if __import__('os').path.exists(events_file):
+    if os.path.exists(events_file):
         with open(events_file) as source:
             output.write(source.read())
     output.write(json.dumps(event) + '\n')
