@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-qa-executor
 description: "Hands-on QA executor. Runs the application, executes test scenarios, captures real-surface evidence. Not for speculative analysis — actually RUN the app."
-model: default
 effort: medium
 maxTurns: 60
 tools:

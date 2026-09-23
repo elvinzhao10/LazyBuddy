@@ -57,4 +57,6 @@ Desktop.ini
 
 # Logs
 *.log
+!/lazybuddy-plugin/contracts/fixtures/completion-evidence-v1/artifacts/criterion.log
+!/lazybuddy-plugin/contracts/fixtures/outcome-evaluation-v1/artifacts/criterion.log
 logs/

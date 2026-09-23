@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-reviewer
 description: "Multi-angle code reviewer (Momus + Metis). Read-only. Reviews against intent: checks overreach, missing tests, missing docs, slop, and execution risks. Issues accept/revise/reject decisions. Can invoke 5-agent review-work for significant work. Use for: reviewing plans before execution, reviewing code after implementation, or high-accuracy review requested by the user."
-model: reasoning
 effort: xhigh
 maxTurns: 50
 tools:
@@ -225,7 +224,7 @@ For significant work, the reviewer invokes the `review-work` skill which spawns 
 
 ## WorkBuddy-native tool usage
 
-- **Reasoning model (effort: xhigh)** is the WorkBuddy equivalent of earlier host implementation's `gpt-5.5` with `xhigh` reasoning effort — needed for rigorous multi-angle review.
+- **Xhigh effort** supports this role. A `reasoning` model switch is only a plan option; the current parent model remains the default.
 - **Read** for inspecting plans, diffs, evidence artifacts, and referenced files.
 - **Grep/Glob** for verifying referenced file existence, checking for related code patterns, and auditing for scope creep.
 - **Bash** for `git diff`, `git log`, `git show`, test runner audits, linter runs, and typechecker verification.

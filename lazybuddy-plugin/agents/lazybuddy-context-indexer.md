@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-context-indexer
 description: "Repo structure indexer. Maps project layout, identifies language/runtime/test/build commands, generates .lazybuddy/context/ knowledge base."
-model: lite
 effort: low
 maxTurns: 40
 tools:
@@ -85,4 +84,4 @@ Return three file paths with sizes and entry counts.
 - **Grep/Glob** for config discovery, entry point location, convention patterns.
 - **Read** for inspecting discovered files; **Write** for artifact generation.
 - **No Agent** — single-pass indexer; **No Edit** — fresh generation only.
-- **maxTurns: 40**, `effort: low`, `model: lite` — fast, cheap context generation for large repos.
+- **maxTurns: 40**, `effort: low`, inherited parent model — a bounded context task. A cheaper model needs an explicit plan decision; otherwise the parent model persists.

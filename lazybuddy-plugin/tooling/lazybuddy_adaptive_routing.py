@@ -37,6 +37,11 @@ from __future__ import annotations
 import re
 from typing import Final, NamedTuple
 
+from lazybuddy_adaptive_policy import (
+    current_action_text,
+    is_direct_workflow_mention,
+)
+
 # --- patterns (kept in-repo style, borrowing the runtime action vocabulary) ---
 
 EXPLICIT_START_WORKFLOW: Final = re.compile(
@@ -47,7 +52,8 @@ EXPLICIT_PLAN_WORKFLOW: Final = re.compile(
 )
 PLAN_ONLY_PATTERN: Final = re.compile(
     r"\b(?:plan only|plan-only|do not implement|don'?t implement|"
-    r"do not code|don'?t code|do not build|only plan|just plan|"
+    r"do not (?:run|execute|apply|make|code|build|change)|"
+    r"don'?t (?:run|execute|apply|make|code|build|change)|only plan|just plan|"
     r"no implementation|without implementing)\b", re.I
 )
 EXPLANATION_PATTERN: Final = re.compile(
@@ -95,7 +101,10 @@ def _has_action_verb(request: str) -> bool:
 
 
 def _is_explicit_start(request: str) -> bool:
-    return EXPLICIT_START_WORKFLOW.search(request) is not None
+    return any(
+        is_direct_workflow_mention(request, match.start(), match.end())
+        for match in EXPLICIT_START_WORKFLOW.finditer(request)
+    )
 
 
 def _is_plan_only_request(request: str) -> bool:
@@ -145,7 +154,19 @@ def classify_request_route(
     hook_status = "supported" if hook_supported else "pending"
 
     explicit_start = _is_explicit_start(request)
-    plan_only_request = _is_plan_only_request(request)
+    active_request = current_action_text(request)
+    plan_only_request = _is_plan_only_request(active_request)
+
+    if plan_only_request:
+        return RouteDecision(
+            route="automatic-activation",
+            execution_intent="plan_only",
+            tier=None,
+            executes_code=False,
+            mutates_product_files=False,
+            hook_status=hook_status,
+            note="plan-only request: no product mutation, no execute",
+        )
 
     if explicit_start:
         # Explicit execution entry. Intent is execute; the policy/approval
@@ -160,18 +181,7 @@ def classify_request_route(
             note="explicit /lazy-start-work execution entry",
         )
 
-    if plan_only_request:
-        return RouteDecision(
-            route="automatic-activation",
-            execution_intent="plan_only",
-            tier=None,
-            executes_code=False,
-            mutates_product_files=False,
-            hook_status=hook_status,
-            note="plan-only request: no product mutation, no execute",
-        )
-
-    if not _has_action_verb(request):
+    if not _has_action_verb(active_request):
         # No actionable verb: a quoted example, a mere file path edit, or an
         # ambiguous acknowledgement cannot grant execution authority.
         return RouteDecision(
@@ -186,7 +196,7 @@ def classify_request_route(
 
     # Clear natural-language implementation request: automatic activation that
     # executes within authorized scope. No slash command required.
-    tier = _classify_tier(request)
+    tier = _classify_tier(active_request)
     return RouteDecision(
         route="automatic-activation",
         execution_intent="execute",

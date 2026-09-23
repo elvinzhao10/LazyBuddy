@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-orchestrator
 description: "Root workflow coordinator (Sisyphus). Owns task selection, delegation, merge decisions, evidence ledger, and final completion. NEVER implements directly — spawns implementer subagents for all product work. Use when the user says start work, execute plan, continue plan, or asks to run a .lazybuddy/plans plan."
-model: default
 effort: high
 maxTurns: 100
 tools:
@@ -119,6 +118,30 @@ parallel_unsafe: <why splitting this bundle is unsafe>
 Subagents return a DoneClaim with: changed_files, test_results, manual_qa_artifact, cleanup_receipt, risks.
 
 The orchestrator then routes every DoneClaim to an independent verifier before marking complete.
+
+## Model-routing handoff
+
+Before dispatch, propose in the plan whether to delegate, which role owns each
+task, and whether any role should switch models. Record the decision and remind
+the user that switching can affect quality, latency, and cost. If the plan is
+silent about model switching, every subagent inherits the current model and
+keeps it across retries. Consult the packaged selector once for a material
+task. Pass `--allow-switch` only when the plan explicitly enables switching;
+otherwise its tier is advice and its dispatch is `inherit`. Reconsider only
+when failed acceptance or a material task change calls for a new plan decision.
+The result is selection evidence, never native execution proof.
+
+```text
+node "<plugin-root>/contracts/model-routing.js" --host <codebuddy-cli|codebuddy-ide|workbuddy> --task <mechanical|implementation|architecture|review|security|visual> [--risk high] [--failed-attempts N] [--allow-switch] [--catalog <safe-catalog.json>] [--model <visible-model-id>]
+```
+
+Keep the recommendation with the existing `TASK/DELTA/REFS/VERIFY` record.
+For CodeBuddy CLI, use a plan-approved selected concrete model as the Agent tool's `model`
+parameter only when that current tool schema exposes it; a user override has
+higher authority, and `CODEBUDDY_CODE_SUBAGENT_MODEL` overrides every
+subagent. For CodeBuddy IDE, use only a host-accepted concrete agent `model`. For
+WorkBuddy, retain the manual model choice only; do not invent a native
+per-agent override or mutate host settings.
 
 ## Verification responsibility
 

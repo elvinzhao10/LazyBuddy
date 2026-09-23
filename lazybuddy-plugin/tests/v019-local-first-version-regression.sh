@@ -71,7 +71,7 @@ def assert_durable_lifecycle_docs(root, package_root):
             raise AssertionError(f"{name} mislabels a v1.0.3 gap as a future release")
         if re.search(r"release folder as the source of truth", contents, re.IGNORECASE):
             raise AssertionError(f"{name} makes a removable source checkout authoritative")
-        if not re.search(r"Node\.js LTS 20", contents, re.IGNORECASE):
+        if not re.search(r"Node\.js LTS (?:24|20)", contents, re.IGNORECASE):
             raise AssertionError(f"{name} omits the Node.js prerequisite")
         if not re.search(r"\bGit\b", contents):
             raise AssertionError(f"{name} omits the Git prerequisite")

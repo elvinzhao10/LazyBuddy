@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "tasks": {
+    "mechanical": "economy",
+    "implementation": "balanced",
+    "architecture": "strong",
+    "review": "strong",
+    "security": "strong",
+    "visual": "strong"
+  },
+  "hosts": {
+    "codebuddy-cli": {
+      "profiles": { "economy": "lite", "balanced": "default", "strong": "reasoning" },
+      "aliasesBindable": true,
+      "dispatch": "agent-tool-model-field"
+    },
+    "codebuddy-ide": {
+      "profiles": { "economy": "lite", "balanced": "default", "strong": "reasoning" },
+      "aliasesBindable": false,
+      "dispatch": "agent-frontmatter"
+    },
+    "workbuddy": {
+      "profiles": { "economy": "auto", "balanced": "auto", "strong": "manual-strong" },
+      "aliasesBindable": false,
+      "dispatch": "manual-only"
+    },
+    "qoder-cli": {
+      "profiles": { "economy": "efficient", "balanced": "auto", "strong": "performance" },
+      "aliasesBindable": true,
+      "dispatch": "agent-frontmatter"
+    },
+    "qoder-ide": {
+      "profiles": { "economy": "efficient", "balanced": "auto", "strong": "performance" },
+      "aliasesBindable": false,
+      "dispatch": "manual-only"
+    },
+    "trae-ide": {
+      "profiles": { "economy": "auto", "balanced": "auto", "strong": "max" },
+      "aliasesBindable": false,
+      "dispatch": "trae-builtin-agent-frontmatter"
+    },
+    "trae-work": {
+      "profiles": { "economy": "auto", "balanced": "auto", "strong": "max" },
+      "aliasesBindable": false,
+      "dispatch": "manual-only"
+    },
+    "trae-cli": {
+      "profiles": { "economy": "auto", "balanced": "auto", "strong": "max" },
+      "aliasesBindable": false,
+      "dispatch": "manual-only"
+    }
+  }
+}

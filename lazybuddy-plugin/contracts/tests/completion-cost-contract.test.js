@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const test = require('node:test');
@@ -100,4 +101,31 @@ test('exposes a real CLI that returns nonzero for artifact tampering', () => {
   assert.equal(valid.status, 0, valid.stderr);
   assert.notEqual(tampered.status, 0);
   assert.match(tampered.stderr, /artifact\.sha256/);
+});
+
+test('refuses an artifact that escapes through a symlinked parent directory', (t) => {
+  // Given
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lazyseries-artifact-root-'));
+  const escapedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lazyseries-artifact-escape-'));
+  t.after(() => fs.rmSync(projectRoot, { recursive: true }));
+  t.after(() => fs.rmSync(escapedRoot, { recursive: true }));
+  fs.copyFileSync(path.join(completionFixtures, 'artifacts', 'criterion.log'), path.join(escapedRoot, 'criterion.log'));
+  fs.symlinkSync(escapedRoot, path.join(projectRoot, 'artifacts'), 'dir');
+  const record = readFixture(completionFixtures, 'valid.json');
+  // When
+  const result = validator().validateCompletionEvidence(record, { ...context, projectRoot });
+  // Then
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('\n'), /artifact\.path: escapes project root/);
+});
+
+
+test('preserves explicit measurement scope and rejects unsupported scopes', () => {
+  // Given
+  const record = JSON.parse(fs.readFileSync(path.join(costFixtures, 'valid-native-token.json'), 'utf8'));
+  // When
+  const results = ['fixture-validation', 'execution', 'estimated'].map(measurement_scope =>
+    validator().validateCostOutcome({ ...record, measurement_scope }));
+  // Then
+  assert.deepEqual(results.map(result => result.ok), [true, true, false]);
 });

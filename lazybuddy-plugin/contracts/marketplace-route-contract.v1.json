@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "1.3.0",
+  "version": "1.3.1",
   "identity": {
     "marketplace": "lazybuddy",
     "owner": "LazyBuddy",
@@ -8,9 +8,9 @@
     "codebuddy_install_id": "lazybuddy@lazybuddy"
   },
   "artifacts": {
-    ".codebuddy-plugin/marketplace.json": "37586c1f06b8d15f011cb0d8ee0a75a0170bd421b2c933f405b477d07c71ac63",
-    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "7b485c91fb0d8d21c2e6de07b639d6c84aec3967b7bc18cf913ac8c31a9378a6",
-    "lazybuddy-plugin/.workbuddy-plugin/plugin.json": "7559206af29625d8c8bd41ff16915b8d99e8ffbc2973d307eb4302dec73ea4d2"
+    ".codebuddy-plugin/marketplace.json": "212bbff94a7ae1e1559d1a2df28f762e0897b235c70868c08b0790b19e3cd848",
+    "lazybuddy-plugin/.codebuddy-plugin/plugin.json": "333325eadb6daf2b70e2121892a35906cf4957bf724317a09fc2938118ffb4fe",
+    "lazybuddy-plugin/.workbuddy-plugin/plugin.json": "15b8e2941cb0b50b94d4f43985ee322f44af24640bf018fe6f8b497c9670e551"
   },
   "payload": {
     "roots": [
@@ -24,7 +24,7 @@
       ".mcp.json"
     ],
     "file_count": 61,
-    "inventory_sha256": "d1c096183b06bccf655fe65dfc4e3dc9d7f0f602527fdc0dff9415516248fccd"
+    "inventory_sha256": "113797d4692a88b364d26905ccb35861af38763743e171362d6dda3b63ca182c"
   },
   "default_routes": {
     "codebuddy-ide": "codebuddy-marketplace",

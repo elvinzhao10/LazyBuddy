@@ -52,6 +52,7 @@ test('Given the shipped agents When frontmatter is parsed Then all role names an
   ).data);
 
   assert.equal(agents.length, 13);
+  assert.equal(agents.every((agent) => !Object.hasOwn(agent, 'model')), true, 'unplanned delegation must inherit the current model');
   assert.deepEqual(agents.map((agent) => agent.name), files.map((file) => file.slice(0, -3)));
   assert.deepEqual(
     agents.filter((agent) => Object.hasOwn(agent, 'isolation')).map((agent) => [agent.name, agent.isolation]),
@@ -126,8 +127,8 @@ test('Given copied agent headers When hostile frontmatter is loaded Then every p
     ['invalid model', 'unsupported model impossible-model', (agentsDir) => replaceInFixture(
       agentsDir,
       'lazybuddy-explorer.md',
-      'model: lite',
-      'model: impossible-model',
+      'name: lazybuddy-explorer',
+      'name: lazybuddy-explorer\nmodel: impossible-model',
     )],
     ['malformed delimiter', 'frontmatter closing delimiter is missing', (agentsDir) => replaceInFixture(
       agentsDir,
