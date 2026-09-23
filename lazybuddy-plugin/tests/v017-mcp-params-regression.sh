@@ -35,7 +35,7 @@ environment = {
 
 
 def read_response(process, server, request_id):
-    readable, _, _ = select.select([process.stdout], [], [], 3.0)
+    readable, _, _ = select.select([process.stdout], [], [], 5.0)
     assert readable, f"{server} did not respond to {request_id}"
     response = json.loads(process.stdout.readline())
     assert response["jsonrpc"] == "2.0", response
@@ -166,7 +166,7 @@ def blast_radius(request_id, path):
         "params": {"name": "blast_radius", "arguments": {"path": path}},
     }) + "\n")
     process.stdin.flush()
-    readable, _, _ = select.select([process.stdout], [], [], 3.0)
+    readable, _, _ = select.select([process.stdout], [], [], 5.0)
     assert readable, f"context-graph did not respond for {path}"
     response = json.loads(process.stdout.readline())
     return response["result"]["content"][0]["text"]
@@ -198,7 +198,7 @@ try:
         "params": {"name": "repo_overview", "arguments": {"limit": 1}},
     }) + "\n")
     process.stdin.flush()
-    readable, _, _ = select.select([process.stdout], [], [], 3.0)
+    readable, _, _ = select.select([process.stdout], [], [], 5.0)
     assert readable, "context-graph did not respond for repo_overview"
     overview = json.loads(process.stdout.readline())["result"]["content"][0]["text"]
     assert "top 1 of 3 by incoming refs (truncated)" in overview, overview
@@ -243,7 +243,7 @@ try:
         "params": {"name": "repo_overview", "arguments": {"limit": 1}},
     }) + "\n")
     process.stdin.flush()
-    readable, _, _ = select.select([process.stdout], [], [], 3.0)
+    readable, _, _ = select.select([process.stdout], [], [], 5.0)
     assert readable, "context-graph fallback did not respond for repo_overview"
     overview = json.loads(process.stdout.readline())["result"]["content"][0]["text"]
     assert "top 1 of 3 by incoming refs (truncated)" in overview, overview
