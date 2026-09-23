@@ -2,9 +2,9 @@
 
 LazyBuddy supports its documented CLI and IDE/app hosts. Automated package checks run in CI on Ubuntu and macOS as defined by the workflows; the supplied live-host reports are historical macOS observations. No current-session host activation is established. Package files, host settings, credentials, marketplace state, and live sessions remain separate authorities.
 
-## Current documentation release: v1.3.1 candidate
+## Current documentation release: v1.3.1
 
-The latest published stable release is v1.3.0. This worktree documents a v1.3.1 candidate; it is not tagged or published. The route IDs are
+The latest published stable release is v1.3.1. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels are `documented-tested`, `documented-untested`,

@@ -4,10 +4,10 @@ LazyBuddy deliberately aligns policy and package safety across hosts while keepi
 
 ## Onboarding baseline
 
-## Published v1.3.0 and v1.3.1 candidate evidence boundary
+## Published v1.3.1 evidence boundary
 
-The v1.3.0 release is published; this v1.3.1 candidate documentation covers `codebuddy-cli`, `codebuddy-ide`, and
-`workbuddy`; v1.3.1 is not tagged or published, and no current host activation is claimed. Marketplace is the default full-plugin route for CodeBuddy IDE and
+The v1.3.1 release is published; this documentation covers `codebuddy-cli`, `codebuddy-ide`, and
+`workbuddy`; no current host activation is claimed. Marketplace is the default full-plugin route for CodeBuddy IDE and
 WorkBuddy. The Skills/manual-MCP route is recovery-only and mutually exclusive
 with a full-plugin route in the same project.
 

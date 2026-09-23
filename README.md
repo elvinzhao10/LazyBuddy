@@ -7,11 +7,11 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The latest published stable release is v1.3.0. The v1.3.1 candidate is being prepared in this worktree; this candidate has not been tagged or published. Package checks do not prove host activation.
+The latest published stable release is v1.3.1. Package checks do not prove host activation.
 
-## v1.3.1 candidate
+## New in v1.3.1
 
-This candidate tightens intent parsing, worktree cleanup, outcome-evidence
+This release tightens intent parsing, worktree cleanup, outcome-evidence
 integrity, and context search. Subagents inherit the current model unless a
 plan explicitly enables a switch. See [release notes](RELEASE_NOTES.md) for
 the changes and verification scope; current native-host testing is pending.
@@ -73,7 +73,7 @@ You do not need to manually work through every setup detail. Open an AI coding
 assistant in your project and paste this:
 
 > Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
-> this project. Use the published v1.3.0 route. Run safe package checks first,
+> this project. Use the published v1.3.1 route. Run safe package checks first,
 > explain each step plainly, and ask me before changing marketplace, plugin,
 > Skills, MCP, account, credential, or trust settings.
 

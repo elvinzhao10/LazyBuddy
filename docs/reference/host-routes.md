@@ -1,9 +1,9 @@
 # Host routes
 
-## Published v1.3.0 route and v1.3.1 candidate status
+## Published v1.3.1 route and host status
 
-This guide is the v1.3.1 candidate documentation boundary for `codebuddy-cli`,
-`codebuddy-ide`, and `workbuddy`; v1.3.0 is published; the v1.3.1 worktree remains an unpublished candidate.
+This guide is the v1.3.1 documentation boundary for `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`; v1.3.1 is the published stable release.
 Marketplace is the default full-plugin route for CodeBuddy IDE and WorkBuddy.
 The manual Skills/MCP route is recovery-only and mutually exclusive with a
 full-plugin route for one project.

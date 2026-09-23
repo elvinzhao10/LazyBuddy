@@ -4,11 +4,10 @@ This document records public, present-tense evidence for the LazyBuddy package.
 It is not evidence that a specific CodeBuddy or WorkBuddy session has loaded a
 plugin. Automated package checks run in CI on Ubuntu and macOS; host readiness requires a separate current-session observation.
 
-## Current documentation status: v1.3.1 candidate
+## Current documentation status: v1.3.1 release
 
-The v1.3.1 candidate documentation boundary covers `codebuddy-cli`,
-`codebuddy-ide`, and `workbuddy`; the latest published stable release is
-v1.3.0, and this candidate is not tagged or published. For CodeBuddy IDE and
+The v1.3.1 release documentation boundary covers `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`. The previous stable release was v1.3.0. For CodeBuddy IDE and
 WorkBuddy, marketplace is the default full-plugin route. The manual
 Skills/MCP route is recovery-only and mutually exclusive with the full-plugin
 route for one project. Package readiness does not prove a live host.

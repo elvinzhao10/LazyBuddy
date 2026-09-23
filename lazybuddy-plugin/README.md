@@ -1,9 +1,9 @@
 # LazyBuddy Plugin
 
 
-The latest published stable release is v1.3.0; the v1.3.1 source in this worktree is an unpublished candidate.
+The latest published stable release is v1.3.1. Package readiness does not establish host readiness.
 
-## Durable v1.3.0 installation
+## Durable v1.3.1 installation
 
 **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git** are recommended for new installs; the lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use

@@ -80,11 +80,8 @@ for relative in ("README.md", "AGENTS.md"):
 
 readme = (root.parent / "README.md").read_text(encoding="utf-8")
 assert (
-    "The latest published stable release is v1.3.0. "
-    "The v1.3.1 candidate is being prepared in this worktree; "
-    "this candidate has not been tagged or published."
+    "The latest published stable release is v1.3.1."
 ) in readme
-assert "The current release package is v1.3.1." not in readme
 
 historical_heading = "### Upgrade from v1.0.2"
 assert not any(
