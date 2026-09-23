@@ -119,39 +119,8 @@ set -e
 test "$missing_status" -eq 2 || fail 'missing selected Python did not return the preflight status'
 test "$missing_output" = "$REMEDIATION" || fail 'missing selected Python did not return the stable remediation'
 
-cat >"$TMP/python-3.12-bin/python3" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-
-if [ "${1:-}" = "-c" ]; then
-    printf '3 12\n'
-    exit 0
-fi
-if [ "${1:-}" = "$LAZYBUDDY_RUNNER_PATH" ]; then
-    : >"$LAZYBUDDY_RUNNER_SENTINEL"
-fi
-exec "$LAZYBUDDY_TEST_PYTHON" "$@"
-SH
-chmod +x "$TMP/python-3.12-bin/python3"
-
-set +e
-python_312_output="$(
-    PATH="$TMP/python-3.12-bin:$PATH" \
-    LAZYBUDDY_PYTHON=python3 \
-    LAZYBUDDY_RUNNER_PATH="$RUNNER" \
-    LAZYBUDDY_RUNNER_SENTINEL="$TMP/python-3.12-ran-runner" \
-    LAZYBUDDY_TEST_PYTHON="$PYTHON_BIN" \
-    LAZYBUDDY_VERIFY_SUITE=core \
-    LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 \
-    bash "$VERIFY" 2>&1
-)"
-python_312_status=$?
-set -e
-test -e "$TMP/python-3.12-ran-runner" || fail 'Python 3.12 did not reach the bounded runner'
-test "$python_312_output" != "$REMEDIATION" || fail 'Python 3.12 was rejected by the preflight'
-test "$python_312_status" -ne 2 || fail 'Python 3.12 exited at the preflight'
-
 assert_supported_version_reaches_runner 3.10
+assert_supported_version_reaches_runner 3.12
 assert_supported_version_reaches_runner 4.0
 
 printf 'PASS: Python preflight rejects 3.9 before parsing and admits Python 3.10+\n'

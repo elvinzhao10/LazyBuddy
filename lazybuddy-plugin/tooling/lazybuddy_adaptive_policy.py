@@ -120,6 +120,19 @@ WORKFLOW_MENTION_PATTERN: Final = re.compile(
     r"/?(lazy-(?:init-deep|review-work|start-work|ultrawork|ulw-loop|ulw-plan|verifier))\b",
     re.I,
 )
+FENCE_MARKER_PATTERN: Final = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+REFERENCE_PREFIX_PATTERN: Final = re.compile(
+    r"^\s*(?:>|(?:history|transcript|previous (?:message|turn)|earlier (?:user|assistant))\s*:)",
+    re.I,
+)
+INLINE_WORKFLOW_REFERENCE_PATTERN: Final = re.compile(
+    r"`[^`\n]*/?lazy-(?:init-deep|review-work|start-work|ultrawork|ulw-loop|ulw-plan|verifier)\b[^`\n]*`",
+    re.I,
+)
+QUOTED_WORKFLOW_REFERENCE_PATTERN: Final = re.compile(
+    r"(?:\"[^\"\n]*/?lazy-(?:init-deep|review-work|start-work|ultrawork|ulw-loop|ulw-plan|verifier)\b[^\"\n]*\"|'[^'\n]*/?lazy-(?:init-deep|review-work|start-work|ultrawork|ulw-loop|ulw-plan|verifier)\b[^'\n]*')",
+    re.I,
+)
 RESPONSIBILITY_ORDER: Final = (
     "exploration",
     "planning",
@@ -209,9 +222,81 @@ def _is_affirmative_replacement(text: str, mention_start: int) -> bool:
     )
 
 
+def _is_fenced_position(text: str, position: int) -> bool:
+    fence: str | None = None
+    offset = 0
+    for line in text.splitlines(keepends=True):
+        marker = FENCE_MARKER_PATTERN.match(line)
+        if marker is not None:
+            token = marker.group(1)
+            if fence is None:
+                fence = token
+            elif token[0] == fence[0] and len(token) >= len(fence) and line.strip() == token:
+                fence = None
+        if offset <= position < offset + len(line):
+            return fence is not None
+        offset += len(line)
+    return False
+
+
+def _is_quoted_position(text: str, start: int, end: int) -> bool:
+    line_start = text.rfind("\n", 0, start) + 1
+    line_end = text.find("\n", end)
+    if line_end == -1:
+        line_end = len(text)
+    prefix = text[line_start:start]
+    suffix = text[end:line_end]
+    quote = prefix.rstrip()[-1:]
+    return bool(
+        REFERENCE_PREFIX_PATTERN.match(text[line_start:line_end])
+        or prefix.count("`") % 2
+        or quote in {"'", '"'} and suffix.rstrip().endswith(quote)
+    )
+
+
+def is_direct_workflow_mention(text: str, start: int, end: int) -> bool:
+    return not _is_fenced_position(text, start) and not _is_quoted_position(text, start, end)
+
+
+def _masked(text: str) -> str:
+    return re.sub(r"[^\n]", " ", text)
+
+
+def current_action_text(text: str) -> str:
+    result: list[str] = []
+    fence: str | None = None
+    fenced_lines: list[str] = []
+    for line in text.splitlines(keepends=True):
+        marker = FENCE_MARKER_PATTERN.match(line)
+        if fence is not None:
+            fenced_lines.append(line)
+            if marker is not None:
+                token = marker.group(1)
+                if token[0] == fence[0] and len(token) >= len(fence) and line.strip() == token:
+                    block = "".join(fenced_lines)
+                    result.append(_masked(block) if WORKFLOW_MENTION_PATTERN.search(block) else block)
+                    fence = None
+                    fenced_lines = []
+            continue
+        if marker is not None:
+            fence = marker.group(1)
+            fenced_lines = [line]
+            continue
+        if REFERENCE_PREFIX_PATTERN.match(line) and WORKFLOW_MENTION_PATTERN.search(line):
+            result.append(_masked(line))
+            continue
+        result.append(INLINE_WORKFLOW_REFERENCE_PATTERN.sub(lambda match: _masked(match.group()), line))
+    if fenced_lines:
+        block = "".join(fenced_lines)
+        result.append(_masked(block) if WORKFLOW_MENTION_PATTERN.search(block) else block)
+    return QUOTED_WORKFLOW_REFERENCE_PATTERN.sub(lambda match: _masked(match.group()), "".join(result))
+
+
 def explicit_workflow(text: str) -> tuple[str, str] | None:
     modes = dict(EXPLICIT_WORKFLOWS)
     for mention in WORKFLOW_MENTION_PATTERN.finditer(text):
+        if not is_direct_workflow_mention(text, mention.start(), mention.end()):
+            continue
         prefix = _clause_prefix(text, mention.start())
         suffix = _clause_suffix(text, mention.end())
         negated = _is_negated_workflow(prefix)

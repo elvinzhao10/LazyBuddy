@@ -43,12 +43,51 @@ function defaultPidAlive(pid) {
   }
 }
 function defaultWorkspaceClean(workspace) {
-  const result = spawnSync('git', ['-C', workspace, 'status', '--porcelain=v1', '--untracked-files=no'], {
+  const result = spawnSync('git', ['-C', workspace, 'status', '--porcelain=v1', '--untracked-files=all'], {
     encoding: 'utf8',
     env: { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', PATH: '/usr/bin:/bin' },
     timeout: 5_000,
   });
   return result.status === 0 && result.stdout.trim() === '';
+}
+function validWorktreeState(value, taskRoot, taskId, session) {
+  if (!value || typeof value !== 'object'
+    || typeof value.requested !== 'boolean'
+    || typeof value.directory_allocated !== 'boolean'
+    || typeof value.created !== 'boolean'
+    || typeof value.verified !== 'boolean'
+    || typeof value.provisioned !== 'boolean'
+    || !['path', 'git_directory', 'head', 'base', 'ownership'].every(key => Object.hasOwn(value, key))) return false;
+  const allocatedPath = path.join(taskRoot, 'worktree');
+  if (value.requested !== value.directory_allocated
+    || value.created !== false || value.verified !== false || value.provisioned !== false) return false;
+  if (value.path !== allocatedPath || !value.ownership || typeof value.ownership !== 'object'
+    || value.ownership.task_id !== taskId || value.ownership.session !== session || value.ownership.path !== allocatedPath) return false;
+  return value.git_directory === null && value.head === null && value.base === null;
+}
+function removeEmptyWorktreeAllocation(lease, nonEmptyCode) {
+  const worktree = lease.execution.worktree;
+  let status;
+  try {
+    status = fs.lstatSync(worktree.path);
+  } catch (error) {
+    if (error && error.code === 'ENOENT' && !worktree.directory_allocated) return;
+    if (error && error.code === 'ENOENT') {
+      throw new IsolationError('WORKTREE_ALLOCATION_MISSING', 'Task worktree allocation is unavailable and is preserved.');
+    }
+    throw new IsolationError('LEASE_INVALID', `Task worktree allocation is invalid: ${error.message}`);
+  }
+  if (!worktree.directory_allocated || status.isSymbolicLink() || !status.isDirectory()) {
+    throw new IsolationError('WORKTREE_OWNERSHIP_MISMATCH', 'Task worktree allocation is not the recorded task-owned directory and is preserved.');
+  }
+  try {
+    fs.rmdirSync(worktree.path);
+  } catch (error) {
+    if (error && ['ENOTEMPTY', 'EEXIST'].includes(error.code)) {
+      throw new IsolationError(nonEmptyCode, 'Task worktree allocation contains files and is preserved.');
+    }
+    throw error;
+  }
 }
 function adapters(overrides = {}) {
   return {
@@ -78,7 +117,12 @@ function readLease(taskRoot) {
   if (value.schema_version !== 1 || value.product !== PRODUCT || !value.owner
     || !Number.isInteger(value.owner.pid) || typeof value.owner.session !== 'string'
     || !value.namespace || value.namespace.root !== taskRoot || !Number.isInteger(value.namespace.port)
-    || Number.isNaN(Date.parse(value.expires_at)) || typeof value.workspace !== 'string') {
+    || !value.namespace.paths || value.namespace.paths.worktree !== path.join(taskRoot, 'worktree')
+    || Number.isNaN(Date.parse(value.expires_at)) || typeof value.workspace !== 'string'
+    || !value.execution || typeof value.execution !== 'object'
+    || typeof value.execution.worktree_provisioned !== 'boolean'
+    || !validWorktreeState(value.execution.worktree, taskRoot, value.task_id, value.owner.session)
+    || value.execution.worktree_provisioned !== false) {
     throw new IsolationError('LEASE_INVALID', 'Existing namespace lease has an invalid shape.');
   }
   return value;
@@ -117,16 +161,55 @@ function removePort(paths, lease) {
     if (!error || error.code !== 'ENOENT') throw new IsolationError('LEASE_INVALID', 'Task port receipt is malformed.');
   }
 }
-function recover(paths, lease) {
-  const tombstone = path.join(paths.recoveryRoot, `${lease.task_id}.${crypto.randomUUID()}`);
+function relocatedLease(lease, tombstone) {
+  const worktreePath = path.join(tombstone, 'worktree');
+  return {
+    ...lease,
+    namespace: { ...lease.namespace, root: tombstone, paths: { ...lease.namespace.paths, worktree: worktreePath } },
+    execution: {
+      ...lease.execution,
+      worktree: { ...lease.execution.worktree, path: worktreePath, ownership: { ...lease.execution.worktree.ownership, path: worktreePath } },
+    },
+  };
+}
+function removeTaskNamespace(paths, lease, nonEmptyCode, clock, suffix) {
+  const tombstone = path.join(paths.recoveryRoot, `${lease.task_id}.${suffix}.${crypto.randomUUID()}`);
   try {
     fs.renameSync(paths.taskRoot, tombstone);
   } catch (error) {
     if (error && error.code === 'ENOENT') return false;
     throw error;
   }
+  const relocated = relocatedLease(lease, tombstone);
+  const receipt = `${tombstone}.lease`;
+  try {
+    removeEmptyWorktreeAllocation(relocated, nonEmptyCode);
+    for (const key of ['evidence', 'build', 'cache', 'state']) {
+      fs.rmSync(path.join(tombstone, key), { recursive: true, force: true });
+    }
+    fs.renameSync(path.join(tombstone, 'lease.json'), receipt);
+    try {
+      fs.rmdirSync(tombstone);
+    } catch (error) {
+      fs.renameSync(receipt, path.join(tombstone, 'lease.json'));
+      if (error && ['ENOTEMPTY', 'EEXIST'].includes(error.code)) {
+        throw new IsolationError(nonEmptyCode, 'Task worktree allocation changed during cleanup and is preserved.');
+      }
+      throw error;
+    }
+    fs.rmSync(receipt, { force: true });
+  } catch (error) {
+    if (fs.existsSync(receipt) && !fs.existsSync(path.join(tombstone, 'lease.json'))) {
+      fs.renameSync(receipt, path.join(tombstone, 'lease.json'));
+    }
+    fs.renameSync(tombstone, paths.taskRoot);
+    throw error;
+  }
+  return true;
+}
+function recover(paths, lease, clock) {
+  if (!removeTaskNamespace(paths, lease, 'LEASE_EXPIRED_WORKTREE_NOT_EMPTY', clock, 'recovery')) return false;
   removePort(paths, lease);
-  fs.rmSync(tombstone, { recursive: true, force: true });
   return true;
 }
 function acquire(root, request, overrideAdapters = {}) {
@@ -149,7 +232,7 @@ function acquire(root, request, overrideAdapters = {}) {
       if (now < Date.parse(existing.expires_at)) throw new IsolationError('LEASE_COLLISION', 'Task namespace is held by an unexpired lease.');
       if (clock.isPidAlive(existing.owner.pid)) throw new IsolationError('LEASE_EXPIRED_OWNER_LIVE', 'Expired task namespace still has a live owner.');
       if (!clock.isWorkspaceClean(existing.workspace)) throw new IsolationError('LEASE_EXPIRED_WORKSPACE_DIRTY', 'Expired task namespace has a dirty workspace.');
-      if (!recover(paths, existing)) continue;
+      if (!recover(paths, existing, clock)) continue;
       continue;
     }
     const candidateRoot = `${paths.taskRoot}.${crypto.randomUUID()}.tmp`;
@@ -164,7 +247,19 @@ function acquire(root, request, overrideAdapters = {}) {
         state: path.join(paths.taskRoot, 'state'),
         worktree: path.join(paths.taskRoot, 'worktree'),
       };
-      const worktreeProvisioned = request.mutationRequiresWorktree === true;
+      const worktreeRequested = request.mutationRequiresWorktree === true;
+      const worktree = {
+        requested: worktreeRequested,
+        directory_allocated: worktreeRequested,
+        created: false,
+        verified: false,
+        provisioned: false,
+        path: namespacePaths.worktree,
+        git_directory: null,
+        head: null,
+        base: null,
+        ownership: { task_id: taskId, session, path: namespacePaths.worktree },
+      };
       port = claimPort(paths, taskId, session);
       const lease = {
         schema_version: 1,
@@ -176,13 +271,18 @@ function acquire(root, request, overrideAdapters = {}) {
         renewal_due_at: new Date(now + LEASE_MS - RENEWAL_WINDOW_MS).toISOString(),
         expires_at: new Date(now + LEASE_MS).toISOString(),
         workspace: path.resolve(request.workspace),
-        execution: { mode: request.direct === false ? 'orchestrated' : 'direct', actors: request.direct === false ? 2 : 1, worktree_provisioned: worktreeProvisioned },
+        execution: {
+          mode: request.direct === false ? 'orchestrated' : 'direct',
+          actors: request.direct === false ? 2 : 1,
+          worktree_provisioned: worktree.provisioned,
+          worktree,
+        },
         namespace: { root: paths.taskRoot, paths: namespacePaths, port },
       };
       for (const key of ['evidence', 'build', 'cache', 'state']) {
         fs.mkdirSync(path.join(candidateRoot, path.basename(namespacePaths[key])));
       }
-      if (worktreeProvisioned) fs.mkdirSync(path.join(candidateRoot, 'worktree'));
+      if (worktree.directory_allocated) fs.mkdirSync(path.join(candidateRoot, 'worktree'));
       writeJsonExclusive(path.join(candidateRoot, 'lease.json'), lease);
       try {
         fs.renameSync(candidateRoot, paths.taskRoot);
@@ -228,14 +328,15 @@ function renew(root, taskIdValue, owner, overrideAdapters = {}) {
   writeJsonAtomic(path.join(paths.taskRoot, 'lease.json'), renewed);
   return renewed;
 }
-function release(root, taskIdValue, owner) {
+function release(root, taskIdValue, owner, overrideAdapters = {}) {
   const taskId = validId(taskIdValue, 'taskId');
+  const clock = adapters(overrideAdapters);
   const paths = productPaths(root, taskId);
   const lease = readLease(paths.taskRoot);
   assertOwner(lease, owner);
-  const tombstone = path.join(paths.recoveryRoot, `${taskId}.release.${crypto.randomUUID()}`);
-  fs.renameSync(paths.taskRoot, tombstone);
+  if (!removeTaskNamespace(paths, lease, 'WORKTREE_NOT_EMPTY', clock, 'release')) {
+    throw new IsolationError('LEASE_MISSING', 'Task namespace disappeared during release.');
+  }
   removePort(paths, lease);
-  fs.rmSync(tombstone, { recursive: true, force: true });
 }
 module.exports = { IsolationError, acquire, release, renew };

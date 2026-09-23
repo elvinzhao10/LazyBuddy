@@ -3,8 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const RELEASE_VERSION = '1.3.0';
-const PREVIOUS_VERSION = '1.2.3';
+const RELEASE_VERSION = '1.3.1';
+const PREVIOUS_VERSION = '1.3.0';
 const VERSION_JSON_PATHS = [
   ['lazybuddy-plugin/.codebuddy-plugin/plugin.json', ['version']],
   ['lazybuddy-plugin/.workbuddy-plugin/plugin.json', ['version']],
@@ -46,9 +46,23 @@ function walk(root, directory = root) {
 }
 
 function previousVersionClassification(relativePath, line) {
+  if (relativePath.startsWith('docs/v1.3.0')) return 'historical-release-document';
   if (relativePath.startsWith('docs/v1.2.')) return 'historical-release-document';
   if (relativePath.startsWith('docs/v1.1.') || relativePath.startsWith('docs/v1.0.')) return 'historical-release-document';
   if (relativePath === 'README.md' && /efficiency improvements/i.test(line)) return 'historical-release-summary';
+  if (/(latest published stable release is v1\.3\.0|published v1\.3\.0|v1\.3\.0 release is published)/i.test(line)) return 'published-stable-release-reference';
+  if (/(do not infer\s+)?v1\.3\.0 publication from this documentation boundary/i.test(line)) return 'published-stable-release-reference';
+  if (/v1\.3\.0 is published;.*v1\.3\.1 worktree remains an unpublished candidate/i.test(line)) return 'published-stable-release-reference';
+  if (relativePath === 'README.md'
+    && /(New in v1\.3\.0|v1\.3\.0 is a major workflow release|v1\.3\.0 dual-entry routing|Supported v1\.3\.0 route)/i.test(line)) {
+    return 'published-stable-feature-reference';
+  }
+  if (relativePath.startsWith('docs/')
+    && /(v1\.3\.0 human-facing boundary|v1\.3\.0 route removal boundary|published v1\.3\.0 supported route|live-test-v1\.3\.0|does not publish a v1\.3\.0 package|do not infer v1\.3\.0)/i.test(line)) {
+    return 'published-stable-route-reference';
+  }
+  if (relativePath === 'lazybuddy-plugin/README.md'
+    && /(Durable v1\.3\.0 installation|Bootstrap v1\.3\.0)/i.test(line)) return 'published-stable-install-reference';
   if (relativePath === 'lazybuddy-plugin/CHANGELOG.md') return 'historical-release-history';
   if (relativePath.includes('/contracts/fixtures/') || relativePath.includes('/tests/fixtures/')) return 'historical-or-adversarial-fixture';
   if (relativePath.includes('automatic-tooling-contract.v1') || relativePath.includes('v1.0.3-')) return 'schema-independent-contract-history';
@@ -57,6 +71,15 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.endsWith('lazybuddy-contract-check.sh')) return 'schema-independent-contract-test';
   if (relativePath.endsWith('lazyseries-shared-semantics.v1.json') || relativePath.endsWith('marketplace-route-contract.v1.json') || relativePath.endsWith('paired-candidate-contract.v1.schema.json') || relativePath.endsWith('lazybuddy-machine-status.v2.schema.json')) return 'schema-independent-contract-history';
   if (relativePath.endsWith('lazybuddy-evaluation.md')) return 'historical-release-document';
+  if (relativePath.startsWith('lazybuddy-plugin/tooling/')
+    && /(contract|LEDGER_VERSION|scenario fixture)/i.test(line)) return 'schema-independent-contract-history';
+  if ((relativePath.startsWith('lazybuddy-plugin/scripts/state/')
+      || relativePath.startsWith('lazybuddy-plugin/skills/')
+      || relativePath.startsWith('lazybuddy-plugin/tooling/'))
+    && /(T[2-6]|decision gates|durable memory|verification tiers|progressive milestones|Tooling dir)/i.test(line)) {
+    return 'historical-feature-marker';
+  }
+  if (/lazybuddy-plugin\/tooling\/test_[^/]+\.py$/.test(relativePath)) return 'historical-test-input';
   if (relativePath.includes('paired-live-test') || relativePath.endsWith('lazybuddy-workbuddy-preparation-check.sh') || relativePath.endsWith('validate-paired-candidate.js') || relativePath.endsWith('dashboard.html')) return 'historical-mutation-target-or-fixture';
   if (relativePath.endsWith('v122-harness-semantic-parity.test.js')) return 'historical-test-input';
   if (relativePath.startsWith('lazybuddy-plugin/contracts/tests/')) return 'historical-test-input';
@@ -66,7 +89,7 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.startsWith('lazybuddy-plugin/tests/')) return 'historical-test-input';
   if (/(?:^|\/)(?:test|tests)\//.test(relativePath) && /(previous|historical|fixture|wrong|from|upgrade|mutable|prior)/i.test(line)) return 'historical-test-input';
   if (/\bcurrent\b.*\b(?:release|version)\b/i.test(line)) return 'current-version-drift';
-  if (/(upgrade|migrat|rollback|previous|historical|prior|old release|since v?1\.2\.[0-9]|from v?1\.2\.[0-9]|tag\/v1\.2\.[0-9]|release notes)/i.test(line)) return 'historical-migration-reference';
+  if (/(upgrade|migrat|rollback|previous|historical|prior|old release|since v?1\.[0-3]\.[0-9]|from v?1\.[0-3]\.[0-9]|tag\/v1\.[0-3]\.[0-9]|release notes)/i.test(line)) return 'historical-migration-reference';
   return null;
 }
 

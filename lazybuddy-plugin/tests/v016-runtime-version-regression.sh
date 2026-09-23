@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="1.3.0"
+EXPECTED_VERSION="1.3.1"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
@@ -19,7 +19,7 @@ grep -q "lazybuddy-docs/$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/docs/network_bounda
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/mcp/status-dashboard/dashboard.html"
 grep -q "LazyBuddy v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/hooks/session-start.sh"
 grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
-grep -q "v$EXPECTED_VERSION" "$PLUGIN_ROOT/CHANGELOG.md"
+grep -Eq "(v$EXPECTED_VERSION|\\[$EXPECTED_VERSION\\])" "$PLUGIN_ROOT/CHANGELOG.md"
 if grep -Eq '\]\((\./)*\.\./docs/' "$PLUGIN_ROOT/README.md"; then
   printf 'FAIL package README must not link to removed repository-root docs/\n' >&2
   exit 1
@@ -79,8 +79,9 @@ for relative in ("README.md", "AGENTS.md"):
     )
 
 readme = (root.parent / "README.md").read_text(encoding="utf-8")
-assert "The current release package is v1.3.0." in readme
-assert "prepared for release but is not published yet" not in readme
+assert (
+    "The latest published stable release is v1.3.1."
+) in readme
 
 historical_heading = "### Upgrade from v1.0.2"
 assert not any(
@@ -94,4 +95,4 @@ assert {
     for match in re.findall(pattern, misleading_identity, flags=re.IGNORECASE)
 } == {"1.0.2"}, "misleading current-release prose must remain detectable"
 PY
-printf 'v1.3.0 runtime version regression: PASS\n'
+printf 'v1.3.1 runtime version regression: PASS\n'

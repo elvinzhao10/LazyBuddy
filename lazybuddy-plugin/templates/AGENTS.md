@@ -6,7 +6,7 @@ precedence.
 
 ## When the user types `onboard`
 
-Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
+Require **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`, then use
 `node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`,
 `recover-bootstrap-lock`, and plan-first `offboard`. The exact durable tree is

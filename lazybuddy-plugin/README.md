@@ -1,8 +1,11 @@
 # LazyBuddy Plugin
 
-## Durable v1.3.0 installation
 
-**Node.js LTS 20 or newer** and **Git** are required. Bootstrap `onboard` only
+The latest published stable release is v1.3.1. Package readiness does not establish host readiness.
+
+## Durable v1.3.1 installation
+
+**Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git** are recommended for new installs; the lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use
 `node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`,
 `recover-bootstrap-lock`, and plan-first `offboard`. The exact tree is
@@ -72,7 +75,7 @@ plus six individual manual local MCP connectors is recovery-only.
 3. **Verify the host** — in CodeBuddy, confirm one `/lazybuddy:lazy-<command>` or Skill and all six MCP connections in a new session. In WorkBuddy, confirm an imported Skill and each manually configured local connector; do not infer commands, agents, hooks, or MCP loading from files or load-check output without full-plugin proof.
 4. **Use the workflow** — in CodeBuddy, `/lazybuddy:lazy-<command>` commands; in WorkBuddy, use the equivalent natural-language workflow or imported skill unless a verified plugin session exposes a command.
 
-**Verification scope:** macOS only. Repository-level public guides cover the
+**Verification scope:** CI package checks run on Ubuntu and macOS per the workflow; supplied live-host observations are historical macOS reports. Repository-level public guides cover the
 workflow and host-specific onboarding/offboarding; package readiness remains
 package evidence, not proof of live host loading or MCP connection.
 
@@ -341,6 +344,16 @@ observed: package output must not claim native workflow loading or host
 dispatch. The compact task packet is 1,637 bytes rather than 2,285 bytes
 (648 bytes / 28.36% smaller); required safety, approval, evidence, review, and
 completion gates are unchanged.
+
+Model routing is a separate, host-owned selection boundary. Subagents inherit
+the current model unless a plan explicitly enables switching. Before a material
+dispatch, use the packaged selector once and record its recommendation with the
+task; it neither changes a host setting nor proves native execution. See
+[model routing](docs/model-routing.md).
+
+```bash
+node contracts/model-routing.js --host codebuddy-cli --task implementation
+```
 
 The installed package carries the versioned automatic-tooling contract and its
 provider-policy adapter. Start with an offline status check or create the

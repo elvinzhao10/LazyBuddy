@@ -7,8 +7,14 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current release package is v1.3.0. It is prepared for publication; package
-checks do not by themselves publish a tag or prove a host loaded it.
+The latest published stable release is v1.3.1. Package checks do not prove host activation.
+
+## New in v1.3.1
+
+This release tightens intent parsing, worktree cleanup, outcome-evidence
+integrity, and context search. Subagents inherit the current model unless a
+plan explicitly enables a switch. See [release notes](RELEASE_NOTES.md) for
+the changes and verification scope; current native-host testing is pending.
 
 ## New in v1.3.0: work the way you talk
 
@@ -67,7 +73,7 @@ You do not need to manually work through every setup detail. Open an AI coding
 assistant in your project and paste this:
 
 > Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
-> this project. Use the v1.3.0 route. Run safe package checks first,
+> this project. Use the published v1.3.1 route. Run safe package checks first,
 > explain each step plainly, and ask me before changing marketplace, plugin,
 > Skills, MCP, account, credential, or trust settings.
 
@@ -76,7 +82,7 @@ The assistant can guide onboarding, but you approve every host-managed change.
 ## Manual setup
 
 Manual setup is available when you prefer complete control. You need
-**Node.js LTS 20 or newer** and **Git**. Start from the verified origin
+**Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**. The lifecycle also accepts Node.js LTS 20 for compatibility. Start from the verified origin
 `https://github.com/elvinzhao10/LazyBuddy` and follow the
 [installation guide](docs/03-install-and-host-verification.md).
 

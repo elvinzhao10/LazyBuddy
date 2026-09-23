@@ -23,12 +23,12 @@ function mutate(relativePath, transform) {
   return root;
 }
 
-test('v1.3.0 release versions are classified with one current root release note', () => {
+test('v1.3.1 release versions are classified with one current root release note', () => {
   assert.deepEqual(classify(ROOT).failures, []);
 });
 
-test('classifier rejects a current 1.2.3 claim even when migration wording is present', () => {
-  const root = mutate('README.md', text => `${text}\nCurrent supported release is 1.2.3 for migration compatibility.\n`);
+test('classifier rejects a current 1.3.0 claim even when migration wording is present', () => {
+  const root = mutate('README.md', text => `${text}\nCurrent supported release is 1.3.0 for migration compatibility.\n`);
   try {
     const result = spawnSync(process.execPath, [path.resolve(__dirname, '../scripts/release-version-classifier.js'), root], { encoding: 'utf8' });
     assert.equal(result.status, 1);
@@ -39,14 +39,14 @@ test('classifier rejects a current 1.2.3 claim even when migration wording is pr
 });
 
 for (const [name, relativePath, transform, failure] of [
-  ['current 1.2.3 drift', 'README.md', text => text.replace('v1.3.0', 'v1.2.3'), 'CURRENT_VERSION_DRIFT_TEXT'],
+  ['current 1.3.0 drift', 'README.md', text => `${text}\nCurrent package version: v1.3.0.\n`, 'CURRENT_VERSION_DRIFT_TEXT'],
   ['missing release-note section', 'RELEASE_NOTES.md', text => text.replace('## Rollback', '## Recovery'), 'MISSING_RELEASE_NOTE_SECTION'],
-  ['package/runtime mismatch', 'lazybuddy-plugin/.codebuddy-plugin/plugin.json', text => text.replace('"version": "1.3.0"', '"version": "1.2.2"'), 'CURRENT_VERSION_DRIFT'],
+  ['package/runtime mismatch', 'lazybuddy-plugin/.codebuddy-plugin/plugin.json', text => text.replace('"version": "1.3.1"', '"version": "1.3.0"'), 'CURRENT_VERSION_DRIFT'],
   ['superseded versioned release note', 'RELEASE_NOTES.md', text => text, 'VERSIONED_RELEASE_NOTE_PRESENT'],
 ]) {
   test(`classifier rejects ${name} in a copy`, () => {
     const root = mutate(relativePath, transform);
-    if (name === 'superseded versioned release note') fs.writeFileSync(path.join(root, 'RELEASE_NOTES-v1.2.2.md'), 'old note\n');
+    if (name === 'superseded versioned release note') fs.writeFileSync(path.join(root, 'RELEASE_NOTES-v1.3.0.md'), 'old note\n');
     try { assert.ok(classify(root).failures.some(item => item.includes(failure))); }
     finally { fs.rmSync(root, { recursive: true, force: true }); }
   });

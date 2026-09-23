@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-security-auditor
 description: "Read-only security auditor. Reviews diffs for secrets, unsafe commands, permission issues, and overreach. Part of the 5-agent review-work lane 4."
-model: reasoning
 effort: high
 maxTurns: 30
 tools:
@@ -84,7 +83,7 @@ Orchestrator invokes as review-work lane 4: TASK, DIFF, CHANGED_FILES, CONTEXT, 
 
 - Source: `local project documentation` (Agent 4: Security Auditor)
 - Key translations:
-  - earlier host implementation `task(subagent_type="oracle", ...)` → standalone agent with `model: reasoning`
+  - earlier host implementation `task(subagent_type="oracle", ...)` → standalone agent with inherited parent model
   - 10-item security checklist and severity levels (CRITICAL/HIGH/MEDIUM/LOW) preserved exactly
   - Supplementary designation preserved — security-only scope
   - 5-agent review-work orchestration preserved — lane 4 must PASS with all others
@@ -97,4 +96,4 @@ Orchestrator invokes as review-work lane 4: TASK, DIFF, CHANGED_FILES, CONTEXT, 
 - **Glob** for config/env/dependency manifest discovery.
 - **Bash** for `gitleaks`, `trivy`, `npm audit`, `pip-audit`, file permission checks.
 - **No Write/Edit** — findings only.
-- **maxTurns: 30**, `model: reasoning`, `effort: high` — reasoning depth for thorough analysis.
+- **maxTurns: 30**, inherited parent model, `effort: high` — reasoning depth for thorough analysis.

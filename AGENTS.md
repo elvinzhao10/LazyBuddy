@@ -1,13 +1,10 @@
 # AGENTS.md — LazyBuddy setup and removal guide
 
-LazyBuddy supports CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. It is verified
-on macOS only. Package files, host settings, credentials, marketplace state,
-and live sessions remain separate authorities.
+LazyBuddy supports its documented CLI and IDE/app hosts. Automated package checks run in CI on Ubuntu and macOS as defined by the workflows; the supplied live-host reports are historical macOS observations. No current-session host activation is established. Package files, host settings, credentials, marketplace state, and live sessions remain separate authorities.
 
-## Current documentation release: v1.3.0
+## Current documentation release: v1.3.1
 
-This v1.3.0 guide names current human-facing boundaries only. It does not
-publish a package or promote package evidence to host proof. The route IDs are
+The latest published stable release is v1.3.1. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels are `documented-tested`, `documented-untested`,
@@ -31,7 +28,7 @@ recover only its transaction material, preserve caller files, then retry.
 
 ## Durable onboarding (start here)
 
-Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
+For new installations, use **Node.js LTS 24 (recommended)** or **Node.js LTS 22 (supported alternative)**, plus **Git**. Node.js LTS 20 is also accepted by the lifecycle for compatibility; Node 18 jobs are legacy CI checks only. Bootstrap `onboard` only from
 the verified official origin `https://github.com/elvinzhao10/LazyBuddy.git`.
 The source checkout is transport only and may be deleted after promotion.
 

@@ -10,9 +10,9 @@ const EXPECTED_NAMES = new Set([
   'lazybuddy-verifier',
 ]);
 const REQUIRED_FIELDS = new Set([
-  'name', 'description', 'model', 'effort', 'maxTurns', 'tools', 'disallowedTools', 'skills', 'memory',
+  'name', 'description', 'effort', 'maxTurns', 'tools', 'disallowedTools', 'skills', 'memory',
 ]);
-const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, 'isolation']);
+const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, 'model', 'isolation']);
 const WORKTREE_NAMES = new Set(['lazybuddy-implementer', 'lazybuddy-orchestrator']);
 const READONLY_NAMES = new Set([
   'lazybuddy-context-miner', 'lazybuddy-explorer', 'lazybuddy-gate-reviewer', 'lazybuddy-planner',
@@ -96,7 +96,7 @@ function validateAgent(filePath) {
   for (const field of REQUIRED_FIELDS) if (!Object.hasOwn(data, field)) refuse(`${filename}: required field ${field} is missing`);
   requireString(data.name, 'name', filename);
   requireString(data.description, 'description', filename);
-  requireString(data.model, 'model', filename, MODELS);
+  if (Object.hasOwn(data, 'model')) requireString(data.model, 'model', filename, MODELS);
   requireString(data.effort, 'effort', filename, EFFORTS);
   if (!Number.isSafeInteger(data.maxTurns) || data.maxTurns <= 0) refuse(`${filename}: maxTurns must be a positive integer`);
   requireList(data.tools, 'tools', filename);

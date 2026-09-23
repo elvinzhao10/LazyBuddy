@@ -85,6 +85,8 @@ function validateCompletionEvidence(record, context) {
       const stat = fs.lstatSync(target);
       if (!stat.isFile() || stat.isSymbolicLink()) {
         errors.push('artifact.path: must name a regular project file');
+      } else if (!fs.realpathSync(target).startsWith(`${root}${path.sep}`)) {
+        errors.push('artifact.path: escapes project root');
       } else if (digest(target) !== record.artifact.sha256) {
         errors.push('artifact.sha256: does not match artifact bytes');
       }

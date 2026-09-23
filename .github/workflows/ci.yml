@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   supported-floor:
-    name: Supported floor (Node 20)
+    name: Legacy Node 20 compatibility (EOL)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -56,6 +56,8 @@ jobs:
 
       - name: Run package verification
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+      - name: Run targeted execution isolation, model routing, and outcome evaluator contracts
+        run: node --test lazybuddy-plugin/tests/execution-isolation.test.js lazybuddy-plugin/contracts/tests/model-routing.test.js lazybuddy-plugin/contracts/tests/outcome-evaluation.test.js lazybuddy-plugin/contracts/tests/completion-cost-contract.test.js
 
       - name: Run publication verification
         run: bash lazybuddy-plugin/tests/publication-regression.sh
@@ -88,6 +90,8 @@ jobs:
 
       - name: Run package verification
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+      - name: Run targeted execution isolation, model routing, and outcome evaluator contracts
+        run: node --test lazybuddy-plugin/tests/execution-isolation.test.js lazybuddy-plugin/contracts/tests/model-routing.test.js lazybuddy-plugin/contracts/tests/outcome-evaluation.test.js lazybuddy-plugin/contracts/tests/completion-cost-contract.test.js
 
   lifecycle:
     name: Lifecycle regressions (macOS)
