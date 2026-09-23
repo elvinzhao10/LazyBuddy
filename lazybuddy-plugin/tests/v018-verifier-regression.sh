@@ -195,7 +195,7 @@ def assert_scoped_policy(root, records):
     )
     readiness = f"{prefix}v015-readiness-regression.sh"
     package_boundary = f"{prefix}v015-package-boundary-regression.sh"
-    require(by_label[readiness] == "120", f"{readiness} expected 120, observed {by_label[readiness]}")
+    require(by_label[readiness] == "360", f"{readiness} expected 360, observed {by_label[readiness]}")
     require(by_label[package_boundary] == "180", f"{package_boundary} expected 180, observed {by_label[package_boundary]}")
     for label in sorted(expected - {readiness, package_boundary}):
         require(by_label[label] == "90", f"{label} expected 90, observed {by_label[label]}")
@@ -207,16 +207,16 @@ def assert_scoped_policy(root, records):
 
 production_root, production_records = capture_policy("timeout-policy-production")
 other_count = assert_scoped_policy(production_root, production_records)
-print("READINESS_TIMEOUT=120")
+print("READINESS_TIMEOUT=360")
 print("PACKAGE_BOUNDARY_TIMEOUT=180")
 print(f"OTHER_STANDALONE_TIMEOUT=90 COUNT={other_count}")
 print("NODE_TESTS=scheduled")
 print("PYTHON_TESTS=scheduled")
 
-override_root, override_records = capture_policy("timeout-policy-user-override", verify_timeout=240)
+override_root, override_records = capture_policy("timeout-policy-user-override", verify_timeout=480)
 override_by_label = {label: timeout for label, timeout in override_records}
-require(all(timeout == "240" for timeout in override_by_label.values()), "explicit timeout override was not preserved")
-print("USER_TIMEOUT_OVERRIDE=240")
+require(all(timeout == "480" for timeout in override_by_label.values()), "explicit timeout override was not preserved")
+print("USER_TIMEOUT_OVERRIDE=480")
 
 mutant_root, mutant_records = capture_policy("timeout-policy-global-120-mutant", mutate=True)
 try:
@@ -227,8 +227,8 @@ else:
     raise RuntimeError("global-120 timeout mutant passed the scoped policy check")
 PY
 then
-    grep -Fq 'READINESS_TIMEOUT=120' "$TMP/timeout-policy.out" \
-        && pass "readiness regression receives the scoped 120-second budget" \
+    grep -Fq 'READINESS_TIMEOUT=360' "$TMP/timeout-policy.out" \
+        && pass "readiness regression receives the scoped 360-second budget" \
         || fail "readiness regression scoped timeout budget"
     grep -Fq 'PACKAGE_BOUNDARY_TIMEOUT=180' "$TMP/timeout-policy.out" \
         && pass "package-boundary regression receives the scoped 180-second budget" \
@@ -243,7 +243,7 @@ then
     grep -Fq 'GLOBAL_120_MUTANT_REJECTED=' "$TMP/timeout-policy.out" \
         && pass "global-120 standalone timeout mutant is rejected" \
         || fail "global-120 standalone timeout mutant rejection"
-    grep -Fq 'USER_TIMEOUT_OVERRIDE=240' "$TMP/timeout-policy.out" \
+    grep -Fq 'USER_TIMEOUT_OVERRIDE=480' "$TMP/timeout-policy.out" \
         && pass "explicit timeout override remains larger than scoped floors" \
         || fail "explicit timeout override preservation"
 else
