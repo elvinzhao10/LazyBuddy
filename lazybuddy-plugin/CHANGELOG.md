@@ -2,6 +2,13 @@
 
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
+## [1.3.1] - Unreleased
+
+- Follow-up fixes bind evaluation snapshots to bytes, report honest integrity and measurement scope, and close confirmed routing/isolation/context-tool gaps; see RELEASE_NOTES.md for product-specific scope.
+
+- Removed obsolete agent-session attribution and port setup notes; NOTICE and LICENSE retain project credits.
+- Candidate work updates release metadata, execution isolation and outcome evaluation. This entry is not a publication record. See root RELEASE_NOTES.md.
+
 ## v1.2.3 — Platform compatibility patch (2026-09-14)
 
 - Host MCP declarations are validated before use: stdio servers require

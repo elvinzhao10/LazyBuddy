@@ -2,10 +2,10 @@
 
 This page explains the deployment boundary in code terms. A plugin package contains files a host may load; it does not contain the host's marketplace database, session state, or connector process table.
 
-## Current v1.3.0 route status
+## Published v1.3.0 route and v1.3.1 candidate status
 
 This documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
-`workbuddy`; it does not publish a v1.3.0 package. Marketplace is the default
+`workbuddy`; v1.3.1 remains an unpublished candidate. Marketplace is the default
 full-plugin route for CodeBuddy IDE and WorkBuddy. The Skills/manual-MCP route
 is recovery-only and mutually exclusive with a full-plugin route. v2 records
 native mode as `invoke-documented`, `observe-only`, `descriptor-only`, or
@@ -19,7 +19,7 @@ only a selection record; it does not prove a workflow loaded or dispatched.
 
 ## Durable lifecycle
 
-Prerequisites are **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard`
+Prerequisites are **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**. The lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard`
 only from `https://github.com/elvinzhao10/LazyBuddy.git`. After promotion use
 `node "<install-root>/LazyBuddy/launcher.js"` for `update`, `status`, and
 plan-first `offboard`. The exact tree is

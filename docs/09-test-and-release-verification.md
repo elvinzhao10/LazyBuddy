@@ -54,7 +54,7 @@ The `tests/v*.sh` inventory covers copied-package boundaries, manifest and readi
 
 Normal CI is self-contained: it does not require a sibling repository. Documentation and contract parity with LazyTrae are release-only paired parity checks, run only when both absolute roots are explicitly supplied. That keeps the shared safety contract auditable without creating a runtime, installer, or CI dependency between packages.
 
-The final host layer is intentionally manual. A CodeBuddy or WorkBuddy session must show the selected plugin surface, hook behavior where relevant, and MCP connection before those facts are claimed. Current package evidence is verified on macOS only.
+Package CI coverage runs on the operating systems and Node versions listed in the workflows. Host loading, route discovery, hooks, MCP calls, specialist behavior, cancellation, and completion require separate manual observation in the selected current host session. The supplied host observations are historical macOS reports and do not establish current v1.3.1 readiness.
 
 ### Paired live-test candidate assembly
 
@@ -102,3 +102,15 @@ When a regression fails, start from its fixture and expected assertion, then
 follow the smallest source function named in the failure. Do not “fix” a
 release check by weakening its assertion: each assertion encodes a published
 ownership or evidence contract.
+
+## Manual host-session verification record
+
+Automated CI and package checks do not establish host activation. Current observation: local inventory reported CodeBuddy CLI 2.124.0. A native plugin validate attempt produced no output before interruption and is inconclusive. CodeBuddy IDE and WorkBuddy have no current-session activation evidence. Keep the per-host record below pending until observed; do not fill unknown fields from package files or a previous build.
+
+Before a host session, record the candidate commit or archive SHA and package-check result. In the selected user-approved host, record host product, exact version/build, edition or region when shown, OS, selected route, install root, fresh session ID and start time. Then observe a real Skill/command/hook appropriate to that route and record the exact invocation and result. Invoke one named specialist for a bounded task and capture the host-visible action and actual outputs. Start a bounded delegated task, cancel it through the host, and record cancellation propagation plus whether any late write occurred. Complete a small task and inspect the actual changed paths, task/plan status, and completion artifact; record artifact paths and hashes alongside the content review. Hashes prove byte integrity only, not independent truth. Follow the [outcome-evaluation protocol](../lazybuddy-plugin/contracts/OUTCOME-EVALUATION.md) for cost and cohort claims. For CodeBuddy CLI, CodeBuddy IDE, and WorkBuddy full-plugin routes, record every expected MCP connection for the selected route; for a recovery route, record only its declared Skills and manual MCP surfaces.
+
+| Host | Build/edition | Route and fresh session | Activation and MCP | Specialist | Cancellation | Completion and actual artifacts | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Each supported host | Pending until observed | Pending | Pending | Pending | Pending | Pending | HOST READINESS: PENDING |
+
+If any observation or artifact is absent, retain pending for that field and for host readiness. Do not infer archive behavior from main CI, or claim host installation from package/parser validation.

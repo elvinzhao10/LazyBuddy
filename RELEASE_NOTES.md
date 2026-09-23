@@ -1,101 +1,47 @@
-# LazyBuddy v1.3.0 — adaptive workflow experience
+# LazyBuddy v1.3.1 — release candidate (unpublished)
 
-This release prepares the v1.3.0 package. It does not publish a tag,
-marketplace entry, or host installation. Package readiness and current host
-observation remain separate authorities.
-
-This is a feature release. It adds dual activation, progressive milestones
-with scoped decision gates, human plan-edit reconciliation, a cross-plan
-decision ledger, and verification-tier selection with receipt reuse. Existing
-routing, execution, verification, and librarian surfaces are retained; no new
-orchestration framework or mandatory arbiter command is introduced.
+The latest published stable release is v1.3.0. This v1.3.1 worktree is a release candidate only: it has not been tagged or published, and it makes no host-installation or activation claim. Main-branch CI and package checks are not evidence about a release archive.
 
 ## Eval-driven fixes
 
-- Explicit `/lazy-start-work` and plain natural-language implementation
-  requests converge on the same execution authority and gates. No slash
-  command is required for a clear implementation request. Explanation,
-  quoted-command, and explicit plan-only requests never mutate product files,
-  and an ambiguous approval with several pending questions never grants
-  execution authority.
-- `execution_intent` (plan_only|execute) is persisted separately from
-  workflow mode and current stage, defaulting to plan_only. Duplicate host
-  events do not duplicate dispatch, and resume selects the single compatible
-  run or asks only when genuinely ambiguous.
-- Complex work uses one parent plan with milestones. Later milestones may be
-  provisional and never dispatch; dependency cycles, missing IDs, and dangling
-  child links are rejected at sync time. Decision gates carry the canonical
-  question/recommendation/alternatives/owner/needed_by/status shape; a
-  recommendation never becomes owner approval and only transitive dependents
-  block.
-- Human plan edits are reconciled at execution boundaries. Cosmetic edits
-  preserve all evidence; semantic edits invalidate only the affected task and
-  its transitive dependents. A human checked box is a completion assertion,
-  never a verified result, and results dispatched under an older plan revision
-  cannot update newer plan state.
-- Cross-plan decision memory is durable: `decisions/ledger.jsonl` records
-  versioned immutable events (recorded/superseded/voided, correction
-  opened/resolved) with globally unique IDs, replay-derived active view, and
-  visible failure on malformed records. Corrections block accepted completion
-  only in their affected scope.
-- Verification is selected once from the changed boundary and risk on the
-  V0-V3 tier ladder, then a green receipt is reused while its declared inputs
-  and covered behavior are unchanged. Test count, file count, plan size, agent
-  count, or a request being called complex never promote a tier, and a failing
-  focused check reruns only itself plus directly affected integration checks.
+- Cohort comparison now reads and hashes referenced task, budget and permission snapshots. Outcome integrity distinguishes absent, partial and validated evidence; explicitly marked fixture-validation telemetry is rejected as execution input.
+- Intent routing ignores quoted, fenced and historical workflow mentions while preserving explicit current execution requests.
+- Reverse-dependency search handles ordinary extension-bearing imports and preserves the no-ripgrep fallback. Blast-radius lookup uses one search process instead of four; repository overview scans imports once. These are local process-count improvements, not measured coding-task speedups; results remain heuristic.
+- Verification avoids rerunning the full verifier merely to check Python-version admission, and gives the package-boundary regression a sufficient dedicated deadline.
+- Baseline telemetry explicitly records `measurement_scope: fixture-validation`; its timing is not coding-task duration.
+
+- Execution isolation records truthful namespace allocation only. It reports created=false, verified=false, and worktree_provisioned=false; it does not create or verify a Git worktree. Cleanup refuses non-empty allocations, symlinks, and an untracked dirty caller workspace. External/native worktree readiness remains a separate, unobserved check.
+- Outcome evaluation reports explicit host-billed cost only. It does not infer dollar costs from token rates, preserves usage records when a run fails, includes failed-run costs in the condition numerator, and rejects cohorts with mismatched host build, model, task snapshot, budget, or permissions. Artifact hashes establish integrity, not independent truth.
+- Subagents inherit the current model by default. Plans can propose `lite`/`default`/`reasoning` routing for specific tasks; switching requires an explicit plan decision and `--allow-switch`. The selector records a recommendation without changing host settings or claiming native execution.
+
+## Documentation cleanup
+
+Removed obsolete implementation-session notes and initial port instructions. Current contributor guidance is in AGENTS.md and CONTRIBUTING.md; project credits and licenses remain in NOTICE and LICENSE.
 
 ## Measured efficiency
 
-This release does not change the compact task packet or any previously
-measured byte, assertion, or gate figure. The previously recorded baseline
-measured the compact task packet at 1,637 bytes rather than 2,285 bytes, a
-648-byte / **28.36%** reduction, with the direct and six-module quality gates
-unchanged at 13/13 and 57/57 assertions. No new efficiency claim is made here.
+No observed end-to-end productivity gain, coding-task speedup, token-price estimate, or native cost reduction is claimed for this candidate. Cost comparisons follow the [outcome evaluation protocol](lazybuddy-plugin/contracts/OUTCOME-EVALUATION.md) and are limited to explicit host-billed records and matching cohorts.
 
 ## Host capability matrix
 
-| Host | Package route | Readiness requirement |
-| --- | --- | --- |
-| CodeBuddy CLI | Release-root local marketplace | Fresh session with one loaded Skill or command and all six MCP connections. |
-| CodeBuddy IDE | CLI-backed marketplace when available; observed-build GUI or recovery fallback otherwise | Fresh IDE session with the same loaded surface and six live MCP connections. |
-| WorkBuddy | `.workbuddy-plugin/plugin.json` through the host's visible marketplace/plugin flow | Current-build receipt for a Skill, command, agent, hook, and all six MCP connections. |
+The package routes below describe available package declarations. The rows remain pending until a fresh host session supplies current host build/edition, selected route, session identity, activation, MCP call, specialist action, cancellation, completion, and actual artifact evidence.
 
-Package checks are package evidence only. Every host remains **pending host
-proof** until it is observed in a fresh session; this release does not claim
-that any host loaded, enabled, or connected anything.
+| Host | Package route | Current host evidence |
+| --- | --- | --- |
+| CodeBuddy CLI | Release-root marketplace | Local CLI inventory reported CodeBuddy CLI 2.124.0. A codebuddy plugin validate attempt produced no output before interruption and is inconclusive. No activation, live MCP call, specialist, cancellation, or completed host task is observed. |
+| CodeBuddy IDE | CLI-backed marketplace when available; recovery route is separate | Pending: current build/edition/route/session, activation, MCP calls, specialist, cancellation, completion artifact. |
+| WorkBuddy | Full-plugin marketplace | Pending: current build/edition/route/session, activation, MCP calls, specialist, cancellation, completion artifact. |
 
 ## Migration and upgrade
 
-Use the durable launcher to update from v1.2.3 after inventorying
-receipt-owned, modified, and unknown assets. Preserve user changes and
-host-managed settings. v1.2.3 projects load without losing plans or evidence:
-the new state fields (`execution_intent`, milestone flags, decision ledger)
-are additive with defaults, and states declaring a newer major version are
-refused with a clear diagnostic rather than read partially. Migration is
-idempotent; an absent decision ledger is a valid empty memory. Run package
-checks, then start a fresh host session and observe the selected route before
-reporting host readiness.
+Keep the published v1.3.0 release as the stable reference. For candidate evaluation, use normal durable lifecycle inventory and package verification; preserve modified, unknown, linked, and caller-owned files. Verify the exact archive or candidate commit independently before host testing. Do not infer archive contents from main-branch CI. No host mutation is included in this preparation.
 
 ## Known risks
 
-- Live marketplace discovery, plugin loading, hooks, workflow dispatch, and
-  MCP connectivity remain host-owned and pending without current-session
-  evidence.
-- Dual activation depends on the host delivering prompt-submit events; where
-  hook support is absent the explicit entry route is offered with an accurate
-  pending status instead of a silent automatic claim.
-- Host tool surfaces may interpose their own command shims. A shim that does
-  not implement POSIX extended regular-expression classes can change the
-  behavior of shipped shell checks on that host; shipped hook patterns use
-  POSIX character classes but cannot constrain arbitrary host shims.
-- Same-version ref movement, a changed runtime/executable, or changed host
-  fingerprint invalidates prior evidence and requires re-verification.
+- Namespace allocation is not Git worktree provisioning and does not establish the state of an external/native worktree.
+- Host integration remains pending without current-session observation. CI and host-parser validation do not prove asset discovery, a loaded Skill/command, specialist execution, MCP connectivity, cancellation behavior, or task completion.
+- Evaluation hashes only bind supplied evidence bytes; they do not establish that evidence is independently true.
 
 ## Rollback
 
-Stop the host session and run durable `offboard` plan-first. After approval,
-remove only unmodified v1.3.0 receipt-owned assets, preserve modified,
-unknown, linked, caller-owned, and host-managed state, then reactivate the
-intended immutable prior release. Start a fresh session and re-observe the
-selected host route; never edit receipts, `active.json`, or private host
-registries by hand.
+Stop the host session, then use the durable lifecycle rollback/offboard path to return to the exact prior release after reviewing receipt ownership. Remove only unmodified receipt-owned assets; preserve modified, unknown, linked, caller-owned, and host-managed state. Start a fresh session before recording any restored host behavior.

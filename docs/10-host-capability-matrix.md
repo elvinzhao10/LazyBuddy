@@ -4,11 +4,10 @@ LazyBuddy deliberately aligns policy and package safety across hosts while keepi
 
 ## Onboarding baseline
 
-## Current v1.3.0 evidence boundary
+## Published v1.3.0 and v1.3.1 candidate evidence boundary
 
-This documentation release covers `codebuddy-cli`, `codebuddy-ide`, and
-`workbuddy`; it does not publish a v1.3.0 package or claim a host has loaded
-one. Marketplace is the default full-plugin route for CodeBuddy IDE and
+The v1.3.0 release is published; this v1.3.1 candidate documentation covers `codebuddy-cli`, `codebuddy-ide`, and
+`workbuddy`; v1.3.1 is not tagged or published, and no current host activation is claimed. Marketplace is the default full-plugin route for CodeBuddy IDE and
 WorkBuddy. The Skills/manual-MCP route is recovery-only and mutually exclusive
 with a full-plugin route in the same project.
 
@@ -18,7 +17,7 @@ with a full-plugin route in the same project.
 | Public label | `documented-tested`, `documented-untested`, `observed-build-specific`, or `unavailable`. |
 | Evidence scope | `package`, `probe`, or `current-session`; `package` does not prove a live host. |
 
-Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
+Require **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**. The lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`; then run `update`, `status`,
 and plan-first `offboard` with
 `node "<install-root>/LazyBuddy/launcher.js"`. The durable tree is
@@ -120,9 +119,9 @@ unsupported and may duplicate Skills or MCP processes. Stop the session,
 remove only the old LazyBuddy entries in the host UI, choose one route, restart,
 and verify that route before making a live-host-proof claim.
 
-## macOS-only scope
+## Host evidence scope
 
-The package evidence is verified on macOS only. It does not claim equivalent host loading, marketplace behavior, hook execution, or MCP connection on other operating systems. Those are observed per host session.
+Automated package CI runs on Ubuntu and macOS as defined in the workflows. Manual host loading, route discovery, hooks, and MCP connection remain per-session observations; the supplied host reports are historical macOS evidence only.
 
 ## Migration and removal
 
