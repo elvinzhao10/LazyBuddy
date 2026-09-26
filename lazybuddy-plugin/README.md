@@ -1,5 +1,8 @@
 # LazyBuddy Plugin
 
+## v1.3.2 package candidate
+
+This candidate adds durable verification evidence and focused runtime checks. Use the published v1.3.1 instructions below for stable installation.
 
 The latest published stable release is v1.3.1. Package readiness does not establish host readiness.
 

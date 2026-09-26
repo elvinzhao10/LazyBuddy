@@ -1,6 +1,6 @@
 {
   "name": "@lazyseries/lazybuddy-tooling",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "private": true,
   "description": "Locked package-owned tooling foundation for LazyBuddy.",
   "engines": {

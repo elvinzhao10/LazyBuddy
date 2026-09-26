@@ -16,7 +16,7 @@ const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, 'model', 'isolation']);
 const WORKTREE_NAMES = new Set(['lazybuddy-implementer', 'lazybuddy-orchestrator']);
 const READONLY_NAMES = new Set([
   'lazybuddy-context-miner', 'lazybuddy-explorer', 'lazybuddy-gate-reviewer', 'lazybuddy-planner',
-  'lazybuddy-reviewer', 'lazybuddy-security-auditor', 'lazybuddy-verifier',
+  'lazybuddy-reviewer', 'lazybuddy-security-auditor',
 ]);
 const MODELS = new Set(['lite', 'default', 'reasoning']);
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh']);
@@ -114,6 +114,9 @@ function validateAgent(filePath) {
   if (READONLY_NAMES.has(data.name)) {
     if (data.tools.includes('Write') || data.tools.includes('Edit')) refuse(`${filename}: read-only role must not expose Write or Edit`);
     if (!data.disallowedTools.includes('Write') || !data.disallowedTools.includes('Edit')) refuse(`${filename}: read-only role must deny Write and Edit`);
+  }
+  if (data.name === 'lazybuddy-verifier' && (!data.tools.includes('Write') || data.tools.includes('Edit') || data.disallowedTools.includes('Write') || !data.disallowedTools.includes('Edit'))) {
+    refuse(`${filename}: verifier must write only its evidence report and deny Edit`);
   }
   if (data.name === 'lazybuddy-implementer' && (!data.tools.includes('Write') || !data.tools.includes('Edit'))) {
     refuse(`${filename}: implementer must retain Write and Edit`);
