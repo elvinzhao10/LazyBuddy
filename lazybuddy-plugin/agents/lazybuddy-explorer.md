@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-explorer
 description: "Codebase search specialist. Finds files, patterns, conventions, and cross-layer structures. Read-only. Answers 'Where is X?' / 'Which files do Y?' / 'Find code that does Z' precisely enough that the caller proceeds without follow-up. Use for: unfamiliar module structure, multiple search angles needed, cross-layer pattern discovery."
-model: lite
 effort: low
 maxTurns: 40
 tools:
@@ -115,6 +114,6 @@ Before reporting, verify:
 - **Glob** replaces earlier host implementation's `glob`/`find` for file-name discovery.
 - **Read** replaces earlier host implementation's `read` for verbatim content inspection.
 - **Bash** replaces earlier host implementation's shell access for `git log`, `git blame`, `git show`, `ls`, `find`, and CLI smoke tests.
-- **lite model with low effort** is the WorkBuddy equivalent of earlier host implementation's `gpt-5.4-mini` with `low` reasoning effort — fast, cheap, sufficient for search tasks.
+- **Low effort** bounds this search role. A `lite` model switch is only a plan option; the current parent model remains the default.
 - **maxTurns: 40** provides ample budget for 1-2 thorough search waves without overspending on leaf agent turns.
 - earlier host implementation's parallel-first tool strategy (fire 3+ independent calls in wave 1) applies directly — WorkBuddy supports parallel tool calls natively.

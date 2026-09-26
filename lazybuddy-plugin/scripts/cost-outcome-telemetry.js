@@ -14,6 +14,7 @@ function buildCostOutcome(result, runId, elapsedMs) {
   const route = result.scenario === 'direct' ? 'direct' : 'comprehensive';
   return {
     schema_version: 'lazyseries.cost-outcome.v1',
+    measurement_scope: 'fixture-validation',
     run_id: runId,
     project_identity: `${result.product}/project`,
     route,

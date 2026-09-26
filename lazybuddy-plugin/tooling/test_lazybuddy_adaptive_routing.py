@@ -46,6 +46,23 @@ ROUTE_ROWS = [
      False, "automatic-activation", "execute", True, True),
 ]
 
+INTENT_BOUNDARY_CASES = (
+    ("inline-backticked-command", "`/lazy-start-work fix the typo`", "plan_only"),
+    ("quoted-command", '"/lazy-start-work fix the typo"', "plan_only"),
+    ("fenced-quote", "```text\n> /lazy-start-work fix the typo\n```", "plan_only"),
+    ("markdown-quote", "> /lazy-start-work fix the typo", "plan_only"),
+    ("history", "History: /lazy-start-work fix the typo", "plan_only"),
+    ("inline-reference-then-fix", "The docs mention `/lazy-start-work`. Fix the parser bug.", "execute"),
+    ("history-then-fix", "History: /lazy-start-work fix the typo\nFix the parser bug.", "execute"),
+    ("quoted-line-with-words", "> please run /lazy-start-work", "plan_only"),
+    ("history-then-direct-command", "History: /lazy-start-work fix the typo\n/lazy-start-work fix the typo", "execute"),
+    ("denial", "Do not execute /lazy-start-work.", "plan_only"),
+    ("explanation", "Explain /lazy-start-work.", "plan_only"),
+    ("bare-command", "/lazy-start-work fix the typo", "execute"),
+    ("direct-command", "Please run /lazy-start-work fix the typo.", "execute"),
+    ("clear-fix", "Fix the typo in the welcome label.", "execute"),
+)
+
 
 @pytest.mark.parametrize(
     "sid,req,hook_supported,route,intent,executes,mutates",
@@ -64,6 +81,13 @@ def test_explicit_start_is_execution_instruction():
     d = classify_request_route("/lazy-start-work my-plan")
     assert d.route == "explicit-execution"
     assert d.execution_intent == "execute"
+
+
+@pytest.mark.parametrize(("_case", "prompt", "expected"), INTENT_BOUNDARY_CASES)
+def test_current_message_intent_ignores_inert_workflow_mentions(
+    _case: str, prompt: str, expected: str,
+) -> None:
+    assert classify_request_route(prompt).execution_intent == expected
 
 
 @pytest.mark.parametrize("req", [

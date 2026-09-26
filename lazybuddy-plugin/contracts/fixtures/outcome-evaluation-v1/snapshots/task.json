@@ -1,0 +1,6 @@
+{
+  "task_id": "task-cost-comparison",
+  "criterion_id": "criterion-cost-comparison",
+  "request": "Compare matched synthetic outcome records.",
+  "criterion": "Exercise the outcome-evaluation contract."
+}

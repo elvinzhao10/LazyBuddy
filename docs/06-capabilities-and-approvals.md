@@ -5,6 +5,9 @@ capability for the task and keeps that selection task-scoped and nonpersistent.
 It does not write target dependencies, lockfiles, host configuration, or a
 host MCP registration.
 
+For the separate host-owned model-selection boundary, see the plugin's
+[model-routing guide](../lazybuddy-plugin/docs/model-routing.md).
+
 ## Capability ladder
 
 | Need | Preferred provider | Fallback or boundary |

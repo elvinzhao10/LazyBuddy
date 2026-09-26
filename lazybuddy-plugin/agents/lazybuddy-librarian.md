@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-librarian
 description: "Memory maintenance agent. Updates workbuddy.md, command index, parity ledger, known gaps, risk register after accepted changes. Write access to memory files only."
-model: lite
 effort: low
 maxTurns: 20
 tools:
@@ -122,4 +121,4 @@ Return confirmation with modified file paths and change summary.
 - **No Bash** — the librarian never runs commands; all context comes from reading files the orchestrator references.
 - **No Agent** — memory maintenance is direct, single-threaded work.
 - **memory: true** enables the librarian to accumulate knowledge across invocations, building a persistent understanding of the project's memory state.
-- **maxTurns: 20** with `effort: low` and `model: lite` — sufficient for structured memory updates without overthinking.
+- **maxTurns: 20** with `effort: low` and inherited parent model bounds maintenance work. A cheaper model needs an explicit plan decision; otherwise the parent model persists.

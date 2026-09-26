@@ -1,0 +1,4 @@
+{
+  "kind": "synthetic-fixture",
+  "allowed": ["read-fixture", "run-local-validation"]
+}

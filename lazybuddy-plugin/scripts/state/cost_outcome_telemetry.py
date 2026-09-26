@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Final, TypedDict
+from typing import Final, Literal, TypedDict
 
 from state_transaction import Write, commit_locked, locked, recover_locked
 
@@ -13,7 +13,11 @@ RECORD_VERSION: Final = "lazyseries.cost-outcome.v1"
 RETENTION: Final = 20
 
 
-class CostRecord(TypedDict):
+class MeasurementScope(TypedDict, total=False):
+    measurement_scope: Literal["fixture-validation", "execution"]
+
+
+class CostRecord(MeasurementScope):
     schema_version: str
     run_id: str
     project_identity: str
@@ -36,8 +40,10 @@ def parse_record(raw: str) -> CostRecord:
         "tool_invocations", "agent_invocations", "evidence_bytes", "reruns", "rework_count",
         "gate_outcomes", "tokens",
     }
-    if not isinstance(value, dict) or set(value) != required:
+    if not isinstance(value, dict) or not required <= set(value) or set(value) - required - {"measurement_scope"}:
         raise RuntimeError("cost outcome fields are invalid")
+    if "measurement_scope" in value and value["measurement_scope"] not in ("fixture-validation", "execution"):
+        raise RuntimeError("cost outcome measurement scope is invalid")
     if value["schema_version"] != RECORD_VERSION:
         raise RuntimeError("cost outcome schema version is invalid")
     return value

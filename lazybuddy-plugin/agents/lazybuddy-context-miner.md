@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-context-miner
 description: "Context mining agent for 5-agent review: mines git history, docs, and cross-references for context the review may have missed."
-model: default
 effort: medium
 maxTurns: 20
 tools:

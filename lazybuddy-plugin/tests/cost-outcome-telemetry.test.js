@@ -31,11 +31,12 @@ function readStore(projectRoot) {
 function assertSchema(record) {
   assert.deepEqual(validateCostOutcome(record), { ok: true, errors: [] });
   assert.deepEqual(Object.keys(record).sort(), [
-    'agent_invocations', 'elapsed_ms', 'evidence_bytes', 'gate_outcomes', 'project_identity',
+    'agent_invocations', 'elapsed_ms', 'evidence_bytes', 'gate_outcomes', 'measurement_scope', 'project_identity',
     'reruns', 'rework_count', 'risk_reason', 'route', 'run_id', 'schema_version', 'tokens',
     'tool_invocations',
   ]);
   assert.equal(record.schema_version, 'lazyseries.cost-outcome.v1');
+  assert.equal(record.measurement_scope, 'fixture-validation');
   assert.ok(Number.isInteger(record.elapsed_ms) && record.elapsed_ms >= 0);
 }
 

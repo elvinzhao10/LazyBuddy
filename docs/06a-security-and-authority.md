@@ -4,7 +4,7 @@ LazyBuddy's local checks are useful evidence, but they are never authority to
 change a host, access a credential, or claim that a host integration is live.
 The selected CodeBuddy or WorkBuddy session remains the authority for that
 host's plugin loading, hooks, and MCP connection. Published verification is
-**macOS only**.
+Automated package checks run in CI on Ubuntu and macOS as defined by the workflows. Host activation still requires current-session observation; the supplied host reports are historical macOS observations.
 
 ## What the package policy protects
 

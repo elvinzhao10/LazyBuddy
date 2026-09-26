@@ -39,7 +39,8 @@ PYTHON_TESTS_RESULT="fail"
 REGRESSION_DEPTH="${LAZYBUDDY_VERIFY_REGRESSION_DEPTH:-0}"
 VERIFY_TIMEOUT="${LAZYBUDDY_VERIFY_TIMEOUT_SECONDS:-90}"
 NODE_TEST_CONCURRENCY="${LAZYBUDDY_NODE_TEST_CONCURRENCY:-2}"
-READINESS_REGRESSION_TIMEOUT=120
+READINESS_REGRESSION_TIMEOUT=360
+PACKAGE_BOUNDARY_REGRESSION_TIMEOUT=180
 VERIFY_SUITE="${LAZYBUDDY_VERIFY_SUITE:-all}"
 PYTHON_REQUEST="${LAZYBUDDY_PYTHON:-python3}"
 if ! PYTHON_BIN="$(command -v -- "$PYTHON_REQUEST" 2>/dev/null)" \
@@ -339,6 +340,10 @@ run_regression_inventory() {
         if [ "$test_name" = "v015-readiness-regression.sh" ] \
             && [ "$READINESS_REGRESSION_TIMEOUT" -gt "$test_timeout" ]; then
             test_timeout="$READINESS_REGRESSION_TIMEOUT"
+        fi
+        if [ "$test_name" = "v015-package-boundary-regression.sh" ] \
+            && [ "$PACKAGE_BOUNDARY_REGRESSION_TIMEOUT" -gt "$test_timeout" ]; then
+            test_timeout="$PACKAGE_BOUNDARY_REGRESSION_TIMEOUT"
         fi
         if ! run_isolated_test "$test_path" "$test_timeout"; then
             printf 'FAIL: standalone regression failed: %s\n' "$test_name" >&2

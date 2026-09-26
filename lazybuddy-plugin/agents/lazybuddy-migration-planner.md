@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-migration-planner
 description: "Creates host-adapter plans for porting earlier host implementation semantics to future platforms. Requires canonical repo inspection in local project documentation plus semantic mapping."
-model: default
 effort: high
 maxTurns: 50
 tools:

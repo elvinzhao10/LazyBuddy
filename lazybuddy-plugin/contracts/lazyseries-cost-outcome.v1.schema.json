@@ -16,6 +16,7 @@
     "route": { "enum": ["direct", "affected", "comprehensive"] },
     "risk_reason": { "$ref": "#/$defs/identity" },
     "elapsed_ms": { "$ref": "#/$defs/nonnegative_integer" },
+    "measurement_scope": { "enum": ["fixture-validation", "execution"], "description": "Scope of elapsed time and counters. Absent means unspecified, never inferred to be a live task." },
     "tool_invocations": { "$ref": "#/$defs/nonnegative_integer" },
     "agent_invocations": { "$ref": "#/$defs/nonnegative_integer" },
     "evidence_bytes": { "$ref": "#/$defs/nonnegative_integer" },

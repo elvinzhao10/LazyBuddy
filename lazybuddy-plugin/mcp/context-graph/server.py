@@ -18,6 +18,7 @@ from jsonrpc import serve
 
 
 USE_RG = shutil.which("rg") is not None
+IMPORT_SCAN_LIMIT = 10000
 EXCLUDES = [".git", "node_modules", "dist", "build", ".next", ".lazybuddy", "reference", ".workbuddy"]
 
 
@@ -39,14 +40,47 @@ def grep_lines(pattern, is_regex=True):
         return []
 
 
-def grep_files(pattern, is_regex=True):
-    return sorted({l.split(":", 1)[0] for l in grep_lines(pattern, is_regex=is_regex)})
-
-
 def stem(path):
     b = os.path.basename(path)
     b = re.sub(r"\.(ts|tsx|js|jsx|py|go|rs|java|rb|php|cs|c|cc|h|hpp|md)$", "", b)
     return b
+
+
+def literal_imports(line):
+    return re.findall(r"(?:\bfrom\s*|\bimport\s*|\brequire\s*\()\s*['\"]([^'\"]+)['\"]", line)
+
+
+def imports_target(importer, spec, target):
+    resolved = resolved_relative_import(importer, spec)
+    return resolved == os.path.normpath(target)
+
+
+def resolved_relative_import(importer, spec):
+    if not spec.startswith("."):
+        return None
+    base = os.path.normpath(os.path.join(os.path.dirname(importer), spec))
+    candidates = [base]
+    for ext in [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".json"]:
+        candidates.append(base + ext)
+    for ext in [".ts", ".js", ".py"]:
+        candidates.append(os.path.join(base, "index" + ext))
+    for candidate in candidates:
+        try:
+            candidate_path = resolve_repo_path(CWD, candidate)
+        except PathBoundaryError:
+            continue
+        if os.path.isfile(candidate_path):
+            return os.path.relpath(candidate_path, os.path.realpath(CWD))
+    return None
+
+
+def literal_includes(line):
+    return re.findall(r"#include\s+[\"<]([^\">]+)[\">]", line)
+
+
+def includes_target(importer, spec, target):
+    resolved = os.path.normpath(os.path.join(os.path.dirname(importer), spec))
+    return resolved == os.path.normpath(target)
 
 
 def handle(req, notification):
@@ -86,19 +120,23 @@ def handle(req, notification):
             if tool == "blast_radius":
                 path = args["path"]
                 name = re.escape(stem(path))
-                q = chr(39)  # single quote
-                pats = [
-                    r"from\s+[" + q + chr(34) + r"][^" + q + chr(34) + r"]*" + name + r"[" + q + chr(34) + r"]",
-                    r"require\([^)]*" + name + r"[^)]*\)",
-                    r"import\s+[" + q + chr(34) + r"][^" + q + chr(34) + r"]*" + name,
-                    r"#include\s+[\"<][^\">]*" + name,
-                ]
+                pattern = (
+                    r"(from[[:space:]]*|import[[:space:]]*|require[[:space:]]*\()[[:space:]]*['\"]([^'\"]*/)?"
+                    + name + r"(\.[^'\"]+)?['\"]|#include[[:space:]]+[\"<]([^\">]*/)?"
+                    + name + r"(\.[^\">]+)?[\">]"
+                )
                 hits = set()
-                for p in pats:
-                    for l in grep_lines(p):
-                        f = l.split(":", 1)[0]
-                        if f != path:
-                            hits.add(f)
+                for l in grep_lines(pattern):
+                    fields = l.split(":", 2)
+                    if len(fields) != 3:
+                        continue
+                    f, _, source = fields
+                    f = os.path.normpath(f)
+                    if f != os.path.normpath(path) and (
+                        any(imports_target(f, spec, path) for spec in literal_imports(source))
+                        or any(includes_target(f, spec, path) for spec in literal_includes(source))
+                    ):
+                        hits.add(f)
                 out = "blast_radius for %s (%d dependents):\n" % (path, len(hits))
                 for f in sorted(hits)[:100]:
                     out += "  " + f + "\n"
@@ -163,18 +201,30 @@ def handle(req, notification):
 
             elif tool == "repo_overview":
                 limit = args.get("limit", 20)
-                srcs = grep_files(r"\.(ts|tsx|js|jsx|py|go|rs|java|rb)$")
-                scores = []
-                for s in srcs[:500]:
-                    nm = re.escape(stem(s))
-                    q = chr(39)
-                    p = r"from\s+[" + q + chr(34) + r"][^" + q + chr(34) + r"]*" + nm + r"[" + q + chr(34) + r"]|require\([^)]*" + nm
-                    cnt = len({l.split(":", 1)[0] for l in grep_lines(p) if l.split(":", 1)[0] != s})
-                    if cnt > 0:
-                        scores.append((cnt, s))
+                import_pattern = r"(from[[:space:]]*|import[[:space:]]*|require[[:space:]]*\()[[:space:]]*['\"][^'\"]+['\"]"
+                lines = grep_lines(import_pattern)
+                scan_truncated = len(lines) > IMPORT_SCAN_LIMIT
+                importers = {}
+                for line in lines[:IMPORT_SCAN_LIMIT]:
+                    fields = line.split(":", 2)
+                    if len(fields) != 3:
+                        continue
+                    source, _, text = fields
+                    source = os.path.normpath(source)
+                    for spec in literal_imports(text):
+                        target = resolved_relative_import(source, spec)
+                        if target and target != source:
+                            importers.setdefault(target, set()).add(source)
+                scores = [(len(sources), target) for target, sources in importers.items()]
                 scores.sort(reverse=True)
-                out = "repo_overview — top %d by incoming refs:\n" % min(limit, len(scores))
-                for cnt, s in scores[:limit]:
+                shown = scores[:limit]
+                out = "repo_overview — top %d of %d by incoming refs" % (len(shown), len(scores))
+                if len(shown) < len(scores):
+                    out += " (truncated)"
+                if scan_truncated:
+                    out += " (scan truncated at %d matching lines)" % IMPORT_SCAN_LIMIT
+                out += ":\n"
+                for cnt, s in shown:
                     out += "  %3d  %s\n" % (cnt, s)
                 tool_result(out)
 

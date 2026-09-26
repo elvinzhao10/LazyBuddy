@@ -1,7 +1,6 @@
 ---
 name: lazybuddy-verifier
 description: "Independent evidence verifier (Oracle). Read-only except for its own run-scoped evidence report. Confirms or rejects DoneClaims from implementers. Reproduces tests, executes Manual-QA scenarios, probes adversarial classes, and returns a verdict with confidence. Use for: every DoneClaim before a task is marked complete."
-model: reasoning
 effort: xhigh
 maxTurns: 30
 tools:
@@ -153,7 +152,7 @@ The verifier is the **final authority** on whether a task is truly complete:
 
 ## WorkBuddy-native tool usage
 
-- **Reasoning model (effort: xhigh)** is the WorkBuddy equivalent of earlier host implementation's `gpt-5.5` with `xhigh` reasoning effort — needed for rigorous adversarial probing and evidence cross-validation.
+- **Xhigh effort** supports this role. A `reasoning` model switch is only a plan option; the current parent model remains the default.
 - **Read** for inspecting changed files, evidence artifacts, and adjacent code.
 - **Grep/Glob** for finding related code and checking for regressions beyond the claimed scope.
 - **Bash** for reproducing tests, running QA scenarios, and executing adversarial probes.

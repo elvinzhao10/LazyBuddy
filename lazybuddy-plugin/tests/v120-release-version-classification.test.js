@@ -27,8 +27,8 @@ test('v1.3.2 release versions are classified with one current root release note'
   assert.deepEqual(classify(ROOT).failures, []);
 });
 
-test('classifier rejects a current 1.2.3 claim even when migration wording is present', () => {
-  const root = mutate('README.md', text => `${text}\nCurrent supported release is 1.2.3 for migration compatibility.\n`);
+test('classifier rejects a current 1.3.0 claim even when migration wording is present', () => {
+  const root = mutate('README.md', text => `${text}\nCurrent supported release is 1.3.0 for migration compatibility.\n`);
   try {
     const result = spawnSync(process.execPath, [path.resolve(__dirname, '../scripts/release-version-classifier.js'), root], { encoding: 'utf8' });
     assert.equal(result.status, 1);
@@ -46,7 +46,7 @@ for (const [name, relativePath, transform, failure] of [
 ]) {
   test(`classifier rejects ${name} in a copy`, () => {
     const root = mutate(relativePath, transform);
-    if (name === 'superseded versioned release note') fs.writeFileSync(path.join(root, 'RELEASE_NOTES-v1.2.2.md'), 'old note\n');
+    if (name === 'superseded versioned release note') fs.writeFileSync(path.join(root, 'RELEASE_NOTES-v1.3.0.md'), 'old note\n');
     try { assert.ok(classify(root).failures.some(item => item.includes(failure))); }
     finally { fs.rmSync(root, { recursive: true, force: true }); }
   });

@@ -87,6 +87,11 @@ jobs:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: release-package-${{ env.RELEASE_TAG }}
@@ -105,6 +110,6 @@ jobs:
           else
             gh release create "$RELEASE_TAG" "$asset_name" \
               --verify-tag \
-              --generate-notes \
+              --notes-file RELEASE_NOTES.md \
               --title "LazyBuddy $RELEASE_TAG"
           fi

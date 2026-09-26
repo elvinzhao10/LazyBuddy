@@ -1,9 +1,9 @@
 # Host routes
 
-## Current v1.3.0 route and evidence status
+## Published v1.3.1 route and host status
 
-This guide is the current v1.3.0 documentation boundary for `codebuddy-cli`,
-`codebuddy-ide`, and `workbuddy`; it does not publish a v1.3.0 package.
+This guide is the v1.3.1 documentation boundary for `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`; v1.3.1 is the published stable release.
 Marketplace is the default full-plugin route for CodeBuddy IDE and WorkBuddy.
 The manual Skills/MCP route is recovery-only and mutually exclusive with a
 full-plugin route for one project.
@@ -19,7 +19,7 @@ Automatic workflow selection chooses the smallest sufficient existing workflow
 from task risk and complexity. Before a current host observation it is
 selection-only, not evidence that a host loaded or dispatched that workflow.
 
-Require **Node.js LTS 20 or newer** and **Git**. Bootstrap `onboard` only from
+Require **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**. The lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard` only from
 `https://github.com/elvinzhao10/LazyBuddy.git`; then run `update`, `status`,
 and plan-first `offboard` through
 `node "<install-root>/LazyBuddy/launcher.js"`. The exact durable tree is
