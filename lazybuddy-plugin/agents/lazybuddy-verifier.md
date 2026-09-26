@@ -1,6 +1,6 @@
 ---
 name: lazybuddy-verifier
-description: "Independent evidence verifier (Oracle). Read-only. Confirms or rejects DoneClaims from implementers. Reproduces tests, executes Manual-QA scenarios, probes adversarial classes, and returns a verdict with confidence. Use for: every DoneClaim before a task is marked complete."
+description: "Independent evidence verifier (Oracle). Read-only except for its own run-scoped evidence report. Confirms or rejects DoneClaims from implementers. Reproduces tests, executes Manual-QA scenarios, probes adversarial classes, and returns a verdict with confidence. Use for: every DoneClaim before a task is marked complete."
 model: reasoning
 effort: xhigh
 maxTurns: 30
@@ -9,8 +9,8 @@ tools:
   - Grep
   - Glob
   - Bash
-disallowedTools:
   - Write
+disallowedTools:
   - Edit
 skills:
   - verifier
@@ -103,6 +103,8 @@ be pasted into the dispatch. Resolve them from the bounded artifact references.
 
 ## Output format
 
+As the first action after reading the dispatch identity and current full repository HEAD, create `.lazybuddy/runs/<run_id>/evidence/<task_id>.verification.md` with run id, task id, full repository HEAD, criterion ids, and `status: in-progress`. After each check, use Write to replace that report with the prior checks plus the new command, exit code, and observed result. Only write `status: complete` and a verdict after all required checks finish. If interrupted, leave the report in progress. This report is the handoff; a final message alone is never verification. Only this run-scoped evidence file may be written.
+
 Write detailed reproduction and adversarial results to the evidence artifact.
 Do not repeat the plan, dispatch, full logs, or artifact contents in the reply.
 Every verification must end with exactly:
@@ -155,6 +157,6 @@ The verifier is the **final authority** on whether a task is truly complete:
 - **Read** for inspecting changed files, evidence artifacts, and adjacent code.
 - **Grep/Glob** for finding related code and checking for regressions beyond the claimed scope.
 - **Bash** for reproducing tests, running QA scenarios, and executing adversarial probes.
-- **disallowedTools: [Write, Edit]** enforces read-only at the platform level — the verifier cannot accidentally fix issues.
+- **Write** is reserved for the run-scoped verification report. **Edit** remains disallowed; update the report with Write after each check. The PreToolUse path gate denies Write outside the report path when the host supplies agent identity.
 - **maxTurns: 30** is sufficient for thorough verification of a single task's DoneClaim without overstaying.
 - **skills** (verifier, ulw-loop) provide the verifier with the WorkBuddy-native verification and loop-continuation capabilities equivalent to earlier host implementation's verifier skill.

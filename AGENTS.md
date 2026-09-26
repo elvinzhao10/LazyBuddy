@@ -4,9 +4,9 @@ LazyBuddy supports CodeBuddy IDE, CodeBuddy CLI, and WorkBuddy. It is verified
 on macOS only. Package files, host settings, credentials, marketplace state,
 and live sessions remain separate authorities.
 
-## Current documentation release: v1.3.0
+## Current documentation release: v1.3.2
 
-This v1.3.0 guide names current human-facing boundaries only. It does not
+This v1.3.2 guide names current human-facing boundaries only. It does not
 publish a package or promote package evidence to host proof. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;

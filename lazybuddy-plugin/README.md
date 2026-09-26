@@ -1,6 +1,6 @@
 # LazyBuddy Plugin
 
-## Durable v1.3.0 installation
+## Durable v1.3.2 installation
 
 **Node.js LTS 20 or newer** and **Git** are required. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use

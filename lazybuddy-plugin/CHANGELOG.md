@@ -1,5 +1,12 @@
 # LazyBuddy Plugin Changelog
 
+## [1.3.2] - 2026-09-25 (release candidate)
+
+- Verifier reports are written incrementally to run-scoped evidence and tied to current task identity before completion.
+- Stage checks use focused scopes and a compact digest; completion events replace active polling and guessed worker death.
+- Role-aware hooks deny orchestrator product writes and verifier writes outside the report path when agent identity is present.
+- Package version, runtime identity, and marketplace inventories are aligned; live host readiness remains pending.
+
 > **Historical/non-operational record.** This dated change history is retained for context only. In a repository checkout, current guidance is in `README.md`, `AGENTS.md`, and `lazybuddy-plugin/README.md`; a copied package should use its local `README.md`.
 
 ## v1.2.3 — Platform compatibility patch (2026-09-14)

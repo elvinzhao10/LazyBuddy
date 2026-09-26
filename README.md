@@ -7,12 +7,14 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current release package is v1.3.0. It is prepared for publication; package
+The current release package is v1.3.2. It is prepared for publication; package
 checks do not by themselves publish a tag or prove a host loaded it.
 
-## New in v1.3.0: work the way you talk
+v1.3.2 adds durable verifier reports and bounded stage verification. See [release notes](RELEASE_NOTES.md).
 
-v1.3.0 is a major workflow release. You no longer need to remember commands —
+## Introduced in v1.3.0: work the way you talk
+
+v1.3.0 introduced the major workflow release. You no longer need to remember commands —
 the harness meets you at the level of your request.
 
 ### Just ask, or use a command — both work
