@@ -6,6 +6,62 @@ set -euo pipefail
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null || echo "")
 
+# Enforce role-scoped writes when the host supplies agent identity.
+ROLE_WRITE_DENIED=$(printf '%s' "$INPUT" | python3 -c '
+import json, os, sys
+try:
+    event = json.load(sys.stdin)
+except (ValueError, TypeError):
+    raise SystemExit(0)
+roles = {event.get(key) for key in ("agent_type", "agent_type_name", "agent_name", "subagent_type") if isinstance(event.get(key), str)}
+role = "lazybuddy-verifier" if "lazybuddy-verifier" in roles else "lazybuddy-orchestrator" if "lazybuddy-orchestrator" in roles else ""
+tool = event.get("tool_name")
+if tool not in ("Write", "Edit") or role not in ("lazybuddy-orchestrator", "lazybuddy-verifier"):
+    raise SystemExit(0)
+tool_input = event.get("tool_input")
+if not isinstance(tool_input, dict):
+    print("deny")
+    raise SystemExit(0)
+path = next((tool_input.get(key) for key in ("file_path", "path", "filePath") if isinstance(tool_input.get(key), str)), "")
+cwd = event.get("cwd") if isinstance(event.get("cwd"), str) else os.getcwd()
+root = os.path.realpath(os.path.join(cwd, ".lazybuddy"))
+target = os.path.realpath(os.path.join(cwd, path)) if path else ""
+inside = target.startswith(root + os.sep)
+if os.path.islink(os.path.join(cwd, ".lazybuddy")):
+    print("deny")
+    raise SystemExit(0)
+if role == "lazybuddy-orchestrator":
+    relative = os.path.relpath(target, root).split(os.sep) if inside else []
+    verifier_report = len(relative) == 4 and relative[0] == "runs" and relative[2] == "evidence" and relative[3].endswith(".verification.md")
+    allowed = inside and not verifier_report
+else:
+    relative = os.path.relpath(target, root).split(os.sep) if inside else []
+    allowed = tool == "Write" and len(relative) == 4 and relative[0] == "runs" and relative[2] == "evidence" and relative[3].endswith(".verification.md")
+    if allowed:
+        active_runs = []
+        try:
+            for entry in os.scandir(os.path.join(root, "runs")):
+                state_path = os.path.join(entry.path, "state.json")
+                if not entry.is_dir(follow_symlinks=False) or os.path.islink(state_path):
+                    continue
+                try:
+                    with open(state_path, encoding="utf-8") as state_file:
+                        status = json.load(state_file).get("status")
+                except (OSError, ValueError, TypeError, AttributeError):
+                    continue
+                if status in ("active", "paused", "created", "planning", "executing", "blocked", "verifying", "reviewing"):
+                    active_runs.append(entry.name)
+        except OSError:
+            pass
+        allowed = active_runs == [relative[1]] and (not isinstance(event.get("run_id"), str) or event["run_id"] == relative[1])
+if not allowed:
+    print("deny")
+' 2>/dev/null || true)
+if [ -n "$ROLE_WRITE_DENIED" ]; then
+    echo '{"continue":false,"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Agent write is outside its permitted run-state or verification-report path."}}'
+    exit 0
+fi
+
 # --- DENY: Secret-like paths ---
 STRUCTURED_SECRET_PATTERN=$(printf '%s' "$INPUT" | python3 -c '
 import json

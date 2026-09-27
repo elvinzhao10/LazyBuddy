@@ -144,6 +144,12 @@ For each checkbox, complete FIVE gates:
 4. **Adversarial QA:** Probe every applicable ultraqa class
 5. **Cleanup:** Tear down QA resources; capture receipts
 
+Before the verifier runs tests, require `.lazybuddy/runs/<run_id>/evidence/<task_id>.verification.md` with `status: in-progress` and the run/task/full HEAD/criterion identity. The verifier appends each result as it completes and writes a terminal `status: complete` verdict only after independent reproduction. A missing, in-progress, stale, or identity-mismatched report blocks the checkbox even when an agent completion notification or prose verdict says `confirmed`. Reuse green scoped receipts; run the whole matrix once at task closure. Refresh a compact `.lazybuddy/context/run-digest.md` after each stage and wait on completion events instead of polling. Do not re-dispatch a worker while evidence or owned files are changing.
+
+Before a new dispatch, check shell access, the dependency store, and any available quota/reset signal. Record a working dependency command once in the run digest; after a sandbox or store failure, stop heavy dispatch until the host is healthy. Narrow a timed-out search by path or symbol instead of repeating the same broad query. Do not start a heavy verifier within 60 minutes of a known quota reset. Keep the digest under 2,000 tokens and ship its path rather than the full plan. Read each target before writing it and re-read after another actor changes it.
+
+Before marking a task done, compare the current HEAD and dirty paths with the dispatch, run `scripts/state/sync-plan-state.sh <run_id>` in check mode, and confirm every fold-forward ID has a landed artifact or remains an explicit blocker. Check that the plan's owner decision gates are closed for this task; a recommendation is not approval. If a task was split, update the plan's task IDs, dependencies, owner, and baseline HEAD before further dispatch. Corrections to prior ledger events must append a machine-readable superseding event naming the old event ID; do not rewrite or silently reinterpret history.
+
 Append evidence to `.lazybuddy/runs/<run_id>/events.jsonl`.
 
 Classify every criterion as `static`, `runtime`, or `stateful`. A runtime

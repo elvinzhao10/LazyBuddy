@@ -54,7 +54,7 @@ import sys
 plan_file, plan_tmp, state_file, state_tmp, events_file, events_tmp, now, run_id, task_label = sys.argv[1:]
 label = task_label.lower()
 
-# --- v1.3.0 T4: compare-before-write + atomic replacement for agent edits ---
+# --- v1.3.2 T4: compare-before-write + atomic replacement for agent edits ---
 # Record the bytes the agent based this edit on; the transaction layer replaces
 # atomically, and a concurrent human edit is detected by sha mismatch so the
 # caller can re-read and merge only its own checkbox line.

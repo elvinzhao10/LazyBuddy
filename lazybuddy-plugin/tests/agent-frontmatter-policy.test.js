@@ -19,7 +19,6 @@ const readonlyNames = new Set([
   'lazybuddy-planner',
   'lazybuddy-reviewer',
   'lazybuddy-security-auditor',
-  'lazybuddy-verifier',
 ]);
 
 function copyAgents() {
@@ -71,6 +70,10 @@ test('Given the shipped agents When policy validation runs Then the native isola
     new Set(report.agents.filter((agent) => agent.isolation === 'worktree').map((agent) => agent.name)),
     new Set(['lazybuddy-implementer', 'lazybuddy-orchestrator']),
   );
+  const verifier = report.agents.find((agent) => agent.name === 'lazybuddy-verifier');
+  assert.equal(verifier.tools.includes('Write'), true);
+  assert.equal(verifier.tools.includes('Edit'), false);
+  assert.equal(verifier.disallowedTools.includes('Edit'), true);
   for (const agent of report.agents) {
     if (!readonlyNames.has(agent.name)) continue;
     assert.equal(agent.tools.includes('Write'), false, `${agent.name} must not expose Write`);

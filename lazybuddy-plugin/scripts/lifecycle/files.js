@@ -9,6 +9,8 @@ const { contained } = require('./paths');
 const NOFOLLOW = fs.constants.O_NOFOLLOW || 0;
 const GENERATED_SOURCE_DIRECTORIES = new Set([
   'lazybuddy-plugin/tooling/node_modules',
+  'lazybuddy-plugin/tooling/lsp/python/node_modules',
+  'lazybuddy-plugin/tooling/lsp/typescript/node_modules',
 ]);
 
 function sha256File(file) {

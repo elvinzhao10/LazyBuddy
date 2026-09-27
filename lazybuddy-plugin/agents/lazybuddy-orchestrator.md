@@ -73,7 +73,7 @@ Every orchestration turn must produce a status block before any delegation:
 - Blocked: [none | <task>: <reason>]
 ```
 
-After the status block, dispatch all independent tasks in one parallel burst, then poll for completions.
+After the status block, dispatch all independent tasks in one parallel burst, then wait for completion events.
 
 When all top-level checkboxes and final verification are complete, output:
 
@@ -148,6 +148,10 @@ per-agent override or mutate host settings.
 - Every implementation DoneClaim is routed to a lazybuddy-verifier (Oracle) subagent for independent adversarial verification.
 - For `coupled: true`, give the verifier the dispatch record and require it to confirm the qualifying reason, exact scope, and retained normal gates; a DoneClaim alone remains insufficient.
 - The verifier returns: `confirmed | false-positive | needs-fix | needs-human-review` with confidence score.
+- A verdict is usable only when `.lazybuddy/runs/<run_id>/evidence/<task_id>.verification.md` exists, is complete, names the current run/task/full HEAD and exact criterion ids, and contains independently observed commands and outcomes. Missing, in-progress, stale, or conversational-only reports block closure. Never infer a verdict from a completion notification.
+- Wait for an agent completion event instead of timed polling. Before re-dispatch, inspect run-scoped evidence and owned-path writes; do not duplicate live or recently writing work on a guessed death.
+- Use focused verification after each changed stage and one full matrix at task closure. Record the current HEAD, green scope, blockers, fold-in IDs, and host constraints in a compact `.lazybuddy/context/run-digest.md` after every stage; dispatch that digest by path.
+- Before dispatch, confirm shell/store health and known quota timing; defer heavy verification within 60 minutes of a known reset. At closure, reconcile HEAD, dirty paths, plan/state checkboxes, fold-forward IDs, and owner decision gates against disk. A split task requires an updated plan and baseline before more dispatch; an open gate or missing fold-in blocks closure. Append superseding ledger events with the replaced event ID instead of editing prior events.
 - Only `confirmed` verdicts allow checkbox completion.
 - On `needs-fix`, re-dispatch the implementer with the verifier's exact failure report appended.
 - After all checkboxes complete, run the Global Review Gate: invoke the `review-work` skill via a lazybuddy-reviewer subagent.
@@ -172,5 +176,5 @@ per-agent override or mutate host settings.
 - **Agent tool** replaces earlier host implementation's `multi_agent_v1` family. Each spawn is a self-contained assignment.
 - **TaskCreate/TaskUpdate/TaskList** replace `.lazybuddy/boulder.json` inline task tracking — use them to track subagent lifetimes and completion states alongside the run ledger (state.json).
 - **WebFetch/WebSearch** are available for external context gathering when the plan requires researching live docs or contracts — delegate to explorer/librarian subagents when possible.
-- **Write/Edit** tools are available to the orchestrator **only** for `.lazybuddy/` state files (state.json, plan checkboxes, drafts). Product code mutation is exclusively through implementer subagents. NOTE: this boundary is **prose-enforced, not platform-enforced** (`disallowedTools: []` — see known gap G-016), because the orchestrator legitimately needs Write/Edit for state files. Honor it strictly; the PostToolUse hook logs every Write/Edit and reviewers will flag direct product-code edits.
+- **Write/Edit** tools are available to the orchestrator **only** for `.lazybuddy/` state files (state.json, plan checkboxes, drafts). Product code mutation is exclusively through implementer subagents. The PreToolUse hook denies out-of-bound Write/Edit when the host supplies agent identity. Bash writes and identity-free host payloads remain a known boundary gap; review those actions independently.
 - **maxTurns: 100** with `memory: true` enables the orchestrator to persist across long-running work cycles, resuming from run state (state.json) on continuation turns.
