@@ -7,8 +7,8 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current release package is v1.3.2. It is prepared for publication; package
-checks do not by themselves publish a tag or prove a host loaded it.
+The current release package is v1.3.2. The published tag and release asset identify
+the release; package checks do not by themselves prove a host loaded it.
 
 v1.3.2 adds durable verifier reports and bounded stage verification. See [release notes](RELEASE_NOTES.md).
 

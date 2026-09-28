@@ -1,6 +1,6 @@
 # LazyBuddy v1.3.2 — durable verification handoff
 
-**Status:** Draft release candidate. Local source and publication checks passed, and PR #38 checks passed. Fresh CodeBuddy and WorkBuddy activation remains pending.
+**Status:** v1.3.2 release. Source, publication, and main-branch CI checks passed. Fresh CodeBuddy and WorkBuddy activation remains pending; package verification alone does not establish host readiness.
 
 ## Eval-driven fixes
 
@@ -11,6 +11,10 @@
 ## Measured efficiency
 
 The B3 postmortem identifies repeated whole-suite verification and polling as major token sinks. v1.3.2 has no measured token, latency, or cost reduction yet.
+
+## Release verification
+
+PR #38 and the merged main branch passed CI. The tag-triggered release workflow separately verifies the package and publication archive before attaching its release asset. Treat the attached archive and workflow result as the publication evidence; confirm Skills, commands, agents, hooks, and MCP connections in a fresh host session before claiming live readiness.
 
 ## Host capability matrix
 
