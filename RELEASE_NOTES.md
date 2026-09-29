@@ -1,6 +1,6 @@
 # LazyBuddy v1.3.3 — reliability and release consistency
 
-**Status:** local release candidate. Package, lifecycle, and publication checks passed locally; fresh CodeBuddy and WorkBuddy activation and release publication have not been observed.
+**Status:** v1.3.3 release. Package, lifecycle, and publication checks passed locally and in PR CI. Fresh CodeBuddy and WorkBuddy activation remains pending.
 
 ## Eval-driven fixes
 
