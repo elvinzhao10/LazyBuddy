@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import signal
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -222,6 +223,25 @@ def cleanup_owned_processes(
             return _receipt(CleanupStatus.VERIFIED_ABSENT, tracker)
         if refused_detail:
             return _receipt(CleanupStatus.SIGNAL_REFUSED, tracker, refused_detail)
+        if signal_number == signal.SIGKILL:
+            settle_deadline = time.monotonic() + 0.5
+            while time.monotonic() < settle_deadline:
+                time.sleep(0.02)
+                settled = inspector()
+                match settled:
+                    case InspectionUnavailable(reason=reason):
+                        return _receipt(CleanupStatus.INSPECTION_UNAVAILABLE, tracker, reason)
+                    case InspectionAvailable():
+                        tracker = tracker.observe(settled)
+                        remaining, escaped, identity_changed, foreign_group_member = _current_owned(tracker, settled)
+                    case unreachable:
+                        assert_never(unreachable)
+                if identity_changed or foreign_group_member:
+                    return _receipt(CleanupStatus.IDENTITY_CHANGED, tracker, "process identity changed during cleanup")
+                if escaped:
+                    return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "tracked descendant left owned group")
+                if not remaining:
+                    return _receipt(CleanupStatus.VERIFIED_ABSENT, tracker)
     return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "owned process survived TERM and KILL")
 
 

@@ -46,12 +46,15 @@ def unavailable(reason: str):
 
 
 class SequenceInspector:
-    def __init__(self, *results) -> None:
+    def __init__(self, *results, repeat_last: bool = False) -> None:
         self._results = list(results)
+        self._last = results[-1] if repeat_last else None
 
     def __call__(self):
-        assert self._results, "inspection sequence exhausted"
-        return self._results.pop(0)
+        if self._results:
+            return self._results.pop(0)
+        assert self._last is not None, "inspection sequence exhausted"
+        return self._last
 
 
 class RecordingSignaler:
@@ -65,12 +68,12 @@ class RecordingSignaler:
         return self._results.pop(0)
 
 
-def cleanup_case(name: str, observations, signal_results, expected: str, expected_groups: list[int]) -> None:
+def cleanup_case(name: str, observations, signal_results, expected: str, expected_groups: list[int], repeat_last: bool = False) -> None:
     tracker = runner.OwnershipTracker.establish(root, available(root, child))
     signaler = RecordingSignaler(*signal_results)
     receipt = runner.cleanup_owned_processes(
         tracker,
-        SequenceInspector(*observations),
+        SequenceInspector(*observations, repeat_last=repeat_last),
         signaler,
     )
     assert receipt.status.value == expected, (name, receipt)
@@ -98,6 +101,14 @@ cleanup_case(
     (available(child), available(child), available(child), available(child)),
     (runner.SignalResult.sent(), runner.SignalResult.sent()),
     "verified-remaining",
+    [4100, 4100],
+    repeat_last=True,
+)
+cleanup_case(
+    "process exits just after KILL inspection",
+    (available(child), available(child), available(child), available(child), available()),
+    (runner.SignalResult.sent(), runner.SignalResult.sent()),
+    "verified-absent",
     [4100, 4100],
 )
 cleanup_case("PID start identity reuse", (available(reused),), (), "identity-changed", [])
