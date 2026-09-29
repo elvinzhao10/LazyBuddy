@@ -1,3 +1,34 @@
+# LazyBuddy v1.3.3 — reliability and release consistency
+
+**Status:** local release candidate. Package, lifecycle, and publication checks passed locally; fresh CodeBuddy and WorkBuddy activation and release publication have not been observed.
+
+## Eval-driven fixes
+
+- Restricted-role hook decisions now normalize identity, reject conflicting identities and malformed or oversized mutating input, and deny unrestricted shell dispatch.
+- A deferred optional MCP server provides a valid protocol endpoint. Python bytecode caches are excluded consistently from package inventory and archive selection.
+
+## Measured efficiency
+
+No token, latency, or cost improvement has been measured for this patch.
+
+## Host capability matrix
+
+Package checks exercise CodeBuddy and WorkBuddy routes. Fresh host activation and MCP behavior still require observation on a recorded build and session.
+
+## Migration and upgrade
+
+Update from v1.3.2 through the normal host route. Preserve caller state and verify the installed package identity.
+
+## Known risks
+
+Role enforcement depends on trusted host identity and an explicitly restricted run. Package checks do not establish host sandboxing or live connection health.
+
+## Rollback
+
+Use lifecycle rollback to the prior verified v1.3.2 release while preserving run evidence and caller state.
+
+## Prior release notes
+
 # LazyBuddy v1.3.2 — durable verification handoff
 
 **Status:** v1.3.2 release. Source, publication, and main-branch CI checks passed. Fresh CodeBuddy and WorkBuddy activation remains pending; package verification alone does not establish host readiness.

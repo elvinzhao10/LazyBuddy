@@ -1,12 +1,12 @@
 # LazyBuddy Plugin
 
-## v1.3.2 package candidate
+## v1.3.3 package candidate
 
-This candidate adds durable verification evidence and focused runtime checks. Use the published v1.3.1 instructions below for stable installation.
+This candidate repairs restricted-role hooks, deferred MCP behavior, and package inventory. Use the published v1.3.2 instructions below for stable installation.
 
-The latest published stable release is v1.3.1. Package readiness does not establish host readiness.
+The latest published stable release is v1.3.2. Package readiness does not establish host readiness.
 
-## Durable v1.3.1 installation
+## Durable v1.3.2 installation
 
 **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git** are recommended for new installs; the lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use

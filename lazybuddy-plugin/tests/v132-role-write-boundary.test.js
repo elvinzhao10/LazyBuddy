@@ -9,8 +9,8 @@ const test = require('node:test');
 
 const hook = path.resolve(__dirname, '../scripts/hooks/pre-tool-use.sh');
 
-function callHook(cwd, event) {
-  return spawnSync('bash', [hook], { cwd, input: JSON.stringify({ cwd, ...event }), encoding: 'utf8' });
+function callHook(cwd, event, env = {}) {
+  return spawnSync('bash', [hook], { cwd, input: JSON.stringify({ cwd, ...event }), encoding: 'utf8', env: { ...process.env, ...env } });
 }
 
 function denied(result) {
@@ -48,4 +48,30 @@ test('a linked state root cannot redirect an orchestrator write', (t) => {
     agent_type_name: 'lazybuddy-orchestrator', tool_name: 'Write',
     tool_input: { file_path: '.lazybuddy/state.json' },
   }));
+});
+
+test('restricted identities and malformed mutating input fail through the hook', (t) => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-role-input-'));
+  t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
+  const write = { tool_name: 'Write', tool_input: { file_path: 'product.ts' } };
+  denied(callHook(cwd, { ...write, agent_type: ' LazyBuddy-Verifier ' }));
+  denied(callHook(cwd, { ...write, agent_type: 'lazybuddy-verifier', agent_name: 'lazybuddy-orchestrator' }));
+  denied(callHook(cwd, { tool_name: 'Bash', tool_input: { command: 'touch product.ts' }, agent_name: 'lazybuddy-verifier' }));
+  denied(callHook(cwd, { tool_name: 'RunCommand', tool_input: { command: 'touch product.ts' }, agent_name: 'lazybuddy-verifier' }));
+  denied(callHook(cwd, write, { LAZYBUDDY_RESTRICTED_RUN: '1' }));
+  assert.equal(callHook(cwd, write).status, 0);
+  denied(callHook(cwd, { tool_name: 'Write', tool_input: null }));
+  const malformed = spawnSync('bash', [hook], { cwd, input: '{broken', encoding: 'utf8' });
+  denied(malformed);
+  const nulTerminated = spawnSync('bash', [hook], {
+    cwd, input: Buffer.concat([Buffer.from(JSON.stringify(write)), Buffer.from([0])]), encoding: 'utf8',
+  });
+  denied(nulTerminated);
+  const optimized = spawnSync('bash', [hook], {
+    cwd, input: JSON.stringify({ tool_name: 'Write', tool_input: null }), encoding: 'utf8',
+    env: { ...process.env, PYTHONOPTIMIZE: '1' },
+  });
+  denied(optimized);
+  const oversized = spawnSync('bash', [hook], { cwd, input: JSON.stringify({ ...write, padding: 'x'.repeat(1048576) }), encoding: 'utf8' });
+  denied(oversized);
 });

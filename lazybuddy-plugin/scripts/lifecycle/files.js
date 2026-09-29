@@ -64,6 +64,10 @@ function inventoryTree(root, current, omitGenerated) {
     const absolute = path.join(current, name);
     const relative = path.relative(root, absolute).split(path.sep).join('/');
     const stat = fs.lstatSync(absolute);
+    if (omitGenerated && (name === '__pycache__' || name.endsWith('.pyc'))) {
+      if (name === '__pycache__' ? stat.isDirectory() && !stat.isSymbolicLink() : stat.isFile() && !stat.isSymbolicLink()) continue;
+      throw new LifecycleError('OWNERSHIP_REFUSED', `unsafe generated Python cache: ${relative}`);
+    }
     if (stat.isSymbolicLink()) throw new LifecycleError('OWNERSHIP_REFUSED', `symlinked content: ${relative}`);
     if (stat.isDirectory()) {
       if (omitGenerated && GENERATED_SOURCE_DIRECTORIES.has(relative)) continue;
@@ -88,6 +92,12 @@ function inventoryReleaseSource(root) {
 
 function includeReleaseSource(root, candidate) {
   const relative = path.relative(root, candidate).split(path.sep).join('/');
+  const name = path.basename(candidate);
+  if (name === '__pycache__' || name.endsWith('.pyc')) {
+    const stat = fs.lstatSync(candidate);
+    if (name === '__pycache__' ? stat.isDirectory() && !stat.isSymbolicLink() : stat.isFile() && stat.nlink === 1 && !stat.isSymbolicLink()) return false;
+    throw new LifecycleError('OWNERSHIP_REFUSED', `unsafe generated Python cache: ${relative}`);
+  }
   if (!GENERATED_SOURCE_DIRECTORIES.has(relative)) return true;
   const stat = fs.lstatSync(candidate);
   if (!stat.isDirectory() || stat.isSymbolicLink()) {

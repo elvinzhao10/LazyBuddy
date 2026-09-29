@@ -15,8 +15,10 @@ const {
   parseOfficialSource,
   prepareBootstrapProductRoot,
   prepareProductRoot,
+  promoteRelease,
   productPaths,
   quarantineEmptyProductRoot,
+  stageRelease,
 } = require('../scripts/lifecycle');
 
 const OFFICIAL = 'https://github.com/elvinzhao10/LazyBuddy.git';
@@ -28,15 +30,15 @@ function git(cwd, args) {
   return result.stdout.trim();
 }
 
-function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\\n');\n") {
+function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\\n');\n", version = '1.3.3') {
   const packageRoot = path.join(root, 'lazybuddy-plugin');
   const contracts = path.join(packageRoot, 'contracts');
   fs.mkdirSync(path.join(packageRoot, '.codebuddy-plugin'), { recursive: true });
   fs.mkdirSync(path.join(packageRoot, '.workbuddy-plugin'), { recursive: true });
   fs.mkdirSync(path.join(packageRoot, 'scripts'), { recursive: true });
   fs.mkdirSync(contracts, { recursive: true });
-  fs.writeFileSync(path.join(packageRoot, '.codebuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.3.2"}\n');
-  fs.writeFileSync(path.join(packageRoot, '.workbuddy-plugin', 'plugin.json'), '{"name":"lazybuddy","version":"1.3.2"}\n');
+  fs.writeFileSync(path.join(packageRoot, '.codebuddy-plugin', 'plugin.json'), `${JSON.stringify({ name: 'lazybuddy', version })}\n`);
+  fs.writeFileSync(path.join(packageRoot, '.workbuddy-plugin', 'plugin.json'), `${JSON.stringify({ name: 'lazybuddy', version })}\n`);
   fs.writeFileSync(path.join(packageRoot, 'scripts', 'lazybuddy-lifecycle.js'), "console.log('fixture-launch-ok')\n");
   fs.writeFileSync(path.join(packageRoot, 'scripts', 'lifecycle-self-test.js'), selfTest);
   for (const name of ['lazy-harness-lifecycle.v1.schema.json', 'lazy-harness-lifecycle.v1.example.json']) {
@@ -49,7 +51,7 @@ function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\
   }
 }
 
-function fixture() {
+function fixture(version = '1.3.3') {
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy bootstrap '));
   const remote = path.join(sandbox, 'official fixture.git');
   const source = path.join(sandbox, 'source');
@@ -57,11 +59,11 @@ function fixture() {
   git(source, ['init']);
   git(source, ['config', 'user.email', 'fixture@example.invalid']);
   git(source, ['config', 'user.name', 'Lifecycle Fixture']);
-  writeFixtureFiles(source);
+  writeFixtureFiles(source, undefined, version);
   git(source, ['add', 'lazybuddy-plugin']);
   git(source, ['commit', '-m', 'fixture v1']);
   git(source, ['branch', '-M', 'main']);
-  git(source, ['tag', 'v1.3.2']);
+  git(source, ['tag', `v${version}`]);
   git(sandbox, ['clone', '--bare', source, remote]);
   return {
     paths: prepareProductRoot({ installRoot: path.join(sandbox, 'durable root'), product: 'LazyBuddy' }),
@@ -125,14 +127,14 @@ function treeSnapshot(root) {
 
 test('parses only canonical official HTTPS source forms for the selected product', () => {
   const accepted = [
-    ['https://github.com/elvinzhao10/LazyBuddy', 'v1.3.2'],
-    ['https://github.com/elvinzhao10/LazyBuddy.git', 'v1.3.2'],
-    ['https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.3.2', 'release/v1.3.2'],
+    ['https://github.com/elvinzhao10/LazyBuddy', 'v1.3.3'],
+    ['https://github.com/elvinzhao10/LazyBuddy.git', 'v1.3.3'],
+    ['https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.3.3', 'release/v1.3.3'],
   ];
   const rejected = [
     'http://github.com/elvinzhao10/LazyBuddy',
     'https://github.com/elvinzhao10/LazyBuddy/',
-    'https://github.com/elvinzhao10/LazyBuddy?ref=v1.3.2',
+    'https://github.com/elvinzhao10/LazyBuddy?ref=v1.3.3',
     'https://github.com/elvinzhao10/LazyBuddy#readme',
     'https://user@github.com/elvinzhao10/LazyBuddy',
     'https://github.com:443/elvinzhao10/LazyBuddy',
@@ -172,7 +174,7 @@ test('resolves, verifies, self-tests, and promotes a local fixture under an offi
     commit_sha: expectedSha,
     status: 'ready',
     test_status: 'passed',
-    version: '1.3.2',
+    version: '1.3.3',
   });
   assert.equal(launched.status, 0, launched.stderr);
   assert.equal(launched.stdout.trim(), 'fixture-launch-ok');
@@ -183,7 +185,7 @@ test('resolves, verifies, self-tests, and promotes a local fixture under an offi
 test('repo, tag, branch, and full-SHA sources resolve through Git to the same immutable commit', () => {
   const sources = [
     'https://github.com/elvinzhao10/LazyBuddy',
-    'https://github.com/elvinzhao10/LazyBuddy/tree/v1.3.2',
+    'https://github.com/elvinzhao10/LazyBuddy/tree/v1.3.3',
     'https://github.com/elvinzhao10/LazyBuddy/tree/main',
   ];
   for (const sourceUrl of sources) {
@@ -216,6 +218,33 @@ test('same version at a different SHA requires an exact revision confirmation', 
   assert.equal(promoted.status, 'ready');
   assert.equal(promoted.commit_sha, secondSha);
   assert.notEqual(promoted.release_id, first.release_id);
+});
+
+test('v1.3.2 upgrades to v1.3.3 while retaining the prior release', () => {
+  const f = fixture('1.3.2');
+  const priorSha = git(f.source, ['rev-parse', 'HEAD']);
+  const priorSource = path.join(f.sandbox, 'prior package');
+  fs.cpSync(f.source, priorSource, { recursive: true, filter: source => path.basename(source) !== '.git' });
+  const staged = stageRelease(f.paths, { sourceRoot: priorSource, version: '1.3.2', commitSha: priorSha });
+  const prior = promoteRelease(f.paths, {
+    ...staged, commitSha: priorSha, entrypoint: 'lazybuddy-plugin/scripts/lazybuddy-lifecycle.js',
+    manifestRelativePath: 'lazybuddy-plugin/.codebuddy-plugin/plugin.json',
+    origin: OFFICIAL, runtimePath: process.execPath, version: '1.3.2',
+  });
+  for (const name of ['.codebuddy-plugin', '.workbuddy-plugin']) {
+    const manifestPath = path.join(f.source, 'lazybuddy-plugin', name, 'plugin.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.version = '1.3.3';
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest)}\n`);
+  }
+  git(f.source, ['add', 'lazybuddy-plugin']);
+  git(f.source, ['commit', '-m', 'fixture v1.3.3']);
+  git(f.source, ['push', f.remote, 'main']);
+  const upgraded = bootstrap(f);
+  assert.equal(upgraded.version, '1.3.3');
+  assert.notEqual(upgraded.release_id, prior.releaseId);
+  assert.equal(fs.existsSync(path.join(f.paths.releases, prior.releaseId)), true);
+  assert.equal(JSON.parse(fs.readFileSync(f.paths.active, 'utf8')).active_release, upgraded.release_id);
 });
 
 test('manifest, checksum, self-test, prerequisite, and clone failures preserve active state', async (t) => {

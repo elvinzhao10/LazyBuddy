@@ -12,7 +12,11 @@ lazybuddy_require_mcp_profile() {
     esac
     case " $selected " in
         *" $server "*) return 0 ;;
-        *) printf 'MCP_PROFILE_DEFERRED server=%s mode=%s\n' "$server" "$mode" >&2; return 3 ;;
+        *)
+            printf 'MCP_PROFILE_DEFERRED server=%s mode=%s\n' "$server" "$mode" >&2
+            python3 -B "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deferred-server.py" "$server" "$mode"
+            exit $?
+            ;;
     esac
 }
 

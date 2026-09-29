@@ -60,6 +60,12 @@ function inventory(pluginRoot, policy) {
       throw new LifecycleError('MARKETPLACE_PAYLOAD_INVALID', `canonical payload root unavailable: ${relative}`, error);
     }
     for (const name of names) {
+      if (name === '__pycache__' || name.endsWith('.pyc')) {
+        const generated = path.join(directory, name);
+        const generatedStat = fs.lstatSync(generated);
+        if (name === '__pycache__' ? generatedStat.isDirectory() && !generatedStat.isSymbolicLink() : generatedStat.isFile() && !generatedStat.isSymbolicLink()) continue;
+        throw new LifecycleError('MARKETPLACE_PAYLOAD_INVALID', `unsafe generated Python cache: ${generated}`);
+      }
       const child = path.posix.join(relative, name);
       const absolute = path.join(pluginRoot, child);
       const stat = fs.lstatSync(absolute);
@@ -139,4 +145,4 @@ function fallbackPolicy() {
   return contract().fallback;
 }
 
-module.exports = { defaultRouteForHost, fallbackPolicy, validateMarketplaceRoutes };
+module.exports = { defaultRouteForHost, fallbackPolicy, inventory, validateMarketplaceRoutes };
