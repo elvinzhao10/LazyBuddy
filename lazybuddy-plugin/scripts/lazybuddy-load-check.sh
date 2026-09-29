@@ -89,6 +89,38 @@ def count_files(label, directory, expected, predicate):
 
 print("=== LazyBuddy Package Readiness Check ===")
 print(f"Plugin root: {root}")
+source_root = os.path.dirname(root)
+source_revision = "unavailable in installed package"
+if os.path.isdir(os.path.join(source_root, ".git")):
+    try:
+        revision = subprocess.run(
+            ["git", "-C", source_root, "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=2, check=False,
+        )
+        dirty = subprocess.run(
+            ["git", "-C", source_root, "status", "--porcelain", "--untracked-files=normal"],
+            capture_output=True, text=True, timeout=2, check=False,
+        )
+        if revision.returncode == 0:
+            source_revision = revision.stdout.strip() + ("+dirty" if dirty.returncode == 0 and dirty.stdout else "")
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+print(f"Source revision: {source_revision}")
+mode = os.environ.get("LAZYBUDDY_MCP_MODE") or "orchestrated"
+profiles = {
+    "direct": {"run-ledger", "verification", "status-dashboard"},
+    "assisted": {"run-ledger", "verification", "status-dashboard", "context-graph", "code-intel"},
+    "planned": {"run-ledger", "verification", "status-dashboard", "context-graph", "docs"},
+    "orchestrated": {"run-ledger", "verification", "status-dashboard", "context-graph", "code-intel", "docs"},
+    "long-horizon": {"run-ledger", "verification", "status-dashboard", "context-graph", "code-intel", "docs"},
+}
+if mode not in profiles:
+    result("FAIL", "MCP profile", "invalid mode")
+else:
+    deferred = sorted(profiles["orchestrated"] - profiles[mode])
+    print(f"MCP profile: {mode}; deferred: {', '.join(deferred) or 'none'} (profile exclusion; protocol endpoint remains available)")
+restricted = os.environ.get("LAZYBUDDY_RESTRICTED_RUN") == "1"
+print(f"Role enforcement: {'restricted run requested; trusted hook identity required' if restricted else 'conditional; no restricted run selected'}")
 
 if not os.path.isdir(root):
     result("FAIL", "plugin root", "directory missing")
@@ -135,7 +167,7 @@ try:
     if (
         machine_status.returncode != 0
         or status.get("schema_version") != 2
-        or status.get("version") != "1.3.2"
+        or status.get("version") != "1.3.3"
         or status.get("package_readiness") != {"status": "ready", "scope": "package"}
         or status.get("host_readiness") != {"status": "pending"}
         or not isinstance(host_rows, list)

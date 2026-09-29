@@ -200,7 +200,7 @@ def assert_scoped_policy(root, records):
     for label in sorted(expected - {readiness, package_boundary}):
         require(by_label[label] == "90", f"{label} expected 90, observed {by_label[label]}")
     by_all_labels = {label: timeout for label, timeout in records}
-    require(by_all_labels.get("node_tests") == "90", "aggregate omitted automatic Node tests")
+    require(by_all_labels.get("node_tests") == "270", "aggregate omitted scoped Node test budget")
     require(by_all_labels.get("python_tests") == "90", "aggregate omitted automatic Python tests")
     return len(expected) - 2
 

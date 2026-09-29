@@ -1,5 +1,9 @@
 # LazyBuddy Plugin Changelog
 
+## [1.3.3] - 2026-09-28
+
+Local candidate: restricted-role hook hardening, deferred MCP protocol endpoint, and Python cache inventory exclusion. See RELEASE_NOTES.md for verification limits.
+
 ## [1.3.2] - 2026-09-25 (release candidate)
 
 - Verifier reports are written incrementally to run-scoped evidence and tied to current task identity before completion.

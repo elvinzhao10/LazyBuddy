@@ -225,15 +225,18 @@ else
     fail_case 'prompt-injection-shaped mode is rejected'
 fi
 
-if printf '%s\n' '{"jsonrpc":"2.0","id":"deferred","method":"initialize","params":{}}' \
+if printf '%s\n' '{"jsonrpc":"2.0","id":"deferred","method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":"tools","method":"tools/list","params":{}}' \
     | CWD="$PROJECT" CODEBUDDY_PROJECT_DIR="$PROJECT" CODEBUDDY_PLUGIN_ROOT="$PLUGIN_ROOT" LAZYBUDDY_MCP_MODE=direct \
         bash "$PLUGIN_ROOT/mcp/docs/server.sh" > "$TMP/runtime-deferred.out" 2> "$TMP/runtime-deferred.err"; then
-    fail_case 'real docs launcher enforces direct-profile deferral'
-elif [ "$?" -eq 3 ] && [ ! -s "$TMP/runtime-deferred.out" ] \
-    && grep -Fq 'MCP_PROFILE_DEFERRED server=docs mode=direct' "$TMP/runtime-deferred.err"; then
-    pass_case 'real docs launcher enforces direct-profile deferral'
+    if grep -Fq '"id":"deferred"' "$TMP/runtime-deferred.out" \
+        && grep -Fq '"id":"tools","result":{"tools":[]}' "$TMP/runtime-deferred.out" \
+        && grep -Fq 'MCP_PROFILE_DEFERRED server=docs mode=direct' "$TMP/runtime-deferred.err"; then
+        pass_case 'real docs launcher serves an empty deferred MCP endpoint'
+    else
+        fail_case 'real docs launcher serves an empty deferred MCP endpoint'
+    fi
 else
-    fail_case 'real docs launcher enforces direct-profile deferral'
+    fail_case 'real docs launcher serves an empty deferred MCP endpoint'
 fi
 
 for server in run-ledger verification status-dashboard; do

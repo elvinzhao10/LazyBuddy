@@ -16,6 +16,7 @@ const {
 const REPOSITORY_ROOT = path.resolve(__dirname, '..', '..');
 const PLUGIN_ROOT = path.join(REPOSITORY_ROOT, 'lazybuddy-plugin');
 const ASSET_CLI = path.join(PLUGIN_ROOT, 'scripts', 'assets', 'asset-ownership-cli.js');
+const { inventoryReleaseSource, includeReleaseSource } = require('../scripts/lifecycle/files');
 
 function releaseFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lazybuddy-marketplace-routes-'));
@@ -45,12 +46,31 @@ test('validates exact marketplace identities and byte-equivalent canonical paylo
   const result = validateMarketplaceRoutes(root);
 
   // Then: CodeBuddy and WorkBuddy retain distinct manifests over one canonical payload.
-  assert.equal(result.version, '1.3.2');
+  assert.equal(result.version, '1.3.3');
   assert.equal(result.codebuddy.plugin, 'lazybuddy@lazybuddy');
   assert.equal(result.workbuddy.plugin, 'lazybuddy');
   assert.deepEqual(result.codebuddy.payload_inventory, result.workbuddy.payload_inventory);
   assert.ok(result.codebuddy.payload_inventory.includes('skills/lazy-programming/SKILL.md'));
   assert.ok(result.codebuddy.payload_inventory.includes('mcp/run-ledger/server.sh'));
+});
+
+test('ignores generated Python caches while retaining strict payload validation', (t) => {
+  const root = releaseFixture();
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const mcp = path.join(root, 'lazybuddy-plugin', 'mcp');
+  const cache = path.join(mcp, '__pycache__');
+  fs.mkdirSync(cache, { recursive: true });
+  fs.writeFileSync(path.join(cache, 'server.cpython-312.pyc'), 'generated');
+  fs.writeFileSync(path.join(mcp, 'stray.pyc'), 'generated');
+
+  assert.equal(validateMarketplaceRoutes(root).version, '1.3.3');
+  const sourcePaths = inventoryReleaseSource(root).map((entry) => entry.path);
+  assert.equal(sourcePaths.some((entry) => entry.includes('__pycache__') || entry.endsWith('.pyc')), false);
+  assert.equal(includeReleaseSource(root, cache), false);
+  assert.equal(includeReleaseSource(root, path.join(mcp, 'stray.pyc')), false);
+
+  fs.writeFileSync(path.join(mcp, 'unexpected-executable.sh'), '#!/bin/sh\n');
+  assert.throws(() => validateMarketplaceRoutes(root), (error) => error?.code === 'MARKETPLACE_PAYLOAD_INVALID');
 });
 
 test('publishes an exact WorkBuddy full-plugin receipt schema', () => {
@@ -91,7 +111,7 @@ test('refuses altered marketplace identity and host-manifest version independent
 
 test('treats fallback as generated recovery and conflicts with either marketplace plugin route', () => {
   // Given: both full-plugin routes and the manual recovery route.
-  const releaseRoot = '/durable/LazyBuddy/releases/v1.3.2-aaaaaaaaaaaa';
+  const releaseRoot = '/durable/LazyBuddy/releases/v1.3.3-aaaaaaaaaaaa';
   const projectRoot = '/project';
 
   // When: fallback metadata and both coexistence selections are evaluated.
