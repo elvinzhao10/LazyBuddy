@@ -1,12 +1,12 @@
 # LazyBuddy Plugin
 
-## v1.3.4 package candidate
+## v1.3.4 package
 
-This candidate repairs restricted-role hooks, deferred MCP behavior, and package inventory. Use the published v1.3.2 instructions below for stable installation.
+v1.3.4 makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
 
-The latest published stable release is v1.3.2. Package readiness does not establish host readiness.
+The current package version is v1.3.4. Package readiness does not establish host readiness.
 
-## Durable v1.3.2 installation
+## Durable installation
 
 **Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git** are recommended for new installs; the lifecycle also accepts Node.js LTS 20 for compatibility. Bootstrap `onboard` only
 from `https://github.com/elvinzhao10/LazyBuddy.git`, then use
@@ -28,7 +28,7 @@ require LazyCodex or OmO at runtime.
 
 ## Durable onboarding
 
-Bootstrap v1.3.0 once from a verified official source checkout, then use the
+Bootstrap the current package once from a verified official source checkout, then use the
 durable launcher rather than treating that checkout as the installed runtime:
 
 ```bash

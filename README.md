@@ -7,10 +7,11 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-The current local release candidate is v1.3.4. Publication and fresh host
-activation remain pending; package checks do not prove a host loaded it.
+The current package version is v1.3.4. Fresh native-host acceptance remains
+pending; package checks do not prove a host loaded it.
 
-v1.3.4 repairs restricted-role hooks, deferred MCP behavior, and package inventory. See [release notes](RELEASE_NOTES.md).
+v1.3.4 makes run updates transactional, preserves checkpoints and concurrent
+plan edits, and reports blocked, failed and exhausted work explicitly. See [release notes](RELEASE_NOTES.md).
 
 ## Introduced in v1.3.0: work the way you talk
 
@@ -167,7 +168,8 @@ runtime.
 ## Learn more
 
 - [Install and verify a host](docs/03-install-and-host-verification.md)
-- [Supported v1.3.0 route](docs/v1.3.0-supported-route.md)
+- [Remove receipt-owned assets safely](docs/08-safe-removal.md)
+- [Historical v1.3.0 route](docs/v1.3.0-supported-route.md)
 - [Workflow playbooks — how the modes pick work](docs/04-workflow-playbooks.md)
 - [Evidence and completion — what "done" proves](docs/05-evidence-and-completion.md)
 - [State and validation — how plan edits reconcile](docs/07a-state-and-validation.md)
