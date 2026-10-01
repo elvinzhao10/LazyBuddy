@@ -104,7 +104,7 @@ The assistant can guide onboarding, but you approve every host-managed change.
 ## Manual setup
 
 Manual setup is available when you prefer complete control. You need
-**Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**. The lifecycle also accepts Node.js LTS 20 for compatibility. Start from the verified origin
+**Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**, plus **Python 3.10+** available as `python3`. The lifecycle also accepts Node.js LTS 20 for compatibility. Start from the verified origin
 `https://github.com/elvinzhao10/LazyBuddy` and follow the
 [installation guide](docs/03-install-and-host-verification.md).
 
