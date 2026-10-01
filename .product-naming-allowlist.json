@@ -20,6 +20,13 @@
       "count": 1,
       "classification": "old-note",
       "reason": "Historical test-placement note records the environment where the test was introduced."
+    },
+    {
+      "path": "lazybuddy-plugin/contracts/model-routing.js",
+      "text": "Trae IDE",
+      "count": 1,
+      "classification": "stable-machine-id",
+      "reason": "Shared routing contract retains the trae-ide branch and its host-specific diagnostic; this is not a LazyBuddy host route."
     }
   ],
   "stableIdentityFiles": [
