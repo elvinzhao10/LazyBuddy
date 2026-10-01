@@ -79,7 +79,7 @@ for relative in ("README.md", "AGENTS.md"):
     )
 
 readme = (root.parent / "README.md").read_text(encoding="utf-8")
-assert "The current local release candidate is v1.3.4." in readme
+assert f"The current package version is v{expected}." in readme
 assert "prepared for release but is not published yet" not in readme
 
 historical_heading = "### Upgrade from v1.0.2"
