@@ -140,9 +140,23 @@ run_output="$(
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_run","arguments":{"run_id":"cwd-proof","objective":"consumer context"}}}
 EOF
 )"
-if printf '%s\n' "$run_output" | grep -q '"run_id": "cwd-proof"' \
-    && [ -f "$PROJECT/.lazybuddy/runs/cwd-proof/state.json" ] \
-    && [ ! -e "$CALLER/.lazybuddy/runs/cwd-proof/state.json" ]; then
+if python3 - "$run_output" "$PROJECT/.lazybuddy/runs/cwd-proof/state.json" "$CALLER/.lazybuddy/runs/cwd-proof/state.json" <<'PYMCP'
+import json
+import sys
+reply = json.loads(sys.argv[1])
+assert reply["jsonrpc"] == "2.0" and reply["id"] == 3, reply
+assert "error" not in reply, reply
+result = reply["result"]
+assert result.get("isError", False) is False, reply
+assert isinstance(result.get("content"), list) and len(result["content"]) == 1, reply
+block = result["content"][0]
+assert block.get("type") == "text", reply
+assert json.loads(block["text"])["run_id"] == "cwd-proof", reply
+from pathlib import Path
+assert Path(sys.argv[2]).is_file()
+assert not Path(sys.argv[3]).exists()
+PYMCP
+then
     pass_case 'run-ledger writes state under explicit consumer CWD'
 else
     fail_case 'run-ledger writes state under explicit consumer CWD'

@@ -1,5 +1,12 @@
 # LazyBuddy Plugin Changelog
 
+## [1.3.4] — 2026-09-30
+
+- Serialize task claims and iteration limits; preserve blocked and exhausted outcomes without completion authority.
+- Preserve run history, reject stale snapshot commits, and require every intended task done before finalization.
+- Isolate malformed verification requests and return MCP content blocks; record advisory hooks through the transaction authority.
+- Repair native adapter and package lifecycle boundaries; retain explicit pending host acceptance. See the root release notes.
+
 ## [1.3.3] - 2026-09-28
 
 Local candidate: restricted-role hook hardening, deferred MCP protocol endpoint, and Python cache inventory exclusion. See RELEASE_NOTES.md for verification limits.

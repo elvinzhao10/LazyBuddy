@@ -1,3 +1,31 @@
+# LazyBuddy v1.3.4 — runtime integrity and native adapter repairs
+
+## Eval-driven fixes
+
+Task claims and iteration updates use one transaction. Blocked or exhausted queues do not declare completion; malformed verification requests leave MCP running. Hook payloads remain data, hook state respects the transaction lock, repeat run creation preserves history, and stale snapshot commits are rejected. Finalization requires all intended tasks done; persisted status is assessed separately from completion evidence.
+
+## Measured efficiency
+
+This maintenance release makes no new latency, token-saving or recall claim. Ledger append/compaction, learned routing and shared-core migration are deferred.
+
+## Host capability matrix
+
+Fresh native host activation and complete onboarding/offboarding acceptance remain pending. Package tests and release publication do not establish those host observations.
+
+## Migration and upgrade
+
+Use the receipt-aware upgrade route with an explicit project binding. Preserve project evidence and unknown host configuration. No credentials or production host settings are changed by package verification.
+
+## Known risks
+
+Native host acceptance is still separate from package readiness. Token/cost budgets are metadata, and pending approval results are persisted observations without a live approval queue. Shell loop policy beyond its configured global cap requires orchestrator enforcement.
+
+## Rollback
+
+Retain the published v1.3.3 tag and ownership receipts. Remove only receipt-owned, unmodified assets and use a fresh host session to verify removal.
+
+## Prior release notes
+
 # LazyBuddy v1.3.3 — reliability and release consistency
 
 **Status:** v1.3.3 release. Package, lifecycle, and publication checks passed locally and in PR CI. Fresh CodeBuddy and WorkBuddy activation remains pending.

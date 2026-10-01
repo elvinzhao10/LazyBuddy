@@ -8,7 +8,7 @@ const test = require('node:test');
 const { assessCompletion } = require('../scripts/completion-assessment');
 const EXPECTED_MUTATION_REASONS = require('../contracts/fixtures/v120/completion-assessment-reasons.json');
 
-const VERSION = '1.3.3';
+const VERSION = '1.3.4';
 const STATE = '.lazybuddy/runs/run-1/completion-authority.json';
 const FIXTURE_ROOTS = new Set();
 test.after(() => { for (const root of FIXTURE_ROOTS) fs.rmSync(root, { recursive: true, force: true }); });
@@ -124,6 +124,14 @@ test('CLI validator and MCP status expose the same ready assessment', () => {
   const request = `${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'show_run_status', arguments: { run_id: 'run-1' } } })}\n`;
   const mcp = spawnSync('bash', [server], { input: request, encoding: 'utf8', env: { ...process.env, CWD: f.root, CODEBUDDY_PROJECT_DIR: f.root, CODEBUDDY_PLUGIN_ROOT: pluginRoot } });
   assert.equal(mcp.status, 0, mcp.stderr || mcp.stdout);
-  const assessment = JSON.parse(mcp.stdout).result.completion_assessment;
+  const reply = JSON.parse(mcp.stdout);
+  assert.equal(reply.jsonrpc, '2.0');
+  assert.equal(reply.id, 1);
+  assert.equal(reply.error, undefined);
+  assert.equal(reply.result.isError ?? false, false);
+  assert.ok(Array.isArray(reply.result.content));
+  assert.equal(reply.result.content.length, 1);
+  assert.equal(reply.result.content[0].type, 'text');
+  const assessment = JSON.parse(reply.result.content[0].text).completion_assessment;
   assert.deepEqual([assessment.status, assessment.reason_code], ['ready', 'READY']);
 });

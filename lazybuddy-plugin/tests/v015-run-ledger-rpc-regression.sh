@@ -68,7 +68,11 @@ assert len(lines) == 1, lines
 reply = json.loads(lines[0])
 assert reply["jsonrpc"] == "2.0", reply
 assert "result" in reply and "error" not in reply, reply
-assert sys.argv[2] in reply["result"], reply
+result = reply["result"]
+assert result.get("isError", False) is False, reply
+assert isinstance(result.get("content"), list) and len(result["content"]) == 1, reply
+assert result["content"][0].get("type") == "text", reply
+assert sys.argv[2] in json.loads(result["content"][0]["text"]), reply
 PYEOF
     then
         PASS=$((PASS + 1))

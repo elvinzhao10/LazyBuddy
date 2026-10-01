@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Union
 
-from state_transaction import TransactionError, Write, commit, commit_locked, locked, recover, recover_locked
+from state_transaction import TransactionError, Write, commit, commit_locked, locked, recover, recover_locked, snapshot_revision
 
 EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$")
 EVENT_TYPE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -126,10 +126,20 @@ def main(argv: list[str]) -> int:
     if command == "recover" and len(argv) == 3:
         print(recover(run_dir))
         return 0
+    if command == "snapshot-revision" and len(argv) == 3:
+        print(snapshot_revision(run_dir))
+        return 0
     if command == "commit" and len(argv) >= 5:
         operation = argv[3]
-        writes = tuple(parse_write(value) for value in argv[4:])
-        print(commit(run_dir, operation, writes))
+        arguments = argv[4:]
+        expected_revision = None
+        if arguments[0] == "--expected-revision":
+            if len(arguments) < 3 or re.fullmatch(r"[0-9]+", arguments[1]) is None:
+                raise TransactionError("invalid expected snapshot revision")
+            expected_revision = int(arguments[1])
+            arguments = arguments[2:]
+        writes = tuple(parse_write(value) for value in arguments)
+        print(commit(run_dir, operation, writes, expected_revision))
         return 0
     if command == "append-event" and len(argv) == 7:
         append_event(EventRequest(run_dir, argv[3], argv[4], argv[5], argv[6]))

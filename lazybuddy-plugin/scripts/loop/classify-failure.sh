@@ -29,6 +29,8 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 1
 fi
 
+state_begin_snapshot "$STATE_RUN_DIR" || exit 1
+
 # Classify: check error message against known patterns (case-insensitive)
 ERROR_LOWER=$(python3 - "$ERROR_MSG" <<'PYEOF'
 import sys

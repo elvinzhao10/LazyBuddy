@@ -138,7 +138,7 @@ import json
 import sys
 
 payload = json.loads(sys.argv[1])
-checks = payload["result"]
+checks = json.loads(payload["result"]["content"][0]["text"])
 assert isinstance(checks, list)
 assert checks
 assert {check["step"] for check in checks} >= {"Package readiness", "Package verification"}

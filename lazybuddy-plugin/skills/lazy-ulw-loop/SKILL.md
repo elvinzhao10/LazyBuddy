@@ -87,7 +87,7 @@ Run real-surface proof through the correct channel:
 
 - `.lazybuddy/ulw-loop/<session-id>/goals.json` — goal definitions with criteria
 - `.lazybuddy/ulw-loop/<session-id>/evidence/` — per-goal evidence artifacts
-- Iteration tracking: per-goal cycles (max 5), per-criterion failures (max 3 before escalation), overall iterations (cap 500 ultrawork / 100 normal)
+- Iteration tracking: the runtime enforces the configured global cap; per-goal and per-criterion thresholds are orchestrator policy, not additional native counters.
 
 ## Verification Gates
 
@@ -99,7 +99,7 @@ Run real-surface proof through the correct channel:
 
 ## Failure Behavior
 
-- Stall detection: 10+ iterations without progress → warn; 20 → abort
+- Stall detection: the orchestrator should report stalled work from observed evidence; automatic 10/20-iteration stall enforcement is not implemented by the shell runtime.
 - Iteration cap reached (per-goal, per-failure, or overall): pause; record `run_paused` event; ask user whether to continue
 - State corruption: restore from checkpoint
 - Criterion unreachable: mark as incomplete; move to next
@@ -118,9 +118,9 @@ ULW-LOOP: {complete | incomplete}
 
 The ulw-loop now integrates with the state/ and loop/ scripts for durable iteration management and failure recovery.
 
-- **Loop iteration:** Each cycle begins by calling `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/run-cycle.sh <run_id>`. This script increments `state.json`'s `iteration.count`, checks per-goal `iteration.per_goal_max` (5) and per-criterion `iteration.per_failure_max` (3), and checks the `iteration.max` cap (500 for ultrawork, 100 for normal). It writes a `cycle_start` event to `events.jsonl`. When any cap is exceeded, the script exits with code 2, causing the loop to stop with an `incomplete` status. Per-criterion same-failure counts trigger escalation via `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/escalate.sh <run_id> <criterion>` when the threshold is reached.
+- **Loop iteration:** Call the package `scripts/loop/run-cycle.sh <run_id>` with an explicit project CWD. Task selection, the running transition, and `iteration.count` increment occur together under the run transaction lock. The configured `iteration.max` is enforced before any claim, including zero. `continue` carries the claimed task; `blocked`, `failed`, and `exhausted` stop dispatch with a nonzero exit. An empty queue is exhausted and has no completion authority. Lock, parse, and filesystem failures remain errors.
 - **Failure classification:** When a cycle fails, the loop calls `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/classify-failure.sh <run_id> <error_output>` to analyze the failure. The script classifies it into one of: `stall`, `flaky`, `unreachable`, or `corruption`, and writes a `failure_classified` event to `events.jsonl` with the classification and confidence. Based on the classification, `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/create-repair-task.sh <run_id> <classification>` creates a repair task in `state.json`'s `tasks[]` array.
-- **Iteration tracking:** The loop reads `state.json`'s `iteration.count` and `iteration.max` fields at the start of every cycle. If `count >= max`, no new cycles are started and the run is finalized via `${CODEBUDDY_PLUGIN_ROOT}/scripts/loop/finalize-run.sh <run_id>`.
+- **Iteration tracking:** `iteration.max` is the implemented global bound (new runs currently default to 500). Per-goal and repeated-failure limits described as workflow policy must be tracked by the orchestrator; the shell runtime does not enforce them and provides no `escalate.sh`. Token and cost fields are metadata, not enforced spending limits. Finalization requires independent completion evidence and gates even when every task is done.
 
 ## Dynamic Steering (v0.9 hardening)
 

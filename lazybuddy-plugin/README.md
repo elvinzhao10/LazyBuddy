@@ -1,6 +1,6 @@
 # LazyBuddy Plugin
 
-## v1.3.3 package candidate
+## v1.3.4 package candidate
 
 This candidate repairs restricted-role hooks, deferred MCP behavior, and package inventory. Use the published v1.3.2 instructions below for stable installation.
 

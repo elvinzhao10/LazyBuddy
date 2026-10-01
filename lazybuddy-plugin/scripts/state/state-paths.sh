@@ -17,13 +17,25 @@ state_recover_transaction() {
     python3 "$state_script_dir/state-transaction.py" recover "$run_dir" >/dev/null
 }
 
+state_begin_snapshot() {
+    local run_dir="${1:-}"
+    local state_script_dir
+    state_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    STATE_SNAPSHOT_REVISION="$(python3 "$state_script_dir/state-transaction.py" snapshot-revision "$run_dir")" || return 1
+    STATE_SNAPSHOT_RUN_DIR="$run_dir"
+}
+
 state_commit_transaction() {
     local run_dir="${1:-}"
     local operation="${2:-}"
     shift 2
     local state_script_dir
     state_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    python3 "$state_script_dir/state-transaction.py" commit "$run_dir" "$operation" "$@" >/dev/null
+    if [ "${STATE_SNAPSHOT_RUN_DIR:-}" = "$run_dir" ]; then
+        python3 "$state_script_dir/state-transaction.py" commit "$run_dir" "$operation" --expected-revision "$STATE_SNAPSHOT_REVISION" "$@" >/dev/null
+    else
+        python3 "$state_script_dir/state-transaction.py" commit "$run_dir" "$operation" "$@" >/dev/null
+    fi
 }
 
 state_transaction_write_arg() {

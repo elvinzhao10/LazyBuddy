@@ -14,10 +14,10 @@ manage_attempts() {
         increment)
             local attempts=0
             if [ -f "$state_file" ]; then
-                attempts=$(python3 -c "import json; print(json.load(open('$state_file')).get('attempts',0))" 2>/dev/null || echo "0")
+                attempts=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('attempts',0))" "$state_file" 2>/dev/null || echo "0")
             fi
             attempts=$((attempts + 1))
-            python3 -c "import json; json.dump({'attempts':$attempts}, open('$state_file','w'))" 2>/dev/null
+            python3 -c "import json,sys; json.dump({'attempts':int(sys.argv[2])}, open(sys.argv[1],'w'))" "$state_file" "$attempts" 2>/dev/null
             echo "$attempts"
             ;;
         clear)
@@ -90,11 +90,11 @@ fi
 EVIDENCE_ROOT="$CWD/.lazybuddy"
 
 # Get realpaths
-REAL_PATH=$(python3 -c "import os; print(os.path.realpath('$EVIDENCE_PATH'))" 2>/dev/null || echo "")
-REAL_ROOT=$(python3 -c "import os; print(os.path.realpath('$EVIDENCE_ROOT'))" 2>/dev/null || echo "")
+REAL_PATH=$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$EVIDENCE_PATH" 2>/dev/null || echo "")
+REAL_ROOT=$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$EVIDENCE_ROOT" 2>/dev/null || echo "")
 
 # Check: inside evidence root — use startswith for safety
-INSIDE=$(python3 -c "print('yes' if '$REAL_PATH'.startswith('$REAL_ROOT') else 'no')")
+INSIDE=$(python3 -c "import os,sys; print('yes' if sys.argv[1].startswith(sys.argv[2] + os.sep) else 'no')" "$REAL_PATH" "$REAL_ROOT")
 if [ "$INSIDE" != "yes" ] || [ -z "$REAL_PATH" ]; then
     block_with_retry "EVIDENCE_RECORDED path is outside .lazybuddy/ — rejected."
 fi
