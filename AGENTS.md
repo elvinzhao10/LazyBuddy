@@ -166,7 +166,7 @@ numbered item is a separate action:
    directory** GUI to select the absolute release root containing
    `.codebuddy-plugin/marketplace.json`; then wait for inspection.
 2. Observe the version the current marketplace actually displays. Do not infer
-   v1.3.0 publication from this documentation boundary. Do not install in the
+   package publication from this documentation boundary. Do not install in the
    discovery action. If discovery is unavailable, record the
    host version/build and exact error, keep **HOST READINESS: PENDING**, and use
    the fallback below only after selecting it explicitly.
