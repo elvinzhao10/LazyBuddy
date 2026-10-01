@@ -61,6 +61,7 @@ if marketplace_path.is_file():
     assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 
 current_release_patterns = (
+    r"\bCurrent package version:\s*v(\d+\.\d+\.\d+)\b",
     r"\bLazyBuddy\s+v(\d+\.\d+\.\d+)\b",
     r"\bCurrent documentation release:\s*v(\d+\.\d+\.\d+)\b",
     r"\blazybuddy@lazybuddy\b[^\n]{0,80}\bversion\s+`?v?(\d+\.\d+\.\d+)\b",
@@ -72,14 +73,13 @@ for relative in ("README.md", "AGENTS.md"):
         for pattern in current_release_patterns
         for match in re.findall(pattern, text, flags=re.IGNORECASE)
     }
-    expected_versions = set() if relative == "README.md" else {expected}
+    expected_versions = {expected}
     assert current_versions == expected_versions, (
         f"{relative} current LazyBuddy release references reported "
         f"{sorted(current_versions)!r}"
     )
 
 readme = (root.parent / "README.md").read_text(encoding="utf-8")
-assert f"The current package version is v{expected}." in readme
 assert "prepared for release but is not published yet" not in readme
 
 historical_heading = "### Upgrade from v1.0.2"
@@ -87,6 +87,12 @@ assert not any(
     re.search(pattern, historical_heading, flags=re.IGNORECASE)
     for pattern in current_release_patterns
 ), "historical upgrade headings must not be parsed as current release identity"
+misleading_package_label = "Current package version: v1.0.2."
+assert {
+    match
+    for pattern in current_release_patterns
+    for match in re.findall(pattern, misleading_package_label, flags=re.IGNORECASE)
+} == {"1.0.2"}, "misleading current-package labels must remain detectable"
 misleading_identity = "LazyBuddy v1.0.2 is the current release"
 assert {
     match
