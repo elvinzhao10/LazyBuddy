@@ -26,6 +26,8 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 state_recover_transaction "$STATE_RUN_DIR" || exit 1
 
+state_begin_snapshot "$STATE_RUN_DIR" || exit 1
+
 # Run all checks
 RESULT=$(python3 - "$STATE_FILE" "$PLAN_FILE" <<'PY'
 import json
@@ -48,12 +50,12 @@ rs = d.get('review_status', 'not_started')
 if rs != 'accepted':
     reasons.append(f"review_status is '{rs}' (need accepted)")
 
-# 3. No queued or running tasks
+# 3. Every canonical task must be done
 tasks = d.get('tasks', [])
-active = [t for t in tasks if t.get('status') in ('queued','running')]
+active = [t for t in tasks if t.get('status') != 'done']
 if active:
     ids = ', '.join(t['id'] for t in active)
-    reasons.append(f"active tasks remain: {ids}")
+    reasons.append(f"unfinished tasks remain: {ids}")
 
 # 4. Cross-check plan.md checkboxes (G-017 fix)
 if os.path.isfile(plan_file):

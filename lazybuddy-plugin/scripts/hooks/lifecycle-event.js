@@ -146,19 +146,14 @@ function atomicWrite(target, value) {
 
 function updateState(active, event, eventId, occurredAt, consumer) {
   if (active === null) return;
-  const lifecycle = active.state.hook_lifecycle !== null && typeof active.state.hook_lifecycle === 'object' && !Array.isArray(active.state.hook_lifecycle)
-    ? { ...active.state.hook_lifecycle }
-    : {};
-  lifecycle.last_event = { event, event_id: eventId, occurred_at: occurredAt };
-  if (event === 'PermissionRequest' || event === 'PermissionDenied') {
-    lifecycle.last_permission = { event_id: eventId, outcome: event === 'PermissionRequest' ? 'requested' : 'denied', completion_authority: false };
+  const { spawnSync } = require('node:child_process');
+  const result = spawnSync('python3', [
+    path.join(PLUGIN_ROOT, 'scripts', 'state', 'run_controller.py'),
+    'hook', path.dirname(active.statePath), eventId, occurredAt, event, event === 'PermissionDenied' ? 'denied' : 'requested', JSON.stringify(consumer.invalidates),
+  ], { encoding: 'utf8', timeout: 7000, maxBuffer: 65536 });
+  if (result.status !== 0) {
+    process.stderr.write(JSON.stringify({ status: 'deferred', reason: 'state_transaction_unavailable' }) + '\n');
   }
-  if (consumer.invalidates.length > 0) {
-    const invalidations = Array.isArray(lifecycle.invalidations) ? [...lifecycle.invalidations] : [];
-    invalidations.push({ event, event_id: eventId, scopes: consumer.invalidates, occurred_at: occurredAt, completion_authority: false });
-    lifecycle.invalidations = invalidations;
-  }
-  atomicWrite(active.statePath, { ...active.state, hook_lifecycle: lifecycle });
 }
 
 function processEvent(input, expectedEvent) {

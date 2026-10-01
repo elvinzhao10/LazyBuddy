@@ -6,7 +6,7 @@ INPUT=$(cat 2>/dev/null || echo "{}")
 CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd','.'))" 2>/dev/null || echo ".")
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
-echo "(LazyBuddy v1.3.3): Session starting — checking project state..."
+echo "(LazyBuddy v1.3.4): Session starting — checking project state..."
 
 if [ ! -d "$PLUGIN_ROOT" ] || [ ! -x "$PLUGIN_ROOT/scripts/lazybuddy-load-check.sh" ]; then
     echo "SESSIONSTART_READINESS=failed reason=plugin-root-unavailable" >&2
@@ -52,14 +52,14 @@ if [ -d "$RUNS_DIR" ]; then
     for run_dir in "$RUNS_DIR"/*/; do
         state_file="${run_dir}state.json"
         if [ -f "$state_file" ]; then
-            STATUS=$(python3 -c "import json; d=json.load(open('$state_file')); print(d.get('status',''))" 2>/dev/null || echo "")
-            if [ "$STATUS" = "active" ] || [ "$STATUS" = "paused" ]; then
-                PLAN=$(python3 -c "import json; d=json.load(open('$state_file')); print(d.get('plan_name',''))" 2>/dev/null || echo "unknown")
-                PROGRESS=$(python3 -c "import json; d=json.load(open('$state_file')); p=d.get('progress',{}); print(f\"{p.get('completed_checkboxes',p.get('completed',0))}/{p.get('total_checkboxes',p.get('total',0))}\")" 2>/dev/null || echo "?/?")
+            STATUS=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('status',''))" "$state_file" 2>/dev/null || echo "")
+            if [[ "$STATUS" =~ ^(active|paused|created|planning|executing|blocked|verifying|reviewing)$ ]]; then
+                PLAN=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('plan_name',''))" "$state_file" 2>/dev/null || echo "unknown")
+                PROGRESS=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); p=d.get('progress',{}); print(f\"{p.get('completed_checkboxes',p.get('completed',0))}/{p.get('total_checkboxes',p.get('total',0))}\")" "$state_file" 2>/dev/null || echo "?/?")
                 echo "(LazyBuddy): Active run found: $PLAN (status: $STATUS, progress: $PROGRESS)"
                 echo "(LazyBuddy): Run /lazybuddy:lazy-start-work or ask to continue the planned work."
+                break
             fi
-            break
         fi
     done
 fi

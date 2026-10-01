@@ -54,7 +54,7 @@ The `tests/v*.sh` inventory covers copied-package boundaries, manifest and readi
 
 Normal CI is self-contained: it does not require a sibling repository. Documentation and contract parity with LazyTrae are release-only paired parity checks, run only when both absolute roots are explicitly supplied. That keeps the shared safety contract auditable without creating a runtime, installer, or CI dependency between packages.
 
-Package CI coverage runs on the operating systems and Node versions listed in the workflows. Host loading, route discovery, hooks, MCP calls, specialist behavior, cancellation, and completion require separate manual observation in the selected current host session. The supplied host observations are historical macOS reports and do not establish current v1.3.1 readiness.
+Package CI coverage runs on the operating systems and Node versions listed in the workflows. Host loading, route discovery, hooks, MCP calls, specialist behavior, cancellation, and completion require separate manual observation in the selected current host session. The supplied host observations are historical macOS reports and do not establish current v1.3.4 readiness.
 
 ### Paired live-test candidate assembly
 

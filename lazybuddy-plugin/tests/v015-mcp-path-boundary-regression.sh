@@ -62,6 +62,26 @@ check_rejected() {
 
 check_contains() {
     local label="$1" needle="$2" output="$3"
+    if ! output="$(python3 - "$output" <<'PYMCP'
+import json
+import sys
+reply = json.loads(sys.argv[1])
+assert "error" not in reply and reply["jsonrpc"] == "2.0", reply
+result = reply["result"]
+assert result.get("isError", False) is False, reply
+assert isinstance(result.get("content"), list) and len(result["content"]) == 1, reply
+block = result["content"][0]
+assert block.get("type") == "text" and isinstance(block.get("text"), str), reply
+try:
+    print(json.dumps(json.loads(block["text"])))
+except json.JSONDecodeError:
+    print(block["text"])
+PYMCP
+)"; then
+        FAIL=$((FAIL + 1))
+        echo "FAIL: $label (invalid MCP tool result envelope)" >&2
+        return
+    fi
     if printf '%s' "$output" | grep -q "$needle"; then
         PASS=$((PASS + 1))
         echo "PASS: $label"

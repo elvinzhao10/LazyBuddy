@@ -2,9 +2,9 @@
 
 LazyBuddy supports its documented CLI and IDE/app hosts. Automated package checks run in CI on Ubuntu and macOS as defined by the workflows; the supplied live-host reports are historical macOS observations. No current-session host activation is established. Package files, host settings, credentials, marketplace state, and live sessions remain separate authorities.
 
-## Current documentation release: v1.3.3
+## Current documentation release: v1.3.4
 
-This v1.3.3 guide names current human-facing boundaries only. It does not
+This v1.3.4 guide names current human-facing boundaries only. It does not
 publish a package or promote package evidence to host proof. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
@@ -166,7 +166,7 @@ numbered item is a separate action:
    directory** GUI to select the absolute release root containing
    `.codebuddy-plugin/marketplace.json`; then wait for inspection.
 2. Observe the version the current marketplace actually displays. Do not infer
-   v1.3.0 publication from this documentation boundary. Do not install in the
+   package publication from this documentation boundary. Do not install in the
    discovery action. If discovery is unavailable, record the
    host version/build and exact error, keep **HOST READINESS: PENDING**, and use
    the fallback below only after selecting it explicitly.

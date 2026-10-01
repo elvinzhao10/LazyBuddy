@@ -367,6 +367,16 @@ def commit_locked(run_dir: Path, operation: str, writes: Sequence[Write]) -> int
     return revision_before + 1
 
 
-def commit(run_dir: Path, operation: str, writes: Sequence[Write]) -> int:
+def snapshot_revision(run_dir: Path) -> int:
+    """Recover and capture the revision before preparing mutable snapshots."""
     with locked(run_dir):
+        recover_locked(run_dir)
+        return read_revision(run_dir)
+
+
+def commit(run_dir: Path, operation: str, writes: Sequence[Write], expected_revision: int | None = None) -> int:
+    with locked(run_dir):
+        recover_locked(run_dir)
+        if expected_revision is not None and read_revision(run_dir) != expected_revision:
+            raise TransactionError("stale transaction snapshot revision")
         return commit_locked(run_dir, operation, writes)

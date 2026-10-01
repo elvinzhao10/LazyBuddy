@@ -28,6 +28,8 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 1
 fi
 
+state_begin_snapshot "$STATE_RUN_DIR" || exit 1
+
 TMP_FILE=$(mktemp "$STATE_RUN_DIR/.state.json.XXXXXX")
 EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
 cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }

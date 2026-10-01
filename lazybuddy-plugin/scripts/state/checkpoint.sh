@@ -30,6 +30,8 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 state_recover_transaction "$RUN_DIR" || exit 1
 
+state_begin_snapshot "$RUN_DIR" || exit 1
+
 PLAN_REF=$(python3 - "$STATE_FILE" <<'PYEOF' 2>/dev/null || echo ""
 import json
 import sys

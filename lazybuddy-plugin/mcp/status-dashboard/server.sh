@@ -66,6 +66,17 @@ import sys
 print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "result": json.loads(sys.argv[2])}))
 PYEOF
 }
+reply_tool() {
+  [ "$NOTIFICATION" = 1 ] && return 0
+  python3 - "$ID_JSON" "$1" <<'PYEOF'
+import json
+import sys
+
+value = json.loads(sys.argv[2])
+print(json.dumps({"jsonrpc": "2.0", "id": json.loads(sys.argv[1]), "result": {"content": [{"type": "text", "text": json.dumps(value)}]}}))
+PYEOF
+}
+
 err() {
   [ "$NOTIFICATION" = 1 ] && return 0
   local code="-32603"
@@ -108,8 +119,9 @@ if [ "$METHOD" = "tools/call" ]; then
 fi
 
 case "$METHOD" in
+  ping) reply '{}' ;;
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.3.3"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.3.4"}}'
     ;;
   tools/list)
     reply '{"tools":[
@@ -148,7 +160,7 @@ if isinstance(adaptive, dict):
 print(json.dumps(r))
 PYEOF
 )
-    reply "$RESULT"
+    reply_tool "$RESULT"
     ;;
   show_task_graph)
     SF=$(resolve_run "$(param_raw "run_id")") || { err "invalid or unsafe run_id"; continue; }
@@ -157,7 +169,7 @@ import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); t=s.get('tasks',[]); n=[{'id':x.get('id',''),'title':x.get('title',''),'status':x.get('status','')} for x in t]; e=[{'from':d,'to':x.get('id','')} for x in t for d in x.get('depends_on',[])]; print(json.dumps({'nodes':n,'edges':e}))
 PYEOF
 )
-    reply "$RESULT"
+    reply_tool "$RESULT"
     ;;
   show_verification_matrix)
     SF=$(resolve_run "$(param_raw "run_id")") || { err "invalid or unsafe run_id"; continue; }
@@ -166,7 +178,7 @@ import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); g=[{'name':x.get('name',''),'status':x.get('status',''),'result':x.get('result','')} for x in s.get('verification_gates',[])]; print(json.dumps(g))
 PYEOF
 )
-    reply "$RESULT"
+    reply_tool "$RESULT"
     ;;
   show_pending_approvals)
     SF=$(resolve_run "$(param_raw "run_id")") || { err "invalid or unsafe run_id"; continue; }
@@ -174,10 +186,10 @@ PYEOF
 import json,sys
 with open(sys.argv[1]) as f: s=json.load(f); p=[g for g in s.get('human_gates',[]) if g.get('status','')=='pending']
 if s.get('review_status','')=='pending': p.append({'name':'review','status':'pending','result':''})
-print(json.dumps(p))
+print(json.dumps({'status': 'unknown', 'source': 'persisted_snapshot', 'live_approval_tracking': False, 'pending': p}))
 PYEOF
 )
-    reply "$RESULT"
+    reply_tool "$RESULT"
     ;;
   *)
     err "unknown method: $METHOD"

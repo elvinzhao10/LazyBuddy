@@ -89,8 +89,14 @@ def assert_package_doc_discovery(server, tool_names):
             assert readable, f"{server}/{tool_name} did not respond before stdin closed"
             response = json.loads(process.stdout.readline())
             assert response["id"] == request_id, response
-            assert isinstance(response.get("result"), list), response
-            assert response["result"], response
+            result = response.get("result")
+            assert isinstance(result, dict), response
+            assert result.get("isError", False) is False, response
+            assert isinstance(result.get("content"), list) and len(result["content"]) == 1, response
+            block = result["content"][0]
+            assert block.get("type") == "text" and isinstance(block.get("text"), str), response
+            data = json.loads(block["text"])
+            assert isinstance(data, list) and data, response
         process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": f"{server}-session-survives", "method": "tools/list"}) + "\n")
         process.stdin.flush()
         readable, _, _ = select.select([process.stdout], [], [], 1.5)

@@ -92,7 +92,13 @@ response = json.loads(raw)
 assert response["jsonrpc"] == "2.0"
 assert response["id"] == 15
 assert "error" not in response
-assert "in-root" in raw or '"run_id": "safe"' in raw
+result = response["result"]
+assert result.get("isError", False) is False, response
+assert isinstance(result.get("content"), list) and len(result["content"]) == 1, response
+block = result["content"][0]
+assert block.get("type") == "text" and isinstance(block.get("text"), str), response
+data = json.loads(block["text"])
+assert "in-root" in json.dumps(data) or isinstance(data, dict) and data.get("run_id") == "safe"
 PYEOF
     then
         PASS=$((PASS + 1))
@@ -119,7 +125,7 @@ import sys
 response = json.loads(sys.argv[1])
 assert response["jsonrpc"] == "2.0"
 assert response["id"] == 16
-assert response["result"]["status"] == "ok"
+assert json.loads(response["result"]["content"][0]["text"])["status"] == "ok"
 assert '"mcp-boundary"' in open(sys.argv[2]).read()
 PYEOF
 then

@@ -62,8 +62,4 @@ with open(events_file, 'a') as f:
     f.write(json.dumps(event) + '\n')
 PYEOF
 
-state_commit_transaction "$RUN_DIR" create_run \
-    "$(state_transaction_write_arg state.json "$STATE_FILE" "$STATE_TMP")" \
-    "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
-
-echo "$RUN_DIR"
+python3 "$SCRIPT_DIR/run_controller.py" create "$RUN_DIR" "$OBJECTIVE" "$STATE_TMP" "$EVENTS_TMP"

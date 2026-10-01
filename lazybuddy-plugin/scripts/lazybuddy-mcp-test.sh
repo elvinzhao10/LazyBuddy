@@ -33,6 +33,39 @@ FAIL_LIST=()
 check() {
     # check <label> <expected_substring> <actual_json>
     local label="$1" needle="$2" hay="$3"
+    # Semantic checks run on decoded tools/call data, after validating its MCP envelope.
+    if [[ "$label" != */initialize && "$label" != */tools-list ]]; then
+        if ! hay="$(python3 - "$hay" "$label" <<'PYMCP'
+import json
+import sys
+reply = json.loads(sys.argv[1])
+assert reply["jsonrpc"] == "2.0", reply
+if sys.argv[2].endswith('/no-project-file'):
+    assert "result" not in reply and isinstance(reply.get("error"), dict), reply
+    assert reply["error"]["code"] == -32603, reply
+    print(json.dumps(reply["error"]))
+    raise SystemExit(0)
+assert "result" in reply and "error" not in reply, reply
+result = reply["result"]
+assert isinstance(result, dict) and isinstance(result.get("content"), list), reply
+assert len(result["content"]) == 1, reply
+block = result["content"][0]
+assert block.get("type") == "text" and isinstance(block.get("text"), str), reply
+assert result.get("isError", False) is False, reply
+if sys.argv[2].endswith('-content-blocks'):
+    print(json.dumps(reply))
+else:
+    try:
+        print(json.dumps(json.loads(block["text"])))
+    except json.JSONDecodeError:
+        print(block["text"])
+PYMCP
+)"; then
+            FAIL=$((FAIL+1)); FAIL_LIST+=("$label/envelope")
+            echo "  FAIL: $label (invalid MCP tool result envelope)" >&2
+            return
+        fi
+    fi
     if echo "$hay" | grep -qi "$needle"; then
         PASS=$((PASS+1)); PASS_LIST+=("$label")
     else

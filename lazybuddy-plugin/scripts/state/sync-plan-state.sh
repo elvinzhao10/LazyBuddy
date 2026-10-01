@@ -17,7 +17,7 @@ FIX="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/state-paths.sh"
 
-# Tooling dir (v1.3.3): milestone/decision-gate validation lives in Python.
+# Tooling dir (v1.3.4): milestone/decision-gate validation lives in Python.
 TOOLING_DIR="$(cd "$SCRIPT_DIR/../../tooling" && pwd)"
 
 if ! state_require_safe_run_id "$RUN_ID"; then
@@ -33,6 +33,10 @@ state_require_safe_run_file "$EVENTS_FILE" "events.jsonl" || exit 1
 if [ ! -f "$STATE_FILE" ]; then
     echo "Error: state.json not found for run '$RUN_ID'" >&2
     exit 1
+fi
+
+if [ "$FIX" = "--fix" ]; then
+    state_begin_snapshot "$STATE_RUN_DIR" || exit 1
 fi
 
 PLAN_REF=$(python3 - "$STATE_FILE" <<'PY'
@@ -75,7 +79,7 @@ with open(plan_path) as f:
     plan_text = f.read()
     plan_lines = plan_text.splitlines(keepends=True)
 
-# --- v1.3.3 T4: approved-plan-revision reconciliation at the sync boundary ---
+# --- v1.3.4 T4: approved-plan-revision reconciliation at the sync boundary ---
 # The approved revision text is snapshotted once (checkpoints/plan-revision.md).
 # Every later sync compares the current plan against that snapshot:
 #   cosmetic/unchanged edits preserve all evidence;
@@ -230,7 +234,7 @@ for box in plan_boxes:
               % (box["section"], box["title"][:80]), file=sys.stderr)
         sys.exit(1)
 
-# --- v1.3.3 progressive milestones: parse + validate milestone_flags ---
+# --- v1.3.4 progressive milestones: parse + validate milestone_flags ---
 # Each task checkbox MAY carry trailing milestone flags in parentheses, e.g.:
 #   - [ ] T2: Billing (provisional: true, depends_on: T1, parent_plan_id: plan-x)
 # These are parsed into a milestone graph and validated (behavior c):

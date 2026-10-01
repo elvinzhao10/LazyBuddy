@@ -115,7 +115,9 @@ test('validates candidate, onboarding, and finalizer documents against the mirro
   // Given the published schema and three real contract documents.
   const ajvModule = fs.existsSync(path.resolve(__dirname, '../../tooling/node_modules/ajv/dist/2020.js'))
     ? path.resolve(__dirname, '../../tooling/node_modules/ajv/dist/2020')
-    : path.resolve(__dirname, '../../node_modules/ajv/dist/2020.js');
+    : fs.existsSync(path.resolve(__dirname, '../../node_modules/ajv/dist/2020.js'))
+      ? path.resolve(__dirname, '../../node_modules/ajv/dist/2020.js')
+      : 'ajv/dist/2020';
   const Ajv2020 = require(ajvModule);
   const schemaPath = path.resolve(__dirname, '../paired-candidate-contract.v1.schema.json');
   const schemaBytes = fs.readFileSync(schemaPath);

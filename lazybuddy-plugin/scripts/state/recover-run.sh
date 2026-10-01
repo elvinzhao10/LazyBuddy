@@ -28,6 +28,8 @@ state_require_safe_run_directory "$CKPTS_DIR" "checkpoints directory" || exit 1
 state_recover_transaction "$RUN_DIR" || exit 1
 state_require_existing_run_file "$STATE_FILE" "state.json" || exit 1
 
+state_begin_snapshot "$RUN_DIR" || exit 1
+
 # Find latest checkpoint
 LATEST_CKPT=""
 for candidate in "$CKPTS_DIR"/*; do
