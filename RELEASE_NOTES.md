@@ -60,6 +60,14 @@ family table. Personal environment files and caches are ignored while example
 configuration and pinned fixture logs remain publishable. Earlier release notes
 remain below as historical evidence.
 
+## Post-publication repository maintenance
+
+The current main-branch dependency lock uses patched `fast-uri` 3.1.8.
+This addresses [host canonicalization](https://github.com/advisories/GHSA-hrr3-gc8f-f4qj).
+Existing published v1.3.4 archives retain their original tagged dependency
+contents. Use the current source lock for this fix; a refreshed archive needs
+a subsequent versioned release.
+
 ## Prior release notes
 
 # LazyBuddy v1.3.3 — reliability and release consistency
