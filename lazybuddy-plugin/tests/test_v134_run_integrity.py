@@ -39,6 +39,26 @@ class RunIntegrity(unittest.TestCase):
     def shell(self, script, *args, data=None):
         return subprocess.run(["bash", str(PLUGIN / script), *args], env=self.env, input=data, text=True, capture_output=True, timeout=15)
 
+    def test_verifier_advisory_uses_canonical_transaction(self):
+        self.seed([{"id": "one", "status": "done"}])
+        target = self.run_dir / "state.json"
+        state = json.loads(target.read_text())
+        state["updated_at"] = "2026-09-30T00:00:00Z"
+        target.write_text(json.dumps(state))
+        verifier = PLUGIN / "scripts" / (PRODUCT + "-verify.sh")
+        source = verifier.read_text()
+        footer = "# Auto-append verification event" + source.split("# Auto-append verification event", 1)[1]
+        footer = footer.split('if [ "$ALL_PASS" = true ]; then\n    exit', 1)[0]
+        env = dict(self.env, SCRIPTS_DIR=str(PLUGIN / "scripts"),
+                   PYTHON_BIN=sys.executable, ALL_PASS="false")
+        result = subprocess.run(["bash", "-c", footer], env=env, text=True,
+                                capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.run_dir / ".revision").read_text().strip(), "8")
+        records = [json.loads(line) for line in (self.run_dir / "canonical-events.jsonl").read_text().splitlines()]
+        self.assertEqual(records[-1]["event"], "verification_failed")
+        self.assertFalse(records[-1]["event_payload"]["all_pass"])
+
     def test_blocked_is_not_complete(self):
         self.seed([{"id": "wait", "status": "queued", "depends_on": ["missing"]}])
         result = self.shell("scripts/loop/run-cycle.sh", "probe")

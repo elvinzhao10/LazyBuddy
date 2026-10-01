@@ -442,10 +442,11 @@ if [ -n "$LATEST_RUN" ]; then
         if [ "$ALL_PASS" = true ]; then
             ALL_PASS_PY=True
         fi
-        "$PYTHON_BIN" - "$CWD" "$EVENTS_FILE" "$LATEST_RUN" "$NOW" "$ALL_PASS_PY" <<'PY' 2>/dev/null || true
+        "$PYTHON_BIN" - "$CWD" "$EVENTS_FILE" "$LATEST_RUN" "$NOW" "$ALL_PASS_PY" "${SCRIPTS_DIR}/state/state-transaction.py" <<'PY' 2>/dev/null || true
 import json
 import os
 import sys
+import subprocess
 
 cwd, events_file, run_id, now, all_pass_raw = sys.argv[1:6]
 root = os.path.realpath(os.path.join(cwd, ".lazybuddy", "runs"))
@@ -458,8 +459,9 @@ if not inside_runs or not events_path.endswith(os.path.join(run_id, "events.json
     raise SystemExit(0)
 all_pass = all_pass_raw == "True"
 event = {"ts": now, "run_id": run_id, "event": "verification_passed" if all_pass else "verification_failed", "all_pass": all_pass}
-with open(events_path, "a") as f:
-    f.write(json.dumps(event) + "\n")
+subprocess.run([sys.executable, sys.argv[6], "append-event", os.path.dirname(events_path),
+                run_id, event["event"], json.dumps({"all_pass": all_pass}), now],
+               check=True, capture_output=True, timeout=7)
 PY
     fi
 fi
