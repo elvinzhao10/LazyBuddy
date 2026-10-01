@@ -122,10 +122,29 @@ jobs:
       - name: Run timing-sensitive lifecycle regressions
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
 
+  integrity:
+    name: Run integrity regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24"
+      - name: Install pinned Python test runner
+        run: python -m pip install pytest==8.4.2
+      - name: Verify claims, canonical events, MCP and snapshot preservation
+        run: python -m pytest -q lazybuddy-plugin/tests/test_v134_run_integrity.py lazybuddy-plugin/tests/test_v134_snapshot_integrity.py
+
   validate:
     name: Deterministic validation
     if: ${{ always() }}
-    needs: [supported-floor, core, core-current, lifecycle]
+    needs: [supported-floor, core, core-current, lifecycle, integrity]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -135,8 +154,10 @@ jobs:
           CORE_RESULT: ${{ needs.core.result }}
           CORE_CURRENT_RESULT: ${{ needs.core-current.result }}
           LIFECYCLE_RESULT: ${{ needs.lifecycle.result }}
+          INTEGRITY_RESULT: ${{ needs.integrity.result }}
         run: |
           test "$SUPPORTED_FLOOR_RESULT" = success
           test "$CORE_RESULT" = success
           test "$CORE_CURRENT_RESULT" = success
           test "$LIFECYCLE_RESULT" = success
+          test "$INTEGRITY_RESULT" = success
