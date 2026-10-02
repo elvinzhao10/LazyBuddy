@@ -15,7 +15,6 @@ disallowedTools:
 skills:
   - ulw-loop
   - ultrawork
-memory: false
 ---
 
 # lazybuddy-qa-executor (QA Executor)

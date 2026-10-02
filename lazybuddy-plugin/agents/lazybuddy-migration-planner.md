@@ -14,7 +14,6 @@ disallowedTools:
   - Edit
 skills:
   - migration-planner
-memory: false
 ---
 
 # lazybuddy-migration-planner (Migration Planner)

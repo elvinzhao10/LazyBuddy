@@ -3,14 +3,15 @@
 # Always exits 0.
 set -euo pipefail
 
-INPUT=$(cat)
-TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null || echo "")
-CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/bounded-input.bash"
+hook_read_input || exit 0
+TOOL_NAME=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null || echo "")
+CWD=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
 if [ -z "$CWD" ]; then CWD="$PWD"; fi
 
 # Extract error info
-ERROR_MSG=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); e=d.get('error',''); print(e[:200])" 2>/dev/null || echo "")
-ERROR_TYPE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error_type',''))" 2>/dev/null || echo "")
+ERROR_MSG=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); e=d.get('error',''); print(e[:200])" 2>/dev/null || echo "")
+ERROR_TYPE=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error_type',''))" 2>/dev/null || echo "")
 
 # Classify error and suggest recovery
 if echo "$ERROR_MSG" | grep -qiE 'permission denied|EACCES|not permitted'; then

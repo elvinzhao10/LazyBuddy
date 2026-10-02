@@ -10,9 +10,10 @@ const EXPECTED_NAMES = new Set([
   'lazybuddy-verifier',
 ]);
 const REQUIRED_FIELDS = new Set([
-  'name', 'description', 'effort', 'maxTurns', 'tools', 'disallowedTools', 'skills', 'memory',
+  'name', 'description', 'effort', 'maxTurns', 'tools', 'disallowedTools', 'skills',
 ]);
-const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, 'model', 'isolation']);
+const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, 'model', 'isolation', 'memory']);
+const MEMORY_SCOPES = new Set(['user', 'project', 'local']);
 const WORKTREE_NAMES = new Set(['lazybuddy-implementer', 'lazybuddy-orchestrator']);
 const READONLY_NAMES = new Set([
   'lazybuddy-context-miner', 'lazybuddy-explorer', 'lazybuddy-gate-reviewer', 'lazybuddy-planner',
@@ -102,7 +103,7 @@ function validateAgent(filePath) {
   requireList(data.tools, 'tools', filename);
   requireList(data.disallowedTools, 'disallowedTools', filename, true);
   requireList(data.skills, 'skills', filename);
-  if (typeof data.memory !== 'boolean') refuse(`${filename}: memory must be a boolean`);
+  if (Object.hasOwn(data, 'memory')) requireString(data.memory, 'memory', filename, MEMORY_SCOPES);
   if (data.name !== filename.slice(0, -3)) refuse(`${filename}: name must match filename`);
   if (!EXPECTED_NAMES.has(data.name)) refuse(`${filename}: unexpected agent name ${data.name}`);
   if (Object.hasOwn(data, 'isolation') && data.isolation !== 'worktree') refuse(`${filename}: isolation must be the string worktree`);

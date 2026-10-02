@@ -14,7 +14,6 @@ disallowedTools:
 skills:
   - review-work
   - remove-ai-slops
-memory: false
 ---
 
 # lazybuddy-security-auditor (Security Auditor)

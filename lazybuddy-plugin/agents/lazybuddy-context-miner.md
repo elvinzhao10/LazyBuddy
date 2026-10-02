@@ -14,7 +14,6 @@ disallowedTools:
   - Edit
 skills:
   - review-work
-memory: false
 ---
 
 # lazybuddy-context-miner

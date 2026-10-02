@@ -1,10 +1,10 @@
 # LazyBuddy Plugin
 
-## v1.3.4 package
+## v1.3.5 package
 
-v1.3.4 makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
+v1.3.5 makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
 
-The current package version is v1.3.4. Package readiness does not establish host readiness.
+The current package version is v1.3.5. Package readiness does not establish host readiness.
 
 ## Durable installation
 

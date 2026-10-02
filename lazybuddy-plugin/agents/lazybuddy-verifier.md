@@ -14,7 +14,6 @@ disallowedTools:
 skills:
   - verifier
   - ulw-loop
-memory: false
 ---
 
 # lazybuddy-verifier (Oracle)

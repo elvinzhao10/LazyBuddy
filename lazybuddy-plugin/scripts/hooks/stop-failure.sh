@@ -3,8 +3,9 @@
 # Informational only — always exits 0.
 set -euo pipefail
 
-INPUT=$(cat)
-CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/bounded-input.bash"
+hook_read_input || exit 0
+CWD=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
 if [ -z "$CWD" ]; then CWD="$PWD"; fi
 
 RUNS_DIR="$CWD/.lazybuddy/runs"

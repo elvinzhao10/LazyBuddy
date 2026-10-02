@@ -94,20 +94,20 @@ test('Given copied agent headers When hostile frontmatter is loaded Then every p
     ['unsupported permission mode', 'unsupported frontmatter field permissionMode', (agentsDir) => replaceInFixture(
       agentsDir,
       'lazybuddy-implementer.md',
-      'memory: false',
-      'memory: false\npermissionMode: bypassPermissions',
+      'maxTurns: 60',
+      'maxTurns: 60\npermissionMode: bypassPermissions',
     )],
     ['agent-local hooks', 'unsupported frontmatter field hooks', (agentsDir) => replaceInFixture(
       agentsDir,
       'lazybuddy-implementer.md',
-      'memory: false',
-      'memory: false\nhooks: []',
+      'maxTurns: 60',
+      'maxTurns: 60\nhooks: []',
     )],
     ['agent-local MCP', 'unsupported frontmatter field mcpServers', (agentsDir) => replaceInFixture(
       agentsDir,
       'lazybuddy-implementer.md',
-      'memory: false',
-      'memory: false\nmcpServers: []',
+      'maxTurns: 60',
+      'maxTurns: 60\nmcpServers: []',
     )],
     ['duplicate name', 'duplicate field name', (agentsDir) => replaceInFixture(
       agentsDir,
@@ -146,7 +146,7 @@ test('Given copied agent headers When hostile frontmatter is loaded Then every p
       'name: lazybuddy-verifier-stale',
     )],
     ['misleading body content', 'only implementer and orchestrator may declare isolation', (agentsDir) => {
-      replaceInFixture(agentsDir, 'lazybuddy-reviewer.md', 'memory: false', 'memory: false\nisolation: worktree');
+      replaceInFixture(agentsDir, 'lazybuddy-reviewer.md', 'maxTurns: 50', 'maxTurns: 50\nisolation: worktree');
       fs.appendFileSync(path.join(agentsDir, 'lazybuddy-reviewer.md'), '\n<!-- untrusted body -->\n');
     }],
   ];

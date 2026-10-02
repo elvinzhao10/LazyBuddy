@@ -4,10 +4,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 PLUGIN_ROOT="${CODEBUDDY_PLUGIN_ROOT:-$(cd -P -- "$SCRIPT_DIR/../.." && pwd -P)}"
 
-INPUT="$(cat)"
-FRESHNESS="$(python3 -c 'import json,sys; value=json.load(sys.stdin).get("runtime_freshness"); print("" if value is None else json.dumps(value,separators=(",",":")))' <<<"$INPUT" 2>/dev/null || true)"
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/bounded-input.bash"
+if ! hook_read_input; then
+    [ -n "${HOOK_INPUT_FILE:-}" ] || exit 0
+    # Preserve the host-specific malformed adaptive directive without retaining input.
+    printf '%s' '{' >"$HOOK_INPUT_FILE"
+fi
+FRESHNESS="$(python3 -c 'import json,sys; value=json.load(sys.stdin).get("runtime_freshness"); print("" if value is None else json.dumps(value,separators=(",",":")))' <"$HOOK_INPUT_FILE" 2>/dev/null || true)"
 if [ -z "$FRESHNESS" ]; then
-  exec python3 "$PLUGIN_ROOT/tooling/lazybuddy_adaptive_runtime.py" <<<"$INPUT"
+  python3 "$PLUGIN_ROOT/tooling/lazybuddy_adaptive_runtime.py" <"$HOOK_INPUT_FILE"
+  exit $?
 fi
 
 if ! RESULT="$(node "$PLUGIN_ROOT/scripts/runtime-freshness-entry.js" resume <<<"$FRESHNESS" 2>/dev/null)"; then
@@ -25,7 +31,7 @@ PYEOF
   exit 0
 fi
 
-DIRECTIVE="$(python3 "$PLUGIN_ROOT/tooling/lazybuddy_adaptive_runtime.py" <<<"$INPUT")"
+DIRECTIVE="$(python3 "$PLUGIN_ROOT/tooling/lazybuddy_adaptive_runtime.py" <"$HOOK_INPUT_FILE")"
 [ -n "$DIRECTIVE" ] || exit 0
 python3 - "$RESULT" "$DIRECTIVE" <<'PYEOF'
 import json, sys

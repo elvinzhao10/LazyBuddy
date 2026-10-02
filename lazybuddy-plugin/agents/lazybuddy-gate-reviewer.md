@@ -15,7 +15,6 @@ skills:
   - reviewer
   - remove-ai-slops
   - programming
-memory: false
 ---
 
 # lazybuddy-gate-reviewer (Gate Reviewer)

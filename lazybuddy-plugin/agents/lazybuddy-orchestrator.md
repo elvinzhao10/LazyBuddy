@@ -20,7 +20,7 @@ disallowedTools: []
 skills:
   - start-work
   - ulw-loop
-memory: true
+memory: project
 isolation: worktree
 ---
 
@@ -177,4 +177,4 @@ per-agent override or mutate host settings.
 - **TaskCreate/TaskUpdate/TaskList** replace `.lazybuddy/boulder.json` inline task tracking — use them to track subagent lifetimes and completion states alongside the run ledger (state.json).
 - **WebFetch/WebSearch** are available for external context gathering when the plan requires researching live docs or contracts — delegate to explorer/librarian subagents when possible.
 - **Write/Edit** tools are available to the orchestrator **only** for `.lazybuddy/` state files (state.json, plan checkboxes, drafts). Product code mutation is exclusively through implementer subagents. The PreToolUse hook denies out-of-bound Write/Edit when the host supplies agent identity. Bash writes and identity-free host payloads remain a known boundary gap; review those actions independently.
-- **maxTurns: 100** with `memory: true` enables the orchestrator to persist across long-running work cycles, resuming from run state (state.json) on continuation turns.
+- **maxTurns: 100** bounds each delegation. `memory: project` scopes native memory to the project; continuation must still reload and validate the managed run state (state.json).

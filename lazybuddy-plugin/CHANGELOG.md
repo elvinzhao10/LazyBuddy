@@ -1,5 +1,12 @@
 # LazyBuddy Plugin Changelog
 
+## [1.3.5] - Runtime verification and platform clarity
+
+- Execute real runtime-floor exercises and check optional LSP requirements separately.
+- Bound hook input and avoid payload-sized process arguments while preserving host contracts.
+- Refresh platform identities and native feature guidance; begin shared verification code.
+- Carry reviewed dependency patches in a new versioned release.
+
 ## [1.3.4] — 2026-09-30
 
 - Serialize task claims and iteration limits; preserve blocked and exhausted outcomes without completion authority.

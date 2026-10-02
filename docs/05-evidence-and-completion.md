@@ -4,7 +4,7 @@ Completion is a claim backed by evidence, not a green-looking status message.
 LazyBuddy separates package readiness from live-host behavior; that distinction
 is the most important rule for interpreting results.
 
-For the current v1.3.4 human-facing boundary, the route IDs are
+For the current v1.3.5 human-facing boundary, the route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 uses native modes
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
 public labels `documented-tested`, `documented-untested`,
@@ -130,7 +130,7 @@ reference separately from verifier output. This lets a reviewer distinguish
 claim remains limited by an unverified host fact.”
 
 
-## v1.3.4 measurement boundary
+## Measurement boundary (introduced in v1.3.4)
 
 Cost-outcome records may identify `measurement_scope` as `fixture-validation` or `execution`. An absent scope is unspecified. Buddy/Qoder baseline-runner records explicitly use `fixture-validation`: their elapsed time measures fixture validation, and their counters come from the supplied fixture. They are not observations of a coding task. The outcome comparison accepts only explicit `execution` scope; unspecified and fixture-validation records are rejected there. Scope metadata is a caller declaration, not independent execution or billing proof.
 

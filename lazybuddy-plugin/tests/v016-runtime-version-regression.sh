@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXPECTED_VERSION="1.3.4"
+EXPECTED_VERSION="1.3.5"
 REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 for server in run-ledger verification status-dashboard context-graph code-intel docs lsp; do
@@ -100,4 +100,4 @@ assert {
     for match in re.findall(pattern, misleading_identity, flags=re.IGNORECASE)
 } == {"1.0.2"}, "misleading current-release prose must remain detectable"
 PY
-printf 'v1.3.4 runtime version regression: PASS\n'
+printf 'v1.3.5 runtime version regression: PASS\n'

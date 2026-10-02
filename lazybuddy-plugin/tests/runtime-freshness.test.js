@@ -8,7 +8,7 @@ const test = require('node:test');
 const runtime = require('../scripts/runtime-freshness');
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
-const PREVIOUS_VERSION = '1.2.0';
+const PREVIOUS_VERSION = '1.3.4';
 const binding = () => ({
   plan_hash: digest('1'),
   git_head: 'a'.repeat(40),

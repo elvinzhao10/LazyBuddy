@@ -30,7 +30,7 @@ function git(cwd, args) {
   return result.stdout.trim();
 }
 
-function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\\n');\n", version = '1.3.4') {
+function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\\n');\n", version = '1.3.5') {
   const packageRoot = path.join(root, 'lazybuddy-plugin');
   const contracts = path.join(packageRoot, 'contracts');
   fs.mkdirSync(path.join(packageRoot, '.codebuddy-plugin'), { recursive: true });
@@ -51,7 +51,7 @@ function writeFixtureFiles(root, selfTest = "process.stdout.write('self-test-ok\
   }
 }
 
-function fixture(version = '1.3.4') {
+function fixture(version = '1.3.5') {
   const sandbox = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'lazybuddy bootstrap '));
   const remote = path.join(sandbox, 'official fixture.git');
   const source = path.join(sandbox, 'source');
@@ -127,14 +127,14 @@ function treeSnapshot(root) {
 
 test('parses only canonical official HTTPS source forms for the selected product', () => {
   const accepted = [
-    ['https://github.com/elvinzhao10/LazyBuddy', 'v1.3.4'],
-    ['https://github.com/elvinzhao10/LazyBuddy.git', 'v1.3.4'],
-    ['https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.3.4', 'release/v1.3.4'],
+    ['https://github.com/elvinzhao10/LazyBuddy', 'v1.3.5'],
+    ['https://github.com/elvinzhao10/LazyBuddy.git', 'v1.3.5'],
+    ['https://github.com/elvinzhao10/LazyBuddy/tree/release/v1.3.5', 'release/v1.3.5'],
   ];
   const rejected = [
     'http://github.com/elvinzhao10/LazyBuddy',
     'https://github.com/elvinzhao10/LazyBuddy/',
-    'https://github.com/elvinzhao10/LazyBuddy?ref=v1.3.4',
+    'https://github.com/elvinzhao10/LazyBuddy?ref=v1.3.5',
     'https://github.com/elvinzhao10/LazyBuddy#readme',
     'https://user@github.com/elvinzhao10/LazyBuddy',
     'https://github.com:443/elvinzhao10/LazyBuddy',
@@ -174,7 +174,7 @@ test('resolves, verifies, self-tests, and promotes a local fixture under an offi
     commit_sha: expectedSha,
     status: 'ready',
     test_status: 'passed',
-    version: '1.3.4',
+    version: '1.3.5',
   });
   assert.equal(launched.status, 0, launched.stderr);
   assert.equal(launched.stdout.trim(), 'fixture-launch-ok');
@@ -185,7 +185,7 @@ test('resolves, verifies, self-tests, and promotes a local fixture under an offi
 test('repo, tag, branch, and full-SHA sources resolve through Git to the same immutable commit', () => {
   const sources = [
     'https://github.com/elvinzhao10/LazyBuddy',
-    'https://github.com/elvinzhao10/LazyBuddy/tree/v1.3.4',
+    'https://github.com/elvinzhao10/LazyBuddy/tree/v1.3.5',
     'https://github.com/elvinzhao10/LazyBuddy/tree/main',
   ];
   for (const sourceUrl of sources) {
@@ -221,7 +221,7 @@ test('same version at a different SHA requires an exact revision confirmation', 
 });
 
 for (const priorVersion of ['1.3.2', '1.3.3']) {
-test(`v${priorVersion} upgrades to v1.3.4 while retaining the prior release`, () => {
+test(`v${priorVersion} upgrades to v1.3.5 while retaining the prior release`, () => {
   const f = fixture(priorVersion);
   const priorSha = git(f.source, ['rev-parse', 'HEAD']);
   const priorSource = path.join(f.sandbox, 'prior package');
@@ -235,14 +235,14 @@ test(`v${priorVersion} upgrades to v1.3.4 while retaining the prior release`, ()
   for (const name of ['.codebuddy-plugin', '.workbuddy-plugin']) {
     const manifestPath = path.join(f.source, 'lazybuddy-plugin', name, 'plugin.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    manifest.version = '1.3.4';
+    manifest.version = '1.3.5';
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest)}\n`);
   }
   git(f.source, ['add', 'lazybuddy-plugin']);
-  git(f.source, ['commit', '-m', 'fixture v1.3.4']);
+  git(f.source, ['commit', '-m', 'fixture v1.3.5']);
   git(f.source, ['push', f.remote, 'main']);
   const upgraded = bootstrap(f);
-  assert.equal(upgraded.version, '1.3.4');
+  assert.equal(upgraded.version, '1.3.5');
   assert.notEqual(upgraded.release_id, prior.releaseId);
   assert.equal(fs.existsSync(path.join(f.paths.releases, prior.releaseId)), true);
   assert.equal(JSON.parse(fs.readFileSync(f.paths.active, 'utf8')).active_release, upgraded.release_id);
