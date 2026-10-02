@@ -578,20 +578,25 @@ fs.renameSync = (source, target) => {
   if (target === path.join(root, 'LazyBuddy')) { const error = new Error('collision'); error.code = 'EEXIST'; throw error; }
   return realRenameSync(source, target);
 };
+const { prepareBootstrapProductRoot } = require(${JSON.stringify(modulePath)});
+const { performance } = require('node:perf_hooks');
+const started = performance.now();
 try {
-  require(${JSON.stringify(modulePath)}).prepareBootstrapProductRoot({ installRoot: root, product: 'LazyBuddy', timeoutMs: 40 });
+  prepareBootstrapProductRoot({ installRoot: root, product: 'LazyBuddy', timeoutMs: 40 });
   process.exitCode = 2;
 } catch (error) {
-  process.stdout.write(String(error.code));
+  process.stdout.write(JSON.stringify({ code: error.code, elapsedMs: performance.now() - started }));
   process.exitCode = error.code === 'LOCKED' ? 0 : 3;
 }`;
 
   const result = spawnSync(process.execPath, ['-e', program, path.join(sandbox, 'install root')], {
     encoding: 'utf8',
-    timeout: 500,
+    timeout: 5000,
   });
   assert.equal(result.status, 0, result.error ? result.error.message : result.stderr);
-  assert.equal(result.stdout, 'LOCKED');
+  const outcome = JSON.parse(result.stdout);
+  assert.equal(outcome.code, 'LOCKED');
+  assert.ok(outcome.elapsedMs < 500, `collision retry took ${outcome.elapsedMs}ms`);
 });
 
 test('dirty source bytes, local transport bypass, and mismatched confirmations fail closed', () => {
