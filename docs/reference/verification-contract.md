@@ -58,7 +58,8 @@ still-detectable descendants. This is best-effort cleanup, not a security sandbo
   optional export fragments; filesystem and Playwright are not bundled local
   MCP servers.
 
-The package has macOS-only verification. Normal CI has no sibling-repository
+Package CI covers Ubuntu and macOS; live-host acceptance requires separate
+current-session evidence. Normal CI has no sibling-repository
 dependency. Release-only paired parity may compare explicitly supplied sibling
 roots as release evidence; it is not runtime, installation, or normal-CI
 dependency.

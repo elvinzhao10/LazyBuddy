@@ -72,7 +72,7 @@ When the user types `onboard`:
 2. Run `status` through the durable `launcher.js`. If absent, use the verified
    source entrypoint to run `onboard`; if blocked, preserve the state and report
    the exact issue.
-3. When upgrading from v1.0.2, inventory receipt-owned versus modified/unknown
+3. When upgrading from an earlier release, inventory receipt-owned versus modified/unknown
    assets first. Preserve user changes and host settings until the new session
    is observed. Never infer host readiness from a PATH entry, `--plugin-dir`,
    file existence, or a load-check.
