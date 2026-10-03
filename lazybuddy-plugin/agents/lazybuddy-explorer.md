@@ -13,7 +13,6 @@ disallowedTools:
   - Edit
 skills:
   - init-deep
-memory: false
 ---
 
 # lazybuddy-explorer

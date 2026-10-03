@@ -18,7 +18,6 @@ disallowedTools:
   - Edit
 skills:
   - ulw-plan
-memory: false
 ---
 
 # lazybuddy-planner (Prometheus)

@@ -26,7 +26,7 @@ function fixture() {
 function stage(f) {
   return stageRelease(f.paths, {
     sourceRoot: f.sourceRoot,
-    version: '1.3.4',
+    version: '1.3.5',
     commitSha: 'a'.repeat(40),
   });
 }

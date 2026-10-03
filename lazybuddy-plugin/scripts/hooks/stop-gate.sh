@@ -3,27 +3,28 @@
 set -euo pipefail
 
 # Read JSON payload from stdin
-INPUT=$(cat)
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/bounded-input.bash"
+hook_read_input || exit 0
 
 # --- Context pressure detection ---
 # If the transcript contains context pressure markers, pass through gracefully.
 CONTEXT_PRESSURE_MARKERS=("context compacted" "context_length_exceeded" "skill descriptions were shortened" "context_too_large" "codex ran out of room in the model's context window")
 for marker in "${CONTEXT_PRESSURE_MARKERS[@]}"; do
-    if echo "$INPUT" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))" 2>/dev/null | grep -qi "$marker"; then
+    if cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))" 2>/dev/null | grep -qi "$marker"; then
         exit 0
     fi
 done
 
 # --- Stop hook active guard ---
 # If stop_hook_active is true, don't re-block (prevents infinite loops).
-STOP_ACTIVE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('stop_hook_active',''))" 2>/dev/null || echo "")
+STOP_ACTIVE=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('stop_hook_active',''))" 2>/dev/null || echo "")
 if [ "$STOP_ACTIVE" = "True" ] || [ "$STOP_ACTIVE" = "true" ]; then
     exit 0
 fi
 
 # --- Determine workspace root ---
 # Prefer CODEBUDDY_PLUGIN_ROOT-relative or fall back to cwd from payload
-CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
+CWD=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
 if [ -z "$CWD" ]; then
     CWD="$PWD"
 fi

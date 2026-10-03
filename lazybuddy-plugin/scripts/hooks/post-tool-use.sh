@@ -3,8 +3,9 @@
 # Redacts secrets, records changed files and artifact paths.
 set -euo pipefail
 
-INPUT=$(cat)
-python3 - "$INPUT" <<'PY'
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/bounded-input.bash"
+hook_read_input || exit 0
+python3 - "$HOOK_INPUT_FILE" <<'PY'
 import datetime
 import glob
 import json
@@ -12,8 +13,9 @@ import os
 import sys
 
 try:
-    payload = json.loads(sys.argv[1])
-except json.JSONDecodeError:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        payload = json.load(handle)
+except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
     raise SystemExit(0)
 
 if not isinstance(payload, dict):

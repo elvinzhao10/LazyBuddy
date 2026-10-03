@@ -14,7 +14,7 @@ disallowedTools:
   - Bash
 skills:
   - librarian
-memory: true
+memory: project
 ---
 
 # lazybuddy-librarian (Librarian)
@@ -120,5 +120,5 @@ Return confirmation with modified file paths and change summary.
 - **Read/Write/Edit/Grep/Glob** — the full text manipulation suite for memory file maintenance.
 - **No Bash** — the librarian never runs commands; all context comes from reading files the orchestrator references.
 - **No Agent** — memory maintenance is direct, single-threaded work.
-- **memory: true** enables the librarian to accumulate knowledge across invocations, building a persistent understanding of the project's memory state.
+- **memory: project** scopes native agent memory to this project. Evidence and workflow state remain in the managed run ledger.
 - **maxTurns: 20** with `effort: low` and inherited parent model bounds maintenance work. A cheaper model needs an explicit plan decision; otherwise the parent model persists.

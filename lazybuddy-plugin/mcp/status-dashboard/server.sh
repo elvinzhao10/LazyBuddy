@@ -121,7 +121,7 @@ fi
 case "$METHOD" in
   ping) reply '{}' ;;
   initialize)
-    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.3.4"}}'
+    reply '{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"status-dashboard","version":"1.3.5"}}'
     ;;
   tools/list)
     reply '{"tools":[

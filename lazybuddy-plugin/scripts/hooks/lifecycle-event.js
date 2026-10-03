@@ -205,8 +205,19 @@ function processEvent(input, expectedEvent) {
   return { status: 'accepted', outcome: 'recorded', event_id: eventId, raw_event: event, consumer: record.consumer, record_path: recordPath, active_state: active ? 'active' : 'inactive' };
 }
 
+function readInput() {
+  const input = Buffer.alloc(MAX_INPUT_BYTES + 1);
+  let length = 0;
+  while (length < input.length) {
+    const count = fs.readSync(0, input, length, input.length - length, null);
+    if (count === 0) break;
+    length += count;
+  }
+  return input.subarray(0, length);
+}
+
 try {
-  process.stdout.write(`${JSON.stringify(processEvent(fs.readFileSync(0), process.argv[2]))}\n`);
+  process.stdout.write(`${JSON.stringify(processEvent(readInput(), process.argv[2]))}\n`);
 } catch (error) {
   if (error instanceof BoundaryError) {
     process.stderr.write(`${JSON.stringify({ status: 'rejected', reason: error.reason, detail: error.message })}\n`);

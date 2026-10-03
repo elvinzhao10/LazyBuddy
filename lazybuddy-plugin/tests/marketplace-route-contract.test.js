@@ -46,7 +46,7 @@ test('validates exact marketplace identities and byte-equivalent canonical paylo
   const result = validateMarketplaceRoutes(root);
 
   // Then: CodeBuddy and WorkBuddy retain distinct manifests over one canonical payload.
-  assert.equal(result.version, '1.3.4');
+  assert.equal(result.version, '1.3.5');
   assert.equal(result.codebuddy.plugin, 'lazybuddy@lazybuddy');
   assert.equal(result.workbuddy.plugin, 'lazybuddy');
   assert.deepEqual(result.codebuddy.payload_inventory, result.workbuddy.payload_inventory);
@@ -63,7 +63,7 @@ test('ignores generated Python caches while retaining strict payload validation'
   fs.writeFileSync(path.join(cache, 'server.cpython-312.pyc'), 'generated');
   fs.writeFileSync(path.join(mcp, 'stray.pyc'), 'generated');
 
-  assert.equal(validateMarketplaceRoutes(root).version, '1.3.4');
+  assert.equal(validateMarketplaceRoutes(root).version, '1.3.5');
   const sourcePaths = inventoryReleaseSource(root).map((entry) => entry.path);
   assert.equal(sourcePaths.some((entry) => entry.includes('__pycache__') || entry.endsWith('.pyc')), false);
   assert.equal(includeReleaseSource(root, cache), false);
@@ -111,7 +111,7 @@ test('refuses altered marketplace identity and host-manifest version independent
 
 test('treats fallback as generated recovery and conflicts with either marketplace plugin route', () => {
   // Given: both full-plugin routes and the manual recovery route.
-  const releaseRoot = '/durable/LazyBuddy/releases/v1.3.4-aaaaaaaaaaaa';
+  const releaseRoot = '/durable/LazyBuddy/releases/v1.3.5-aaaaaaaaaaaa';
   const projectRoot = '/project';
 
   // When: fallback metadata and both coexistence selections are evaluated.

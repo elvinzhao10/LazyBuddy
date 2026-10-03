@@ -2,9 +2,12 @@
 
 LazyBuddy supports its documented CLI and IDE/app hosts. Automated package checks run in CI on Ubuntu and macOS as defined by the workflows; the supplied live-host reports are historical macOS observations. No current-session host activation is established. Package files, host settings, credentials, marketplace state, and live sessions remain separate authorities.
 
-## Current documentation release: v1.3.4
+See [the current platform audit](docs/reference/platform-status-2026-10-02.md)
+for version-specific native features and legacy route limits.
 
-This v1.3.4 guide names current human-facing boundaries only. It does not
+## Current documentation release: v1.3.5
+
+This v1.3.5 guide names current human-facing boundaries only. It does not
 publish a package or promote package evidence to host proof. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;
@@ -69,7 +72,7 @@ When the user types `onboard`:
 2. Run `status` through the durable `launcher.js`. If absent, use the verified
    source entrypoint to run `onboard`; if blocked, preserve the state and report
    the exact issue.
-3. When upgrading from v1.0.2, inventory receipt-owned versus modified/unknown
+3. When upgrading from an earlier release, inventory receipt-owned versus modified/unknown
    assets first. Preserve user changes and host settings until the new session
    is observed. Never infer host readiness from a PATH entry, `--plugin-dir`,
    file existence, or a load-check.

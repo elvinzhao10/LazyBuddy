@@ -17,7 +17,6 @@ skills:
   - remove-ai-slops
   - git-master
   - debugging
-memory: false
 isolation: worktree
 ---
 

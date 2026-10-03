@@ -28,21 +28,22 @@ manage_attempts() {
     esac
 }
 
-INPUT=$(cat)
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/bounded-input.bash"
+hook_read_input || exit 0
 MAX_ATTEMPTS=3
 
 # --- Context pressure detection ---
 for marker in "context compacted" "context_length_exceeded" "skill descriptions were shortened" "context_too_large"; do
-    if echo "$INPUT" | grep -qi "$marker"; then exit 0; fi
+    if grep -qi "$marker" "$HOOK_INPUT_FILE"; then exit 0; fi
 done
 
 # --- Extract hook fields ---
 # WorkBuddy payload uses 'agent_type'; some builds may use 'agent_type_name'. Check both.
-AGENT_TYPE=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_type','') or d.get('agent_type_name',''))" 2>/dev/null || echo "")
-LAST_MSG=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('last_assistant_message',''))" 2>/dev/null || echo "")
-CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
-SESSION_ID=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('session_id',''))" 2>/dev/null || echo "unknown")
-AGENT_ID=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_id',''))" 2>/dev/null || echo "unknown")
+AGENT_TYPE=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_type','') or d.get('agent_type_name',''))" 2>/dev/null || echo "")
+LAST_MSG=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('last_assistant_message',''))" 2>/dev/null || echo "")
+CWD=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
+SESSION_ID=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('session_id',''))" 2>/dev/null || echo "unknown")
+AGENT_ID=$(cat "$HOOK_INPUT_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('agent_id',''))" 2>/dev/null || echo "unknown")
 
 if [ -z "$CWD" ]; then CWD="$PWD"; fi
 
@@ -57,10 +58,10 @@ if [ -z "$LAST_MSG" ]; then exit 0; fi
 # Use python3 for reliable extraction (BSD sed doesn't handle \s)
 EVIDENCE_PATH=$(python3 -c "
 import sys, re
-msg = sys.argv[1] if len(sys.argv) > 1 else ''
+msg = sys.stdin.read()
 m = re.search(r'EVIDENCE_RECORDED:\s*(\S+)', msg)
 print(m.group(1) if m else '')
-" "$LAST_MSG" 2>/dev/null || echo "")
+" <<<"$LAST_MSG" 2>/dev/null || echo "")
 
 block_with_retry() {
     local reason="$1"

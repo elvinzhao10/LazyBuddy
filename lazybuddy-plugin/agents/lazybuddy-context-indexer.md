@@ -14,7 +14,6 @@ disallowedTools:
   - Agent
 skills:
   - init-deep
-memory: false
 ---
 
 # lazybuddy-context-indexer (Context Indexer)

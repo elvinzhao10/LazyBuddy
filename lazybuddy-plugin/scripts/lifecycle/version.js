@@ -1,6 +1,6 @@
 'use strict';
 
-const CURRENT_VERSION = '1.3.4';
+const CURRENT_VERSION = '1.3.5';
 const MACHINE_STATUS_CONTRACT_VERSION = '2.0.0';
 
 module.exports = { CURRENT_VERSION, MACHINE_STATUS_CONTRACT_VERSION };
