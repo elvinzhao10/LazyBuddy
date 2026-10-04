@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries dashboard component and state showcase. All data is illustrative.">
+  <title>Dashboard component showcase</title>
+  <script>
+    document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'Component examples could not load. Reload this page to try again. No live run is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./style.css">
+  <script id="showcase-module" type="module" src="./showcase.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / Component library</span><label>Theme<select id="theme" disabled><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Work, with evidence</h1>
+      <p>A shared vocabulary for what is happening, what needs attention, and what proves completion.</p>
+      <p class="fixture-label">Showcase examples · No live run connected</p>
+      <p id="load-status" role="status">Loading component examples…</p>
+      <div class="cluster"><label>Surface state<select id="surface-state" disabled><option value="ready">Ready example</option><option value="empty">Empty</option><option value="loading">Loading</option><option value="disconnected">Disconnected</option><option value="pending">Pending edit</option><option value="conflict">Conflicting edit</option><option value="unavailable">Unavailable observation</option><option value="stale">Stale evidence</option></select></label><button id="long-content" type="button" aria-pressed="false" disabled>Long content: Off</button></div>
+      <div id="surface-notice" data-testid="connection-status"></div>
+    </header>
+    <div id="component-content" hidden>
+    <section id="statuses"><header><h2>Status vocabulary</h2><p class="meta">Text and glyphs carry meaning when color is unavailable.</p></header><div class="cluster" id="status-inventory"></div></section>
+    <section id="tasks"><header><h2>Task cards & dependencies</h2><p class="meta">Fixture branch structure shows prerequisites. Only the explicit running labels represent example activity.</p></header><div id="task-inventory" class="graph" data-testid="work-view"></div></section>
+    <section id="editing"><header><h2>Structured edits</h2><p class="meta">Drafts and saved examples do not dispatch work. The running attempt keeps its original revision.</p></header><div class="grid"><div id="criterion-example" class="panel stack"></div><div id="dependency-example" class="panel stack"></div></div></section>
+    <section id="planning"><header><h2>Queue & decisions</h2><p class="meta">Priority changes eligibility order, never authorization to execute.</p></header><div class="grid"><div id="queue-example" class="panel stack"></div><div id="decision-example" class="panel stack"></div></div></section>
+    <section id="all-states"><header><h2>Complete state inventory</h2><p class="meta">These examples remain visible together for component review.</p></header><div class="grid" id="notice-inventory"></div></section>
+    <footer>Component showcase only. Native-host readiness and live execution are unobserved.</footer>
+    </div>
+  </main>
+</body>
+</html>
