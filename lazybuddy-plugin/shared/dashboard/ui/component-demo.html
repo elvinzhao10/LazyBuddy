@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Snapshot-driven LazySeries dashboard component demo. Data is illustrative.">
+  <title>Snapshot dashboard components</title>
+  <script>document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';</script>
+  <link rel="stylesheet" href="./views.css">
+  <script type="module" src="./component-demo.mjs"></script>
+</head>
+<body>
+  <main class="stack">
+    <header class="demo-header stack">
+      <div class="cluster spread"><span class="meta">LazySeries / Snapshot component demo</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Work, proof and context</h1>
+      <p class="fixture-label">Illustrative projected snapshot · No live service or native host connected</p>
+      <div class="cluster" role="tablist" aria-label="Dashboard views"><button id="work-tab" type="button" role="tab" aria-selected="true">Work</button><button id="verification-tab" type="button" role="tab" aria-selected="false">Verification</button><button id="snapshot-update" type="button">Apply snapshot update</button></div>
+      <p id="demo-status" role="status">Demo snapshot revision 14 loaded.</p>
+    </header>
+    <div id="work-root"></div>
+    <div id="verification-root" hidden></div>
+    <footer>Component demo only. Selection, layout, evidence navigation and snapshot updates are local observations; no command is sent.</footer>
+  </main>
+</body>
+</html>
