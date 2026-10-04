@@ -50,6 +50,18 @@ consume a plan revision. External approved plans expose
 `EXTERNAL_PLAN_READ_ONLY`. Queue authority is explicitly unavailable until B2
 bindings are integrated; no queue storage or activation exists in this core.
 
+The complete `.lazybuddy/dashboard` namespace is protected service storage,
+including case aliases on case-insensitive filesystems. It cannot be attached,
+copied into a new evidence archive, or downloaded as evidence. The authority
+rejects it before reading bytes. Evidence hardlinks are unsupported and reject
+at the open file descriptor, so alternate hardlink names cannot be archived.
+Normal single-link project artifacts remain supported. Snapshot references
+whose path or recorded original submission source is protected carry
+`unavailable_reason: PROTECTED_SERVICE_ARTIFACT`; their download returns 403.
+This also covers task references to a known protected-origin archive. Existing
+submissions and historical files are retained; unavailable history is not
+rewritten or deleted. Unreferenced workspace paths are never download routes.
+
 Protected internal `/internal/challenge` and `/internal/stop` require bootstrap
 authentication, exact Origin, instance nonce and fresh challenge. They are
 lifecycle protocol routes, not browser command operations.

@@ -8,6 +8,8 @@ export class ServiceError extends Error {
   constructor(code, status = 400) { super(code); this.code = code; this.status = status; }
 }
 export const hash = value => createHash('sha256').update(value).digest('hex');
+export const protectedServiceArtifact = reference => typeof reference === 'string' &&
+  reference.split('/').slice(0, 2).map(part => part.toLowerCase()).join('/') === '.lazybuddy/dashboard';
 export async function canonicalDirectory(path) {
   if (typeof path !== 'string' || !path.startsWith(sep) || resolve(path) !== path) throw new ServiceError('CANONICAL_DIRECTORY_REQUIRED');
   let current = sep;

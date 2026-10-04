@@ -32,7 +32,7 @@ def safe_path(root: Path, relative: str) -> Path:
     return checked_target(root, relative)
 
 
-def bounded_read(root: Path, relative: str) -> bytes:
+def bounded_read(root: Path, relative: str, single_link: bool = False) -> bytes:
     safe_path(root, relative)
     with ExitStack() as stack:
         directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -43,8 +43,11 @@ def bounded_read(root: Path, relative: str) -> bytes:
             stack.callback(os.close, directory)
         descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
         handle = stack.enter_context(os.fdopen(descriptor, "rb"))
-        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+        metadata = os.fstat(handle.fileno())
+        if not stat.S_ISREG(metadata.st_mode):
             raise TransactionError("dashboard input is not a regular file")
+        if single_link and metadata.st_nlink != 1:
+            raise TransactionError("EVIDENCE_HARDLINK")
         content = handle.read(LIMIT + 1)
         if len(content) > LIMIT:
             raise TransactionError("dashboard input too large")
@@ -110,7 +113,9 @@ class Files:
         return Write(relative, content, MISSING)
 
     def evidence(self, relative: str) -> bytes:
+        if tuple(part.casefold() for part in relative.split("/")[:2]) == (".lazybuddy", "dashboard"):
+            raise TransactionError("PROTECTED_SERVICE_ARTIFACT")
         path = safe_path(self.binding.root, relative)
         if not path.is_file() or path.stat().st_size > LIMIT:
             raise TransactionError("evidence missing or oversized")
-        return bounded_read(self.binding.root, relative)
+        return bounded_read(self.binding.root, relative, single_link=True)
