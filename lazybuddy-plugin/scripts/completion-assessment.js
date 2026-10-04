@@ -95,8 +95,7 @@ function assessCapturedCompletion(bundle, options) {
     const record = Object.hasOwn(bundle.records, relative) && bundle.records[relative];
     return record?.kind === 'ok' ? { kind: 'ok', bytes: Buffer.from(record.base64, 'base64') } : { kind: record?.kind ?? 'invalid' };
   };
-  const assessment = assessRecords(read, () => bundle.current, { ...options, authorityPath: bundle.authorityPath });
-  return { ...assessment, authority: assessment.status === 'ready' ? parseJSON(read(bundle.authorityPath)) : null };
+  return assessRecords(read, () => bundle.current, { ...options, authorityPath: bundle.authorityPath, includeAuthority: true });
 }
 function assessRecords(read, currentIdentity, options) {
   const authorityRecord = read(options.authorityPath);
@@ -113,11 +112,10 @@ function assessRecords(read, currentIdentity, options) {
   if (applicable.length === 0) return result('not-applicable', 'NO_APPLICABLE_CRITERIA', options.remediationCommand);
   if (current.dirty.length > 0) return result('blocked', 'WORKTREE_DIRTY', options.remediationCommand, current.dirty);
   const outcomes = applicable.map(criterion => inspectCriterion(read, authority, criterion));
-  const stale = outcomes.find(([status]) => status === 'stale');
-  if (stale) return result(stale[0], stale[1], options.remediationCommand);
-  const blocked = outcomes.find(([status]) => status === 'blocked');
-  if (blocked) return result(blocked[0], blocked[1], options.remediationCommand);
-  return result('ready', 'READY', options.remediationCommand);
+  const failure = outcomes.find(([status]) => status === 'stale') ?? outcomes.find(([status]) => status === 'blocked');
+  const assessment = result(failure?.[0] ?? 'ready', failure?.[1] ?? 'READY', options.remediationCommand);
+  return options.includeAuthority ? { ...assessment, authority: { ...authority,
+    criteria: applicable.filter((_, index) => outcomes[index][0] === 'ready') } } : assessment;
 }
 function main(argv) {
   const options = {};
