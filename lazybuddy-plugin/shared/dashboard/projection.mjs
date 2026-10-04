@@ -4,6 +4,7 @@ import { adaptHost } from './adapters/host.mjs';
 import { digest } from './adapters/ledger.mjs';
 import { adaptState, parseBinding, progress } from './adapters/state.mjs';
 import { completionApplies } from './adapters/completion.mjs';
+import { compatiblePlanRevision } from './commands.mjs';
 export { parseContract, ContractError, stableJSON } from './contracts/parse.mjs';
 const absent = { embedding: 'unobserved', chat_handoff: 'unobserved', wake: 'unobserved', observations: 'unobserved' };
 function replay(input) {
@@ -67,7 +68,7 @@ function applyAttempt(tasks, observation, binding) {
   if (attempt.criterion_id && !criterion) throw new ContractError('ATTEMPT_CRITERION_UNKNOWN');
   if (criterion) {
     if (!criterion.result_ids.includes(attempt.id)) criterion.result_ids.push(attempt.id);
-    const stale = attempt.criterion_version !== criterion.version || attempt.plan_revision !== binding.plan_revision ||
+    const stale = attempt.criterion_version !== criterion.version || (attempt.plan_revision !== binding.plan_revision && !compatiblePlanRevision(binding, attempt)) ||
       (binding.source_revision && attempt.source_revision !== binding.source_revision);
     criterion.verification = stale ? 'stale' : attempt.verification;
   }
@@ -98,7 +99,7 @@ export function projectSnapshot(input, completionProof) {
   for (const task of tasks) {
     for (const criterion of task.criteria) {
       const currentAttempt = task.attempts.filter(attempt => attempt.criterion_id === criterion.id &&
-        attempt.criterion_version === criterion.version && attempt.plan_revision === input.plan_revision &&
+        attempt.criterion_version === criterion.version && (attempt.plan_revision === input.plan_revision || compatiblePlanRevision(input, attempt)) &&
         (!input.source_revision || attempt.source_revision === input.source_revision)).at(-1);
       if (currentAttempt) criterion.verification = currentAttempt.verification;
       if ((!currentAttempt || currentAttempt.execution === 'finished') && completionApplies(completionProof, input, criterion) && task.execution === 'finished' && !['failed', 'unavailable', 'stale', 'verifying'].includes(criterion.verification)) criterion.verification = 'verified';

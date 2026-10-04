@@ -66,12 +66,20 @@ EVENTS_TMP=$(mktemp "$STATE_RUN_DIR/.events.jsonl.XXXXXX")
 cleanup_transaction_temps() { rm -f "$TMP_FILE" "$EVENTS_TMP"; }
 trap cleanup_transaction_temps EXIT
 
-python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$TOOLING_DIR" <<'PYEOF'
-import json, sys, re, os, hashlib
+python3 - "$STATE_FILE" "$PLAN_PATH" "$FIX" "$NOW" "$RUN_ID" "$CWD" "$TMP_FILE" "$EVENTS_FILE" "$EVENTS_TMP" "$TOOLING_DIR" "$SCRIPT_DIR" "${STATE_SNAPSHOT_REVISION:-}" <<'PYEOF'
+import json, sys, re, os, hashlib, copy
+from pathlib import Path
 
-state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp, tooling_dir = sys.argv[1:]
+state_file, plan_path, fix, now, run_id, cwd, tmp_file, events_file, events_tmp, tooling_dir, script_dir, expected_revision = sys.argv[1:]
 sys.path.insert(0, tooling_dir)
+sys.path.insert(0, script_dir)
+from state_transaction import Write, commit_locked, locked, recover_locked, read_revision, checked_target, sha256_bytes, MISSING
+from dashboard_files import Binding, Files
+from dashboard_history import preserve
 fix = (fix == "--fix")
+state_before = Path(state_file).read_bytes()
+events_before = Path(events_file).read_bytes() if Path(events_file).exists() else None
+plan_before = Path(plan_path).read_bytes()
 
 with open(state_file) as f:
     state = json.load(f)
@@ -87,7 +95,12 @@ with open(plan_path) as f:
 #   a human uncheck reopens the task for reconciliation.
 run_dir = os.path.dirname(state_file)
 revision_path = os.path.join(run_dir, "checkpoints", "plan-revision.md")
+checked_target(Path(run_dir), "checkpoints/plan-revision.md")
+revision_before = Path(revision_path).read_bytes() if Path(revision_path).exists() else None
+history_before = copy.deepcopy(state)
 reconciliation_event = None
+reopened_ids = set()
+revision_changed = revision_before != plan_before
 try:
     from lazybuddy_plan_reconcile import classify_plan_edits
     if os.path.exists(revision_path):
@@ -114,31 +127,20 @@ try:
                 for task in state.get("tasks", []):
                     tid = task.get("id")
                     if tid in invalidated_ids:
+                        task["evidence_status"] = "stale"
+                        for criterion in task.get("criteria", []):
+                            criterion["verification"] = "stale"
                         if task.get("status") == "done":
                             task["status"] = "queued"
-                            task["evidence"] = []
                             task["reconciled_reopened"] = True
+                            reopened_ids.add(tid)
                 # human uncheck reopens even when the edit is otherwise cosmetic
             if fix and reconciliation["reopen"]:
                 for task in state.get("tasks", []):
                     if task.get("id") in reconciliation["reopen"] and task.get("status") == "done":
                         task["status"] = "queued"
                         task["reconciled_reopened"] = True
-            # Adopt the edited plan as the new approved revision once reconciled.
-            if fix:
-                os.makedirs(os.path.dirname(revision_path), exist_ok=True)
-                rev_tmp = revision_path + ".tmp"
-                with open(rev_tmp, "w") as f:
-                    f.write(plan_text)
-                os.replace(rev_tmp, revision_path)
-    else:
-        # First sync: snapshot the approved revision.
-        if fix:
-            os.makedirs(os.path.dirname(revision_path), exist_ok=True)
-            rev_tmp = revision_path + ".tmp"
-            with open(rev_tmp, "w") as f:
-                f.write(plan_text)
-            os.replace(rev_tmp, revision_path)
+                        reopened_ids.add(task["id"])
 except Exception as exc:  # pragma: no cover - defensive
     print("Error: plan reconciliation unavailable: %s" % exc, file=sys.stderr)
     sys.exit(1)
@@ -328,7 +330,7 @@ if not fix:
     sys.exit(0)
 
 # Reconcile
-changed = False
+changed = revision_changed
 # fix progress
 if prog.get("total_checkboxes") != total or prog.get("completed_checkboxes") != completed:
     state["progress"] = {"total_checkboxes": total, "completed_checkboxes": completed}
@@ -337,6 +339,8 @@ if prog.get("total_checkboxes") != total or prog.get("completed_checkboxes") != 
 for box in plan_boxes:
     if box["id"] and box["id"] in tasks_by_id:
         t = tasks_by_id[box["id"]]
+        if t.get("id") in reopened_ids or (t.get("reconciled_reopened") and t.get("status") != "done"):
+            continue
         want = "done" if box["checked"] else "pending"
         if t.get("status") != want:
             t["status"] = want
@@ -359,14 +363,23 @@ if changed:
             with open(events_file) as source:
                 output.write(source.read())
         output.write(json.dumps(ev) + "\n")
+    writes = [Write("state.json", Path(tmp_file).read_bytes(), sha256_bytes(state_before)),
+              Write("events.jsonl", Path(events_tmp).read_bytes(), MISSING if events_before is None else sha256_bytes(events_before)),
+              Write("checkpoints/plan-revision.md", plan_before, MISSING if revision_before is None else sha256_bytes(revision_before))]
+    if reconciliation_event is not None:
+        history_files = Files(Binding(Path(cwd).resolve(), Path(run_dir), "legacy", run_id, "sync-plan-state", ""))
+        writes.extend(preserve(history_files, history_before, "history/reconciliation-%s" % expected_revision))
+        writes.append(Write("history/reconciliation-%s/state.json" % expected_revision,
+                            (json.dumps(history_before, sort_keys=True) + "\n").encode(), MISSING))
+        writes.append(Write("history/reconciliation-%s/plan.md" % expected_revision, revision_before, MISSING))
+    with locked(Path(run_dir)):
+        recover_locked(Path(run_dir))
+        if read_revision(Path(run_dir)) != int(expected_revision) or Path(plan_path).read_bytes() != plan_before:
+            raise SystemExit("Error: stale reconciliation snapshot")
+        commit_locked(Path(run_dir), "sync_plan_state", writes)
     print("\nRECONCILED: progress + task statuses updated (%d drift fixed)." % len(drift))
 else:
     print("\nNothing to write (only counters/statuses are auto-fixed; plan-only tasks need manual add).")
 PYEOF
 
-if [ -s "$TMP_FILE" ]; then
-    state_commit_transaction "$STATE_RUN_DIR" sync_plan_state \
-        "$(state_transaction_write_arg state.json "$STATE_FILE" "$TMP_FILE")" \
-        "$(state_transaction_write_arg events.jsonl "$EVENTS_FILE" "$EVENTS_TMP")"
-fi
 exit 0

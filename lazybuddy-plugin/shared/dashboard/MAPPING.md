@@ -1,8 +1,9 @@
 # Dashboard projection contract v1
 
-This directory is a dependency-free Node 18-compatible read model. It does not
-write run state, execute a verifier, authorize a task, dispatch workers, or provide
-an HTTP endpoint. The committed state remains the execution authority.
+The projection is dependency-free and Node 18-compatible. Run commands use the
+packaged Python transaction bridge and existing committed state as authority.
+This directory does not execute a verifier, authorize a task, dispatch workers,
+or provide an HTTP endpoint.
 
 ## Public exports
 
@@ -171,6 +172,71 @@ manufacture it. Queue revision is independent from run revision, exposed alongsi
 queue entries in the snapshot; B2 supplies its authoritative store.
 
 ## CLI and tests
+
+### Transaction adapter (B1)
+
+`commands.mjs` exports asynchronous `executeCommand(options)`, `readInput(options)`
+and `consumeRevision(options)`. Adapter options are `projectRoot` (canonical real
+path), `projectId`, `runId`, and optional `python`/`node` executable paths.
+Mutations additionally require trusted `actor`; command request JSON cannot
+supply it. `executeCommand` takes `command`; `consumeRevision` takes
+`expectedRevision` and `planRevision`. The three queue operations reject with
+`QUEUE_AUTHORITY_REQUIRED`; B2 owns their independent scope and activation path.
+No queue storage or activation is implemented here.
+
+Concrete CLI shape (JSON on stdin; exit 65 means rejected, never saved):
+
+```
+node lazybuddy-plugin/shared/dashboard/commands.mjs command --project-root /private/tmp/b1-authority-project --project-id project:b1 --run-id probe --actor cli:b1
+node lazybuddy-plugin/shared/dashboard/commands.mjs read --project-root /private/tmp/b1-authority-project --project-id project:b1 --run-id probe
+node lazybuddy-plugin/shared/dashboard/commands.mjs consume --project-root /private/tmp/b1-authority-project --project-id project:b1 --run-id probe --actor agent:b1
+```
+
+Consume stdin is `{ "expected_revision": 7, "plan_revision": 2 }` with actual
+current revisions substituted. Only exact pending acknowledgements transition
+to applied after approved plan bytes and revision checks. A real orchestration
+adapter must call it at adoption. Calling acceptance never calls consumption or
+dispatch. Running task/attempt context remains unchanged. Command ID retries
+return the original acceptance result even after a mutable acknowledgement is
+applied; different command content with that ID rejects.
+
+Run plans must reside beneath `.lazybuddy/runs/<run>/`; arbitrary external plan
+writes are rejected. The current `plan_reference` selects the run-owned plan.
+`readInput` also returns `editability: {supported, reason}`: an external/absent
+reference is explicitly `EXTERNAL_PLAN_READ_ONLY`. B3/C1 must present this scope
+truthfully; external approved `.omo/plans` content remains readable and unchanged
+on rejection. B2 imports approved source content/provenance during activation.
+The bridge stores the command result, canonical event, pending acknowledgement,
+state, plan with a JSON authority appendix, approved checkpoint, and immutable
+`history/dashboard-<revision>/` snapshot/artifacts in one existing run journal.
+Evidence paths are project-relative, regular files with no symlink/traversal,
+bounded to 8 MiB. Attaching evidence is a submission, never verification. Legacy
+references that cannot be read safely are retained as explicit corrupt/unsupported
+history inventory entries. No second run store is created.
+
+`readInput` recovers and captures state/events/revisions under the transaction
+lock, captures current Git HEAD when available, and returns projector input.
+Use `projectSnapshot(await readInput(options), completionProof)` in-process.
+The reader privately binds scoped compatibility to the complete captured
+project/run/revision/plan/state/source bytes. Shallow copies retaining that state
+object are supported; altering authority fields, JSON round trips, and offline
+fixture input lose compatibility safely. No public proof registration API exists.
+Every intervening semantic transition must explicitly preserve that criterion
+ID/version; gaps, changed-then-reverted criteria, dependencies and source mismatch
+remain stale. This does not promote a receipt or bypass current attempt status.
+
+The Python bridge is `scripts/state/dashboard-bridge.py`, accepting
+`read|command|consume --project-root PATH --project-id ID --run-id ID --actor ID --node NODE`.
+It uses `locked`, `recover_locked`, `Write` content CAS and `commit_locked` from
+`state_transaction.py`. B2 may reuse that primitive for its separate project
+scope and add frozen activation provenance at run creation; B4 owns dispatch
+call sites. B3 owns authentication and service actor binding.
+
+```
+node --test lazybuddy-plugin/shared/dashboard/test/commands.test.mjs lazybuddy-plugin/shared/dashboard/test/command-operations.test.mjs lazybuddy-plugin/shared/dashboard/test/revision-compatibility.test.mjs
+node lazybuddy-plugin/shared/dashboard/qa/command-authority.mjs --evidence-dir /absolute/evidence
+python3 -m pytest -q lazybuddy-plugin/tests/test_dashboard_reconciliation.py
+```
 
 ```
 node lazybuddy-plugin/shared/dashboard/projector.mjs --project-root /actual/project --run-dir /actual/project/.lazybuddy/runs/run-1 --project-id project:1 --hook-events /captured/hook.jsonl --output snapshot.json --cursor-output cursor.json
