@@ -36,7 +36,7 @@ encoded routes reject. No permissive CORS response is emitted.
 | POST `/api/session` | `X-Dashboard-Bootstrap` from protected credential file, `Content-Type: application/json`, body `{}`. Returns an expiring session token and expiry. |
 | GET `/api/snapshot` | `Authorization: Bearer <session>`; returns `{snapshot,cursor,editability,queue_authority,evidence}`. |
 | GET `/api/updates` | Same auth, optional `X-Dashboard-Cursor` from the previous response; returns a freshly reconstructed committed snapshot. |
-| POST `/api/commands` | Same auth, exact Origin, JSON typed B1 command. Actor is assigned by the session. 200 means durable `pending_agent`; 409 means revision conflict; 422 means rejection. |
+| POST `/api/commands` | Same auth, exact Origin, typed command JSON. Actor is assigned by the session. 200 means durable run `pending_agent` (or original applied retry) or project queue `saved`; 409 means revision conflict; 422 means rejection. |
 | GET `/api/evidence/<id>` | Same auth, opaque ID from snapshot references. Only current committed references are readable. Regular bounded files only; every ancestor is descriptor-pinned, links/FIFOs/replacements reject. Attachment content is inert `application/octet-stream`. |
 
 Polling is intentionally immediate; there are no SSE subscribers or in-memory
@@ -47,8 +47,16 @@ fresh snapshot before writing. Retry the same command ID/content after a lost
 response to reconstruct the original committed result, including after restart.
 Changed content with the same ID rejects. Commands do not dispatch execution or
 consume a plan revision. External approved plans expose
-`EXTERNAL_PLAN_READ_ONLY`. Queue authority is explicitly unavailable until B2
-bindings are integrated; no queue storage or activation exists in this core.
+`EXTERNAL_PLAN_READ_ONLY`. The same command endpoint accepts
+`create_queued_plan`, `amend_queued_plan` and `reorder_queued_plan` with the bound
+project ID and `target.run_id: null`. Their expected revision is the independent
+project queue revision; successful receipts stay `saved`, with plan revision 0
+and null consumption. Ordinary run commands still target the selected run and
+retain pending/applied semantics. Snapshot queue, readiness and acknowledgements
+come from the combined locked authority read; its queue revision/digest also
+participate in the poll cursor. Restarting or selecting another run preserves
+the project queue. Browser activation, recovery, execution and consumption have
+no endpoint; queue edits never start work.
 
 The complete `.lazybuddy/dashboard` namespace is protected service storage,
 including case aliases on case-insensitive filesystems. It cannot be attached,

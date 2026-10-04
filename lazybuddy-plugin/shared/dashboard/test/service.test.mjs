@@ -13,7 +13,7 @@ test('authenticated typed HTTP authority: exact binding, actor, CAS, collision, 
   const f = await serviceFixture();
   try {
     const snapshot = await f.request('/api/snapshot'); assert.equal(snapshot.status, 200);
-    assert.equal(snapshot.value.queue_authority.supported, false); assert.equal(snapshot.value.editability.supported, true);
+    assert.equal(snapshot.value.queue_authority.supported, true); assert.equal(snapshot.value.editability.supported, true);
     assert.match((await http(f.live.url, '/')).value, /temporary QA asset/);
     const before = await filesBelow(f.run);
     for (const response of [await http(f.live.url, '/api/snapshot'), await http(f.live.url, '/api/updates'),
