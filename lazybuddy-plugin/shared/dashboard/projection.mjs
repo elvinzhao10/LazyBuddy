@@ -57,8 +57,9 @@ function applyAttempt(tasks, observation, binding) {
     const old = task.attempts[prior];
     if (old.execution !== 'running' && old.execution !== 'not_started') throw new ContractError('TERMINAL_ATTEMPT_REWRITTEN');
     if (old.plan_revision !== attempt.plan_revision || old.criterion_id !== attempt.criterion_id || old.criterion_version !== attempt.criterion_version) throw new ContractError('ATTEMPT_IDENTITY_CHANGED');
-    task.attempts[prior] = attempt;
-  } else task.attempts.push(attempt);
+    task.attempts.splice(prior, 1);
+  }
+  task.attempts.push(attempt);
   if (attempt.verification === 'verified') attempt.verification = 'unverified';
   if (attempt.execution === 'failed') attempt.verification = 'failed';
   if (attempt.execution === 'cancelled') attempt.verification = 'unverified';
@@ -96,7 +97,11 @@ export function projectSnapshot(input, completionProof) {
   }
   for (const task of tasks) {
     for (const criterion of task.criteria) {
-      if (completionApplies(completionProof, input, criterion) && task.execution === 'finished' && !['failed', 'unavailable', 'stale', 'verifying'].includes(criterion.verification)) criterion.verification = 'verified';
+      const currentAttempt = task.attempts.filter(attempt => attempt.criterion_id === criterion.id &&
+        attempt.criterion_version === criterion.version && attempt.plan_revision === input.plan_revision &&
+        (!input.source_revision || attempt.source_revision === input.source_revision)).at(-1);
+      if (currentAttempt) criterion.verification = currentAttempt.verification;
+      if ((!currentAttempt || currentAttempt.execution === 'finished') && completionApplies(completionProof, input, criterion) && task.execution === 'finished' && !['failed', 'unavailable', 'stale', 'verifying'].includes(criterion.verification)) criterion.verification = 'verified';
     }
     task.verification = verification(task); task.progress = progress(task.criteria);
   }

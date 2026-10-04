@@ -124,6 +124,14 @@ The Buddy completion reader reuses checks for current Git HEAD, clean worktree,
 package version, plan digest/checkbox, receipt identity, zero exit, artifact hash,
 independent verifier and approved review hash. Proof also must match projection
 run/source/plan and criterion version (legacy authority defaults to version 1).
+The latest applicable attempt observation in deterministic replay order governs
+receipt promotion. Applicability matches criterion ID/version, plan revision and
+current source revision when supplied. An update moves that attempt to the end of
+observation order; source timestamps never choose the winner. A current running,
+not-started or cancelled attempt cannot be promoted by an existing receipt.
+A later finished applicable retry can verify; older or incompatible cancellations
+remain history without overriding it. With no applicable attempt, existing stale
+results remain stale; legacy no-attempt receipts retain their prior behavior.
 It never overrides failed/stale/unavailable/verifying results or unfinished tasks.
 The named denominator is `required_criteria`, with explicit version list, optional
 and not-applicable counts. Empty required criteria never imply verified.
