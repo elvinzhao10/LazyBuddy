@@ -30,9 +30,8 @@ async function readRun(args) {
   for (const [flag, kind] of [['--host-events', 'host'], ['--hook-events', 'hook']]) {
     if (args[flag]) input.sources.push({ kind, id: kind, generation: '1', text: read(args[flag]) });
   }
-  const authorityPath = path.relative(root, path.join(runDir, 'completion-authority.json'));
   const packageVersion = JSON.parse(read(fileURLToPath(new URL('../../tooling/package.json', import.meta.url)))).version;
-  const proof = readBuddyCompletion(root, { authorityPath, packageVersion });
+  const proof = readBuddyCompletion(input, { packageVersion });
   return { input, proof };
 }
 export async function main(argv) {

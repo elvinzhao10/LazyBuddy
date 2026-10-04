@@ -16,7 +16,7 @@ const cases = [
   ['historical finish after current cancellation', [{ execution: 'cancelled' }, { execution: 'finished', plan_revision: 0 }], 0],
   ['latest update of earlier running attempt', [{ id: 'earlier', execution: 'running' }, { execution: 'finished' }, { id: 'earlier', execution: 'cancelled' }], 0],
 ];
-for (const [name, changes, expected] of cases) test(`applicable receipt respects ${name}`, () => {
+for (const [name, changes, expected] of cases) test(`applicable receipt respects ${name}`, async () => {
   // Given: valid assessed on-disk authority plus explicit attempt observations.
   const fixture = completionFixture();
   try {
@@ -31,9 +31,10 @@ for (const [name, changes, expected] of cases) test(`applicable receipt respects
       source_revision: fixture.head, plan_digest: fixture.plan_digest,
       state: { schema_version: 2, run_id: 'run-1', tasks: [{ id: 'task-1', status: 'done', criteria: [criterion] }] },
       sources: [{ kind: 'runtime', id: 'runtime', generation: '1', text: records.map(item => JSON.stringify(item) + '\n').join('') }] };
-    const proof = readBuddyCompletion(fixture.root, fixture.options); assert.equal(proof.status, 'ready');
+    const captured = await fixture.capture(input);
+    const proof = readBuddyCompletion(captured, fixture.options); assert.equal(proof.status, 'ready');
     // When: reducing the actual applicable receipt with the observed attempt history.
-    const task = projectSnapshot(input, proof).tasks[0];
+    const task = projectSnapshot(captured, proof).tasks[0];
     // Then: only finished current applicable work (or legacy no-attempt) can verify.
     assert.equal(task.progress.verified, expected); assert.equal(task.verification === 'verified', expected === 1);
     assert.equal(task.attempts.length, new Set(records.map(item => item.event_payload.id)).size);

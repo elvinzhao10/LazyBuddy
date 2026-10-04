@@ -146,13 +146,14 @@ test('explicit worker attempts retain dispatch identity without changing running
   const actual = projectSnapshot(value); assert.equal(actual.tasks[0].attempts[0].worker_id, 'worker:1');
   assert.equal(actual.tasks[1].execution, 'not_started');
 });
-test('only an applicable assessment of on-disk authority verifies a criterion', () => {
+test('only an applicable assessment of on-disk authority verifies a criterion', async () => {
   // Given: independently reviewed receipt with actual files and current Git identity (unit fixture).
   const fixture = completionFixture();
   try {
     const value = input(); value.state.tasks[0].criteria = [criterion()]; value.source_revision = fixture.head; value.plan_digest = fixture.plan_digest;
     // When: using the existing completion assessor at the read boundary.
-    const proof = readBuddyCompletion(fixture.root, fixture.options); const actual = projectSnapshot(value, proof);
+    const captured = await fixture.capture(value);
+    const proof = readBuddyCompletion(captured, fixture.options); const actual = projectSnapshot(captured, proof);
     // Then: the applicable criterion is verified using the authority, not a JSON pass claim.
     assert.equal(actual.tasks[0].verification, 'verified'); assert.equal(actual.tasks[0].progress.verified, 1);
   } finally { fixture.cleanup(); }
@@ -161,13 +162,14 @@ for (const [name, mutate] of [
   ['dirty worktree', fixture => fixture.write('untracked.txt', 'dirty')],
   ['failed receipt', fixture => fixture.write('.lazybuddy/receipt.json', { ...fixture.receipt, exit_code: 1 })],
   ['tampered artifact', fixture => fixture.write('.lazybuddy/artifact.txt', 'tampered')],
-]) test(`${name} cannot use a completion receipt as proof`, () => {
+]) test(`${name} cannot use a completion receipt as proof`, async () => {
   // Given: a receipt invalidated at its actual authority boundary.
   const fixture = completionFixture();
   try {
     mutate(fixture); const value = input(); value.state.tasks[0].criteria = [criterion()]; value.source_revision = fixture.head; value.plan_digest = fixture.plan_digest;
     // When: projecting the assessment. Then: no verified criterion.
-    const actual = projectSnapshot(value, readBuddyCompletion(fixture.root, fixture.options)); assert.equal(actual.tasks[0].progress.verified, 0);
+    const captured = await fixture.capture(value);
+    const actual = projectSnapshot(captured, readBuddyCompletion(captured, fixture.options)); assert.equal(actual.tasks[0].progress.verified, 0);
   } finally { fixture.cleanup(); }
 });
 test('retry retains failed attempt and does not promote a later claimed pass', () => {

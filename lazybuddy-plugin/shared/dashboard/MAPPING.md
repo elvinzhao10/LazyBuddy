@@ -23,9 +23,9 @@ or provide an HTTP endpoint.
 - Both adapters return `{records, cursor, issues}`. Normalized records carry
   `event`, inert `payload`, `provenance`, `dedup_key`, and `identity`. These last two
   fields are reduction details; snapshot observations omit them.
-- `adapters/completion.mjs`: `readBuddyCompletion(projectRoot, {authorityPath,
-  packageVersion})` produces an opaque in-process proof using Buddy's existing
-  `scripts/completion-assessment.js`. `completionApplies` is read-only. Deserialized
+- `adapters/completion.mjs`: `readBuddyCompletion(input, {packageVersion})`
+  assesses the private bundle retained by `readInput` and produces an opaque
+  proof for that exact input. `completionApplies` is read-only. Deserialized
   JSON cannot impersonate a proof. Other siblings must supply their own read
   boundary before promoting completion; the pure baseline works without it.
 - `projector.mjs`: `main(argv)` returns 0 for a valid snapshot, 65 for rejected
@@ -124,7 +124,10 @@ criterion definitions live in `history`; old attempts/evidence remain present.
 The Buddy completion reader reuses checks for current Git HEAD, clean worktree,
 package version, plan digest/checkbox, receipt identity, zero exit, artifact hash,
 independent verifier and approved review hash. Proof also must match projection
-run/source/plan and criterion version (legacy authority defaults to version 1).
+project/run/revisions/state/sources/source HEAD/plan and criterion version
+(legacy authority defaults to version 1). Both input and state object identity
+must match; a shallow copy cannot reuse a completion proof. A resync diagnostic
+never promotes completion. The filesystem assessor CLI remains compatible.
 The latest applicable attempt observation in deterministic replay order governs
 receipt promotion. Applicability matches criterion ID/version, plan revision and
 current source revision when supplied. An update moves that attempt to the end of
@@ -215,7 +218,33 @@ history inventory entries. No second run store is created.
 
 `readInput` recovers and captures state/events/revisions under the transaction
 lock, captures current Git HEAD when available, and returns projector input.
-Use `projectSnapshot(await readInput(options), completionProof)` in-process.
+For trusted completion composition use:
+
+```js
+const input = await readInput(options);
+const proof = readBuddyCompletion(input, { packageVersion });
+const snapshot = projectSnapshot(input, proof);
+```
+
+`projectSnapshot(input)` remains conservative. The bridge captures authority and
+all referenced plan, receipt, review and artifact bytes while holding the run
+lock (the queue snapshot already holds the queue lock first). Safe descriptor
+reads reject traversal, symlinks, hardlinks and the reserved dashboard directory;
+the bundle permits at most 1024 references and 2 MiB of encoded reference data.
+A second complete collect compares bytes and inode/ctime/mtime/size to detect
+external mutable reference changes, including change/revert. Publishers must
+participate in the run transaction or supply stable imported references. The
+assessor consumes the captured bytes, with no second authority read. The private
+bundle is removed from public reader output; client JSON cannot register it.
+
+Git is not protected by the run lock. HEAD and dirty status are sampled around
+capture; unavailable, changed or dirty identity withholds proof. This is snapshot
+semantics, not continuous filesystem freshness: a complete captured snapshot
+remains deterministic at its declared revision after a later transaction. Later
+receipts cannot supplement an earlier capture. Added external host/hook sources
+change the binding and conservatively withhold completion. Synthetic receipt
+fixtures establish guard semantics, not a real verifier or publication workflow.
+
 The reader privately binds scoped compatibility to the complete captured
 project/run/revision/plan/state/source bytes. Shallow copies retaining that state
 object are supported; altering authority fields, JSON round trips, and offline

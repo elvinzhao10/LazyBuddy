@@ -15,6 +15,7 @@ from pathlib import Path
 
 from dashboard_files import Binding, Files, Json, LIMIT, encoded
 from dashboard_history import preserve
+from dashboard_completion import capture_completion
 from state_transaction import TransactionError, Write, commit_locked, locked, read_revision, recover_locked
 
 
@@ -144,7 +145,8 @@ def main(argv: list[str]) -> Json:
     with locked(binding.run):
         recover_locked(binding.run)
         files = Files(binding)
-        actions = {"read": lambda: capture(files), "command": lambda: command(files, request), "consume": lambda: consume(files, request)}
+        actions = {"read": lambda: {**capture(files), "_completion_capture": capture_completion(files)},
+                   "command": lambda: command(files, request), "consume": lambda: consume(files, request)}
         return actions[argv[1]]()
 
 

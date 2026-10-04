@@ -8,6 +8,7 @@ import { authorityBinding, validateTransitions, crossesCompatibleRevisions } fro
 const bridge = fileURLToPath(new URL('../../scripts/state/dashboard-bridge.py', import.meta.url));
 const limit = 8 * 1024 * 1024;
 const committedInputs = new WeakMap();
+const completionCaptures = new WeakMap();
 function invoke(action, options, value = {}) {
   const argv = [bridge, action, '--project-root', options.projectRoot, '--project-id', options.projectId,
     '--run-id', options.runId, '--actor', options.actor ?? 'reader', '--node', options.node ?? process.execPath];
@@ -36,8 +37,16 @@ export function executeCommand(options) {
 }
 export async function readInput(options) {
   const input = await queueBridge('snapshot', options);
+  const bundle = input._completion_capture;
+  delete input._completion_capture;
+  completionCaptures.set(input, { bundle, binding: authorityBinding(input), state: input.state });
   committedInputs.set(input.state, { binding: authorityBinding(input), transitions: validateTransitions(input) });
   return input;
+}
+export function capturedCompletion(input) {
+  const captured = completionCaptures.get(input);
+  return captured && captured.state === input.state && captured.binding === authorityBinding(input)
+    ? structuredClone(captured.bundle) : null;
 }
 export function compatiblePlanRevision(input, attempt) {
   const proof = committedInputs.get(input.state);

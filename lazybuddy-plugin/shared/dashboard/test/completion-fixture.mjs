@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { readInput } from '../commands.mjs';
 export function completionFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-completion-'));
   const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -30,7 +31,16 @@ export function completionFixture() {
       plan: { id: 'plan-1', path: '.lazybuddy/plan.md', sha256: hash(plan) },
       criteria: [{ task_id: 'task-1', criterion_id: 'c1', applicable: true, status: 'complete', evidence_path: '.lazybuddy/receipt.json', review_path: '.lazybuddy/review.json' }] };
     write('.lazybuddy/authority.json', authority);
-    return { root, head, plan_digest: hash(plan), write, receipt,
+    const capture = async input => {
+      const run = '.lazybuddy/runs/run-1/';
+      write(run + 'state.json', { ...input.state, plan_revision: input.plan_revision, _approved_plan_sha256: input.plan_digest,
+        plan_reference: '.lazybuddy/plan.md' });
+      write(run + '.revision', String(input.revision));
+      write(run + 'canonical-events.jsonl', input.sources.find(source => source.kind === 'runtime')?.text ?? '');
+      write(run + 'completion-authority.json', fs.readFileSync(path.join(root, '.lazybuddy/authority.json'), 'utf8'));
+      return readInput({ projectRoot: fs.realpathSync(root), projectId: input.project_id, runId: 'run-1' });
+    };
+    return { root, head, plan_digest: hash(plan), write, receipt, capture,
       options: { authorityPath: '.lazybuddy/authority.json', packageVersion: '1.3.5' }, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
   } catch (error) { fs.rmSync(root, { recursive: true, force: true }); throw error; }
 }
