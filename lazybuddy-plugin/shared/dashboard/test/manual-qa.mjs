@@ -38,6 +38,8 @@ try {
   success('python3', [path.join(plugin, 'scripts/state/state-transaction.py'), 'commit', runDir, 'qa_seed',
     '--expected-revision', fs.readFileSync(path.join(runDir, '.revision'), 'utf8').trim(), `state.json|${hash(before)}|${seed}`]);
   script('append-event.sh', ['dashboard-probe', 'done_claim', JSON.stringify({ event_id: 'qa:claim', task_id: 'task-1', result: 'PASS' })]);
+  success('python3', [path.join(plugin, 'scripts/state/state-transaction.py'), 'append-event', runDir, 'dashboard-probe',
+    'delayed_observation', JSON.stringify({ event_id: 'qa:older', task_id: 'task-1' }), '2000-01-01T00:00:00Z']);
   script('update-task.sh', ['dashboard-probe', 'task-1', 'done']);
   const hookResult = success(process.execPath, [path.join(plugin, 'scripts/hooks/lifecycle-event.js'), 'Notification'], JSON.stringify({
     cwd: root, session_id: 'qa-projection', permission_mode: 'default', hook_event_name: 'Notification',
@@ -53,6 +55,9 @@ try {
   assert.equal(fs.readFileSync(path.join(output, 'snapshot-1.json'), 'utf8'), fs.readFileSync(path.join(output, 'snapshot-2.json'), 'utf8'));
   assert.equal(fs.readFileSync(path.join(output, 'cursor-1.json'), 'utf8'), fs.readFileSync(path.join(output, 'cursor-2.json'), 'utf8'));
   const snapshot = JSON.parse(fs.readFileSync(path.join(output, 'snapshot-1.json')));
+  const runtime = snapshot.observations.filter(item => item.provenance.kind === 'runtime');
+  assert.equal(runtime[0].provenance.source_event_id, 'qa:claim'); assert.equal(runtime[1].provenance.source_event_id, 'qa:older');
+  assert.ok(Date.parse(runtime[0].provenance.timestamp) > Date.parse(runtime[1].provenance.timestamp));
   assert.equal(snapshot.tasks[0].execution, 'finished'); assert.equal(snapshot.tasks[0].verification, 'unverified');
   assert.ok(snapshot.observations.some(item => item.provenance.kind === 'hook')); assert.equal(snapshot.tasks[0].attempts.length, 0);
   const captured = { project_id: 'project:qa', run_id: 'dashboard-probe', revision: snapshot.revision, plan_revision: 0,
@@ -72,7 +77,7 @@ try {
     assert.equal(result.status, expected, result.stderr);
   }
   write(path.join(output, 'manual-observables.json'), { replay_bytes_equal: true, cursor_bytes_equal: true,
-    legacy_done_unverified: true, real_hook_observed: true, adversarial_cli_checks_passed: true, subprocess_timeout_ms: 15000 });
+    legacy_done_unverified: true, real_hook_observed: true, descending_timestamps_preserve_source_order: true, adversarial_cli_checks_passed: true, subprocess_timeout_ms: 15000 });
   passed = true;
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
