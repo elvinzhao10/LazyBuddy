@@ -38,8 +38,11 @@ async function fixture() {
   const run = join(root, '.lazybuddy/runs/probe'); const head = (await processCall(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim();
   const plan = '# Plan\n- [x] [C1] Actual artifact is independently verified\n';
   const artifact = join(root, '.lazybuddy/runs/probe/actual.txt');
+  const cancelledStarted = join(root, '.lazybuddy/runs/probe/cancelled-started');
+  const cancelledRelease = join(root, '.lazybuddy/runs/probe/cancelled-release');
   const commands = [[process.execPath, workload, 'write', artifact, 'wrong'], [process.execPath, workload, 'verify', artifact, 'right'],
-    [process.execPath, workload, 'write', artifact, 'right']];
+    [process.execPath, workload, 'write', artifact, 'right'],
+    [process.execPath, workload, 'wait-write', artifact, 'cancelled', cancelledStarted, cancelledRelease]];
   const commandsBytes = `${JSON.stringify(commands)}\n`;
   const state = JSON.parse(await readFile(join(run, 'state.json')));
   state.status = 'active'; state.plan_reference = '.lazybuddy/runs/probe/plan.md'; state.plan_revision = 1;
@@ -65,6 +68,11 @@ test('real failed verification is retained before distinct successful process pu
     const failed = await call(f.root, ['verify', '--context-file', verifier1, '--artifact-path', '.lazybuddy/runs/probe/actual.txt',
       '--executor-id', 'worker:executor-1', '--executor-attempt-id', 'executor:wrong']);
     assert.equal(failed.code, 9); await assert.rejects(readFile(join(f.run, 'completion-authority.json')));
+    const cancelled = await context(f.root, 'executor:cancelled', 'worker:executor-cancelled', 3);
+    const cancelFile = join(f.run, 'cancel'); await writeFile(cancelFile, 'cancel\n');
+    const cancelledExecution = await call(f.root, ['execute', '--context-file', cancelled, '--cancel-file', cancelFile,
+      '--artifact-path', '.lazybuddy/runs/probe/actual.txt']);
+    assert.notEqual(cancelledExecution.code, 0); assert.equal(JSON.parse(cancelledExecution.stdout).terminal.result.status, 'cancelled');
     const executor2 = await context(f.root, 'executor:right', 'worker:executor-2', 2);
     const secondExecution = await call(f.root, ['execute', '--context-file', executor2, '--artifact-path', '.lazybuddy/runs/probe/actual.txt']);
     assert.equal(secondExecution.code, 0, secondExecution.stderr || secondExecution.stdout);
@@ -79,7 +87,8 @@ test('real failed verification is retained before distinct successful process pu
     const input = await buddyAuthority.read({ projectRoot: f.root, projectId: 'project:b4', runId: 'probe', python });
     const snapshot = await buddyAuthority.project(input);
     assert.equal(snapshot.tasks.find(task => task.id === 'A').progress.verified, 1);
-    assert.deepEqual(snapshot.tasks.find(task => task.id === 'A').attempts.map(item => item.execution), ['finished', 'failed', 'finished', 'finished', 'finished']);
+    assert.deepEqual(snapshot.tasks.find(task => task.id === 'A').attempts.map(item => item.execution),
+      ['finished', 'failed', 'cancelled', 'finished', 'finished', 'finished']);
     const outputs = [JSON.parse((await readFile(executor2)).toString()), JSON.parse((await readFile(verifier2)).toString())];
     assert.notEqual(outputs[0].worker_id, outputs[1].worker_id);
   } finally { await f.cleanup(); }
