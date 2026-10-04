@@ -102,7 +102,7 @@ export function projectSnapshot(input, completionProof) {
         attempt.criterion_version === criterion.version && (attempt.plan_revision === input.plan_revision || compatiblePlanRevision(input, attempt)) &&
         (!input.source_revision || attempt.source_revision === input.source_revision)).at(-1);
       if (currentAttempt) criterion.verification = currentAttempt.verification;
-      if ((!currentAttempt || currentAttempt.execution === 'finished') && completionApplies(completionProof, input, criterion) && task.execution === 'finished' && !['failed', 'unavailable', 'stale', 'verifying'].includes(criterion.verification)) criterion.verification = 'verified';
+      if (!issues.length && (!currentAttempt || currentAttempt.execution === 'finished') && completionApplies(completionProof, input, criterion) && task.execution === 'finished' && !['failed', 'unavailable', 'stale', 'verifying'].includes(criterion.verification)) criterion.verification = 'verified';
     }
     task.verification = verification(task); task.progress = progress(task.criteria);
   }
