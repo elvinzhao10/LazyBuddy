@@ -358,3 +358,23 @@ reconciliation remain the existing chat/dispatch integration responsibility
 before execution. B1 edits can operate on the imported run-owned plan once their
 referenced tasks/decisions exist; no external source file is changed. B2 does not
 claim that a native dispatch integration has run.
+
+### Observed producer boundary
+
+`producers.mjs context` validates the selected argv against the single running
+parent's existing execution authority and captures exact run/plan/source,
+criterion version and command digests without consuming edits. `execute` accepts
+only that captured context, consumes its exact revision at dispatch, runs the
+bound argv through `lazybuddy-bounded-run.py`, and publishes start/terminal
+attempt events plus immutable invocation manifests through `dashboard-bridge.py`.
+A running attempt retains that context when a later dashboard edit is accepted.
+A retry needs a fresh context and therefore adopts the new criterion version.
+
+`verify` uses the same process path. Failed, cancelled and malformed verifier
+outputs remain attempts and cannot publish a receipt. Successful completion also
+requires the named executor attempt to be a stored successful bounded process,
+distinct actual process identities, approved verifier output, a current finished
+task, matching plan/checkpoint/hash and a checked criterion marker. Artifact,
+review, receipt and current completion authority commit together. Old attempt and
+completion artifact files remain immutable. MCP `copy_task_context` only returns
+the validated context; browsers and MCP tools do not execute or consume it.

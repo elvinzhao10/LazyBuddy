@@ -56,6 +56,18 @@ export function consumeRevision(options) {
   if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
   return invoke('consume', options, { expected_revision: options.expectedRevision, plan_revision: options.planRevision });
 }
+export function publishAttempt(options) {
+  if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
+  return invoke('attempt', options, { attempt: options.attempt, invocation: options.invocation });
+}
+export function publishCompletion(options) {
+  if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
+  return invoke('complete', options, options.completion);
+}
+export function readProducerContext(options) {
+  if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
+  return invoke('producer-context', options, options.request);
+}
 async function stdin() {
   const chunks = []; let length = 0;
   for await (const chunk of process.stdin) { length += chunk.length; if (length > limit) throw new ContractError('INPUT_TOO_LARGE'); chunks.push(chunk); }

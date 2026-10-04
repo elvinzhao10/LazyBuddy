@@ -85,12 +85,19 @@ native authority and filesystem reader; it must not silently import Buddy's
 Python requirement. Lifecycle/CLI binding in this increment is Buddy-specific.
 No public HTTP consume, shell, patch, file-write or manual-pass route exists.
 
-The default projection calls `projectSnapshot(input)` without completion proof.
-Receipt existence therefore cannot promote a criterion to verified through
-this core. A later trusted completion adapter may call the existing projector
-with an independently authenticated authority proof, preserving the captured
-input identity. No request field supplies a projector or completion proof.
-Actual verifier authority through HTTP/UI remains a B4/C2 integration gate.
+The Buddy adapter assesses completion from the same privately captured input
+returned by `readInput`, using the installed package version, and passes its
+opaque proof to `projectSnapshot(input, proof)`. No request field or JSON client
+can supply a projector or completion proof. Only transaction-published producer
+authority with a current successful executor, distinct successful verifier,
+approved review and checked plan can promote a finished criterion. Other service
+adapters remain conservative until they supply their own trusted composition.
+
+The status-dashboard MCP keeps its existing read tools and adds
+`dashboard_service` (`start`, `status`, `stop`, `open`) plus
+`copy_task_context`. `open` returns the loopback browser entry and labels native
+host loading unobserved. Context copy does not execute, consume a revision, or
+verify work.
 
 Until accepted packaged UI is integrated, `/` returns 503 `UI_UNAVAILABLE`.
 The trusted CLI's explicit `--asset-root /canonical/root` permits only

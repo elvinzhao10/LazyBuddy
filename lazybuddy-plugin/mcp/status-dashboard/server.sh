@@ -128,7 +128,9 @@ case "$METHOD" in
       {"name":"show_run_status","description":"Show current run status","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}}}},
       {"name":"show_task_graph","description":"Show task dependency graph","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
       {"name":"show_verification_matrix","description":"Show verification gate results","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
-      {"name":"show_pending_approvals","description":"Show pending human gates and reviews","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}}}}
+      {"name":"show_pending_approvals","description":"Show pending human gates and reviews","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}}}},
+      {"name":"dashboard_service","description":"Start, inspect, stop, or return the local browser dashboard entry","inputSchema":{"type":"object","properties":{"action":{"enum":["start","status","stop","open"]},"project_id":{"type":"string"},"run_id":{"type":"string"}},"required":["action","project_id","run_id"]}},
+      {"name":"copy_task_context","description":"Copy a validated producer context without executing or consuming it","inputSchema":{"type":"object","properties":{"project_id":{"type":"string"},"run_id":{"type":"string"},"parent_task_id":{"type":"string"},"task_id":{"type":"string"},"criterion_id":{"type":"string"},"attempt_id":{"type":"string"},"worker_id":{"type":"string"},"plan_commands_file":{"type":"string"},"command_index":{"type":"integer","minimum":0}},"required":["project_id","run_id","parent_task_id","task_id","criterion_id","attempt_id","worker_id","plan_commands_file","command_index"]}}
     ]}'
     ;;
   show_run_status)
@@ -189,6 +191,35 @@ if s.get('review_status','')=='pending': p.append({'name':'review','status':'pen
 print(json.dumps({'status': 'unknown', 'source': 'persisted_snapshot', 'live_approval_tracking': False, 'pending': p}))
 PYEOF
 )
+    reply_tool "$RESULT"
+    ;;
+  dashboard_service)
+    ACTION=$(param_raw "action"); PROJECT_ID=$(param_raw "project_id"); RID=$(param_raw "run_id")
+    [ -n "$ACTION" ] && [ -n "$PROJECT_ID" ] && [ -n "$RID" ] || { err -32602 "dashboard_service requires action, project_id and run_id"; continue; }
+    resolve_run "$RID" >/dev/null || { err "invalid or unsafe run_id"; continue; }
+    case "$ACTION" in start|status|stop|open) ;; *) err -32602 "invalid dashboard service action"; continue ;; esac
+    SERVICE_ACTION="$ACTION"; [ "$SERVICE_ACTION" = open ] && SERVICE_ACTION=start
+    if ! RESULT=$(node "$PLUGIN_ROOT/shared/dashboard/service.mjs" "$SERVICE_ACTION" --project-root "$CWD" --project-id "$PROJECT_ID" --run-id "$RID" --asset-root "$PLUGIN_ROOT/shared/dashboard/ui" 2>&1); then
+      err "$RESULT"; continue
+    fi
+    if [ "$ACTION" = open ]; then
+      RESULT=$(python3 - "$RESULT" <<'PYEOF'
+import json, sys
+value=json.loads(sys.argv[1]); value['entry']='browser'; value['native_host']='unobserved'; value['context_copy']='copy_task_context'; print(json.dumps(value))
+PYEOF
+)
+    fi
+    reply_tool "$RESULT"
+    ;;
+  copy_task_context)
+    PROJECT_ID=$(param_raw "project_id"); RID=$(param_raw "run_id"); PARENT=$(param_raw "parent_task_id"); TASK=$(param_raw "task_id")
+    CRITERION=$(param_raw "criterion_id"); ATTEMPT=$(param_raw "attempt_id"); WORKER=$(param_raw "worker_id")
+    COMMANDS=$(param_raw "plan_commands_file"); INDEX=$(param_raw "command_index")
+    [ -n "$PROJECT_ID" ] && [ -n "$RID" ] && [ -n "$PARENT" ] && [ -n "$TASK" ] && [ -n "$CRITERION" ] && [ -n "$ATTEMPT" ] && [ -n "$WORKER" ] && [ -n "$COMMANDS" ] && [ -n "$INDEX" ] || { err -32602 "copy_task_context requires complete binding"; continue; }
+    resolve_run "$RID" >/dev/null || { err "invalid or unsafe run_id"; continue; }
+    if ! RESULT=$(node "$PLUGIN_ROOT/shared/dashboard/producers.mjs" context --project-root "$CWD" --project-id "$PROJECT_ID" --run-id "$RID" --actor "mcp:status-dashboard" --parent-task-id "$PARENT" --task-id "$TASK" --criterion-id "$CRITERION" --attempt-id "$ATTEMPT" --worker-id "$WORKER" --plan-commands-file "$COMMANDS" --command-index "$INDEX" 2>&1); then
+      err "$RESULT"; continue
+    fi
     reply_tool "$RESULT"
     ;;
   *)

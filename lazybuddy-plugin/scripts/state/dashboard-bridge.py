@@ -16,6 +16,7 @@ from pathlib import Path
 from dashboard_files import Binding, Files, Json, LIMIT, encoded
 from dashboard_history import preserve
 from dashboard_completion import capture_completion
+from dashboard_producer import producer_context, publish_attempt, publish_completion
 from state_transaction import TransactionError, Write, commit_locked, locked, read_revision, recover_locked
 
 
@@ -135,7 +136,7 @@ def command(files: Files, request: Json) -> Json:
 
 
 def main(argv: list[str]) -> Json:
-    if len(argv) < 2 or argv[1] not in ("read", "command", "consume"):
+    if len(argv) < 2 or argv[1] not in ("read", "command", "consume", "attempt", "complete", "producer-context"):
         raise TransactionError("unknown dashboard action")
     binding = Binding.parse(argv[2:])
     raw = sys.stdin.buffer.read(LIMIT + 1)
@@ -146,7 +147,10 @@ def main(argv: list[str]) -> Json:
         recover_locked(binding.run)
         files = Files(binding)
         actions = {"read": lambda: {**capture(files), "_completion_capture": capture_completion(files)},
-                   "command": lambda: command(files, request), "consume": lambda: consume(files, request)}
+                   "command": lambda: command(files, request), "consume": lambda: consume(files, request),
+                   "attempt": lambda: publish_attempt(files, request, capture(files), event_write),
+                   "complete": lambda: publish_completion(files, request, capture(files)),
+                   "producer-context": lambda: producer_context(files, request, capture(files))}
         return actions[argv[1]]()
 
 
