@@ -33,12 +33,19 @@ export function planningCommand(snapshot, taskId, operation, payload, id = comma
     expected_revision: queued ? snapshot.queue_revision : snapshot.revision, operation, payload };
 }
 
+export function queueAmendmentCommand(snapshot, plan, values, expectedRevision, id = commandId()) {
+  const command = planningCommand(snapshot, plan.id, 'amend_queued_plan', { title: values.title, readiness: values.readiness, priority: values.priority,
+    prerequisites: [...plan.prerequisites], decision_id: plan.decision_id }, id);
+  command.expected_revision = expectedRevision;
+  return command;
+}
+
 function field(label, control) { const wrapper = element('label'); wrapper.append(element('span', 'meta', label), control); return wrapper; }
 function input(type = 'text') { const control = document.createElement('input'); control.type = type; return control; }
 function option(value, label = value) { const node = document.createElement('option'); node.value = value; node.textContent = label; return node; }
 
 export function createPlanningEditor({ snapshot, onCommand, initialDraft = null, onDraftChange = () => {} }) {
-  let current = snapshot; let taskId = snapshot.tasks[0]?.id ?? null; let dirty = false; let readOnlyReason = null;
+  let current = snapshot; let taskId = snapshot.tasks[0]?.id ?? null; let dirty = false; let queueDirty = false; let queueEdit = null; let readOnlyReason = null;
   const root = element('section', 'planning-editor panel stack'); root.dataset.testid = 'criterion-editor';
   const status = element('p', 'edit-status meta', 'Select a task to edit future planning.'); status.dataset.testid = 'edit-status'; status.setAttribute('role', 'status');
   const taskSelect = document.createElement('select'); taskSelect.setAttribute('aria-label', 'Task');
@@ -59,6 +66,7 @@ export function createPlanningEditor({ snapshot, onCommand, initialDraft = null,
   const queueReadiness = document.createElement('select'); for (const value of ['draft', 'ready', 'held']) queueReadiness.append(option(value));
   const queueSubmit = button('Create queued plan');
   queueSubmit.dataset.action = 'queue-create';
+  const queueCancel = button('Cancel edit'); queueCancel.dataset.action = 'queue-cancel'; queueCancel.hidden = true;
   const dependencyGrid = element('div', 'editor-grid');
   const scenarioGrid = element('div', 'editor-grid');
   const actions = element('div', 'cluster');
@@ -67,10 +75,14 @@ export function createPlanningEditor({ snapshot, onCommand, initialDraft = null,
   priority.dataset.field = 'priority'; dependency.dataset.field = 'dependency'; criterionId.dataset.field = 'criterion-id'; requirement.dataset.field = 'requirement';
   scenarioId.dataset.field = 'scenario-id'; scenarioRequirement.dataset.field = 'scenario-requirement'; verifierRef.dataset.field = 'verifier-ref';
   queueId.dataset.field = 'queue-id'; queueTitle.dataset.field = 'queue-title'; queuePriority.dataset.field = 'queue-priority'; queueReadiness.dataset.field = 'queue-readiness';
+  function queueDraftState() { return queueDirty ? { id: queueId.value, title: queueTitle.value, priority: queuePriority.value, readiness: queueReadiness.value,
+    edit: queueEdit ? { ...queueEdit, prerequisites: [...queueEdit.prerequisites] } : null } : null; }
   function draftState() { return { taskId, priority: priority.value, dependency: dependency.value, depAction: depAction.value, criterionId: criterionId.value,
-    requirement: requirement.value, scenarioId: scenarioId.value, scenarioRequirement: scenarioRequirement.value, verifierRef: verifierRef.value }; }
+    requirement: requirement.value, scenarioId: scenarioId.value, scenarioRequirement: scenarioRequirement.value, verifierRef: verifierRef.value, taskDirty: dirty, queue: queueDraftState() }; }
   function setDirty() { dirty = true; onDraftChange(draftState()); }
+  function setQueueDirty() { queueDirty = true; onDraftChange(draftState()); }
   for (const control of [priority, dependency, depAction, criterionId, requirement, scenarioId, scenarioRequirement, verifierRef]) control.addEventListener('input', setDirty);
+  for (const control of [queueId, queueTitle, queuePriority, queueReadiness]) control.addEventListener('input', setQueueDirty);
   function preview() {
     const result = dependencyImpact(current, taskId, dependency.value.trim(), depAction.value);
     impact.textContent = dependency.value.trim() ? `${result.reason}${result.affected.length ? ` Affects ${result.affected.join(', ')}.` : ''}` : 'Enter a dependency to preview impact.';
@@ -90,10 +102,10 @@ export function createPlanningEditor({ snapshot, onCommand, initialDraft = null,
   taskSelect.addEventListener('change', () => { taskId = taskSelect.value; dirty = false; load(true); });
   async function send(command, message) {
     if (readOnlyReason) { status.textContent = `Read only: ${readOnlyReason}`; return; }
-    submit.disabled = true; status.textContent = 'Saving…';
-    try { const result = await onCommand(command); status.textContent = result.status === 'pending_agent' ? 'Pending agent acknowledgement. Draft saved.' : `${message}: ${result.status}.`; if (!command.operation.endsWith('_queued_plan')) dirty = false; }
+    submit.disabled = true; queueSubmit.disabled = true; status.textContent = 'Saving…';
+    try { const result = await onCommand(command); status.textContent = result.status === 'pending_agent' ? 'Pending agent acknowledgement. Draft saved.' : `${message}: ${result.status}.`; if (!command.operation.endsWith('_queued_plan')) dirty = false; return result; }
     catch (error) { status.textContent = `${error.status === 409 ? 'Conflict' : 'Rejected'}: ${error.message}. Draft retained.`; }
-    finally { submit.disabled = false; }
+    finally { submit.disabled = false; queueSubmit.disabled = false; }
   }
   submit.addEventListener('click', async () => {
     const task = selectedTask(); if (!task) return;
@@ -125,23 +137,41 @@ export function createPlanningEditor({ snapshot, onCommand, initialDraft = null,
     requirement.value = prior.requirement; dirty = true;
     send(planningCommand(current, taskId, 'amend_criterion', { criterion_id: criterion.id, requirement: prior.requirement, expected_version: criterion.version }), 'Undo recorded as a new amendment');
   });
-  queueSubmit.addEventListener('click', () => {
+  function queueMode() {
+    queueId.readOnly = Boolean(queueEdit); queueSubmit.textContent = queueEdit ? 'Save queued plan' : 'Create queued plan';
+    queueSubmit.dataset.action = queueEdit ? 'queue-save' : 'queue-create'; queueCancel.hidden = !queueEdit;
+  }
+  function clearQueueDraft() {
+    queueEdit = null; queueDirty = false; queueId.value = ''; queueTitle.value = ''; queuePriority.value = '0'; queueReadiness.value = 'draft'; queueMode(); onDraftChange(draftState());
+  }
+  function editQueuePlan(plan) {
+    queueEdit = { id: plan.id, expectedRevision: current.queue_revision, prerequisites: [...plan.prerequisites], decision_id: plan.decision_id };
+    queueId.value = plan.id; queueTitle.value = plan.title; queuePriority.value = String(plan.priority); queueReadiness.value = plan.readiness; queueDirty = false; queueMode(); queueTitle.focus();
+  }
+  queueCancel.addEventListener('click', clearQueueDraft);
+  queueSubmit.addEventListener('click', async () => {
     const id = queueId.value.trim(); const title = queueTitle.value.trim(); const p = Number(queuePriority.value);
     if (!idPattern.test(id) || !title || !Number.isSafeInteger(p) || p < 0) { status.textContent = 'Rejected locally: queue ID, title and priority are required.'; return; }
-    send(planningCommand(current, id, 'create_queued_plan', { plan: { id, project_id: current.project_id, title, priority: p, readiness: queueReadiness.value, prerequisites: [], decision_id: null, revision: 0 } }), 'Queued plan created');
+    const command = queueEdit
+      ? queueAmendmentCommand(current, queueEdit, { title, priority: p, readiness: queueReadiness.value }, queueEdit.expectedRevision)
+      : planningCommand(current, id, 'create_queued_plan', { plan: { id, project_id: current.project_id, title, priority: p, readiness: queueReadiness.value, prerequisites: [], decision_id: null, revision: 0 } });
+    if (await send(command, queueEdit ? 'Queued plan saved' : 'Queued plan created')) clearQueueDraft();
   });
   function renderQueue() {
-    queueRoot.replaceChildren(element('h3', '', 'Project queue'), field('Plan ID', queueId), field('Title', queueTitle), field('Priority', queuePriority), field('Readiness', queueReadiness), queueSubmit);
+    const focusedField = document.activeElement?.dataset?.field;
+    const queueActions = element('div', 'cluster'); queueActions.append(queueSubmit, queueCancel);
+    queueRoot.replaceChildren(element('h3', '', 'Project queue'), field('Plan ID', queueId), field('Title', queueTitle), field('Priority', queuePriority), field('Readiness', queueReadiness), queueActions);
     const list = element('ol', 'queue-edit-list');
     current.queue.forEach((plan, index) => {
       const row = element('li', 'cluster spread'); row.dataset.planId = plan.id; row.append(element('span', '', `${plan.title} · ${plan.readiness} · priority ${plan.priority}`));
       const controls = element('span', 'cluster');
-      const edit = button('Edit', () => send(planningCommand(current, plan.id, 'amend_queued_plan', { title: `${plan.title} (edited)`, readiness: plan.readiness, priority: plan.priority, prerequisites: plan.prerequisites, decision_id: plan.decision_id }), 'Queued plan edited'));
+      const edit = button('Edit', () => editQueuePlan(plan));
       const up = button('Move up', () => { if (!index) return; const ids = current.queue.map(item => item.id); [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]]; send(planningCommand(current, 'queue', 'reorder_queued_plan', { plan_ids: ids }), 'Queue reordered'); });
       edit.dataset.action = 'queue-edit'; up.dataset.action = 'queue-up';
       controls.append(edit, up); row.append(controls); list.append(row);
     });
     queueRoot.append(list);
+    if (focusedField?.startsWith('queue-')) root.querySelector(`[data-field="${CSS.escape(focusedField)}"]`)?.focus();
   }
   root.append(element('header', 'stack', ''), field('Task', taskSelect), field('Priority', priority), dependencyGrid, impact,
     field('Criterion ID', criterionId), field('Requirement', requirement), scenarioGrid, actions, status, queueRoot);
@@ -150,14 +180,21 @@ export function createPlanningEditor({ snapshot, onCommand, initialDraft = null,
   scenarioGrid.append(field('Scenario ID', scenarioId), field('Scenario requirement', scenarioRequirement), field('Verifier', verifierRef));
   actions.append(submit, undo);
   tasks(); load(true);
-  if (initialDraft && current.tasks.some(task => task.id === initialDraft.taskId)) {
+  if (initialDraft && initialDraft.taskDirty !== false && current.tasks.some(task => task.id === initialDraft.taskId)) {
     taskId = initialDraft.taskId; taskSelect.value = taskId;
     for (const [control, key] of [[priority, 'priority'], [dependency, 'dependency'], [depAction, 'depAction'], [criterionId, 'criterionId'], [requirement, 'requirement'],
       [scenarioId, 'scenarioId'], [scenarioRequirement, 'scenarioRequirement'], [verifierRef, 'verifierRef']]) if (typeof initialDraft[key] === 'string') control.value = initialDraft[key];
     dirty = true; preview(); status.textContent = 'Unsaved draft restored.';
   }
+  if (initialDraft?.queue && idPattern.test(initialDraft.queue.id ?? '') && typeof initialDraft.queue.title === 'string' && typeof initialDraft.queue.priority === 'string'
+    && ['draft', 'ready', 'held'].includes(initialDraft.queue.readiness)) {
+    const edit = initialDraft.queue.edit;
+    if (edit && edit.id === initialDraft.queue.id && Number.isSafeInteger(edit.expectedRevision) && Array.isArray(edit.prerequisites)) queueEdit = { ...edit, prerequisites: [...edit.prerequisites] };
+    queueId.value = initialDraft.queue.id; queueTitle.value = initialDraft.queue.title; queuePriority.value = initialDraft.queue.priority; queueReadiness.value = initialDraft.queue.readiness;
+    queueDirty = true; queueMode(); status.textContent = 'Unsaved draft restored.';
+  }
   renderQueue();
   return { element: root, select(nextTaskId) { if (current.tasks.some(task => task.id === nextTaskId)) { taskId = nextTaskId; taskSelect.value = taskId; load(!dirty); } },
     update(nextSnapshot, options = {}) { current = nextSnapshot; readOnlyReason = options.readOnlyReason ?? null; tasks(); if (!dirty) load(true); renderQueue(); for (const control of root.querySelectorAll('button,input,textarea,select')) control.disabled = Boolean(readOnlyReason); if (readOnlyReason) status.textContent = `Read only: ${readOnlyReason}`; },
-    getState() { return { ...draftState(), dirty, status: status.textContent }; } };
+    getState() { return { ...draftState(), dirty: dirty || queueDirty, status: status.textContent }; } };
 }

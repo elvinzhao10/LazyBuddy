@@ -100,7 +100,9 @@ try {
     await fill(page, '[data-field="queue-id"]', id); await fill(page, '[data-field="queue-title"]', title); await page.locator('[data-action="queue-create"]').click();
     await waitFor(async () => (await text(page, '[data-testid="edit-status"]')).includes('saved'), `queue create ${id}`); await sleep(850);
   }
-  await page.locator('[data-plan-id="plan:one"] [data-action="queue-edit"]').click(); await sleep(850); await page.locator('[data-plan-id="plan:two"] [data-action="queue-up"]').click(); await sleep(850);
+  await page.locator('[data-plan-id="plan:one"] [data-action="queue-edit"]').click(); await fill(page, '[data-field="queue-title"]', 'First queued plan (edited)');
+  await page.locator('[data-action="queue-save"]').click(); await waitFor(async () => (await text(page, '[data-testid="edit-status"]')).includes('saved'), 'queue edit'); await sleep(850);
+  await page.locator('[data-plan-id="plan:two"] [data-action="queue-up"]').click(); await sleep(850);
   const queueBefore = (await api('/api/snapshot')).value.snapshot.queue.map(item => ({ id: item.id, title: item.title })); assert.deepEqual(queueBefore.map(item => item.id), ['plan:two', 'plan:one']); assert.match(queueBefore[1].title, /edited/);
   actions.push({ label: 'browser:queue-create-edit-reorder', queueBefore });
 

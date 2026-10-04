@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createDashboardConnection, DashboardRequestError } from '../ui/connection.mjs';
-import { dependencyImpact, planningCommand } from '../ui/editing.mjs';
+import { dependencyImpact, planningCommand, queueAmendmentCommand } from '../ui/editing.mjs';
 
 const snapshot = { project_id: 'project:live', run_id: 'run-live', revision: 7, queue_revision: 3, tasks: [
   { id: 'A', depends_on: [] }, { id: 'B', depends_on: ['A'] }, { id: 'C', depends_on: ['B'] }, { id: 'D', depends_on: ['A'] },
@@ -39,6 +39,14 @@ test('planning commands bind run and queue revisions without execution operation
   const queue = planningCommand(snapshot, 'queue', 'reorder_queued_plan', { plan_ids: [] }, 'edit-queue');
   assert.deepEqual(queue.target, { project_id: 'project:live', run_id: null, id: 'queue' }); assert.equal(queue.expected_revision, 3);
   assert.ok(!['execute', 'verify', 'dispatch', 'shell'].includes(priority.operation));
+});
+
+test('queue amendment keeps identity and metadata at the edit base revision', () => {
+  const plan = { id: 'plan:one', title: 'Original', priority: 1, readiness: 'draft', prerequisites: ['plan:zero'], decision_id: 'decision:keep' };
+  const command = queueAmendmentCommand(snapshot, plan, { title: 'Chosen title', priority: 7, readiness: 'held' }, 2, 'edit-plan-one');
+  assert.deepEqual(command, { schema_version: 1, command_id: 'edit-plan-one', target: { project_id: 'project:live', run_id: null, id: 'plan:one' },
+    expected_revision: 2, operation: 'amend_queued_plan', payload: { title: 'Chosen title', priority: 7, readiness: 'held', prerequisites: ['plan:zero'], decision_id: 'decision:keep' } });
+  assert.notEqual(command.payload.prerequisites, plan.prerequisites);
 });
 
 test('committed asset manifest is the explicit service allowlist', async () => {
