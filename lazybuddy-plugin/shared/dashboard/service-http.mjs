@@ -53,16 +53,18 @@ export async function listen(options, control) {
         }
         if (request.method === 'POST' && request.url === '/api/commands') {
           const command = parseContract('command', await readBody(request));
-          if (command.operation.endsWith('queued_plan')) throw new ServiceError('QUEUE_AUTHORITY_REQUIRED', 503);
-          if (command.target.project_id !== options.projectId || command.target.run_id !== options.runId) throw new ServiceError('COMMAND_BINDING_MISMATCH', 409);
+          const queued = command.operation.endsWith('_queued_plan');
+          const runId = queued ? null : options.runId;
+          if (command.target.project_id !== options.projectId || command.target.run_id !== runId) throw new ServiceError('COMMAND_BINDING_MISMATCH', 409);
           try {
-            const result = await authorityFor(options).execute({ ...options, actor, command });
+            const result = await authorityFor(options).execute({ ...options, runId, actor, command });
             send(response, result, result.status === 'conflict' ? 409 : 200);
           } catch (error) {
             const current = await authorityFor(options).read(options);
-            const reason = current.editability?.supported === false ? current.editability.reason :
-              /^(?:dashboard: )?([A-Z_]+)(?: at \$.*)?$/.exec(error.code ?? '')?.[1] ?? 'AUTHORITY_REJECTED';
-            send(response, { status: 'rejected', reason, revision: current.revision, plan_revision: current.plan_revision }, 422);
+            const reason = !queued && current.editability?.supported === false ? current.editability.reason :
+              /^(?:(?:dashboard|queue): )?([A-Z_]+)(?: at \$.*)?$/.exec(error.code ?? '')?.[1] ?? 'AUTHORITY_REJECTED';
+            send(response, { status: 'rejected', reason, revision: queued ? current.queue_revision : current.revision,
+              plan_revision: queued ? 0 : current.plan_revision }, 422);
           }
           return;
         }

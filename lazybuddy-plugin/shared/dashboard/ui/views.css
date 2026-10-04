@@ -1,0 +1,47 @@
+@import './style.css';
+
+.work-view { container-type: inline-size; }
+.context-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); }
+.now-line { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: var(--s4); }
+.attention-list { display: grid; gap: var(--s3); margin: var(--s4) 0 0; padding: 0; list-style: none; }
+.attention-list li { display: grid; grid-template-columns: minmax(10rem,.45fr) minmax(0,1fr); gap: var(--s4); align-items: center; }
+.attention-list button { inline-size: 100%; text-align: start; }
+.work-body { min-inline-size: 0; }
+.view-switcher button[aria-pressed='true'] { background: var(--selected); font-weight: var(--strong); }
+.graph-viewport { min-block-size: 25rem; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; }
+.work-graph { display: block; max-inline-size: none; }
+.graph-edges path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.work-graph foreignObject { overflow: visible; }
+.work-graph .task { block-size: 100%; background: var(--surface); border: var(--line) solid var(--control-edge); }
+.work-graph .task:hover { background: var(--hover); }
+.task-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(var(--card-min),100%),1fr)); gap: var(--s4); }
+.task-list .task { border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); }
+.next-panel .queue { margin: 0; }
+.verification-view { display: grid; gap: var(--s4); }
+.table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.verification-table { inline-size: 100%; min-inline-size: 54rem; border-collapse: collapse; }
+.verification-table th,.verification-table td { padding: var(--s3) var(--s4); border-block-end: var(--line) solid var(--border); text-align: start; vertical-align: top; }
+.verification-table thead th { position: sticky; inset-block-start: 0; background: var(--raised); z-index: 1; }
+.verification-table tbody th { inline-size: 34%; font-weight: var(--regular); }
+.table-select { display: block; inline-size: 100%; text-align: start; background: transparent; border-color: transparent; min-block-size: auto; padding: var(--s1); font-weight: var(--strong); }
+.verification-table th > .meta { display: block; margin: var(--s1); }
+.mono { font-family: var(--mono); font-size: var(--caption); }
+.evidence-list { display: grid; gap: var(--s2); margin: 0; padding-inline-start: var(--s5); }
+.evidence-list li { min-inline-size: 0; }
+.evidence-list a { color: var(--focus); overflow-wrap: anywhere; }
+.evidence-list .meta { display: block; }
+.inspector-states { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s3); }
+.inspector-blocker { padding: var(--s3); background: var(--attention-fill); color: var(--attention-ink); border-radius: var(--radius-control); }
+.criterion-card,.attempt-card { padding: var(--s4); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+
+@container (max-width: 44rem) {
+  .graph-viewport { display: none; }
+  .task-list[hidden] { display: grid; }
+  .view-switcher { display: none; }
+  .now-line,.attention-list li { grid-template-columns: minmax(0,1fr); }
+}
+
+@media (max-width: 44rem) {
+  .context-bar { align-items: flex-start; flex-direction: column; }
+  .inspector-states { grid-template-columns: minmax(0,1fr); }
+}
