@@ -83,7 +83,7 @@ export function createWorkView({ snapshot, callbacks = {}, context = {} }) {
     bodyHeader.append(element('h2', '', 'Work'));
     const switcher = element('div', 'view-switcher cluster');
     for (const value of ['graph', 'list']) {
-      const control = button(titleCase(value), () => { mode = value; render(); });
+      const control = button(titleCase(value), () => { mode = value; callbacks.onModeChange?.({ mode }); render(); });
       control.setAttribute('aria-pressed', String(mode === value)); control.dataset.mode = value; switcher.append(control);
     }
     bodyHeader.append(switcher); body.append(bodyHeader);

@@ -19,6 +19,7 @@ function evidenceCell(attempt, context) {
     link.dataset.testid = 'evidence-link';
     link.dataset.evidencePath = evidence.path;
     link.href = context.evidenceHref(evidence);
+    if (context.openEvidence) link.addEventListener('click', event => { event.preventDefault(); context.openEvidence(evidence, link.href); });
     item.append(link);
     list.append(item);
   }
@@ -74,7 +75,7 @@ function render(root, snapshot, callbacks, context) {
 }
 
 export function createVerificationView({ snapshot, callbacks = {}, context = {} }) {
-  const safeContext = { evidenceHref: context.evidenceHref ?? (() => '#') };
+  const safeContext = { evidenceHref: context.evidenceHref ?? (() => '#'), openEvidence: context.openEvidence };
   const root = element('section', 'verification-view');
   root.dataset.testid = 'verification-view';
   render(root, snapshot, callbacks, safeContext);

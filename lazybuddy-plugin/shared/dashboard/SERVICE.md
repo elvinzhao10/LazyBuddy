@@ -107,11 +107,20 @@ The status-dashboard MCP keeps its existing read tools and adds
 host loading unobserved. Context copy does not execute, consume a revision, or
 verify work.
 
-Until accepted packaged UI is integrated, `/` returns 503 `UI_UNAVAILABLE`.
-The trusted CLI's explicit `--asset-root /canonical/root` permits only
-`index.html` (`/`), `index.mjs` and `styles.css`; all other paths reject.
-QA uses `explicit-temporary-qa-assets`, never a claimed C1 UI or native host.
-Static responses use a restrictive CSP, no-store and nosniff.
+The trusted CLI defaults to the bundled `shared/dashboard/ui` directory; an
+explicit canonical `--asset-root` remains available for bounded QA. Static
+routes come only from the committed `ui/asset-manifest.json`, and every read is
+bounded beneath the selected root. All other paths reject. The ordinary browser
+page asks for the access key stored at the credential-file path returned by the
+trusted service entry, sends it only as `X-Dashboard-Bootstrap` to
+`POST /api/session`, clears the field, and keeps the bearer in memory. Static
+responses use a restrictive CSP, no-store and nosniff.
+
+`start --port <1..65535>` optionally reuses a previously observed loopback port.
+This lets the same open browser origin reconnect after a trusted stop/start. An
+occupied port fails the start; the service never kills, attaches to or silently
+falls back around a foreign listener. A running instance also rejects a
+different explicit port instead of misreporting that requested origin.
 
 ```
 node --test lazybuddy-plugin/shared/dashboard/test/service.test.mjs

@@ -12,6 +12,7 @@ function evidenceList(attempts, context) {
     link.href = context.evidenceHref(item);
     link.dataset.testid = 'evidence-link';
     link.dataset.evidencePath = item.path;
+    if (context.openEvidence) link.addEventListener('click', event => { event.preventDefault(); context.openEvidence(item, link.href); });
     row.append(link, element('span', 'meta', `Attempt ${item.attemptId} · ${item.provenance}`));
     list.append(row);
   }
@@ -66,7 +67,7 @@ export function createTaskInspector({ snapshot, context = {} }) {
   let taskId = null;
   const body = element('div', 'stack');
   const inspector = createInspector({ title: 'Task details', content: body });
-  const safeContext = { evidenceHref: context.evidenceHref ?? (() => '#') };
+  const safeContext = { evidenceHref: context.evidenceHref ?? (() => '#'), openEvidence: context.openEvidence };
   return { element: inspector.element,
     open(nextTaskId, trigger) { taskId = nextTaskId; fill(body, currentSnapshot, taskId, safeContext); inspector.open(trigger); },
     update(nextSnapshot) { currentSnapshot = nextSnapshot; if (taskId && inspector.element.open && !fill(body, currentSnapshot, taskId, safeContext)) inspector.element.close(); },

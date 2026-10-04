@@ -25,12 +25,12 @@ export async function serviceFixture() {
   await mkdir(assetRoot); await writeFile(join(assetRoot, 'index.html'), '<!doctype html><title>B3 temporary QA asset</title>QA only; no C1 proof');
   const args = ['--project-root', f.root, '--project-id', f.options.projectId, '--run-id', f.options.runId, '--asset-root', assetRoot];
   const calls = [];
-  async function cli(action) {
-    const result = await processCall([process.execPath, serviceCLI, action, ...args]); calls.push(result); return result;
+  async function cli(action, extra = []) {
+    const result = await processCall([process.execPath, serviceCLI, action, ...args, ...extra]); calls.push(result); return result;
   }
   let live;
-  async function start() {
-    const result = await cli('start'); assert.equal(result.code, 0, result.stderr); live = JSON.parse(result.stdout);
+  async function start(port) {
+    const result = await cli('start', port ? ['--port', String(port)] : []); assert.equal(result.code, 0, result.stderr); live = JSON.parse(result.stdout);
     await resource({ action: 'registered', root: f.root, pid: live.identity.pid, port: live.identity.port, instance: live.identity.instance });
     const credential = await readFile(live.credential_file, 'utf8');
     const response = await http(live.url, '/api/session', { body: {}, headers: { 'x-dashboard-bootstrap': credential } });

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { lifecycle } from './service-lifecycle.mjs';
 import { executableIdentity, started, removeReceipt } from './service-identity.mjs';
 import { secret } from './service-auth.mjs';
@@ -39,11 +39,13 @@ export async function main(argv) {
   if (argv.length === 1 && argv[0] === 'serve') return serve();
   const [action, ...args] = argv;
   if (!['start', 'status', 'stop'].includes(action) || args.length % 2) throw new ServiceError('INVALID_ARGV');
-  const names = { '--project-root': 'projectRoot', '--project-id': 'projectId', '--run-id': 'runId', '--python': 'python', '--asset-root': 'assetRoot' }; const options = {};
+  const names = { '--project-root': 'projectRoot', '--project-id': 'projectId', '--run-id': 'runId', '--python': 'python', '--asset-root': 'assetRoot', '--port': 'port' }; const options = {};
   for (let index = 0; index < args.length; index += 2) {
     const name = names[args[index]];
     if (!name || options[name] || !args[index + 1]) throw new ServiceError('INVALID_ARGV'); options[name] = args[index + 1];
   }
+  if (options.port !== undefined) options.port = Number(options.port);
+  options.assetRoot ??= fileURLToPath(new URL('./ui', import.meta.url));
   return lifecycle(action, options);
 }
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

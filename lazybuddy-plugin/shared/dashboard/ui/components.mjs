@@ -96,8 +96,15 @@ export function createInspector({ title, content }) {
   content.setAttribute('role', 'region');
   content.setAttribute('aria-label', `${title} content`);
   dialog.append(header, content);
-  let trigger;
-  dialog.addEventListener('close', () => { if (trigger?.isConnected) trigger.focus(); });
-  return { element: dialog, open(invoker) { trigger = invoker; dialog.showModal(); close.focus(); } };
+  let trigger; let returnIdentity;
+  dialog.addEventListener('close', () => {
+    let target = trigger;
+    if (!target?.isConnected && returnIdentity?.taskId) {
+      const view = returnIdentity.view ? `[data-view="${CSS.escape(returnIdentity.view)}"]` : '';
+      target = document.querySelector(`${view}[data-task-id="${CSS.escape(returnIdentity.taskId)}"]`);
+    }
+    target?.focus();
+  });
+  return { element: dialog, open(invoker) { trigger = invoker; returnIdentity = { taskId: invoker?.dataset.taskId, view: invoker?.dataset.view }; dialog.showModal(); close.focus(); } };
 }
 createInspector.sequence = 0;

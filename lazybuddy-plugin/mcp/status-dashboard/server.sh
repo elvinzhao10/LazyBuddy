@@ -129,7 +129,7 @@ case "$METHOD" in
       {"name":"show_task_graph","description":"Show task dependency graph","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
       {"name":"show_verification_matrix","description":"Show verification gate results","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"]}},
       {"name":"show_pending_approvals","description":"Show pending human gates and reviews","inputSchema":{"type":"object","properties":{"run_id":{"type":"string"}}}},
-      {"name":"dashboard_service","description":"Start, inspect, stop, or return the local browser dashboard entry","inputSchema":{"type":"object","properties":{"action":{"enum":["start","status","stop","open"]},"project_id":{"type":"string"},"run_id":{"type":"string"}},"required":["action","project_id","run_id"]}},
+      {"name":"dashboard_service","description":"Start, inspect, stop, or return the local browser dashboard entry","inputSchema":{"type":"object","properties":{"action":{"enum":["start","status","stop","open"]},"project_id":{"type":"string"},"run_id":{"type":"string"},"port":{"type":"integer","minimum":1,"maximum":65535}},"required":["action","project_id","run_id"]}},
       {"name":"copy_task_context","description":"Copy a validated producer context without executing or consuming it","inputSchema":{"type":"object","properties":{"project_id":{"type":"string"},"run_id":{"type":"string"},"parent_task_id":{"type":"string"},"task_id":{"type":"string"},"criterion_id":{"type":"string"},"attempt_id":{"type":"string"},"worker_id":{"type":"string"},"plan_commands_file":{"type":"string"},"command_index":{"type":"integer","minimum":0}},"required":["project_id","run_id","parent_task_id","task_id","criterion_id","attempt_id","worker_id","plan_commands_file","command_index"]}}
     ]}'
     ;;
@@ -194,12 +194,17 @@ PYEOF
     reply_tool "$RESULT"
     ;;
   dashboard_service)
-    ACTION=$(param_raw "action"); PROJECT_ID=$(param_raw "project_id"); RID=$(param_raw "run_id")
+    ACTION=$(param_raw "action"); PROJECT_ID=$(param_raw "project_id"); RID=$(param_raw "run_id"); PORT=$(param_raw "port")
     [ -n "$ACTION" ] && [ -n "$PROJECT_ID" ] && [ -n "$RID" ] || { err -32602 "dashboard_service requires action, project_id and run_id"; continue; }
     resolve_run "$RID" >/dev/null || { err "invalid or unsafe run_id"; continue; }
     case "$ACTION" in start|status|stop|open) ;; *) err -32602 "invalid dashboard service action"; continue ;; esac
+    if [ -n "$PORT" ]; then
+      case "$PORT" in *[!0-9]*) err -32602 "dashboard service port must be an integer from 1 to 65535"; continue ;; esac
+      if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then err -32602 "dashboard service port must be an integer from 1 to 65535"; continue; fi
+    fi
     SERVICE_ACTION="$ACTION"; [ "$SERVICE_ACTION" = open ] && SERVICE_ACTION=start
-    if ! RESULT=$(node "$PLUGIN_ROOT/shared/dashboard/service.mjs" "$SERVICE_ACTION" --project-root "$CWD" --project-id "$PROJECT_ID" --run-id "$RID" --asset-root "$PLUGIN_ROOT/shared/dashboard/ui" 2>&1); then
+    PORT_ARGS=(); [ -n "$PORT" ] && PORT_ARGS=(--port "$PORT")
+    if ! RESULT=$(node "$PLUGIN_ROOT/shared/dashboard/service.mjs" "$SERVICE_ACTION" --project-root "$CWD" --project-id "$PROJECT_ID" --run-id "$RID" --asset-root "$PLUGIN_ROOT/shared/dashboard/ui" "${PORT_ARGS[@]}" 2>&1); then
       err "$RESULT"; continue
     fi
     if [ "$ACTION" = open ]; then

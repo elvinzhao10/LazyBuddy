@@ -1,11 +1,13 @@
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { authorityFor } from './service-adapter.mjs';
 import { parseContract } from './contracts/parse.mjs';
 import { authentication, checkRequest, readBody } from './service-auth.mjs';
 import { capture, decodeCursor, evidence } from './service-snapshot.mjs';
 import { safeRead, ServiceError } from './service-files.mjs';
 
-const assets = new Map([['/', ['index.html', 'text/html']], ['/index.mjs', ['index.mjs', 'text/javascript']], ['/styles.css', ['styles.css', 'text/css']]]);
+const assetManifest = JSON.parse(readFileSync(new URL('./ui/asset-manifest.json', import.meta.url), 'utf8'));
+const assets = new Map(assetManifest.assets.map(asset => [asset.route, [asset.file, asset.type]]));
 const security = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
   'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'", connection: 'close' };
 function send(response, value, status = 200) {
@@ -78,7 +80,7 @@ export async function listen(options, control) {
   server.maxConnections = 32; server.headersTimeout = 3000; server.requestTimeout = 3000; server.keepAliveTimeout = 1;
   server.on('connection', socket => { sockets.add(socket); socket.setTimeout(5000, () => socket.destroy()); socket.on('close', () => sockets.delete(socket)); });
   server.on('clientError', (_error, socket) => { socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'); });
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(options.port, '127.0.0.1', resolve); });
   origin = `http://127.0.0.1:${server.address().port}`;
   control.identity.port = server.address().port;
   async function close() {
