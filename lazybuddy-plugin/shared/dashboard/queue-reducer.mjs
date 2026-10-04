@@ -23,12 +23,16 @@ function checked(input) {
   if (store.project_id !== input.project_id || store.revision !== input.revision) fail('QUEUE_BINDING_MISMATCH');
   if (store.plans.some(plan => plan.project_id !== store.project_id || plan.revision > store.revision)) fail('QUEUE_PLAN_MISMATCH');
   const commands = new Set();
+  let previousCommandRevision = 0;
   for (const receipt of store.commands) {
     const command = receipt.command;
     if (commands.has(command.command_id) || receipt.content_hash !== fingerprint(command)) fail('QUEUE_RECEIPT_CORRUPT');
     commands.add(command.command_id);
     if (command.target.project_id !== store.project_id || command.target.run_id !== null || !command.operation.endsWith('_queued_plan') ||
-      receipt.result.command_id !== command.command_id || stableJSON(receipt.result.target) !== stableJSON(command.target) || receipt.result.revision > store.revision) fail('QUEUE_RECEIPT_CORRUPT');
+      receipt.result.command_id !== command.command_id || stableJSON(receipt.result.target) !== stableJSON(command.target) || receipt.result.revision > store.revision ||
+      receipt.result.status !== 'saved' || receipt.result.plan_revision !== 0 || receipt.result.consumed_plan_revision !== null || receipt.result.reason !== null ||
+      receipt.result.revision !== command.expected_revision + 1 || receipt.result.revision <= previousCommandRevision || receipt.actor.length > 256) fail('QUEUE_RECEIPT_CORRUPT');
+    previousCommandRevision = receipt.result.revision;
   }
   const ids = new Set(); const runs = new Set();
   for (const intent of store.intents) {

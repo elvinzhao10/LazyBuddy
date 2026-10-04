@@ -1,5 +1,6 @@
 import * as scenarios from './queue-scenarios.mjs';
 import * as adversarial from './queue-adversarial.mjs';
+import { corruptions, receiptCorruption, savedReceipt } from './queue-receipts.mjs';
 
 const stages = ['after-stage:1', 'after-stage', 'after-journal', 'after-commit', 'after-install:1'];
 const faults = ['after-intent', 'after-run', ...['intent', 'run', 'confirmation'].flatMap(scope => stages.map(stage => `${scope}/${stage}`))];
@@ -9,4 +10,6 @@ export const cases = [
   ...stages.map(stage => [`command-${stage.replaceAll(':', '-')}`, f => adversarial.commandFault(f, stage)]),
   ...['tampered-intent', 'orphan', 'run-link'].map(variant => [variant, f => adversarial.corrupt(f, variant)]),
   ...['fifo', 'lock', 'bounds', 'journalTamper', 'routes', 'repeated', 'prerequisites'].map(name => [name, f => adversarial[name](f)]),
+  ...corruptions.map(([name, mutate]) => [`receipt-${name}`, f => receiptCorruption(f, { mutate })]),
+  ['receipt-valid-saved', savedReceipt],
 ];
