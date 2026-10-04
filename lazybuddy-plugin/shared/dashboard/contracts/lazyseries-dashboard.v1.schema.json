@@ -2,6 +2,209 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "lazyseries-dashboard.v1.schema.json",
   "$defs": {
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "activation_id",
+        "project_id",
+        "plan_id",
+        "expected_revision",
+        "expected_plan_revision",
+        "run_id",
+        "source_path",
+        "source_sha256",
+        "objective"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "activation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "project_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expected_plan_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+        },
+        "source_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        }
+      }
+    },
+    "activation_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activation_id",
+        "plan_id",
+        "run_id",
+        "status"
+      ],
+      "properties": {
+        "activation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "status": {
+          "const": "linked"
+        }
+      }
+    },
+    "queue_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request",
+        "content_hash",
+        "actor",
+        "plan",
+        "content",
+        "status",
+        "result"
+      ],
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/activation"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "plan": {
+          "$ref": "#/$defs/queued_plan"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1048576
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "linked"
+          ]
+        },
+        "result": {
+          "$ref": "#/$defs/activation_result"
+        }
+      }
+    },
+    "queue_store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "project_id",
+        "revision",
+        "plans",
+        "commands",
+        "intents"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "plans": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/queued_plan"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "command",
+              "content_hash",
+              "actor",
+              "result"
+            ],
+            "properties": {
+              "command": {
+                "$ref": "#/$defs/command"
+              },
+              "content_hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "actor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "result": {
+                "$ref": "#/$defs/acknowledgement"
+              }
+            }
+          }
+        },
+        "intents": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/queue_intent"
+          }
+        }
+      }
+    },
     "host_source": {
       "type": "object",
       "additionalProperties": false,
@@ -1580,6 +1783,30 @@
                     "ready",
                     "held"
                   ]
+                },
+                "priority": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "prerequisites": {
+                  "type": "array",
+                  "maxItems": 10000,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+                  }
+                },
+                "decision_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               }
             }
@@ -2287,6 +2514,40 @@
           "maxItems": 10000,
           "items": {
             "$ref": "#/$defs/issue"
+          }
+        },
+        "queue_readiness": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "plan_id",
+              "eligible",
+              "reason"
+            ],
+            "properties": {
+              "plan_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$"
+              },
+              "eligible": {
+                "type": "boolean"
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8192
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
           }
         }
       }

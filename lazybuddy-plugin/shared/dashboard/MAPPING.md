@@ -180,9 +180,8 @@ and `consumeRevision(options)`. Adapter options are `projectRoot` (canonical rea
 path), `projectId`, `runId`, and optional `python`/`node` executable paths.
 Mutations additionally require trusted `actor`; command request JSON cannot
 supply it. `executeCommand` takes `command`; `consumeRevision` takes
-`expectedRevision` and `planRevision`. The three queue operations reject with
-`QUEUE_AUTHORITY_REQUIRED`; B2 owns their independent scope and activation path.
-No queue storage or activation is implemented here.
+`expectedRevision` and `planRevision`. Null-run queue commands route to the
+independent project queue authority below, even when a run is selected.
 
 Concrete CLI shape (JSON on stdin; exit 65 means rejected, never saved):
 
@@ -251,3 +250,82 @@ to this local replay tool are operator inputs, not browser file access endpoints
 Fixtures are synthetic and labeled; `manual-qa.mjs` drives existing real package
 producers, preserves their outputs, and removes its registered temporary project.
 It makes no authenticated native-host or browser-readiness claim.
+
+### Project queue and authorized activation (B2)
+
+`queue.mjs` exports `readQueue(binding)`, `executeQueueCommand({...binding,command})`,
+`activateQueuedPlan({...binding,activation})`, and
+`recoverActivation({...binding,activationId})`. Binding is
+`{projectRoot,projectId,actor,python?,node?}`; mutations require an actor supplied
+by the trusted adapter. Activation is a separate chat-authorized interface,
+never an operation accepted by browser `executeCommand`. The local CLI is:
+
+```
+node lazybuddy-plugin/shared/dashboard/queue.mjs read --project-root /private/tmp/b2-project --project-id project:b2
+node lazybuddy-plugin/shared/dashboard/queue.mjs command --project-root /private/tmp/b2-project --project-id project:b2 --actor chat:b2
+node lazybuddy-plugin/shared/dashboard/queue.mjs activate --project-root /private/tmp/b2-project --project-id project:b2 --actor chat:b2
+node lazybuddy-plugin/shared/dashboard/queue.mjs recover --project-root /private/tmp/b2-project --project-id project:b2 --actor chat:b2
+```
+
+Command stdin uses the existing command contract with null `target.run_id`.
+Create targets its plan ID and requires plan revision zero. Amend supports
+title/readiness/priority/prerequisites/decision_id and increments the plan version.
+Reorder targets ID `queue` and requires an exact permutation of current plan IDs.
+All three compare `expected_revision` to the project queue revision. Saved
+acknowledgements have `status:saved`, `revision:<queue revision>`,
+`plan_revision:0`, `consumed_plan_revision:null`; persistence never claims agent
+consumption. Original accepted command results are durable and replay unchanged.
+Different content under a used command ID rejects. Conflicts do not commit.
+
+Activation stdin conforms to `activation`:
+`{schema_version:1,activation_id,project_id,plan_id,expected_revision,
+expected_plan_revision,run_id,source_path,source_sha256,objective}`. Source is a
+project-relative regular UTF-8 file, including `.omo/plans/`; links, traversal,
+FIFO and digest changes reject. Run IDs use the existing bounded safe alphabet.
+Recover stdin is exactly `{activation_id}`. Result is the immutable original
+`{activation_id,plan_id,run_id,status:"linked"}`; failures leave the intent and
+entry available for inspection/recovery. Source content is not read again after
+intent persistence. No recovery regenerates a run ID or adopts a same-objective
+run without matching atomic provenance.
+
+`.lazybuddy/dashboard-queue/queue.json` owns plans, original command receipts
+and immutable activation payloads. It uses the existing transaction primitive
+with its own lock/journal/revision; entries are capped at 128, command receipts at
+512, activation histories at 128 and total serialized bytes at 4 MiB. Individual
+frozen source content is capped at 1 MiB. Full stores reject further mutation;
+no automatic history pruning occurs. IDs stay reserved through linked history.
+
+Lock order is queue then run. First commit the frozen activation request, plan
+version, actor, bytes/digest, original result and pending intent. Next initialize
+state/events/plan/checkpoint/provenance atomically under the target run lock.
+Finally mark the intent linked and remove only its visible queue row. Pending
+intents block new queue mutations; identical accepted command retries still
+return their original result. Explicit recover finishes the original intent.
+Reads recover their own transaction journals and expose pending handoffs without
+implicitly activating anything. Fault probes use the existing transaction stages
+via `LAZYBUDDY_QUEUE_TX_FAULT=command|intent|run|confirmation/<stage>` and the
+cross-scope `LAZYBUDDY_QUEUE_FAULT=after-intent|after-run` interruption points.
+
+`readInput` now holds the queue lock while the B1 reader captures the run under
+its lock. It preserves the exact in-process state object for private B1
+compatibility proof, and adds `queue`, `queue_revision`, `queue_acknowledgements`,
+`queue_activations`, and `queue_readiness`. The projector includes queue records,
+acknowledgements, readiness and independent queue cursor. JSON clones still lose
+B1 compatibility conservatively. Queue data survives selected-run changes.
+
+Readiness is planning handoff eligibility only. `queue_readiness` entries carry
+`plan_id,eligible,reason`: `DRAFT`, `HELD`, `PREREQUISITE_NOT_LINKED`,
+`DECISION_RESOLUTION_UNAVAILABLE`, or `ACTIVATION_RECOVERY_REQUIRED`. A prerequisite
+must have a linked activation; this says nothing about its execution/completion.
+No cross-run decision-resolution mapping exists here, so any decision reference
+is explicitly unavailable to activation, even if another surface considers it
+resolved. An authorized amendment may clear that reference. Eligibility still
+requires the actual source digest to match when activation is requested.
+
+Imported source becomes run-owned `plan.md` plus immutable `activation-plan.md`.
+Run state remains `created`, empty tasks and iteration zero, as in existing
+creation; no plan checkbox is converted to completed work. Task registration and
+reconciliation remain the existing chat/dispatch integration responsibility
+before execution. B1 edits can operate on the imported run-owned plan once their
+referenced tasks/decisions exist; no external source file is changed. B2 does not
+claim that a native dispatch integration has run.

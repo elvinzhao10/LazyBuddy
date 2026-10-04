@@ -38,15 +38,21 @@ test('all ten run operations use authority; priority preserves verification and 
   } finally { await f.cleanup(); }
 });
 
-test('three queue operations explicitly require independent queue authority', async () => {
+test('three queue operations use independent revisions and preserve selected run authority', async () => {
   const f = await fixture();
   try {
     const plan = { id: 'plan:1', project_id: 'project:b1', title: 'Queued', priority: 1, readiness: 'draft', prerequisites: [], decision_id: null, revision: 0 };
+    const before = await readFile(join(f.run, 'state.json'), 'utf8');
+    let revision = 0;
     for (const [operation, payload] of [['create_queued_plan', { plan }], ['amend_queued_plan', { title: 'Changed' }], ['reorder_queued_plan', { plan_ids: ['plan:1'] }]]) {
-      const result = await f.call('command', { ...amendment(f.revision), operation, payload, target: { project_id: 'project:b1', run_id: null, id: 'plan:1' } });
-      assert.notEqual(result.code, 0); assert.match(result.stderr, /QUEUE_AUTHORITY_REQUIRED/);
+      const result = await f.call('command', { ...amendment(revision, `queue:${revision}`), operation, payload,
+        target: { project_id: 'project:b1', run_id: null, id: operation === 'reorder_queued_plan' ? 'queue' : 'plan:1' } });
+      assert.equal(result.code, 0, result.stderr); assert.equal(JSON.parse(result.stdout).status, 'saved');
+      assert.equal(JSON.parse(result.stdout).revision, ++revision);
     }
-    assert.equal(JSON.parse((await f.call('read')).stdout).revision, f.revision);
+    const input = JSON.parse((await f.call('read')).stdout);
+    assert.equal(input.revision, f.revision); assert.equal(input.queue_revision, 3); assert.equal(input.queue[0].title, 'Changed');
+    assert.equal(await readFile(join(f.run, 'state.json'), 'utf8'), before);
   } finally { await f.cleanup(); }
 });
 

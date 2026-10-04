@@ -20,7 +20,8 @@ const fields = {
   add_scenario: object({ criterion_id: id, scenario: ref('scenario') }),
   amend_scenario: object({ criterion_id: id, scenario: ref('scenario') }),
   create_queued_plan: object({ plan: ref('queued_plan') }),
-  amend_queued_plan: object({ title: text, readiness: choice('draft', 'ready', 'held') }, ['title', 'readiness']),
+  amend_queued_plan: object({ title: text, readiness: choice('draft', 'ready', 'held'), priority: integer,
+    prerequisites: list(id), decision_id: nullable(id) }, ['title', 'readiness', 'priority', 'prerequisites', 'decision_id']),
   reorder_queued_plan: object({ plan_ids: list(id) }),
   attach_evidence: object({ criterion_id: id, evidence }),
   propose_decision: object({ decision: ref('decision') }),
@@ -29,6 +30,17 @@ const fields = {
 const timestamp = { type: 'string', format: 'date-time', pattern: 'Z$' };
 const hash = { type: 'string', pattern: '^[a-f0-9]{64}$' };
 export const definitions = {
+  activation: object({ schema_version: { const: 1 }, activation_id: id, project_id: id, plan_id: id,
+    expected_revision: integer, expected_plan_revision: integer,
+    run_id: { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$' },
+    source_path: text, source_sha256: hash, objective: text }),
+  activation_result: object({ activation_id: id, plan_id: id, run_id: id, status: { const: 'linked' } }),
+  queue_intent: object({ request: ref('activation'), content_hash: hash, actor: text, plan: ref('queued_plan'),
+    content: { type: 'string', minLength: 1, maxLength: 1048576 }, status: choice('pending', 'linked'), result: ref('activation_result') }),
+  queue_store: object({ schema_version: { const: 1 }, project_id: id, revision: integer,
+    plans: { type: 'array', maxItems: 128, items: ref('queued_plan') },
+    commands: { type: 'array', maxItems: 512, items: object({ command: ref('command'), content_hash: hash, actor: text, result: ref('acknowledgement') }) },
+    intents: { type: 'array', maxItems: 128, items: ref('queue_intent') } }),
   host_source: object({ schema_version: { const: 1 }, contract_version: { const: '1.0.0' },
     record_type: { const: 'canonical-event' }, event_id: id, host: choice('codebuddy-cli', 'codebuddy-ide', 'workbuddy', 'trae-cli', 'trae-ide', 'trae-work'),
     raw_event: text, canonical_event: text, occurred_at: timestamp,
@@ -77,7 +89,8 @@ export const definitions = {
     revision: integer, plan_revision: integer, queue_revision: integer, cursor: ref('cursor'),
     freshness: choice('snapshot', 'resync_required'), capabilities: ref('capabilities'),
     tasks: list(ref('task')), decisions: list(ref('decision')), queue: list(ref('queued_plan')),
-    acknowledgements: list(ref('acknowledgement')), observations: list(ref('observation')), issues: list(ref('issue')) }),
+    acknowledgements: list(ref('acknowledgement')), observations: list(ref('observation')), issues: list(ref('issue')),
+    queue_readiness: list(object({ plan_id: id, eligible: flag, reason: nullable(text) })) }, ['queue_readiness']),
 };
 export const schema = { $schema: 'https://json-schema.org/draft/2020-12/schema',
   $id: 'lazyseries-dashboard.v1.schema.json', $defs: definitions, $ref: '#/$defs/snapshot' };

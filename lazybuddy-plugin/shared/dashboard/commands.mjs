@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseContract, ContractError } from './contracts/parse.mjs';
 import { reduceCommand } from './command-reducer.mjs';
+import { executeQueueCommand, queueBridge } from './queue.mjs';
 import { authorityBinding, validateTransitions, crossesCompatibleRevisions } from './revision-compatibility.mjs';
 
 const bridge = fileURLToPath(new URL('../../scripts/state/dashboard-bridge.py', import.meta.url));
@@ -30,10 +31,11 @@ function invoke(action, options, value = {}) {
 export function executeCommand(options) {
   const command = parseContract('command', options.command);
   if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
+  if (command.target.run_id === null) return executeQueueCommand({ ...options, command });
   return invoke('command', options, command);
 }
 export async function readInput(options) {
-  const input = await invoke('read', options);
+  const input = await queueBridge('snapshot', options);
   committedInputs.set(input.state, { binding: authorityBinding(input), transitions: validateTransitions(input) });
   return input;
 }

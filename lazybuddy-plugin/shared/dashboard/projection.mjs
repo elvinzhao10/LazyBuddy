@@ -108,9 +108,11 @@ export function projectSnapshot(input, completionProof) {
   }
   const queue = (input.queue ?? []).map(item => parseContract('queued_plan', item));
   if (queue.some(item => item.project_id !== input.project_id)) throw new ContractError('QUEUE_PROJECT_MISMATCH');
+  acknowledgements.push(...(input.queue_acknowledgements ?? []).map(item => parseContract('acknowledgement', item)));
   if (acknowledgements.some(item => item.target.project_id !== input.project_id || (item.target.run_id && item.target.run_id !== input.run_id))) throw new ContractError('ACK_IDENTITY_MISMATCH');
   return parseContract('snapshot', { schema_version: 1, project_id: input.project_id, run_id: input.run_id,
     revision: input.revision, plan_revision: input.plan_revision, queue_revision: input.queue_revision ?? 0,
     cursor, freshness: issues.length ? 'resync_required' : 'snapshot', capabilities: input.capabilities ?? absent,
-    tasks, decisions, queue, acknowledgements, observations: records.map(({ event, payload, provenance }) => ({ event, payload, provenance })), issues });
+    tasks, decisions, queue, acknowledgements, ...(input.queue_readiness ? { queue_readiness: input.queue_readiness } : {}),
+    observations: records.map(({ event, payload, provenance }) => ({ event, payload, provenance })), issues });
 }
