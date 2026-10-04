@@ -124,4 +124,6 @@ document.querySelector('#long-content').addEventListener('click', event => {
   requirement.lastChild.value = expanded ? `Preserve caller-owned content: ${'verylongunbrokenfilename'.repeat(12)}` : 'Offboarding preserves unrelated files';
 });
 updateSurface();
-document.querySelector('#load-status').remove();
+document.querySelector('#load-status').textContent = 'Component examples ready.';
+document.querySelector('#component-content').hidden = false;
+for (const control of document.querySelectorAll('#theme, #surface-state, #long-content')) control.disabled = false;

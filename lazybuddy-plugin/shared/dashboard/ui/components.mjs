@@ -91,6 +91,10 @@ export function createInspector({ title, content }) {
   const header = element('header', 'cluster spread');
   const close = button('Close inspector', () => dialog.close());
   header.append(heading, close);
+  content.classList.add('inspector-body');
+  content.tabIndex = 0;
+  content.setAttribute('role', 'region');
+  content.setAttribute('aria-label', `${title} content`);
   dialog.append(header, content);
   let trigger;
   dialog.addEventListener('close', () => { if (trigger?.isConnected) trigger.focus(); });

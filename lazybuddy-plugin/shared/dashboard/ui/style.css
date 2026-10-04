@@ -52,7 +52,8 @@ section > header { display: grid; gap: var(--s2); margin-block-end: var(--s4); }
 .queue li { padding: var(--s3) 0; }
 .queue li + li { border-block-start: var(--line) solid var(--border); }
 .safe-text,button,p,h1,h2,h3,label,li,small { overflow-wrap: anywhere; }
-dialog { margin-inline-start: auto; margin-inline-end: var(--s4); padding: var(--s5); inline-size: min(var(--inspector),calc(100% - var(--s6))); max-block-size: calc(100dvh - var(--s6)); overflow-y: auto; background: var(--raised); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow); }
+dialog { margin-inline-start: auto; margin-inline-end: var(--s4); padding: var(--s5); inline-size: min(var(--inspector),calc(100% - var(--s6))); max-block-size: calc(100dvh - var(--s6)); grid-template-rows: auto minmax(0,1fr); overflow: hidden; background: var(--raised); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow); }
+.inspector-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
 dialog::backdrop { background: var(--backdrop); }
 dialog:not([open]) { display: none; }
 dialog header { margin-block-end: var(--s5); }
