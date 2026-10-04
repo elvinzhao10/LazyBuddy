@@ -64,12 +64,21 @@ exit. Pre-promotion IPC loss aborts the child, with a 12-second startup watchdog
 
 `service-adapter.mjs` exports `buddyAuthority` and `authorityFor(options)`.
 Programmatic service hosts can provide `options.authority` implementing
-`read(options)`, `execute(options)` and `readReference(options, relativePath)`.
-The read result is passed directly to `projectSnapshot`; its state object is
+`read(options)`, `execute(options)`, `project(input)` and
+`readReference(options, relativePath)`. `project` must return the existing
+bounded snapshot contract. The read result is passed directly to this trusted
+projection seam; its state object is
 preserved for B1's private compatibility proof. A sibling adapter supplies its
 native authority and filesystem reader; it must not silently import Buddy's
 Python requirement. Lifecycle/CLI binding in this increment is Buddy-specific.
 No public HTTP consume, shell, patch, file-write or manual-pass route exists.
+
+The default projection calls `projectSnapshot(input)` without completion proof.
+Receipt existence therefore cannot promote a criterion to verified through
+this core. A later trusted completion adapter may call the existing projector
+with an independently authenticated authority proof, preserving the captured
+input identity. No request field supplies a projector or completion proof.
+Actual verifier authority through HTTP/UI remains a B4/C2 integration gate.
 
 Until accepted packaged UI is integrated, `/` returns 503 `UI_UNAVAILABLE`.
 The trusted CLI's explicit `--asset-root /canonical/root` permits only

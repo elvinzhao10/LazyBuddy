@@ -1,5 +1,4 @@
 import { authorityFor } from './service-adapter.mjs';
-import { projectSnapshot } from './projection.mjs';
 import { parseContract, stableJSON } from './contracts/parse.mjs';
 import { hash, ServiceError } from './service-files.mjs';
 
@@ -12,7 +11,7 @@ export function decodeCursor(value) {
 export const encodeCursor = cursor => Buffer.from(stableJSON(cursor)).toString('base64url');
 export async function capture(options, previous) {
   const input = await authorityFor(options).read(options);
-  const snapshot = projectSnapshot(previous ? { ...input, previous_cursor: previous } : input);
+  const snapshot = parseContract('snapshot', await authorityFor(options).project(previous ? { ...input, previous_cursor: previous } : input));
   const references = [];
   for (const task of input.state.tasks) for (const path of task.evidence ?? []) {
     if (typeof path === 'string') references.push({ path, task_id: task.id });

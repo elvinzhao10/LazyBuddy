@@ -10,6 +10,9 @@ import { binding } from '../service-lifecycle.mjs';
 import { safeRead } from '../service-files.mjs';
 import { secret } from '../service-auth.mjs';
 import { started, sign } from '../service-identity.mjs';
+import { buddyAuthority } from '../service-adapter.mjs';
+import { capture } from '../service-snapshot.mjs';
+import { projectSnapshot } from '../projection.mjs';
 
 test('repeated interrupted initialization before promotion closes each owned child and port', async () => {
   const f = await fixture(); await resource({ action: 'registered', root: f.root, cleanup: 'interruption fixture removal' });
@@ -103,5 +106,21 @@ test('CLI interruption while waiting for authority preflight releases lifecycle 
       await resource({ action: 'removed', pid: child.pid, attempt, result });
     }
     assert.deepEqual(await filesBelow(f.run), before);
+  } finally { await f.cleanup(); await resource({ action: 'removed', root: f.root }); }
+});
+
+test('trusted projection seam preserves captured input state identity across cursor reconciliation', async () => {
+  const f = await fixture(); const states = new WeakSet();
+  await resource({ action: 'registered', root: f.root, cleanup: 'projection-seam fixture removal' });
+  const authority = { ...buddyAuthority,
+    read: async options => { const input = await buddyAuthority.read(options); states.add(input.state); return input; },
+    project: input => { assert.equal(states.has(input.state), true); return projectSnapshot(input); },
+  };
+  try {
+    const first = await capture({ ...f.options, authority });
+    const second = await capture({ ...f.options, authority }, first.snapshot.cursor);
+    assert.equal(second.snapshot.freshness, 'snapshot'); assert.equal(second.snapshot.tasks[0].criteria[0].verification, 'unverified');
+    const invalid = { ...authority, project: () => ({ verified: true }) };
+    await assert.rejects(capture({ ...f.options, authority: invalid }));
   } finally { await f.cleanup(); await resource({ action: 'removed', root: f.root }); }
 });
