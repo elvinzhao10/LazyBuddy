@@ -26,7 +26,7 @@ export async function capture(options, previous) {
   }
   if (references.length > 256) throw new ServiceError('REFERENCE_LIMIT', 503);
   return { snapshot, cursor: encodeCursor(snapshot.cursor), editability: input.editability,
-    queue_authority: { supported: false, reason: 'QUEUE_AUTHORITY_REQUIRED' },
+    queue_authority: Number.isSafeInteger(input.queue_revision) ? { supported: true, reason: null } : { supported: false, reason: 'QUEUE_AUTHORITY_REQUIRED' },
     evidence: references.map(item => ({ ...item, id: hash(`${options.projectId}\n${options.runId}\n${item.path}`),
       ...(protectedServiceArtifact(item.path) || protectedArchives.has(item.path.toLowerCase()) ? { unavailable_reason: 'PROTECTED_SERVICE_ARTIFACT' } : {}) })) };
 }
