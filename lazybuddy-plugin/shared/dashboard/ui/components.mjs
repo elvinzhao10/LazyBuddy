@@ -52,7 +52,15 @@ export function taskCard({ id, title, execution, verification, progress, selecte
   control.dataset.testid = 'task-node';
   control.dataset.taskId = id;
   control.setAttribute('aria-pressed', String(selected));
-  control.append(element('span', 'meta', selected ? `${id} · Selected` : id), element('span', 'task-title', title));
+  const identity = element('span', 'meta cluster', id);
+  const selection = element('span', 'selection', 'Selected');
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  const shape = document.createElementNS(icon.namespaceURI, 'path');
+  shape.setAttribute('d', 'M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4 M9 11l3 3L22 4');
+  icon.append(shape); selection.prepend(icon); identity.append(selection);
+  control.append(identity, element('span', 'task-title', title));
   for (const [kind, value] of [['Execution', execution], ['Checks', verification]]) {
     const row = element('span', 'cluster');
     row.append(element('span', 'meta', kind), statusChip(value));

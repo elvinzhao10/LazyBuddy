@@ -39,7 +39,6 @@ for (const task of tasks) {
     document.querySelectorAll('[data-testid="task-node"]').forEach(node => {
       const selected = node === event.currentTarget;
       node.setAttribute('aria-pressed', String(selected));
-      node.firstChild.textContent = `${node.dataset.taskId}${selected ? ' · Selected' : ''}`;
     });
     inspectorBody.firstChild.textContent = `Showcase task · ${task.id}`;
     inspectorBody.children[1].replaceWith(notice({ state: task.verification.state, title: task.title, detail: task.progress }));
@@ -100,7 +99,13 @@ queue.append(queueList, button('Move draft earlier', () => { queueList.insertBef
 const decision = document.querySelector('#decision-example');
 decision.append(element('h3', '', 'Decisions'), notice({ state: 'attention', title: 'Unresolved · Removal policy', detail: 'Choose whether generated logs should be retained. Affects removal criterion version 2. Discuss in the existing chat.' }), notice({ state: 'neutral', title: 'Adopted · Browser fallback', detail: 'Use the browser while embedding is unobserved. Alternative: a host panel after explicit capability verification.' }), notice({ state: 'neutral', title: 'Superseded · Delete all logs', detail: 'Amended to preserve caller-owned files. Original decision remains historical.' }));
 
-document.querySelector('#theme').addEventListener('change', event => { document.documentElement.dataset.theme = event.target.value; });
+const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+const themeControl = document.querySelector('#theme');
+function updateTheme() {
+  document.documentElement.dataset.theme = themeControl.value === 'system' ? (systemTheme.matches ? 'dark' : 'light') : themeControl.value;
+}
+themeControl.addEventListener('change', updateTheme);
+systemTheme.addEventListener('change', updateTheme);
 function updateSurface() {
   const mode = document.querySelector('#surface-state').value;
   document.querySelector('#surface-notice').replaceChildren(notice(states[mode]));
@@ -114,7 +119,9 @@ document.querySelector('#surface-state').addEventListener('change', updateSurfac
 document.querySelector('#long-content').addEventListener('click', event => {
   const expanded = event.currentTarget.getAttribute('aria-pressed') !== 'true';
   event.currentTarget.setAttribute('aria-pressed', String(expanded));
+  event.currentTarget.textContent = `Long content: ${expanded ? 'On' : 'Off'}`;
   document.querySelector('[data-task-id="Join"] .task-title').textContent = expanded ? `Release readiness — verify caller-owned files including ${'unbroken-reference-'.repeat(12)}` : 'Release readiness';
   requirement.lastChild.value = expanded ? `Preserve caller-owned content: ${'verylongunbrokenfilename'.repeat(12)}` : 'Offboarding preserves unrelated files';
 });
 updateSurface();
+document.querySelector('#load-status').remove();
