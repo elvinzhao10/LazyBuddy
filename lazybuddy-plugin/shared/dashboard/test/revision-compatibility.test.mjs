@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fixture, amendment, processCall, plugin } from './command-fixture.mjs';
 import { readInput } from '../commands.mjs';
-import { projectSnapshot } from '../projection.mjs';
+import { projectSnapshot } from '../trusted-projection.mjs';
 
 async function observed() {
   const f = await fixture();

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { completionFixture } from './completion-fixture.mjs';
 import { readBuddyCompletion } from '../adapters/completion.mjs';
-import { projectSnapshot } from '../projection.mjs';
+import { projectSnapshot } from '../trusted-projection.mjs';
 
 function partialFixture() {
   const f = completionFixture();

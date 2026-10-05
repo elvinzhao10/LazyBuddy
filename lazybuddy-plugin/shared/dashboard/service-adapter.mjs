@@ -1,6 +1,6 @@
 import { executeCommand, readInput } from './commands.mjs';
 import { safeRead, protectedServiceArtifact, ServiceError } from './service-files.mjs';
-import { projectSnapshot } from './projection.mjs';
+import { projectSnapshot } from './trusted-projection.mjs';
 import { readBuddyCompletion } from './adapters/completion.mjs';
 import { createRequire } from 'node:module';
 const packageMetadata = createRequire(import.meta.url)('../../tooling/package.json');

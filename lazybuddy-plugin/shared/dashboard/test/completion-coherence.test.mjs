@@ -5,7 +5,7 @@ import test from 'node:test';
 import { completionFixture } from './completion-fixture.mjs';
 import { readInput } from '../commands.mjs';
 import { readBuddyCompletion } from '../adapters/completion.mjs';
-import { projectSnapshot } from '../projection.mjs';
+import { projectSnapshot } from '../trusted-projection.mjs';
 
 export function completionInput(fixture) {
   return { project_id: 'coherent', run_id: 'run-1', revision: 1, plan_revision: 1,

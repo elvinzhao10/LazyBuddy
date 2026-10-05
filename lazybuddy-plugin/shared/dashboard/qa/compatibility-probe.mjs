@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fixture, amendment, processCall, plugin, filesBelow } from '../test/command-fixture.mjs';
-import { projectSnapshot } from '../projection.mjs';
+import { projectSnapshot } from '../trusted-projection.mjs';
 import { readInput } from '../commands.mjs';
 const destination = resolve(process.argv[2]);
 const f = await fixture();

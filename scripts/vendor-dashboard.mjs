@@ -13,7 +13,7 @@ const products = Object.freeze({
   LazyDeepSeek: 'plugins/lazydeepseek/shared/dashboard',
 });
 const portableFiles = new Set([
-  'LICENSE', 'NOTICE', 'command-reducer.mjs', 'completion-proof.mjs', 'projection.mjs',
+  'LICENSE', 'NOTICE', 'command-reducer.mjs', 'projection.mjs',
   'queue-reducer.mjs', 'revision-compatibility.mjs', 'adapters/host.mjs',
   'adapters/ledger.mjs', 'adapters/runtime.mjs', 'adapters/state.mjs',
 ]);

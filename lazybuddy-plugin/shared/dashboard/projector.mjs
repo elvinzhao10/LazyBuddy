@@ -2,7 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectSnapshot, stableJSON, ContractError } from './projection.mjs';
+import { stableJSON, ContractError } from './projection.mjs';
+import { projectSnapshot } from './trusted-projection.mjs';
 import { readBuddyCompletion } from './adapters/completion.mjs';
 import { readInput } from './commands.mjs';
 const LIMIT = 8 * 1024 * 1024;

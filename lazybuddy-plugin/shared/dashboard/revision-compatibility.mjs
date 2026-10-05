@@ -1,7 +1,5 @@
 import { parseContract, ContractError, requireRevision, stableJSON } from './contracts/parse.mjs';
 
-const committedInputs = new WeakMap();
-
 export function authorityBinding(input) {
   return stableJSON({ project_id: input.project_id, run_id: input.run_id, revision: input.revision,
     plan_revision: input.plan_revision, state: input.state, sources: input.sources,
@@ -39,14 +37,4 @@ export function crossesCompatibleRevisions(records, attempt, currentRevision) {
     revision = transition.to_revision;
   }
   return revision === currentRevision;
-}
-
-export function captureRevisionCompatibility(input) {
-  committedInputs.set(input.state, { binding: authorityBinding(input), transitions: validateTransitions(input) });
-}
-
-export function compatiblePlanRevision(input, attempt) {
-  const proof = committedInputs.get(input.state);
-  return Boolean(proof && proof.binding === authorityBinding(input)
-    && crossesCompatibleRevisions(proof.transitions, attempt, input.plan_revision));
 }

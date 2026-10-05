@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { projectSnapshot } from '../projection.mjs';
+import { projectSnapshot } from '../trusted-projection.mjs';
 import { readBuddyCompletion } from '../adapters/completion.mjs';
 import { completionFixture } from './completion-fixture.mjs';
 const cases = [

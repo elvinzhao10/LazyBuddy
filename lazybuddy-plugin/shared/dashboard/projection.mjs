@@ -3,8 +3,6 @@ import { adaptRuntime } from './adapters/runtime.mjs';
 import { adaptHost } from './adapters/host.mjs';
 import { digest } from './adapters/ledger.mjs';
 import { adaptState, parseBinding, progress } from './adapters/state.mjs';
-import { completionApplies } from './completion-proof.mjs';
-import { compatiblePlanRevision } from './revision-compatibility.mjs';
 export { parseContract, ContractError, stableJSON } from './contracts/parse.mjs';
 const absent = { embedding: 'unobserved', chat_handoff: 'unobserved', wake: 'unobserved', observations: 'unobserved' };
 function replay(input) {
@@ -47,7 +45,7 @@ function checkCursor(input, current, issues) {
     if (digest(prefix) !== old.sha256) issue('SOURCE_ROTATED');
   }
 }
-function applyAttempt(tasks, observation, binding) {
+function applyAttempt(tasks, observation, binding, compatiblePlanRevision) {
   const attempt = parseContract('attempt', { ...observation.payload, provenance: observation.provenance });
   const task = tasks.find(item => item.id === attempt.task_id);
   if (!task) throw new ContractError('ATTEMPT_TASK_UNKNOWN');
@@ -81,7 +79,8 @@ function verification(task) {
   }
   return 'verified';
 }
-export function projectSnapshot(input, completionProof) {
+export function createProjector({ completionApplies = () => false, compatiblePlanRevision = () => false } = {}) {
+return function projectSnapshot(input, completionProof) {
   parseBinding(input);
   const tasks = adaptState(input.state, input.run_id);
   const { records, cursors, issues } = replay(input);
@@ -93,7 +92,7 @@ export function projectSnapshot(input, completionProof) {
   const acknowledgements = (input.state.acknowledgements ?? []).map(item => parseContract('acknowledgement', item));
   for (const observation of records) {
     if (observation.provenance.kind === 'runtime' || observation.provenance.kind === 'legacy') {
-      if (observation.event === 'attempt_result') applyAttempt(tasks, observation, input);
+      if (observation.event === 'attempt_result') applyAttempt(tasks, observation, input, compatiblePlanRevision);
     }
   }
   for (const task of tasks) {
@@ -115,4 +114,6 @@ export function projectSnapshot(input, completionProof) {
     cursor, freshness: issues.length ? 'resync_required' : 'snapshot', capabilities: input.capabilities ?? absent,
     tasks, decisions, queue, acknowledgements, ...(input.queue_readiness ? { queue_readiness: input.queue_readiness } : {}),
     observations: records.map(({ event, payload, provenance }) => ({ event, payload, provenance })), issues });
+};
 }
+export const projectSnapshot = createProjector();

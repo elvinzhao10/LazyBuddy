@@ -3,11 +3,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseContract, ContractError } from './contracts/parse.mjs';
 import { reduceCommand } from './command-reducer.mjs';
 import { executeQueueCommand, queueBridge } from './queue.mjs';
-import { authorityBinding, captureRevisionCompatibility } from './revision-compatibility.mjs';
+import { authorityBinding, crossesCompatibleRevisions, validateTransitions } from './revision-compatibility.mjs';
 
 const bridge = fileURLToPath(new URL('../../scripts/state/dashboard-bridge.py', import.meta.url));
 const limit = 8 * 1024 * 1024;
 const completionCaptures = new WeakMap();
+const committedInputs = new WeakMap();
 function invoke(action, options, value = {}) {
   const argv = [bridge, action, '--project-root', options.projectRoot, '--project-id', options.projectId,
     '--run-id', options.runId, '--actor', options.actor ?? 'reader', '--node', options.node ?? process.execPath];
@@ -39,8 +40,13 @@ export async function readInput(options) {
   const bundle = input._completion_capture;
   delete input._completion_capture;
   completionCaptures.set(input, { bundle, binding: authorityBinding(input), state: input.state });
-  captureRevisionCompatibility(input);
+  committedInputs.set(input.state, { binding: authorityBinding(input), transitions: validateTransitions(input) });
   return input;
+}
+export function compatiblePlanRevision(input, attempt) {
+  const proof = committedInputs.get(input.state);
+  return Boolean(proof && proof.binding === authorityBinding(input)
+    && crossesCompatibleRevisions(proof.transitions, attempt, input.plan_revision));
 }
 export function capturedCompletion(input) {
   const captured = completionCaptures.get(input);

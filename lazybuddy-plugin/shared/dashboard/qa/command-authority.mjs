@@ -3,7 +3,7 @@ import { mkdir, writeFile, readFile, symlink, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fixture, amendment, filesBelow, processCall } from '../test/command-fixture.mjs';
-import { projectSnapshot } from '../projection.mjs';
+import { projectSnapshot } from '../trusted-projection.mjs';
 
 const evidence = resolve(process.argv[process.argv.indexOf('--evidence-dir') + 1]);
 await mkdir(evidence, { recursive: true });
