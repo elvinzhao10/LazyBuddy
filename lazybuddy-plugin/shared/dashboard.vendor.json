@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "6dcf6cf3b8f76a9fa86b42187b263322e8a48f0b",
+    "revision": "08ec8facafb33c617b6ccc82f01ddbe1990c8716",
     "path": "lazybuddy-plugin/shared/dashboard",
-    "treeSha256": "9586e06229f270e4445d911e669c76ecbb145c3c2bc4e67629c0b04ea93d2c8c"
+    "treeSha256": "8278d16c57addc11b88ebae8a4c615e08203f3c505b1e588c019aacfff25fd71"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -51,11 +51,6 @@
       "sha256": "8b7587ac76e8b5ed3709eccb316133ec0ef0b72fa00824e413a17a06a25c9fc8"
     },
     {
-      "path": "completion-proof.mjs",
-      "bytes": 947,
-      "sha256": "d5e5afb977e03d11bd693ca97a0c95a8a37dcb70721cb0844ac67fdf3fd05c7a"
-    },
-    {
       "path": "contracts/lazyseries-dashboard.v1.schema.json",
       "bytes": 65883,
       "sha256": "3c018551e3aa336aa4eaeeb4aefa0c310588defb3f0916357097ecd4115791d9"
@@ -82,8 +77,8 @@
     },
     {
       "path": "projection.mjs",
-      "bytes": 8330,
-      "sha256": "a9520ae40e8208153106d9bf2e418319c9f7520c15cf801bdc4aa8a9636c6a16"
+      "bytes": 8414,
+      "sha256": "b49a1a674f1678e8c8664bdf1194d6491244235a3f153e056bf39dcc5100f314"
     },
     {
       "path": "queue-reducer.mjs",
@@ -92,8 +87,8 @@
     },
     {
       "path": "revision-compatibility.mjs",
-      "bytes": 3383,
-      "sha256": "80022a09480872daebcc96c5d3655e6d5953de85f1e8c9f2791c726abda11d55"
+      "bytes": 2908,
+      "sha256": "ce5c73c74dc6d3cb02398bf32fde7273fa69e278b891b3cc3e8b3c92ab2449ef"
     },
     {
       "path": "ui/asset-manifest.json",
