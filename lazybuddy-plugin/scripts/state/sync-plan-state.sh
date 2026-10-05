@@ -101,6 +101,7 @@ history_before = copy.deepcopy(state)
 reconciliation_event = None
 reopened_ids = set()
 revision_changed = revision_before != plan_before
+reconciled_state_changed = False
 try:
     from lazybuddy_plan_reconcile import classify_plan_edits
     if os.path.exists(revision_path):
@@ -134,6 +135,7 @@ try:
                             task["status"] = "queued"
                             task["reconciled_reopened"] = True
                             reopened_ids.add(tid)
+                        reconciled_state_changed = True
                 # human uncheck reopens even when the edit is otherwise cosmetic
             if fix and reconciliation["reopen"]:
                 for task in state.get("tasks", []):
@@ -141,6 +143,7 @@ try:
                         task["status"] = "queued"
                         task["reconciled_reopened"] = True
                         reopened_ids.add(task["id"])
+                        reconciled_state_changed = True
 except Exception as exc:  # pragma: no cover - defensive
     print("Error: plan reconciliation unavailable: %s" % exc, file=sys.stderr)
     sys.exit(1)
@@ -330,7 +333,11 @@ if not fix:
     sys.exit(0)
 
 # Reconcile
-changed = revision_changed
+# Only a real state mutation (reconciliation invalidation/reopen, progress or
+# status drift) rewrites state.json/events.jsonl. A first revision snapshot or
+# a cosmetic plan edit updates checkpoints/plan-revision.md alone so no-drift
+# syncs leave plan.md/state.json/events.jsonl byte-identical.
+changed = reconciled_state_changed
 # fix progress
 if prog.get("total_checkboxes") != total or prog.get("completed_checkboxes") != completed:
     state["progress"] = {"total_checkboxes": total, "completed_checkboxes": completed}
@@ -378,6 +385,14 @@ if changed:
             raise SystemExit("Error: stale reconciliation snapshot")
         commit_locked(Path(run_dir), "sync_plan_state", writes)
     print("\nRECONCILED: progress + task statuses updated (%d drift fixed)." % len(drift))
+elif revision_changed:
+    with locked(Path(run_dir)):
+        recover_locked(Path(run_dir))
+        if read_revision(Path(run_dir)) != int(expected_revision) or Path(plan_path).read_bytes() != plan_before:
+            raise SystemExit("Error: stale reconciliation snapshot")
+        commit_locked(Path(run_dir), "sync_plan_state",
+                      [Write("checkpoints/plan-revision.md", plan_before, MISSING if revision_before is None else sha256_bytes(revision_before))])
+    print("\nPlan revision snapshot recorded (no state drift to fix).")
 else:
     print("\nNothing to write (only counters/statuses are auto-fixed; plan-only tasks need manual add).")
 PYEOF
