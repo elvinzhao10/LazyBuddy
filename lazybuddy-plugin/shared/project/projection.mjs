@@ -39,15 +39,25 @@ export function projectSnapshot(state, options = {}) {
   });
   const items = state.items.map(item => ({ ...clone(item), source_freshness: sourceStatus(item.source.source_id, item.source.sha256),
     contributing_plan_ids: state.plans.filter(plan => plan.baseline_refs.some(reference => reference.item_id === item.id)).map(plan => plan.id) }));
+  const retainedObservations = (state.observations ?? []).map(clone);
+  const architecture = (state.architecture ?? []).map(element => ({ ...clone(element),
+    observed_via_observation_ids: retainedObservations.filter(observation => observation.subject.kind === 'architecture'
+      && observation.subject.id === element.id).map(observation => observation.id) }));
   const accepted = items.filter(item => item.state === 'accepted');
   return { schema_version: 1, project_id: state.project_id, runtime: state.runtime,
     repository_key: state.repository_key, revision: state.revision, baseline_revision: state.baseline_revision,
-    sources, items, plans, summary: {
+    observation_revision: state.observation_revision ?? 0,
+    sources, items, plans,
+    proposals: (state.proposals ?? []).map(clone), architecture, research: (state.research ?? []).map(clone),
+    reconciliations: (state.reconciliations ?? []).map(clone), observations: retainedObservations,
+    artifacts: (state.artifacts ?? []).map(clone), requests: (state.requests ?? []).map(clone),
+    summary: {
       accepted_features: accepted.filter(item => item.kind === 'feature').length,
       accepted_principles: accepted.filter(item => item.kind === 'principle').length,
       accepted_requirements: accepted.filter(item => item.kind === 'requirement').length,
       accepted_decisions: accepted.filter(item => item.kind === 'decision').length,
       plan_count: plans.length,
       unassigned_item_ids: accepted.filter(item => item.contributing_plan_ids.length === 0).map(item => item.id),
+      pending_proposals: (state.proposals ?? []).filter(proposal => proposal.state === 'proposed').length,
     }, issues };
 }
