@@ -1,0 +1,274 @@
+# Persistent project record: first implementation slice
+
+This directory implements a project record that survives individual plans and
+agent sessions. It registers existing Markdown, imports stable baseline items,
+and connects several plans to the same feature, requirement, principle, or
+decision. A native run is optional.
+
+The [contract](contract.mjs), [model](model.mjs), and
+[projection](projection.mjs) recognize all six LazySeries runtime names. The
+[CLI](cli.mjs) and [native bridge](../../scripts/state/project-dashboard-bridge.py)
+currently implement **LazyBuddy only, for one canonical repository root**.
+Runtime enums are not evidence of sibling integration.
+
+## Ownership and entry points
+
+| File | Responsibility |
+| --- | --- |
+| [contract.mjs](contract.mjs) | Strict JSON shapes, identities, operations, references, and history validation. |
+| [model.mjs](model.mjs) | Pure creation and command reduction; source extraction, revisions, CAS, and idempotency. |
+| [history.mjs](history.mjs) | Canonical command digests for local history consistency, without authenticated proof claims. |
+| [projection.mjs](projection.mjs) | Accepted-item summaries, plan contributions, source freshness, and outdated baseline references. |
+| [cli.mjs](cli.mjs) | `init`, `read`, and JSON-stdin `command`; invokes the native bridge. |
+| [project-dashboard-bridge.py](../../scripts/state/project-dashboard-bridge.py) | Private storage, filesystem captures, native-run identity inspection, locking, and atomic publication. |
+
+The CLI's `--reduce` path is an internal pure-model entry point. Supplying its
+capture context is not native filesystem or verification authority.
+
+## Register a baseline and an original plan
+
+Use the repository-supported Node runtime and Python 3.10+. The native bridge
+currently requires POSIX `fcntl` and directory-descriptor operations. Run these
+examples from a fresh checkout's root. Replace `project_root` with that checkout's
+absolute, canonical path; the shipped fixtures provide existing Markdown inputs.
+For a real project, substitute its original document paths and identities.
+
+```bash
+project_root=/absolute/canonical/path/to/this-checkout
+
+project_cli() {
+  node lazybuddy-plugin/shared/project/cli.mjs "$1" \
+    --project-root "$project_root" \
+    --project-id project:offline-notebook \
+    --actor contributor:you
+}
+
+project_cli init
+project_cli read
+```
+
+`init` creates revision 0 or returns the existing matching record. `read`
+returns a snapshot without adding a command revision. **`--actor` is local
+attribution, not an authenticated user or proof of user approval.** A caller
+must obtain any required authorization outside this interface.
+
+The following sequence assumes no intervening commands. On an existing record,
+use its current snapshot `revision` for each `expected_revision` and fresh
+command IDs. Replace the two uppercase SHA-256 placeholders with the corresponding
+64-character `snapshot.sources[].accepted_sha256` from registration output;
+placeholder strings themselves intentionally fail validation.
+
+```bash
+project_cli command <<'JSON'
+{
+  "schema_version": 1,
+  "command_id": "example:register-requirements",
+  "project_id": "project:offline-notebook",
+  "expected_revision": 0,
+  "operation": "register_source",
+  "payload": {
+    "id": "source:requirements",
+    "path": "lazybuddy-plugin/shared/project/test/fixtures/offline-notebook/requirements.md",
+    "role": "requirements"
+  }
+}
+JSON
+```
+
+Registration captures the actual file. The caller cannot provide its title or
+text as authority. Bind two enduring items to unique headings in that capture:
+
+```bash
+project_cli command <<'JSON'
+{
+  "schema_version": 1,
+  "command_id": "example:record-baseline",
+  "project_id": "project:offline-notebook",
+  "expected_revision": 1,
+  "operation": "record_baseline_items",
+  "payload": {
+    "items": [
+      {
+        "id": "feature:notes",
+        "kind": "feature",
+        "state": "accepted",
+        "source": {
+          "source_id": "source:requirements",
+          "sha256": "REQUIREMENTS_SHA256_FROM_REGISTER_SNAPSHOT",
+          "anchor_id": "heading:feature:notes — Personal notes"
+        }
+      },
+      {
+        "id": "requirement:offline",
+        "kind": "requirement",
+        "state": "accepted",
+        "strength": "binding",
+        "source": {
+          "source_id": "source:requirements",
+          "sha256": "REQUIREMENTS_SHA256_FROM_REGISTER_SNAPSHOT",
+          "anchor_id": "heading:requirement:offline — Work without a network"
+        }
+      }
+    ]
+  }
+}
+JSON
+```
+
+Register the original plan document separately, then reference the existing
+baseline item revisions:
+
+```bash
+project_cli command <<'JSON'
+{
+  "schema_version": 1,
+  "command_id": "example:register-search-source",
+  "project_id": "project:offline-notebook",
+  "expected_revision": 2,
+  "operation": "register_source",
+  "payload": {
+    "id": "source:search",
+    "path": "lazybuddy-plugin/shared/project/test/fixtures/offline-notebook/plans/search.md",
+    "role": "plan"
+  }
+}
+JSON
+
+project_cli command <<'JSON'
+{
+  "schema_version": 1,
+  "command_id": "example:register-search-plan",
+  "project_id": "project:offline-notebook",
+  "expected_revision": 3,
+  "operation": "register_plan",
+  "payload": {
+    "id": "plan:search",
+    "source": {
+      "source_id": "source:search",
+      "sha256": "SEARCH_SHA256_FROM_REGISTER_SNAPSHOT",
+      "anchor_id": "document"
+    },
+    "declared_lifecycle": "planned",
+    "baseline_refs": [
+      { "item_id": "feature:notes", "item_revision": 1 },
+      { "item_id": "requirement:offline", "item_revision": 1 }
+    ]
+  }
+}
+JSON
+```
+
+Successful commands return `{ receipt, snapshot }`. More plans can reference
+those same item IDs. `contributing_plan_ids` records these declared links; it
+does not establish implemented contributions. Heading anchors use exact,
+unique ATX heading titles outside fenced examples. `document` binds the whole
+file. The native bridge accepts UTF-8 `.md`/`.markdown` sources up to 1 MiB and
+rejects unsafe paths and protected native storage.
+
+## Changes, revisions, and retries
+
+**Original Markdown is never rewritten by this slice.** After an external edit,
+`read` reports changed source observations while retaining the imported baseline
+and plan text. Accepting the new content is explicit:
+
+1. Reissue `register_source` for the source ID/path/role with a new command ID
+   and current project revision. This accepts the new digest in the registry.
+2. Reissue `record_baseline_items` for the affected anchors, or `register_plan`
+   for the plan, using that newly registered digest. Registry refresh alone
+   does not replace imported item or plan text.
+
+An item's revision changes when its extracted title/text or accepted metadata
+changes. This is an exact comparison, not language-level semantic analysis.
+Updating only the source digest after an edit outside the item's anchor leaves
+its item revision unchanged. A baseline-changing command advances
+`baseline_revision` once. Plans retain their explicit item-revision references;
+outdated ones become `stale`, including historical completed plans, without
+reopening those plans automatically.
+
+Every newly accepted command advances project `revision`, including an accepted
+no-op. Replaying the same command ID and body returns its original receipt
+without rolling state back, even after source removal. Different content under
+that ID raises `IDEMPOTENCY_CONFLICT`. A stale `expected_revision` returns a
+`conflict` receipt with `REVISION_CONFLICT`; it does not append a saved receipt.
+Read the latest state before composing a new command.
+
+## Native-run links and interpretation
+
+The fourth operation, `link_native_run`, has exactly this payload:
+
+```json
+{
+  "plan_id": "plan:search",
+  "native_project_id": "NATIVE_PROJECT_ID_FROM_EXISTING_RUN",
+  "run_id": "EXISTING_RUN_ID"
+}
+```
+
+Use the usual command envelope and current revision. The bridge inspects
+`.lazybuddy/runs/<run_id>/state.json`; `run_id` and `dashboard_project_id` must
+match. It creates no run and records only an inspected identity link. Native
+execution, revision consumption, agent activity, and proof remain unobserved
+through this CLI.
+
+`declared_lifecycle` is imported metadata. Checkboxes, `completed`, accepted
+baseline items, and saved command receipts grant no verification. Projection
+`alignment` remains `unassessed`; current revision references do not establish
+semantic compatibility. Source observations distinguish `current`, `changed`,
+`missing`, `unavailable`, and `unobserved`.
+
+The snapshot's `issues` list covers source registry freshness and outdated
+baseline references. An empty list is not an overall project-health verdict;
+individual imported items can still reference an older source capture.
+
+## Storage and recovery boundaries
+
+The native store is `.lazybuddy/project/`: `owner.json` binds the project ID and
+repository key, `state.json` retains current imported records plus saved command
+receipts, and `lock` serializes bridge access. The key hashes the canonical root
+path; it is not a portable Git identity. Moving the root, migration, and linked
+worktree binding require future work.
+
+The store is user-owned and private; symlinks, hard-linked state files,
+directory replacement, unsafe permissions, and ownership collisions are
+rejected. State and its receipts publish together with locking, content checks,
+`fsync`, and atomic replacement. Source recapture detects changes before
+publication but does not transact with external editors.
+
+After a valid durable `owner.json` exists, `init` can finish matching-owner
+partial initialization containing only the recognized owner, lock, and
+temporary-state names. State and command-receipt publication use the atomic
+path; retry an interrupted command with its original ID and body.
+
+Bootstrap **before durable ownership is not automatically recoverable**. A kill
+after creating the project directory can leave no owner and cause
+`PROJECT_DIRECTORY_COLLISION`; a kill after opening the owner file can leave an
+empty owner and cause `INVALID_JSON`. These refusals preserve the directory's
+contents instead of adopting or deleting unidentified files. This is not
+general corruption repair or permission takeover: retain the rejected store
+for diagnosis rather than deleting owner/state files to bypass an error.
+
+Current baseline text and receipts are durable. An immutable archive of every
+older Markdown body is **not built**: receipts retain commands and digests,
+not a complete recoverable document-version history.
+
+## Contributor handoff
+
+[Model tests](test/project-model.test.mjs), [adversarial tests](test/project-adversarial.test.mjs),
+[native CLI tests](test/project-cli.test.mjs), and the
+[offline-notebook fixtures](test/fixtures/offline-notebook/) specify continuity
+across plans/reloads, explicit source refresh, revision conflicts, idempotency,
+anchors, and refusal of fabricated verification. The focused entry point is:
+
+```bash
+node --test lazybuddy-plugin/shared/project/test/*.test.mjs
+```
+
+This README records implementation behavior, not a test-pass certificate.
+
+Still pending: the project-only browser/UI, original-source editing, native chat
+delivery/consumption, metrics, Git/worktree projections, semantic conflict
+assessment, sibling native adapters, and pinned distribution. `shared/project`
+currently sits outside the pinned dashboard core. Any eventual incorporation
+into `shared/dashboard` is an intentional vendor/manifest change requiring the
+family's distribution checks; this directory is not already ported merely
+because its pure contract lists six runtimes.

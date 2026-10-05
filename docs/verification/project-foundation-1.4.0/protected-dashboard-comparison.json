@@ -1,0 +1,602 @@
+{
+  "captured_at": "2026-10-05T16:58:55.330720+00:00",
+  "base_head": "b4c38b5d4fbee28449001b7fc1e0ac1639393150",
+  "compared_count": 99,
+  "all_byte_identical": true,
+  "files": [
+    {
+      "path": ".github/workflows/dashboard-family-drift.yml",
+      "base_blob": "e1881a0286f3bc8899e4270db7f8e551614ef521",
+      "sha256": "5f5560261f8819f009d26c3a54748c1b298657a2169cb2f48c769138644c9316",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard.vendor.json",
+      "base_blob": "fca911839b3abf435f43f8a3721ae9d13853e539",
+      "sha256": "d6ea50de9453913928914b6c561bb6352428e91871dcf02a5a1af553984a145d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/LICENSE",
+      "base_blob": "90460af7523c8f52640965e82be89644a79cfcb6",
+      "sha256": "821850a42ace9f068794ce48afece725cf03489bc8a4ae9f6c094a6d351dd883",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/MAPPING.md",
+      "base_blob": "40c30222855f84ced31d024fc4c90a622b34ca3c",
+      "sha256": "9a524d9d6480d6d9c5ea06aa2cd2cb34704296448c100abbb8c282e22327d3e3",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/NOTICE",
+      "base_blob": "572a4840e5aaa861ab2d41138467fbc5bded9255",
+      "sha256": "fedebf0a6a05896ecdd399fd534aa10c4ca4072b97caaedcdbd2f63073fea91c",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/SERVICE.md",
+      "base_blob": "a21185a42b668655a93bb20a68f595adc3844613",
+      "sha256": "5c153a1fbd5789ea249adc09fae585eb16c0483fed694270cb529095b98ca014",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/adapters/completion.mjs",
+      "base_blob": "9024f222b869de8ddca955b36a5171054951086b",
+      "sha256": "283e86cd4164ced9593edae5a232a37529f610ccd145ea10b555dadc4de6fc2f",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/adapters/host.mjs",
+      "base_blob": "ca37f2dfd6a0da90a0676a403e7f7a6a7468cc96",
+      "sha256": "58c62a8999096988b0107ff15c5ca48cf331748a3a0197493947689d3d49aa02",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/adapters/ledger.mjs",
+      "base_blob": "a9be7b5e59a65d8da6fb45d85210d79bca013531",
+      "sha256": "9ba3cb082280e54871e0deadf71c4b65e5d5cfc6c19d57e3de70f61b219fea92",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/adapters/runtime.mjs",
+      "base_blob": "cdafbda408d6585f8e5a10aab8e86827f9759ff9",
+      "sha256": "f145f2f8daeb19125cc7b2733b167160ced481e788d4e0259c0ebdc2c50dde9e",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/adapters/state.mjs",
+      "base_blob": "bb66767118f6446504de6288599579051739df5b",
+      "sha256": "4d08e017ff7b2796be0ddf7011bd69ac4425ed2d2fb889046cfc538b9a13abb2",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/command-reducer.mjs",
+      "base_blob": "74841af88ed3cfdb3aa5f9213732729ee08e85a8",
+      "sha256": "8b7587ac76e8b5ed3709eccb316133ec0ef0b72fa00824e413a17a06a25c9fc8",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/commands.mjs",
+      "base_blob": "6784d2d88542435e219f843d5b6b7585eba2823d",
+      "sha256": "67766618d0945919d52cbee6f713f394704b1dff58212c4d411a68020da89ec3",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/contracts/lazyseries-dashboard.v1.schema.json",
+      "base_blob": "891508e575b8b26c7569f38ceb96c1ebcffe5414",
+      "sha256": "3c018551e3aa336aa4eaeeb4aefa0c310588defb3f0916357097ecd4115791d9",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/contracts/parse.mjs",
+      "base_blob": "dd4a2d1faa6cf4180a4400715e22ee378b524fd7",
+      "sha256": "278684b98234b60a9366fd7ed8d238f5f92e33edae21f5a8007c07804386dc38",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/contracts/schema.mjs",
+      "base_blob": "99bb201ccf03b0cf5f4e74de7b8aed543fc0880f",
+      "sha256": "1f9e0ca48a2ca47e4b7a750124343a5dd21bc8c6d43c0a60ccc78ffa0d988039",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/producers.mjs",
+      "base_blob": "e3c0d45a282ec4f678c45cdd9dc737b6c21169ac",
+      "sha256": "418fbf4d0375c923b266d151883656d0218364e3ba0854b656fd12979de6f57d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/projection.mjs",
+      "base_blob": "8602349f6ef39c48765b598322055c2b2453bfde",
+      "sha256": "b49a1a674f1678e8c8664bdf1194d6491244235a3f153e056bf39dcc5100f314",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/projector.mjs",
+      "base_blob": "94e6c66cd1fd0c5d7f4d37c93d8dd67b467f55bb",
+      "sha256": "b5de4c9423a7ddc1adaa3bb4b0d70791c6c769be9dc79e3d39e3cc133083cde7",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/command-authority.mjs",
+      "base_blob": "550f75283920cfc2fbe50a194ae4a13586cc74d8",
+      "sha256": "da8edeedfe84258ccd173cd3407197e29dc31afd96f3681d71dd06d64121f797",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/compatibility-probe.mjs",
+      "base_blob": "e4a1680a26948d5187a26abc7a18c11a4fc92339",
+      "sha256": "d66a060092d809823ec59b13999793220e2ee129e63c5d971820baed9f9699ba",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/port-restart-baseline.mjs",
+      "base_blob": "53716814764ad9b2b298470864c9cecf463c8d2b",
+      "sha256": "97cbf74b056973ca0e97051a1b744493575faad2e8d1421ef5f2f2ffc73227fe",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/queue-receipts.mjs",
+      "base_blob": "87d118d103f6909b33461aa67017feb74c534670",
+      "sha256": "00ce414e04d0797fcd7d48ae54c044ec61ce5f6256a0447c7dd0ab28b2dd882f",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/queue-recovery.mjs",
+      "base_blob": "754999135306394120155b87ab352fbaedab00c9",
+      "sha256": "7760184e2b7f8a8ef976b74deeca44c265496a61467b980c314ec866db3d28b1",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/reconcile-probe.py",
+      "base_blob": "9bf11f13d4b427dbd4f2685a17fbd88594b3bd85",
+      "sha256": "4e313dc46ce25f46ddee112e364ecbc699ffc6b2f191fadcb6b08c1bd4a55857",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/service-core.mjs",
+      "base_blob": "fc64183e5ee462c2007170037faf57f389830e3c",
+      "sha256": "c4e34747fe1681cc5e0119c3601bb7c0a1cab3ae2dc011c618d3f82c4e132f6e",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/service-evidence.mjs",
+      "base_blob": "2cf78bb4db3035f40582cda3e176dd7d2bfab7e4",
+      "sha256": "a867e301a431507d6af60317f8472126f6c8d2ca844fdb080063b81cbd52e2be",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/service-queue.mjs",
+      "base_blob": "fc5080f8d888d20789cd1fa5eb2973b2cb0f054f",
+      "sha256": "73f9a55414a2a198d30c85dcf926ff0836aa308929d910d44d0789e740c85dc6",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-components-browser.mjs",
+      "base_blob": "31bd2700dc4b5e3d61cd8ef4c86a1f1870c5ee1e",
+      "sha256": "6f8e601c8e74ef9096c7342a354fa60fdccadb2e7c1c5e82b3ced8d5c514da6a",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-components-checks.mjs",
+      "base_blob": "8775258de67bd39b58ea122eb446d0a08c5faa0c",
+      "sha256": "4a4cfb20d46f3f481f099c318b52ccd4c42b7cb0c57ecbf87412431ca74f6e46",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-live-browser.mjs",
+      "base_blob": "9832125df5ba010c2892937c1457867971c11a07",
+      "sha256": "f4604b8adb01660584074d85dd1ddf3e6f2f818852ae21efbc5dd51354660c26",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-live-checks.mjs",
+      "base_blob": "341558c519e3014523984ae765a88d9e9ecf520f",
+      "sha256": "0167eaa822adc6b97f69083a2a63376ff17875626765b2bc054f3d61ca95c8f4",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-live-focus-browser.mjs",
+      "base_blob": "ead47e11a45f9e45334eb7ad89617eb7d133ac65",
+      "sha256": "7fc8e44f0b2b25c18943d86e574c5c7f5ebcdcc23e6f0c78ba9d9bb9100d9d10",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-queue-edit-browser.mjs",
+      "base_blob": "eb6739f325f8e3672fb7ce273887aebbe27a0a82",
+      "sha256": "a52767f80321c533af15fac32c9ae2ae901c824b350a028519e6525ba4528540",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/qa/ui-queue-edit-checks.mjs",
+      "base_blob": "5d9ff9d6e4160ae7fd41fb1ff4ab9e9e9ca0610b",
+      "sha256": "599841b09380a87af1e699aa5af33f385fb41ce0e42b6ec0072409db12df9386",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/queue-reducer.mjs",
+      "base_blob": "ea4ce8fe27fb29b363e78ae7238ee10d1c08a480",
+      "sha256": "30f25c2ee22173ed890999d2cda7ff8bf84e61b0c09b4e58304449d740165830",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/queue.mjs",
+      "base_blob": "879b3e93c3aca5b5c56a812d3b4f5891a7a550f6",
+      "sha256": "19b404e964036a57e768885a625dc6bc7d6f8176b591692fada53c5732690f0b",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/revision-compatibility.mjs",
+      "base_blob": "829e35c37d352b708913cf4294f74fe1e4dedbb7",
+      "sha256": "ce5c73c74dc6d3cb02398bf32fde7273fa69e278b891b3cc3e8b3c92ab2449ef",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-adapter.mjs",
+      "base_blob": "63c73e66eadec3cf74a83902c788717c986c2ae1",
+      "sha256": "37eeb57a2c5de794844d6c88d3ae135ca326e1ca495f45eff7ef0f520085dc58",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-auth.mjs",
+      "base_blob": "68a405fe93f7fb80dc918051dbf1107442052871",
+      "sha256": "ea7e99d685085fd26412efaeb4415b46f97b03de846c4363c30acd10ad4e8dc2",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-files.mjs",
+      "base_blob": "4aefe797a9031d0bff9d2280d20185472eb38a8c",
+      "sha256": "cecd6b9f6475526781ad29140db263914c61da5f0bcae2528a5a7e32f6cb529c",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-http.mjs",
+      "base_blob": "3c169b67bc4bf7ab7f399b9a2e82de5b280c3b06",
+      "sha256": "b742c7d2f98a54750ebb8ac2a924b083083341efbdcc0357607db330ead1d2e4",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-identity.mjs",
+      "base_blob": "d609924f8bff8ff0c3c525c0d8759649477dc7ed",
+      "sha256": "b560805cfca913445daceaa2c1e2ca3e6f76bebe32c4f38c4c60ef8f0b23371d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-lifecycle.mjs",
+      "base_blob": "b614002407ea99df8cce4d6eec53038d5d093a1e",
+      "sha256": "d1aa45a027f15a9eaacdf29ecc6b016cb398cb7b77c6761d432ca7193a92974d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-read.py",
+      "base_blob": "4aebcc9445db98d168ff548b50470dd64f35109a",
+      "sha256": "954d13d3b82feb91dd7135b499ec7262785d1c03c2dafc3cdc63ce8116998347",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service-snapshot.mjs",
+      "base_blob": "c9efc138c96a4c774663c8e79b9800f583374282",
+      "sha256": "608c908fae141514456716335e773a613298ec605f5df13d786af755b540db4f",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/service.mjs",
+      "base_blob": "39d50d8c5098212f1435fe96af978ba32dcb3cc1",
+      "sha256": "5a61dc2fdd72b75d99b4efdc65aca4d01ec1b26c29656a8e99d24e297b4de4e3",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/command-fixture.mjs",
+      "base_blob": "48a682321fa0e55552b10407b47f1ae6bd631582",
+      "sha256": "05f1b7063d488a21d07c14e59cc443e3d4ec604bf92343a5f2ba42ad9c03b8ac",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/command-operations.test.mjs",
+      "base_blob": "a501f2ff267f44b3b2a4d582441dc0c774ddc5e5",
+      "sha256": "c29de4479ec27adb13153af319f3670597943e62a8fbecb332fe9f66b3776efd",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/commands.test.mjs",
+      "base_blob": "030438a8a174abf1f33c57a5a66090cb9219a984",
+      "sha256": "a36ac0d560422cddc533f70438ff9057b235946719fc86cc5669b13a8546471d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/completion-coherence.test.mjs",
+      "base_blob": "a295cb003666be46434e3958e26e3259ee7a6bb2",
+      "sha256": "1a7b2785b85a5f860014a32f2f67e2069f11a5f02a97ca1448dbf1b0611d98f7",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/completion-fixture.mjs",
+      "base_blob": "c83104ce874ea7a5fd94d5fda207d0aac5eabbc1",
+      "sha256": "983d570a15b59db3ff4002f42a45e38c4dfb1ad808da75c7debb721eed130766",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/completion-partial.test.mjs",
+      "base_blob": "5fc819ba1baaac4d1b90a50eb898c10d1bfb1c2f",
+      "sha256": "cc9e7b952dbf207a7186e053fbad0c5626cce4f4ff57cc3a82cfa2296a41f132",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/fixtures/host.json",
+      "base_blob": "b57cb35d719182438c5bea15b696d498d7f1b953",
+      "sha256": "16f670e0d426c0b23f58c328376cf5fe04f81fa68764754e0ce658e2f826ed6e",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/fixtures/legacy.json",
+      "base_blob": "484d6fd82e08875c93e1a1b3a1061331729849ec",
+      "sha256": "dc21e7f7839097700978ed3056f6309f04030a53c1c4f2ef1bf469392b8bab16",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/manual-qa.mjs",
+      "base_blob": "56f3607568ed7b348a4ea4a615900633b82a4c63",
+      "sha256": "2ce395081734e604164ea2b4ee546f4b29abd105678fc765d4176d92ed996160",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/producer-workload.mjs",
+      "base_blob": "01b48cca57fc317a7352efac77de52f01858fb55",
+      "sha256": "5469a0e346daffce789ca08f6494be2469c2f5fe94b9e809ca455ce2baff23ac",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/producers.test.mjs",
+      "base_blob": "e1765d74bf1032a6ee5346cab49f51528a627cf9",
+      "sha256": "d3feaa5673f67179d96399043d2ef7c7595fd2d04151a149099b905d4b0ddf3a",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/projection.test.mjs",
+      "base_blob": "e239c8001aeccfca69d4231fd0e851cfcf51e131",
+      "sha256": "c1793bdb6fd63186be6e032be68557a6b0fc4a57fb838a3c61358f17bd21a8e3",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/proof-boundary.test.mjs",
+      "base_blob": "0251d98d9d13c3eab054d965d8bc0a2351745235",
+      "sha256": "d529f7b8e4abb02f202d683844661e0f02407f364424c78c3f8aeacce7a1fb4b",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/queue-adversarial.mjs",
+      "base_blob": "e78200520f774010d9c4914db877ae4b084d7ac9",
+      "sha256": "398aa8db069e69cff512777d4b5274d62cc17c4d80d5084962b186857f53dab4",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/queue-cases.mjs",
+      "base_blob": "39a671a7210a2ba80529697c8056a29e74b05203",
+      "sha256": "6687cb1e9749dae07d45317a3cb0b9e29bc5443ff7e213ea58d69a7d568d9373",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/queue-fixture.mjs",
+      "base_blob": "7a7aa6a930e0c5edcb90461d70e4dbc89271ccb3",
+      "sha256": "4f0038615da06833222f554b11a7d6c3eb8edf4f2cc588948055c215ba3e7379",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/queue-receipts.mjs",
+      "base_blob": "25d8be214f4916ea95d366a180e63baeba375582",
+      "sha256": "f0429ce5c84b6833a28ae9bc2d79b1dbef3fce0ee6c836a0c9b21a0e1de441bd",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/queue-scenarios.mjs",
+      "base_blob": "d3392afe05f0bd0592a316b3127e9d1150a9f612",
+      "sha256": "7497b76b22813ad606814c901c63ad2fe97e3020186661d0ef764286a96e520d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/queue.test.mjs",
+      "base_blob": "b2e0068126183e2adf7101373abac7f8568c0045",
+      "sha256": "7088abaf4bca8e41509f419a264718e56a5fb248339695bd830980dc27570644",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/receipt-attempt.test.mjs",
+      "base_blob": "11d9d65716b3c03b82124b66c916a9a3983f48d2",
+      "sha256": "dbe1228d314c8e068195955586ca1426d201baa28055a5a1187f89f2e90af27c",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/revision-compatibility.test.mjs",
+      "base_blob": "2fdff65298f23daf64c0c54cbb38b8a555be5741",
+      "sha256": "f34d6865680a91c04c0eb8e5d269e51b315ad8976ea43ad7f37f37a7cc9240b5",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/service-adversarial-cases.mjs",
+      "base_blob": "48b535b97d18dc50f0720370f7c415d7bb6faee4",
+      "sha256": "677fe7d44307e3a78becec20330c32787b04c5fef33f65a38189a76fd848c5ac",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/service-evidence.test.mjs",
+      "base_blob": "8df8908c377c11c8c5bbcf4e846d9c63b525000d",
+      "sha256": "42f8977634fa128de9736c5730c743c387c245955ba9addfffe6f1a57a3f97ee",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/service-fixture.mjs",
+      "base_blob": "cebce07e745ef2d1f89f9afd6c4467f77e65658a",
+      "sha256": "8f73908dd045e6979824eb7ac3269ba7225bc366b2c809bac73ac30644085a9f",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/service-live-ui.test.mjs",
+      "base_blob": "236edb915e814ded3438bf1e96177becf7853b40",
+      "sha256": "b2e552f64916932cac55b32f31b76bc6fe11aa2647abd021116b831bb6ac462a",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/service-queue.test.mjs",
+      "base_blob": "bbd092547dd6cd378716d2b9f0b9878a0b3abf05",
+      "sha256": "d282da53c9d2f840ea9564cc5679d5c2bbc96bc30cc6d8a4aeb068b723391632",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/service.test.mjs",
+      "base_blob": "9f66979fdae7323ce54b7245cbb39570fbf0991a",
+      "sha256": "0fb883abcef3f2de5c349e15b2bb4a324a9e40c83e16ba091585bd8ac7f7e326",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/ui-components.test.mjs",
+      "base_blob": "edf3730ddadcc8f741cf75369c399a6e553de21e",
+      "sha256": "5e58718a0cd63e057c2dec2b2211e57953c7f3a0e49f28e1d6e30f5d1cf234e2",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/test/ui-live-bindings.test.mjs",
+      "base_blob": "d842461bdc93acd9b0e255e5d80dc3ff39fecc7b",
+      "sha256": "8e802afb3b601f4fcc958b64e224e3f5ab33e3e09506f9464fe8ce8bd4494633",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/trusted-projection.mjs",
+      "base_blob": "adc82d2f32efe83036ec8d0724c9395d88145514",
+      "sha256": "2acbe78710558c695f257bb7d9be81144d4435e052265bce85f28f91e7787ae5",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/DESIGN.md",
+      "base_blob": "1217104866db213a8c005b24d5f2fe4728d9cfae",
+      "sha256": "5670f314b8336efd5ad37d24bacc383c1a423cc354dce3ff7ac94523dd15ee18",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/asset-manifest.json",
+      "base_blob": "2a2f0ac98d1e86163d0b4989098cb75c283e8485",
+      "sha256": "5cb80d27248c9605d5809bcfa3863000daeea11897b5449880cc90cf7a718660",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/component-demo.html",
+      "base_blob": "ba05b81d7481d9d8994cc3f264852c42c9c0d751",
+      "sha256": "6c514c277adcd5dc6e0aa00af4471e58e2149d69fec7a6247b8ce45b676b00b4",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/component-demo.mjs",
+      "base_blob": "1c5bba605078c18a038a1346e8556ea4060cb6a9",
+      "sha256": "5ce7539967376b8112fdfa3590d1b092fc18bf2997d718cd72e8dd608812a5bf",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/components.mjs",
+      "base_blob": "43b4b85e24b29a076fff7f69d59ac0b4cc287f5e",
+      "sha256": "6667c29b82d1dae11bc626750f3cc9301d2aaae13eebc61731d6f3675c664108",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/connection.mjs",
+      "base_blob": "3a7434f2765df69825bf960aaec11aa833a7f7e0",
+      "sha256": "37cd258b4846353953abf8c670082eb041e7247947e71868eff79bda7124260e",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/editing.mjs",
+      "base_blob": "e5c33dd7469cc5debf102ca2e47ba934366f4ae0",
+      "sha256": "5ab44e137a1f8a91451b0b1fe31def9f0fc6fbdc3d971f24e537aa37ae71d86b",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/graph-layout.mjs",
+      "base_blob": "dfcf91074a1804a708ede70c77e67258eee4609e",
+      "sha256": "c9081bd79dcab9ffea33b2c5a889163c97cd62b1d6d3b577761cfa544c642103",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/icons.LICENSE",
+      "base_blob": "258345d5177901f4ff15548cdbd52836ef7faa62",
+      "sha256": "3dd5b07f62318cc4847e40c9176e0e8096a838fec6c399ff4959e6870b9dcbe3",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/index.html",
+      "base_blob": "e67994fe84996afe8b5159e5d2c15bb749914ec2",
+      "sha256": "ba65dc4f4275b2c9a20d5df4d5bedf68726639d57b25b92b1a6fe6177baf9114",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/index.mjs",
+      "base_blob": "2b4e235e0ebb9af9afc865aeb0ed593658239dc0",
+      "sha256": "201ed1f34a9d17ab9b7682ed959cbdc0790d75b5458eef8a15769010feb385d3",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/inspector-view.mjs",
+      "base_blob": "7a5720c16a927c84741a6e185f86ef1a3d9a77a0",
+      "sha256": "940876698bd4de03eb62992b638cfe0c1c15b6b7cba0e2e068a32e9eea385b33",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/live.css",
+      "base_blob": "166a874b1c5e56a053d8bc803f350bbe97991d05",
+      "sha256": "e8e017cf6404879371ac10c7c95ed6f29a0272546ea76865fa954664dd55b40f",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/showcase.html",
+      "base_blob": "ee3a39a6bd2e801d72c4b1bfe5a6aee6ce788c7c",
+      "sha256": "8c2dbec7aa928d7b53e0ccc0bbcb4258774ffc0d66c9226dd402b599cadf655d",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/showcase.mjs",
+      "base_blob": "07507464be887a198607e4c47e0f4b6d08948b61",
+      "sha256": "7391b286821398f4f74c42205c77fac6a7a11e6b8dba160020e5aafc48e3c7fd",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/style.css",
+      "base_blob": "b5e18598626337a425c9913b962a70c0193b4353",
+      "sha256": "eb61fae35fc39f56aaaadb451dc1cfa6afa3d6615adbb46b1ab1e2fdc60a4354",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/tokens.css",
+      "base_blob": "95a42eadeecf4cc5802a8c86485dc31decf48cb4",
+      "sha256": "3e41dd92d65bbc91a4f0c759abd5de5eba0820415a6453a864c7f090e0c69e60",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/verification-view.mjs",
+      "base_blob": "3b4a669b3ae6347fef4964eccb673a4eadd0136e",
+      "sha256": "82e4b6db03dff02893e38d2fb6055c5cbfa1241eb030f492c23ea0ad96dc2306",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/views.css",
+      "base_blob": "bd9a1779d820e5485f8ebd094726ecc5e47c8154",
+      "sha256": "3ce613ae6a49cc6398c865f374f8abdedcd28ee9ab065f929395c501d9f17b27",
+      "byte_identical": true
+    },
+    {
+      "path": "lazybuddy-plugin/shared/dashboard/ui/work-view.mjs",
+      "base_blob": "ea7dc5f7acf01f2e9721baae209f70ce465ca36b",
+      "sha256": "124d7df93decd4bdc2a31e0917055fa083f021cd6f652015f56f4c19401d9841",
+      "byte_identical": true
+    },
+    {
+      "path": "scripts/dashboard-vendor-manifest.v1.json",
+      "base_blob": "fca911839b3abf435f43f8a3721ae9d13853e539",
+      "sha256": "d6ea50de9453913928914b6c561bb6352428e91871dcf02a5a1af553984a145d",
+      "byte_identical": true
+    },
+    {
+      "path": "scripts/vendor-dashboard.mjs",
+      "base_blob": "9894b7662faa9eb766c8c1f059b36e0d24cb49be",
+      "sha256": "7c888b15e1976cd89f978094cb1f5c6135a29a2d4a44dd8744255d3f42128d64",
+      "byte_identical": true
+    }
+  ]
+}

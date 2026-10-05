@@ -1,0 +1,100 @@
+TAP version 13
+# Subtest: object-prototype-like stable IDs remain data, including plan and related references
+ok 1 - object-prototype-like stable IDs remain data, including plan and related references
+  ---
+  duration_ms: 9.895582
+  type: 'test'
+  ...
+# Subtest: JSON prototype pollution properties and unknown proof authority reject before state changes
+ok 2 - JSON prototype pollution properties and unknown proof authority reject before state changes
+  ---
+  duration_ms: 4.598214
+  type: 'test'
+  ...
+# Subtest: accessor fields are rejected without calling their getters
+ok 3 - accessor fields are rejected without calling their getters
+  ---
+  duration_ms: 0.320013
+  type: 'test'
+  ...
+# Subtest: sparse arrays, array accessors and named array properties are not JSON data
+ok 4 - sparse arrays, array accessors and named array properties are not JSON data
+  ---
+  duration_ms: 0.288095
+  type: 'test'
+  ...
+# Subtest: one bad item makes a whole source-backed baseline batch reject atomically
+ok 5 - one bad item makes a whole source-backed baseline batch reject atomically
+  ---
+  duration_ms: 2.211935
+  type: 'test'
+  ...
+# Subtest: dangling, duplicate, self, and future-version references reject atomically
+ok 6 - dangling, duplicate, self, and future-version references reject atomically
+  ---
+  duration_ms: 2.974676
+  type: 'test'
+  ...
+# Subtest: source digest and path must match the exact supplied content at the capture boundary
+ok 7 - source digest and path must match the exact supplied content at the capture boundary
+  ---
+  duration_ms: 2.509975
+  type: 'test'
+  ...
+# Subtest: an exact persisted retry needs no new source capture and retains original actor/time
+ok 8 - an exact persisted retry needs no new source capture and retains original actor/time
+  ---
+  duration_ms: 0.68942
+  type: 'test'
+  ...
+# Subtest: a competing stale command does not consume command ID or append a conflict to persisted history
+ok 9 - a competing stale command does not consume command ID or append a conflict to persisted history
+  ---
+  duration_ms: 0.544952
+  type: 'test'
+  ...
+# Subtest: registered source refresh alone preserves baseline references but exposes old accepted item source freshness
+ok 10 - registered source refresh alone preserves baseline references but exposes old accepted item source freshness
+  ---
+  duration_ms: 2.611548
+  type: 'test'
+  ...
+# Subtest: source observations are optional and bounded; extra same-runtime run observations grant nothing
+ok 11 - source observations are optional and bounded; extra same-runtime run observations grant nothing
+  ---
+  duration_ms: 2.179067
+  type: 'test'
+  ...
+# Subtest: a captured native run link remains a reference and cannot rewrite imported completed history
+ok 12 - a captured native run link remains a reference and cannot rewrite imported completed history
+  ---
+  duration_ms: 1.817441
+  type: 'test'
+  ...
+# Subtest: anchor parser excludes fenced fake headings and stops at the next peer heading
+ok 13 - anchor parser excludes fenced fake headings and stops at the next peer heading
+  ---
+  duration_ms: 0.206271
+  type: 'test'
+  ...
+# Subtest: persisted receipt digest corruption is rejected consistently by projection and the command path
+ok 14 - persisted receipt digest corruption is rejected consistently by projection and the command path
+  ---
+  duration_ms: 1.439821
+  type: 'test'
+  ...
+# Subtest: receipt revision, operation, command, baseline and project inconsistencies reject on read
+ok 15 - receipt revision, operation, command, baseline and project inconsistencies reject on read
+  ---
+  duration_ms: 3.143371
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 118.168708
