@@ -100,7 +100,7 @@ def handle(req, notification):
         reply({"content": [{"type": "text", "text": text}]})
 
     if method == "initialize":
-        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "context-graph", "version": "1.3.5"}})
+        reply({"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "context-graph", "version": "1.4.0"}})
         return
 
     if method == "tools/list":

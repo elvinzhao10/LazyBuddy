@@ -5,9 +5,9 @@ LazyBuddy supports its documented CLI and IDE/app hosts. Automated package check
 See [the current platform audit](docs/reference/platform-status-2026-10-02.md)
 for version-specific native features and legacy route limits.
 
-## Current documentation release: v1.3.5
+## Current documentation release: v1.4.0
 
-This v1.3.5 guide names current human-facing boundaries only. It does not
+This v1.4.0 guide names current human-facing boundaries only. It does not
 publish a package or promote package evidence to host proof. The route IDs are
 `codebuddy-cli`, `codebuddy-ide`, and `workbuddy`. v2 native modes are
 `invoke-documented`, `observe-only`, `descriptor-only`, and `unavailable`;

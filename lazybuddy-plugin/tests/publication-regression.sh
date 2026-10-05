@@ -140,6 +140,8 @@ copy_publication_fixture() {
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/README.md" "$fixture_root/lazybuddy-plugin/README.md"
     mkdir -p "$fixture_root/lazybuddy-plugin/docs"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/docs/model-routing.md" "$fixture_root/lazybuddy-plugin/docs/model-routing.md"
+    mkdir -p "$fixture_root/lazybuddy-plugin/shared/dashboard"
+    cp "$REPOSITORY_ROOT/lazybuddy-plugin/shared/dashboard/SERVICE.md" "$fixture_root/lazybuddy-plugin/shared/dashboard/SERVICE.md"
     mkdir -p "$fixture_root/lazybuddy-plugin/contracts"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json" \
         "$fixture_root/lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json"
