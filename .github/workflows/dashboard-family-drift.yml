@@ -1,0 +1,81 @@
+name: Dashboard family drift
+
+on:
+  workflow_dispatch:
+    inputs:
+      lazytrae_ref:
+        description: Exact LazyTrae ref containing the vendored dashboard
+        required: true
+        type: string
+      lazyqoder_ref:
+        description: Exact LazyQoder ref containing the vendored dashboard
+        required: true
+        type: string
+      lazyzcode_ref:
+        description: Exact LazyZCode ref containing the vendored dashboard
+        required: true
+        type: string
+      lazykimi_ref:
+        description: Exact LazyKimi ref containing the vendored dashboard
+        required: true
+        type: string
+      lazydeepseek_ref:
+        description: Exact LazyDeepSeek ref containing the vendored dashboard
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: LazyBuddy
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: elvinzhao10/LazyTrae
+          ref: ${{ inputs.lazytrae_ref }}
+          path: LazyTrae
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: elvinzhao10/LazyQoder
+          ref: ${{ inputs.lazyqoder_ref }}
+          path: LazyQoder
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: elvinzhao10/LazyZCode
+          ref: ${{ inputs.lazyzcode_ref }}
+          path: LazyZCode
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: elvinzhao10/LazyKimi
+          ref: ${{ inputs.lazykimi_ref }}
+          path: LazyKimi
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: elvinzhao10/LazyDeepSeek
+          ref: ${{ inputs.lazydeepseek_ref }}
+          path: LazyDeepSeek
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24"
+      - name: Reject dashboard family drift
+        working-directory: LazyBuddy
+        run: >-
+          node scripts/vendor-dashboard.mjs --check
+          --root LazyBuddy="$GITHUB_WORKSPACE/LazyBuddy"
+          --root LazyTrae="$GITHUB_WORKSPACE/LazyTrae"
+          --root LazyQoder="$GITHUB_WORKSPACE/LazyQoder"
+          --root LazyZCode="$GITHUB_WORKSPACE/LazyZCode"
+          --root LazyKimi="$GITHUB_WORKSPACE/LazyKimi"
+          --root LazyDeepSeek="$GITHUB_WORKSPACE/LazyDeepSeek"
