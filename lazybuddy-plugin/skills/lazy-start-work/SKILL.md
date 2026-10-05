@@ -73,6 +73,15 @@ Write `.lazybuddy/runs/<run_id>/state.json` with:
 7. **DELEGATE EVERYTHING.** Spawn worker subagents for ALL independent sub-tasks in parallel using WorkBuddy Agent tool.
 8. For LIGHT: direct implementation. For HEAVY: failing-first proof then implementation.
 
+For a package-local subprocess, first call `shared/dashboard/producers.mjs context`
+with the current parent/task/criterion, command authority file and command index.
+Pass that saved context to `execute`; it consumes the exact accepted revision only
+at dispatch and records real bounded-process start/terminal observations. Use
+`verify` with a fresh context, the successful executor attempt identity and the
+artifact path. Only the distinct successful verifier publishes completion. The
+dashboard/MCP context-copy surface never substitutes for this chat-authorized
+execution call.
+
 #### Compact worker contract
 
 Every dispatch uses the fixed `TASK/DELTA/REFS/VERIFY` contract. Send only:

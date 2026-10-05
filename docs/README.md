@@ -1,6 +1,6 @@
 # Technical architecture guide
 
-The current package version is [v1.3.5](../RELEASE_NOTES.md). Package
+The current package version is [v1.4.0](../RELEASE_NOTES.md). Package
 verification and fresh native-host acceptance are separate; host acceptance
 remains pending.
 
@@ -53,7 +53,7 @@ boundaries. Host state is deliberately outside those boundaries.
 | [01 — Execution model](01-mental-model.md) | Why are instructions, execution, state, and proof distinct layers? |
 | [02 — Request decomposition](02-first-task.md) | How does an outcome become acceptance criteria and a proof surface? |
 | [03 — Package delivery](03-install-and-host-verification.md) | What does copying a package establish, and what does it not establish? |
-| [v1.3.5 installation and host verification](03-install-and-host-verification.md) | Which lifecycle commands and host proof apply to the current package? |
+| [v1.4.0 installation and host verification](03-install-and-host-verification.md) | Which lifecycle commands and host proof apply to the current package? |
 | [04 — Workflow playbooks](04-workflow-playbooks.md) | How do skills, commands, and agent roles encode proportional workflow policy, compact dispatch, and recovery? |
 | [05 — Evidence and completion](05-evidence-and-completion.md) | How are checks, statuses, runtime/state-transition evidence, and completion claims kept honest? |
 | [06 — Capabilities and approvals](06-capabilities-and-approvals.md) | How does local-first capability selection avoid persistent mutation? |
@@ -69,7 +69,8 @@ boundaries. Host state is deliberately outside those boundaries.
 
 The lookup tables in [state artifact reference](reference/state-artifact-reference.md),
 [MCP inventory](reference/mcp-inventory.md), [verification contract](reference/verification-contract.md),
-[host routes](reference/host-routes.md), and [terminology](reference/terminology.md)
+[host routes](reference/host-routes.md), [dashboard service](reference/dashboard-service.md),
+and [terminology](reference/terminology.md)
 provide the concrete artifacts and vocabulary used by these explanations.
 
 For the full split between package-built functions, receipt-owned dependencies,

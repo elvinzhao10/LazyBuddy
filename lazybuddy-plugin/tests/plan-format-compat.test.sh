@@ -249,6 +249,24 @@ PY
 then ok "update accepts three-space delimiters and preserves example"; else bad "update accepts three-space delimiters and preserves example"; fi
 rm -rf "$THREE_SPACE_ROOT"
 
+# Regression (F1 repair): adopting a revision (first snapshot or cosmetic plan
+# edit) must never rewrite state.json/events.jsonl or mutate the fenced example.
+COSMETIC_PLAN=$'## TODOs\n- [ ] T1: real\n```markdown\n- [x] T2: example\n```'
+COSMETIC_ROOT="$(make_run $'## TODOs\n- [ ] T1: real' '{"plan_reference":".lazybuddy/runs/r1/plan.md","progress":{"total_checkboxes":1,"completed_checkboxes":0},"tasks":[{"id":"T1","status":"pending"}]}')"
+(cd "$COSMETIC_ROOT" && CWD="$COSMETIC_ROOT" bash "$SYNC" r1 --fix >/dev/null 2>&1)
+printf '%s\n' "$COSMETIC_PLAN" > "$COSMETIC_ROOT/.lazybuddy/runs/r1/plan.md"
+for file in state.json events.jsonl; do cp "$COSMETIC_ROOT/.lazybuddy/runs/r1/$file" "$COSMETIC_ROOT/$file.cosbefore"; done
+COS_OUT="$(CWD="$COSMETIC_ROOT" bash "$SYNC" r1 --fix 2>&1)"; COS_RC=$?
+if [ "$COS_RC" = 0 ] && printf '%s' "$COS_OUT" | grep -q 'NO DRIFT' \
+   && printf '%s\n' "$COSMETIC_PLAN" | cmp -s - "$COSMETIC_ROOT/.lazybuddy/runs/r1/plan.md" \
+   && cmp -s "$COSMETIC_ROOT/state.json.cosbefore" "$COSMETIC_ROOT/.lazybuddy/runs/r1/state.json" \
+   && cmp -s "$COSMETIC_ROOT/events.jsonl.cosbefore" "$COSMETIC_ROOT/.lazybuddy/runs/r1/events.jsonl"; then
+  ok "sync adopts cosmetic edit with fenced example without state/event writes"
+else
+  bad "sync adopts cosmetic edit with fenced example without state/event writes (rc=$COS_RC out=$COS_OUT)"
+fi
+rm -rf "$COSMETIC_ROOT"
+
 expect_completion_consumers() {
   local name="$1" plan="$2" root hook_out final_out rc file
   root="$(make_run "$plan" '{"status":"created","plan_reference":".lazybuddy/runs/r1/plan.md","progress":{"total_checkboxes":1,"completed_checkboxes":1},"tasks":[],"review_status":"accepted","verification_gates":[{"name":"qa","status":"passed"}]}')"

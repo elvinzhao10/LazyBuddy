@@ -9,9 +9,12 @@
   "shared_across_repos": [
     "LazyBuddy/lazybuddy-plugin/contracts/lazyseries-shared-semantics.v1.json",
     "LazyTrae/lazytrae-plugin/packages/cli/contracts/lazyseries-shared-semantics.v1.json",
-    "LazyQoder/lazyqoder-plugin/contracts/lazyseries-shared-semantics.v1.json"
+    "LazyQoder/lazyqoder-plugin/contracts/lazyseries-shared-semantics.v1.json",
+    "LazyZCode/plugins/lazyzcode/contracts/lazyseries-shared-semantics.v1.json",
+    "LazyKimi/lazykimi-plugin/contracts/lazyseries-shared-semantics.v1.json",
+    "LazyDeepSeek/plugins/lazydeepseek/contracts/lazyseries-shared-semantics.v1.json"
   ],
-  "note": "Byte-identical in both repositories. Defines the additive v1.3.0 state fields and the migration/version-refusal rules. Host-specific implementation and readiness claims live elsewhere and are not part of this shared contract.",
+  "note": "Byte-identical in all six repositories. Defines the additive v1.3.0 state fields and the migration/version-refusal rules. Host-specific implementation and readiness claims live elsewhere and are not part of this shared contract.",
   "contract_versions": {
     "adaptive_harness": "v1",
     "automatic_tooling": "1.1.0",

@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/elvinzhao10/LazyBuddy",
+    "revision": "08ec8facafb33c617b6ccc82f01ddbe1990c8716",
+    "path": "lazybuddy-plugin/shared/dashboard",
+    "treeSha256": "8278d16c57addc11b88ebae8a4c615e08203f3c505b1e588c019aacfff25fd71"
+  },
+  "boundary": {
+    "hostAdapter": "not-included",
+    "siblingRuntime": "unsupported-until-native-adapter",
+    "entrypoints": [
+      "projection.mjs",
+      "command-reducer.mjs",
+      "queue-reducer.mjs",
+      "ui/index.mjs"
+    ]
+  },
+  "license": {
+    "spdx": "MIT",
+    "files": [
+      "LICENSE",
+      "NOTICE",
+      "ui/icons.LICENSE"
+    ]
+  },
+  "files": [
+    {
+      "path": "adapters/host.mjs",
+      "bytes": 2129,
+      "sha256": "58c62a8999096988b0107ff15c5ca48cf331748a3a0197493947689d3d49aa02"
+    },
+    {
+      "path": "adapters/ledger.mjs",
+      "bytes": 1808,
+      "sha256": "9ba3cb082280e54871e0deadf71c4b65e5d5cfc6c19d57e3de70f61b219fea92"
+    },
+    {
+      "path": "adapters/runtime.mjs",
+      "bytes": 1339,
+      "sha256": "f145f2f8daeb19125cc7b2733b167160ced481e788d4e0259c0ebdc2c50dde9e"
+    },
+    {
+      "path": "adapters/state.mjs",
+      "bytes": 3609,
+      "sha256": "4d08e017ff7b2796be0ddf7011bd69ac4425ed2d2fb889046cfc538b9a13abb2"
+    },
+    {
+      "path": "command-reducer.mjs",
+      "bytes": 7690,
+      "sha256": "8b7587ac76e8b5ed3709eccb316133ec0ef0b72fa00824e413a17a06a25c9fc8"
+    },
+    {
+      "path": "contracts/lazyseries-dashboard.v1.schema.json",
+      "bytes": 65883,
+      "sha256": "3c018551e3aa336aa4eaeeb4aefa0c310588defb3f0916357097ecd4115791d9"
+    },
+    {
+      "path": "contracts/parse.mjs",
+      "bytes": 4022,
+      "sha256": "278684b98234b60a9366fd7ed8d238f5f92e33edae21f5a8007c07804386dc38"
+    },
+    {
+      "path": "contracts/schema.mjs",
+      "bytes": 8330,
+      "sha256": "1f9e0ca48a2ca47e4b7a750124343a5dd21bc8c6d43c0a60ccc78ffa0d988039"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1067,
+      "sha256": "821850a42ace9f068794ce48afece725cf03489bc8a4ae9f6c094a6d351dd883"
+    },
+    {
+      "path": "NOTICE",
+      "bytes": 459,
+      "sha256": "fedebf0a6a05896ecdd399fd534aa10c4ca4072b97caaedcdbd2f63073fea91c"
+    },
+    {
+      "path": "projection.mjs",
+      "bytes": 8414,
+      "sha256": "b49a1a674f1678e8c8664bdf1194d6491244235a3f153e056bf39dcc5100f314"
+    },
+    {
+      "path": "queue-reducer.mjs",
+      "bytes": 7684,
+      "sha256": "30f25c2ee22173ed890999d2cda7ff8bf84e61b0c09b4e58304449d740165830"
+    },
+    {
+      "path": "revision-compatibility.mjs",
+      "bytes": 2908,
+      "sha256": "ce5c73c74dc6d3cb02398bf32fde7273fa69e278b891b3cc3e8b3c92ab2449ef"
+    },
+    {
+      "path": "ui/asset-manifest.json",
+      "bytes": 1117,
+      "sha256": "5cb80d27248c9605d5809bcfa3863000daeea11897b5449880cc90cf7a718660"
+    },
+    {
+      "path": "ui/component-demo.html",
+      "bytes": 1690,
+      "sha256": "6c514c277adcd5dc6e0aa00af4471e58e2149d69fec7a6247b8ce45b676b00b4"
+    },
+    {
+      "path": "ui/component-demo.mjs",
+      "bytes": 6928,
+      "sha256": "5ce7539967376b8112fdfa3590d1b092fc18bf2997d718cd72e8dd608812a5bf"
+    },
+    {
+      "path": "ui/components.mjs",
+      "bytes": 4812,
+      "sha256": "6667c29b82d1dae11bc626750f3cc9301d2aaae13eebc61731d6f3675c664108"
+    },
+    {
+      "path": "ui/connection.mjs",
+      "bytes": 2654,
+      "sha256": "37cd258b4846353953abf8c670082eb041e7247947e71868eff79bda7124260e"
+    },
+    {
+      "path": "ui/DESIGN.md",
+      "bytes": 9533,
+      "sha256": "5670f314b8336efd5ad37d24bacc383c1a423cc354dce3ff7ac94523dd15ee18"
+    },
+    {
+      "path": "ui/editing.mjs",
+      "bytes": 17983,
+      "sha256": "5ab44e137a1f8a91451b0b1fe31def9f0fc6fbdc3d971f24e537aa37ae71d86b"
+    },
+    {
+      "path": "ui/graph-layout.mjs",
+      "bytes": 3016,
+      "sha256": "c9081bd79dcab9ffea33b2c5a889163c97cd62b1d6d3b577761cfa544c642103"
+    },
+    {
+      "path": "ui/icons.LICENSE",
+      "bytes": 940,
+      "sha256": "3dd5b07f62318cc4847e40c9176e0e8096a838fec6c399ff4959e6870b9dcbe3"
+    },
+    {
+      "path": "ui/index.html",
+      "bytes": 2371,
+      "sha256": "ba65dc4f4275b2c9a20d5df4d5bedf68726639d57b25b92b1a6fe6177baf9114"
+    },
+    {
+      "path": "ui/index.mjs",
+      "bytes": 6209,
+      "sha256": "201ed1f34a9d17ab9b7682ed959cbdc0790d75b5458eef8a15769010feb385d3"
+    },
+    {
+      "path": "ui/inspector-view.mjs",
+      "bytes": 4810,
+      "sha256": "940876698bd4de03eb62992b638cfe0c1c15b6b7cba0e2e068a32e9eea385b33"
+    },
+    {
+      "path": "ui/live.css",
+      "bytes": 1214,
+      "sha256": "e8e017cf6404879371ac10c7c95ed6f29a0272546ea76865fa954664dd55b40f"
+    },
+    {
+      "path": "ui/showcase.html",
+      "bytes": 3668,
+      "sha256": "8c2dbec7aa928d7b53e0ccc0bbcb4258774ffc0d66c9226dd402b599cadf655d"
+    },
+    {
+      "path": "ui/showcase.mjs",
+      "bytes": 12716,
+      "sha256": "7391b286821398f4f74c42205c77fac6a7a11e6b8dba160020e5aafc48e3c7fd"
+    },
+    {
+      "path": "ui/style.css",
+      "bytes": 5764,
+      "sha256": "eb61fae35fc39f56aaaadb451dc1cfa6afa3d6615adbb46b1ab1e2fdc60a4354"
+    },
+    {
+      "path": "ui/tokens.css",
+      "bytes": 1982,
+      "sha256": "3e41dd92d65bbc91a4f0c759abd5de5eba0820415a6453a864c7f090e0c69e60"
+    },
+    {
+      "path": "ui/verification-view.mjs",
+      "bytes": 4481,
+      "sha256": "82e4b6db03dff02893e38d2fb6055c5cbfa1241eb030f492c23ea0ad96dc2306"
+    },
+    {
+      "path": "ui/views.css",
+      "bytes": 3528,
+      "sha256": "3ce613ae6a49cc6398c865f374f8abdedcd28ee9ab065f929395c501d9f17b27"
+    },
+    {
+      "path": "ui/work-view.mjs",
+      "bytes": 11417,
+      "sha256": "124d7df93decd4bdc2a31e0917055fa083f021cd6f652015f56f4c19401d9841"
+    }
+  ]
+}

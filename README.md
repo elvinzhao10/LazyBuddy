@@ -2,7 +2,7 @@
 
 ![LazyBuddy](lazybuddy-banner.jpg)
 
-[![Package 1.3.5](https://img.shields.io/badge/package-1.3.5-7ce8d1)](RELEASE_NOTES.md)
+[![Package 1.4.0](https://img.shields.io/badge/package-1.4.0-7ce8d1)](RELEASE_NOTES.md)
 [![MIT License](https://img.shields.io/badge/license-MIT-silver)](LICENSE)
 [![LazySeries family](https://img.shields.io/badge/LazySeries-6_siblings-7ce8d1)](#lazyseries-family)
 
@@ -14,26 +14,24 @@ and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
 [Platform status](docs/reference/platform-status-2026-10-02.md) · [Get started](#recommended-install-with-ai-help) · [Host routes](#choose-one-route) ·
-[1.3.5 notes](RELEASE_NOTES.md) · [Family](#lazyseries-family) · [Docs](docs/)
+[1.4.0 notes](RELEASE_NOTES.md) · [Family](#lazyseries-family) · [Docs](docs/)
 
-> **Current package version: v1.3.5. HOST READINESS: PENDING.** Local checks and release
+> **Current package version: v1.4.0. HOST READINESS: PENDING.** Local checks and release
 > archives prove package behavior; a fresh host session must prove loading,
 > command/skill execution and MCP connections.
 
-## What's in 1.3.5
+## What's in 1.4.0
 
-- Runtime checks execute real package and lifecycle paths; unknown exercises and failed checks cannot report success.
-- Core and optional TypeScript LSP requirements are checked separately, including unsupported runtimes.
-- Hook input is bounded before parsing and stays out of process arguments.
-- Platform guides distinguish current native capabilities, legacy routes and integrations awaiting live acceptance.
-- Agent memory uses native project scopes; roles without persistent memory omit the optional field.
+- The family's portable dashboard core is vendored in `lazybuddy-plugin/shared/dashboard/` and pinned byte-identically in `lazybuddy-plugin/shared/dashboard.vendor.json`; this package is the family's vendoring source.
+- The `status-dashboard` MCP server gains two tools: `dashboard_service` (start, inspect, stop, or return the local browser entry) and `copy_task_context` (copy a validated producer context without executing or consuming it).
+- An authenticated loopback browser dashboard offers Work, Verification, and Plan-edit views with a task inspector, evidence preview, and queue planning; queue edits never start work.
+- Honest capability labels are documented: browser, transactional edits, project queue, context copy, and observations are available; host embedding, chat handoff, and wake are unobserved; native host readiness stays pending.
 
-This is a maintenance release. It includes the workflow foundation introduced
-in the family since v1.3.0 and subsequent reliability work. For Kimi and DeepSeek,
-that describes inherited family behavior, not prior public releases of these
-ports. The details below describe the cumulative v1.3.5 experience; the
-[release notes](RELEASE_NOTES.md) distinguish this patch's fixes from inherited
-features. No new speed, token-saving or cost claim is made.
+This release adds the shared dashboard surface to the workflow foundation
+introduced in the family since v1.3.0. The details below describe the
+cumulative v1.4.0 experience; the [release notes](RELEASE_NOTES.md)
+distinguish this release's additions from inherited features. No new speed,
+token-saving or cost claim is made.
 
 | Family milestone | What you get in the current package |
 | --- | --- |
@@ -43,6 +41,7 @@ features. No new speed, token-saving or cost claim is made.
 | v1.3.3 hardening | Host-specific hook, MCP and publication repairs. |
 | v1.3.4 maintenance | Transactional run integrity, safer lifecycle and native adapter repairs. |
 | v1.3.5 repairs | Real runtime exercises, bounded hooks, dependency updates and current platform guidance. |
+| v1.4.0 dashboard | Vendored portable dashboard core, authenticated loopback browser UI, two new status-dashboard tools, queue planning and honest capability labels. |
 
 ### Just ask, or use a command — both work
 
@@ -90,13 +89,41 @@ Milestones, decision gates, and full state/version semantics are shared
 byte-identically with LazyTrae and LazyQoder (see
 `lazybuddy-plugin/contracts/lazyseries-shared-semantics.v1.json`).
 
+## Browser dashboard (v1.4.0)
+
+LazyBuddy vendors the family's portable dashboard core in
+`lazybuddy-plugin/shared/dashboard/` and pins its bytes in
+`lazybuddy-plugin/shared/dashboard.vendor.json`. This package is the family's
+vendoring source: `scripts/vendor-dashboard.mjs` distributes the tree, and
+`.github/workflows/dashboard-family-drift.yml` is the LazyBuddy-run CI job that
+rejects dashboard drift across the six sibling repositories.
+
+The `status-dashboard` MCP server exposes six tools: the four status views plus
+`dashboard_service` (`start`, `status`, `stop`, `open`) and `copy_task_context`,
+which copies a validated producer context without executing or consuming it.
+The browser dashboard binds literal `127.0.0.1` on an owned loopback port,
+requires an access key stored in a protected credential file, and offers Work,
+Verification, and Plan-edit views with a task inspector, evidence preview, and
+queue planning (create, amend, and reorder queued plans). Transactional edits
+and the independent project queue are available; queue edits never start work,
+and no endpoint dispatches execution.
+
+Honest capability labels: the browser UI, transactional edits, the project
+queue, context copy, and observations are available in the package; host
+embedding, chat handoff, and wake are unobserved; native host readiness stays
+**pending**. The authoritative service contract — loopback binding,
+authentication, command semantics, and the queue boundary — is
+[shared/dashboard/SERVICE.md](lazybuddy-plugin/shared/dashboard/SERVICE.md),
+with a package-level overview in
+[Dashboard service](docs/reference/dashboard-service.md).
+
 ## Recommended: install with AI help
 
 You do not need to manually work through every setup detail. Open an AI coding
 assistant in your project and paste this:
 
 > Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
-> this project. Use v1.3.5 and follow AGENTS.md and the current install guide. Run safe package checks first,
+> this project. Use v1.4.0 and follow AGENTS.md and the current install guide. Run safe package checks first,
 > explain each step plainly, and ask me before changing marketplace, plugin,
 > Skills, MCP, account, credential, or trust settings.
 
@@ -191,7 +218,10 @@ acceptance evidence. These packages run independently.
 | [LazyDeepSeek](https://github.com/elvinzhao10/LazyDeepSeek) | DeepSeek Harness 0.2.0-rc.2 |
 
 The family shares planning, evidence, decision-memory and completion contracts.
-The first shared verification core is vendored in every package; product adapters keep host setup and permissions explicit. Matching contracts do not make host capabilities interchangeable. In particular,
+The shared verification core and the portable dashboard core are vendored
+byte-identically in every package (LazyBuddy is the vendoring source); product
+adapters keep host setup and permissions explicit. Matching contracts do not
+make host capabilities interchangeable. In particular,
 Kimi Work remains experimental for LazyKimi, and DeepSeek's synthesized events
 are not native hooks. Use each sibling's host guide before installation.
 
@@ -215,6 +245,7 @@ runtime.
 
 - [Install and verify a host](docs/03-install-and-host-verification.md)
 - [Remove receipt-owned assets safely](docs/08-safe-removal.md)
+- [Browser dashboard service and boundaries](docs/reference/dashboard-service.md)
 - [Workflow playbooks — how the modes pick work](docs/04-workflow-playbooks.md)
 - [Evidence and completion — what "done" proves](docs/05-evidence-and-completion.md)
 - [State and validation — how plan edits reconcile](docs/07a-state-and-validation.md)

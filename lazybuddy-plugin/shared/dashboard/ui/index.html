@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Authenticated LazySeries work and verification dashboard.">
+  <title>LazySeries dashboard</title>
+  <script>document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';</script>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/views.css">
+  <link rel="stylesheet" href="/live.css">
+  <script type="module" src="/index.mjs"></script>
+</head>
+<body>
+  <main class="live-shell stack">
+    <header class="live-header stack">
+      <div class="cluster spread"><span class="meta">LazySeries / authenticated local dashboard</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Work, proof and planning</h1>
+      <p data-testid="connection-status" role="status">Not connected</p>
+      <form id="connect-form" class="connect-form panel stack">
+        <label><span>Access key</span><input data-testid="access-key" name="access-key" type="password" autocomplete="off" spellcheck="false" required></label>
+        <p class="meta">Read the key from the credential file returned by the trusted dashboard service entry. It is sent once as a bootstrap header, then cleared.</p>
+        <button data-testid="connect-submit" class="primary" type="submit">Connect</button>
+      </form>
+      <nav id="view-tabs" class="cluster" aria-label="Dashboard views" hidden><button id="work-tab" type="button" aria-pressed="true">Work</button><button id="verification-tab" type="button" aria-pressed="false">Verification</button><button id="editing-tab" type="button" aria-pressed="false">Plan edits</button></nav>
+    </header>
+    <div id="work-root"></div><div id="verification-root" hidden></div><div id="editing-root" hidden></div>
+  </main>
+  <dialog id="evidence-preview" class="evidence-preview"><header class="cluster spread"><h2>Evidence preview</h2><button type="button" data-action="close-evidence">Close</button></header><p class="meta" data-evidence-name></p><pre></pre><a data-action="download-evidence" download>Download evidence</a></dialog>
+</body>
+</html>

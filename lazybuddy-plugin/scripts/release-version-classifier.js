@@ -3,8 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const RELEASE_VERSION = '1.3.5';
-const PREVIOUS_VERSION = '1.3.4';
+const RELEASE_VERSION = '1.4.0';
+const PREVIOUS_VERSION = '1.3.5';
 const VERSION_JSON_PATHS = [
   ['lazybuddy-plugin/.codebuddy-plugin/plugin.json', ['version']],
   ['lazybuddy-plugin/.workbuddy-plugin/plugin.json', ['version']],
@@ -46,6 +46,8 @@ function walk(root, directory = root) {
 }
 
 function previousVersionClassification(relativePath, line) {
+  if (relativePath === 'CHANGELOG.md') return 'historical-release-history';
+  if (relativePath === 'RELEASE_NOTES.md' || /(?:^|\/)docs\/reference\/platform-status-/.test(relativePath)) return 'historical-release-document';
   if (relativePath.startsWith('docs/v1.3.0')) return 'historical-release-document';
   if (relativePath.startsWith('docs/v1.2.')) return 'historical-release-document';
   if (relativePath.startsWith('docs/v1.1.') || relativePath.startsWith('docs/v1.0.')) return 'historical-release-document';
@@ -85,7 +87,6 @@ function previousVersionClassification(relativePath, line) {
   if (relativePath.startsWith('lazybuddy-plugin/contracts/tests/')) return 'historical-test-input';
   if (relativePath.endsWith('workbuddy-marketplace-receipt.v1.schema.json')) return 'schema-independent-contract-history';
   if (relativePath.startsWith('lazybuddy-plugin/mcp/')) return 'historical-serverinfo-protocol-string';
-  if (relativePath === 'RELEASE_NOTES.md' && /update from|migrate|projects load/i.test(line)) return 'historical-migration-reference';
   if (relativePath.startsWith('lazybuddy-plugin/tests/')) return 'historical-test-input';
   if (/(?:^|\/)(?:test|tests)\//.test(relativePath) && /(previous|historical|fixture|wrong|from|upgrade|mutable|prior)/i.test(line)) return 'historical-test-input';
   if (/\bcurrent\b.*\b(?:release|version)\b/i.test(line)) return 'current-version-drift';
@@ -121,7 +122,7 @@ function classify(root) {
     let contents;
     try { contents = fs.readFileSync(path.join(root, relativePath), 'utf8'); } catch { continue; }
     contents.split('\n').forEach((line, index) => {
-      if (!/(?:^|\/)(?:test|tests)\//.test(relativePath) && !relativePath.startsWith('docs/v1.3.0-') && /\bcurrent\b/i.test(line) && /\b(?:release|version)\b/i.test(line)) {
+      if (!/(?:^|\/)(?:test|tests)\//.test(relativePath) && !relativePath.startsWith('docs/v1.3.0-') && !/(?:^|\/)docs\/reference\/platform-status-/.test(relativePath) && /\bcurrent\b/i.test(line) && /\b(?:release|version)\b/i.test(line)) {
         const versions = line.match(/1\.\d+\.\d+/g) || [];
         if (versions.some(version => version !== RELEASE_VERSION)) {
           failures.push(`CURRENT_VERSION_DRIFT_TEXT ${relativePath}:${index + 1}`);

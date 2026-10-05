@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "assets": [
+    { "route": "/", "file": "index.html", "type": "text/html" },
+    { "route": "/index.mjs", "file": "index.mjs", "type": "text/javascript" },
+    { "route": "/connection.mjs", "file": "connection.mjs", "type": "text/javascript" },
+    { "route": "/editing.mjs", "file": "editing.mjs", "type": "text/javascript" },
+    { "route": "/live.css", "file": "live.css", "type": "text/css" },
+    { "route": "/tokens.css", "file": "tokens.css", "type": "text/css" },
+    { "route": "/style.css", "file": "style.css", "type": "text/css" },
+    { "route": "/views.css", "file": "views.css", "type": "text/css" },
+    { "route": "/components.mjs", "file": "components.mjs", "type": "text/javascript" },
+    { "route": "/graph-layout.mjs", "file": "graph-layout.mjs", "type": "text/javascript" },
+    { "route": "/work-view.mjs", "file": "work-view.mjs", "type": "text/javascript" },
+    { "route": "/verification-view.mjs", "file": "verification-view.mjs", "type": "text/javascript" },
+    { "route": "/inspector-view.mjs", "file": "inspector-view.mjs", "type": "text/javascript" }
+  ]
+}

@@ -48,13 +48,13 @@ function validAuthority(value) {
       && ['pending', 'in_progress', 'complete', 'failed', 'blocked'].includes(criterion.status)
       && typeof criterion.evidence_path === 'string' && typeof criterion.review_path === 'string');
 }
-function inspectCriterion(root, authority, criterion) {
+function inspectCriterion(read, authority, criterion) {
   if (criterion.status !== 'complete') return ['blocked', 'CRITERION_UNFINISHED'];
-  const plan = readRecord(root, authority.plan.path);
+  const plan = read(authority.plan.path);
   if (plan.kind !== 'ok') return ['stale', 'PLAN_MISSING'];
   const escaped = criterion.criterion_id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (!new RegExp(`^- \\[x\\] \\[${escaped}\\](?:\\s|$)`, 'm').test(plan.bytes.toString('utf8'))) return ['blocked', 'CRITERION_UNCHECKED'];
-  const evidenceRecord = readRecord(root, criterion.evidence_path);
+  const evidenceRecord = read(criterion.evidence_path);
   if (evidenceRecord.kind === 'missing') return ['blocked', 'EVIDENCE_MISSING'];
   const evidence = parseJSON(evidenceRecord);
   if (evidence && evidence.kind === 'residual-risk') {
@@ -68,10 +68,10 @@ function inspectCriterion(root, authority, criterion) {
   if (evidence.run_id !== authority.run_id || evidence.task_id !== criterion.task_id || evidence.criterion_id !== criterion.criterion_id) return ['blocked', 'EVIDENCE_IDENTITY_MISMATCH'];
   if (evidence.exit_code !== 0) return ['blocked', 'COMMAND_FAILED'];
   if (!evidence.artifact || typeof evidence.artifact.path !== 'string' || typeof evidence.artifact.sha256 !== 'string') return ['blocked', 'EVIDENCE_MALFORMED'];
-  const artifact = readRecord(root, evidence.artifact.path);
+  const artifact = read(evidence.artifact.path);
   if (artifact.kind === 'missing') return ['blocked', 'ARTIFACT_MISSING'];
   if (artifact.kind !== 'ok' || digest(artifact.bytes) !== evidence.artifact.sha256) return ['blocked', 'ARTIFACT_TAMPERED'];
-  const reviewRecord = readRecord(root, criterion.review_path);
+  const reviewRecord = read(criterion.review_path);
   if (reviewRecord.kind === 'missing') return ['blocked', 'REVIEW_MISSING'];
   const review = parseJSON(reviewRecord);
   if (review && review.kind === 'residual-risk') {
@@ -87,25 +87,35 @@ function inspectCriterion(root, authority, criterion) {
   return ['ready', 'READY'];
 }
 function assessCompletion(root, options) {
-  const authorityRecord = readRecord(root, options.authorityPath);
+  return assessRecords(relative => readRecord(root, relative), () => identity(root), options);
+}
+function assessCapturedCompletion(bundle, options) {
+  if (!bundle?.consistent) return result('blocked', 'CAPTURE_CHANGED', options.remediationCommand);
+  const read = relative => {
+    const record = Object.hasOwn(bundle.records, relative) && bundle.records[relative];
+    return record?.kind === 'ok' ? { kind: 'ok', bytes: Buffer.from(record.base64, 'base64') } : { kind: record?.kind ?? 'invalid' };
+  };
+  return assessRecords(read, () => bundle.current, { ...options, authorityPath: bundle.authorityPath, includeAuthority: true });
+}
+function assessRecords(read, currentIdentity, options) {
+  const authorityRecord = read(options.authorityPath);
   if (authorityRecord.kind === 'missing') return result('uninitialized', 'AUTHORITY_ABSENT', options.remediationCommand);
   const authority = parseJSON(authorityRecord);
   if (!validAuthority(authority)) return result('uninitialized', 'AUTHORITY_MALFORMED', options.remediationCommand);
-  const current = identity(root);
+  const current = currentIdentity();
   if (!current) return result('uninitialized', 'REPOSITORY_UNAVAILABLE', options.remediationCommand);
   if (authority.repo_head !== current.head) return result('stale', 'REPO_HEAD_STALE', options.remediationCommand);
   if (authority.package_version !== options.packageVersion) return result('stale', 'PACKAGE_VERSION_STALE', options.remediationCommand);
-  const plan = readRecord(root, authority.plan.path);
+  const plan = read(authority.plan.path);
   if (plan.kind !== 'ok' || digest(plan.bytes) !== authority.plan.sha256) return result('stale', plan.kind === 'missing' ? 'PLAN_MISSING' : 'PLAN_DIGEST_STALE', options.remediationCommand);
   const applicable = authority.criteria.filter(criterion => criterion.applicable);
   if (applicable.length === 0) return result('not-applicable', 'NO_APPLICABLE_CRITERIA', options.remediationCommand);
   if (current.dirty.length > 0) return result('blocked', 'WORKTREE_DIRTY', options.remediationCommand, current.dirty);
-  const outcomes = applicable.map(criterion => inspectCriterion(root, authority, criterion));
-  const stale = outcomes.find(([status]) => status === 'stale');
-  if (stale) return result(stale[0], stale[1], options.remediationCommand);
-  const blocked = outcomes.find(([status]) => status === 'blocked');
-  if (blocked) return result(blocked[0], blocked[1], options.remediationCommand);
-  return result('ready', 'READY', options.remediationCommand);
+  const outcomes = applicable.map(criterion => inspectCriterion(read, authority, criterion));
+  const failure = outcomes.find(([status]) => status === 'stale') ?? outcomes.find(([status]) => status === 'blocked');
+  const assessment = result(failure?.[0] ?? 'ready', failure?.[1] ?? 'READY', options.remediationCommand);
+  return options.includeAuthority ? { ...assessment, authority: { ...authority,
+    criteria: applicable.filter((_, index) => outcomes[index][0] === 'ready') } } : assessment;
 }
 function main(argv) {
   const options = {};
@@ -120,4 +130,4 @@ function main(argv) {
   return assessment.status === 'ready' ? 0 : 1;
 }
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { assessCompletion, main };
+module.exports = { assessCompletion, assessCapturedCompletion, main };

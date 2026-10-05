@@ -1,3 +1,83 @@
+# LazyBuddy v1.4.0 - vendored dashboard core and authenticated browser service
+
+A feature release across the six LazySeries siblings: the family's portable
+dashboard core is vendored byte-identically into every package, and LazyBuddy
+is the vendoring source that distributes and drift-guards it.
+
+## Eval-driven fixes
+
+- The portable dashboard core (projection, command/queue reducers, browser UI)
+  lives in `lazybuddy-plugin/shared/dashboard/`, pinned by the hash-pinned
+  `lazybuddy-plugin/shared/dashboard.vendor.json`; `scripts/vendor-dashboard.mjs`
+  vendors it and `.github/workflows/dashboard-family-drift.yml` rejects family
+  drift across the six sibling repositories.
+- The `status-dashboard` MCP server gains two tools for a total of six:
+  `dashboard_service` (start, inspect, stop, or return the local browser entry)
+  and `copy_task_context` (copy a validated producer context without executing
+  or consuming it). The four existing status views are unchanged.
+- The authenticated browser dashboard binds literal `127.0.0.1`, requests an
+  owned port, and requires an access key from a protected credential file. It
+  offers Work, Verification, and Plan-edit views with a task inspector,
+  evidence preview, and queue planning; queue edits never start work.
+- The marketplace route contract was regenerated with the repo's own generator
+  after the accepted dashboard payload changes: `file_count` stays 63 and only
+  the pinned inventory digest moved.
+- No-drift plan sync no longer rewrites run state or appends sync events for
+  cosmetic or fenced-example plan edits; a first revision snapshot or a
+  cosmetic edit adopts the revision without state or event writes.
+
+## Measured efficiency
+
+No latency, token, cost, or native-host performance improvement is claimed.
+The dashboard service binds an owned loopback port with an authentication
+boundary; queue edits never start work, so planning traffic cannot trigger
+execution. Host embedding, chat handoff, and wake remain unobserved.
+
+## Host capability matrix
+
+CodeBuddy CLI, CodeBuddy IDE, and WorkBuddy retain separate acceptance. The
+dashboard is package-owned local software: the browser, transactional edits,
+the project queue, context copy, and observations are available in the
+package, while host embedding, chat handoff, and wake are unobserved.
+`dashboard_service open` returns the loopback browser entry and labels native
+host loading unobserved. **HOST READINESS: PENDING** until the selected
+current client demonstrates discovery, skill/command execution, relevant
+hooks, and MCP connections.
+
+See [the dated platform audit](docs/reference/platform-status-2026-10-02.md)
+for the v1.3.5 historical snapshot; its boundaries are unchanged by this
+release.
+
+## Migration and upgrade
+
+Use the receipt-aware lifecycle update with an explicit project binding.
+Preserve populated run state, modified assets, unknown files, and host
+settings. Existing 1.3.5 tags and assets remain intact. Runs created before
+this release keep their state and events; the plan-sync repair only stops
+unnecessary rewrites of unaffected runs.
+
+Read [AGENTS.md](AGENTS.md), [README.md](README.md), and the selected host
+guide before following a native installation route.
+
+## Known risks
+
+Authenticated current-client acceptance remains pending. A copied
+configuration, manifest validation, or isolated lifecycle fixture cannot
+establish host loading; the dashboard service does not prove that a host
+embedded it, handed off a chat, or woke from a host event. Optional providers
+must satisfy their own runtime floor. Native features added upstream are not
+automatically wired into the adapter.
+
+## Rollback
+
+Retain the previous release and receipts. Follow the scoped lifecycle removal
+or rollback plan, preserving user-modified and foreign assets. Stop the owned
+dashboard service with `dashboard_service stop` before rollback; host-managed
+registrations require their selected client's removal flow; never remove
+credentials, sessions, or entire shared configuration directories.
+
+## Prior release notes
+
 # LazyBuddy v1.3.5 - runtime verification and platform clarity
 
 A maintenance release across the six LazySeries siblings. It carries forward

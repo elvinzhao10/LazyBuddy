@@ -1,0 +1,13 @@
+.live-shell { max-inline-size: var(--content); margin-inline: auto; padding: var(--s6); }
+#connect-form[hidden],#view-tabs[hidden],#work-root[hidden],#verification-root[hidden],#editing-root[hidden] { display: none !important; }
+.live-header { margin-block-end: var(--s6); }
+.connect-form { max-inline-size: 32rem; }
+[data-testid='connection-status'] { color: var(--muted); font-weight: var(--strong); }
+[data-testid='connection-status'][data-state='verified'] { color: var(--verified-ink); }
+[data-testid='connection-status'][data-state='failed'],[data-testid='connection-status'][data-state='attention'] { color: var(--failed-ink); }
+.planning-editor { max-inline-size: 64rem; }
+.editor-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(15rem,100%),1fr)); gap: var(--s4); }
+.edit-status { padding: var(--s3); background: var(--neutral-fill); border-radius: var(--radius-control); }
+.queue-edit-list { display: grid; gap: var(--s3); padding-inline-start: var(--s5); }
+.evidence-preview pre { max-block-size: 50dvh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 44rem) { .live-shell { padding: var(--s4); } .live-header nav button { flex: 1 1 8rem; } }
