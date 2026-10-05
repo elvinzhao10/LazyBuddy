@@ -1,0 +1,9 @@
+LazySeries shared dashboard core
+
+The portable dashboard contracts, projection, reducers and browser assets are
+distributed under the MIT License reproduced in LICENSE. Browser icon source
+and license details are recorded separately in ui/icons.LICENSE.
+
+Host transaction, execution and lifecycle adapters are intentionally outside
+the generated portable boundary. A copied core does not establish a native
+host route or an operating sibling service adapter.

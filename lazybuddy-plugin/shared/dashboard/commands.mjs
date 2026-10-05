@@ -3,11 +3,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseContract, ContractError } from './contracts/parse.mjs';
 import { reduceCommand } from './command-reducer.mjs';
 import { executeQueueCommand, queueBridge } from './queue.mjs';
-import { authorityBinding, validateTransitions, crossesCompatibleRevisions } from './revision-compatibility.mjs';
+import { authorityBinding, captureRevisionCompatibility } from './revision-compatibility.mjs';
 
 const bridge = fileURLToPath(new URL('../../scripts/state/dashboard-bridge.py', import.meta.url));
 const limit = 8 * 1024 * 1024;
-const committedInputs = new WeakMap();
 const completionCaptures = new WeakMap();
 function invoke(action, options, value = {}) {
   const argv = [bridge, action, '--project-root', options.projectRoot, '--project-id', options.projectId,
@@ -40,17 +39,13 @@ export async function readInput(options) {
   const bundle = input._completion_capture;
   delete input._completion_capture;
   completionCaptures.set(input, { bundle, binding: authorityBinding(input), state: input.state });
-  committedInputs.set(input.state, { binding: authorityBinding(input), transitions: validateTransitions(input) });
+  captureRevisionCompatibility(input);
   return input;
 }
 export function capturedCompletion(input) {
   const captured = completionCaptures.get(input);
   return captured && captured.state === input.state && captured.binding === authorityBinding(input)
     ? structuredClone(captured.bundle) : null;
-}
-export function compatiblePlanRevision(input, attempt) {
-  const proof = committedInputs.get(input.state);
-  return Boolean(proof && proof.binding === authorityBinding(input) && crossesCompatibleRevisions(proof.transitions, attempt, input.plan_revision));
 }
 export function consumeRevision(options) {
   if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');

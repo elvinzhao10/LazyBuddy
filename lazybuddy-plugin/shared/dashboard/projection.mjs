@@ -3,8 +3,8 @@ import { adaptRuntime } from './adapters/runtime.mjs';
 import { adaptHost } from './adapters/host.mjs';
 import { digest } from './adapters/ledger.mjs';
 import { adaptState, parseBinding, progress } from './adapters/state.mjs';
-import { completionApplies } from './adapters/completion.mjs';
-import { compatiblePlanRevision } from './commands.mjs';
+import { completionApplies } from './completion-proof.mjs';
+import { compatiblePlanRevision } from './revision-compatibility.mjs';
 export { parseContract, ContractError, stableJSON } from './contracts/parse.mjs';
 const absent = { embedding: 'unobserved', chat_handoff: 'unobserved', wake: 'unobserved', observations: 'unobserved' };
 function replay(input) {
