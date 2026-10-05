@@ -76,8 +76,8 @@ function validateFixture(fixture) {
 function gateSummary(node) {
   if (!node.children?.length) return node.summary;
   const total = node.children.length;
-  const pending = node.children.filter(child => ['attention', 'active', 'unavailable'].includes(child.verification?.role)).length;
-  const stale = node.children.filter(child => child.verification?.role === 'stale').length;
+  const pending = node.children.filter(child => ['attention', 'active', 'unavailable'].includes(child.verification?.state)).length;
+  const stale = node.children.filter(child => child.verification?.state === 'stale').length;
   const state = pending ? `${pending} pending` : stale ? `${stale} stale` : 'all confirmed';
   return `${node.summary} · collapsed: ${total} checks, ${state}`;
 }

@@ -10,6 +10,7 @@ globalThis.document = dom.document;
 const { attemptFixture, batchFixture, planFixture, projectMapFixture } = await import('../ui/project-fixtures.mjs');
 const { listModel, measureNodeCard, presentationModel, layoutProjectGraph, wrapLabel, SpikePresentationError, NODE_KINDS } = await import('../ui/project-presentation.mjs');
 const { createProjectMapSpike } = await import('../ui/project-map-spike.mjs');
+const { statusChip } = await import('../ui/components.mjs');
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const UI = new URL('../ui/', import.meta.url);
@@ -70,6 +71,64 @@ test('each level renders to DOM deterministically with the expected shape', asyn
     assert.match(svg.getAttribute('viewBox'), /^0 0 \d+ \d+$/);
     assert.equal(first.element.querySelectorAll('.spike-node').length, expectedCounts[level]);
     assert.equal(first.element.querySelectorAll('.spike-list li').length, expectedCounts[level]);
+  }
+});
+
+test('status chips render the design-system semantic states, not a silent neutral default (T03-R1)', async () => {
+  // One representative chip per semantic color across the fixtures (spec: active=executing/verifying,
+  // verified, attention, failed, stale, unavailable, neutral; fixture status `unverified` maps to neutral).
+  const expectedStates = {
+    project: ['active', 'attention', 'neutral', 'stale', 'unavailable', 'verified'],
+    plan: ['active', 'attention', 'neutral', 'stale', 'unavailable'],
+    'plan-collab': ['attention', 'neutral', 'stale', 'unavailable'],
+    batch: ['active', 'attention', 'neutral', 'unavailable', 'verified'],
+    attempt: ['active', 'failed', 'neutral', 'stale', 'unavailable', 'verified'],
+  };
+  const representativeChips = {
+    project: { 'feature:offline-sync': { Execution: 'verified' }, 'plan:search': { Execution: 'active', Verification: 'attention' }, 'feature:installer': { Verification: 'stale' }, 'boundary:vendor-sdk': { Execution: 'unavailable' }, 'plan:foundation': { Execution: 'neutral' } },
+    plan: { 'batch:index-build': { Execution: 'active', Verification: 'active' }, 'batch:offline-queue': { Verification: 'unavailable' }, 'gate:release': { Verification: 'stale' }, 'wave:1': { Verification: 'attention' } },
+    'plan-collab': { 'conflict:offline-vs-cloud': { Execution: 'attention' }, 'boundary:vendor-sdk': { Execution: 'unavailable' }, 'wave:explore-1': { Execution: 'neutral' } },
+    batch: { 'task:index-crawl': { Execution: 'active', Verification: 'neutral' }, 'task:index-offline-mirror': { Verification: 'neutral' }, 'join:batch-complete': { Execution: 'attention' }, 'task:index-plan': { Verification: 'verified' } },
+    attempt: { 'attempt:1': { Execution: 'failed', Verification: 'failed' }, 'step:crawl': { Execution: 'active', Verification: 'neutral' }, 'evidence:crawl-report-1': { Verification: 'stale' }, 'evidence:crawl-report-2': { Execution: 'unavailable' } },
+  };
+  const fixtures = { project: projectMapFixture(), plan: planFixture('search'), 'plan-collab': planFixture('collab'), batch: batchFixture(), attempt: attemptFixture() };
+  const chipState = (container, rowKind) => {
+    const row = [...container.querySelectorAll('.spike-chiprow')].find(candidate => candidate.querySelector('.meta')?.textContent === rowKind);
+    return row?.querySelector('.status')?.dataset.state;
+  };
+  for (const [name, fixture] of Object.entries(fixtures)) {
+    const view = await renderedView(fixture);
+    const graphStates = [...view.element.querySelectorAll('.spike-node .status')].map(chip => chip.dataset.state).sort();
+    assert.deepEqual([...new Set(graphStates)], expectedStates[name], `${name}: graph chips must render the fixture's semantic states`);
+    assert.ok(graphStates.length > new Set(graphStates).size || new Set(graphStates).size > 1, `${name}: chips must not collapse to a single silent neutral`);
+    for (const [nodeId, rows] of Object.entries(representativeChips[name])) {
+      const card = view.element.querySelector(`.spike-node[data-node-id="${nodeId}"]`);
+      assert.ok(card, `${name}: node ${nodeId} rendered`);
+      for (const [rowKind, expected] of Object.entries(rows)) {
+        assert.equal(chipState(card, rowKind), expected, `${name} ${nodeId} ${rowKind.toLowerCase()} chip state`);
+      }
+      const listRow = view.element.querySelector(`.spike-list li[data-node-id="${nodeId}"]`);
+      for (const [rowKind, expected] of Object.entries(rows)) {
+        const listChips = [...(listRow?.querySelectorAll('.status') ?? [])].map(chip => chip.dataset.state);
+        assert.ok(listChips.includes(expected), `${name} ${nodeId} list row renders ${expected} too`);
+      }
+    }
+  }
+});
+
+test('unknown chip roles fail closed instead of silently rendering neutral (T03-R1)', async () => {
+  assert.throws(() => statusChip({ state: 'unverified', label: 'Unverified' }), TypeError, 'the design system rejects roles outside its set');
+  assert.throws(() => statusChip({ state: 'scheduler-happy', label: 'x' }), TypeError, 'arbitrary roles are rejected, not defaulted');
+  const accepted = ['neutral', 'active', 'verified', 'attention', 'failed', 'stale', 'unavailable'];
+  for (const build of [projectMapFixture, () => planFixture('search'), () => planFixture('collab'), batchFixture, attemptFixture]) {
+    const fixture = build();
+    const allNodes = [...fixture.nodes, ...fixture.nodes.flatMap(node => node.children ?? [])];
+    for (const node of allNodes) {
+      for (const [slot, value] of [['execution', node.execution], ['verification', node.verification]]) {
+        assert.equal('role' in value, false, `${node.id} ${slot} must not carry the pre-T03-R1 role shape that bypassed the design-system check`);
+        assert.ok(accepted.includes(value.state), `${node.id} ${slot} state ${value.state} is inside the design-system role set`);
+      }
+    }
   }
 });
 
@@ -173,8 +232,8 @@ test('a layout failure retains the last valid graph and shows the equivalent lis
 
 test('cyclic dependency fixtures fail closed at the presentation boundary', () => {
   const cyclic = { viewId: 'plan:x', level: 'plan', docId: 'plan:x', title: 'Cyclic', subtitle: '',
-    nodes: [{ id: 'a', kind: 'task', title: 'A', execution: { role: 'neutral', label: 'x' }, verification: { role: 'neutral', label: 'y' } },
-      { id: 'b', kind: 'task', title: 'B', execution: { role: 'neutral', label: 'x' }, verification: { role: 'neutral', label: 'y' } }],
+    nodes: [{ id: 'a', kind: 'task', title: 'A', execution: { state: 'neutral', label: 'x' }, verification: { state: 'neutral', label: 'y' } },
+      { id: 'b', kind: 'task', title: 'B', execution: { state: 'neutral', label: 'x' }, verification: { state: 'neutral', label: 'y' } }],
     edges: [{ from: 'a', to: 'b', kind: 'dependency', label: '' }, { from: 'b', to: 'a', kind: 'dependency', label: '' }] };
   assert.throws(() => layoutProjectGraph(presentationModel(cyclic)), error => error instanceof SpikePresentationError && error.code === 'LAYOUT_DEPENDENCY_CYCLE');
 });

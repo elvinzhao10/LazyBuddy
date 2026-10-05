@@ -1,6 +1,6 @@
 // T03 spike fixtures — real-shape presentation documents for the four §7.2 levels.
 // These are fixture data only: no live fields, no scheduler authority, no commands.
-// Statuses use the design-system roles (neutral/active/verified/attention/failed/stale/unavailable)
+// Statuses use the design-system chip states (neutral/active/verified/attention/failed/stale/unavailable)
 // and lifecycle vocabulary shared with the imported project contract (PLAN_LIFECYCLES).
 
 const LABEL_LONG_PLAN = 'Feature extensions plan — depends on the active search plan delivering the shared index contract before any client work may start';
@@ -8,7 +8,18 @@ const LABEL_LONG_BATCH_TASK = 'Offline mirror task — replay the recorded chang
 const LABEL_LONG_STEP = 'Crawl step — walk the registered source tree at content revision 42 and record every document anchor with its digest for the verifier';
 const LABEL_LONG_BATCH = 'Batch — dashboard consumption surfaces including the saved-search list, the stale-state banners and the keyboard-only traversal path';
 
-const chip = (role, label) => ({ role, label });
+// Fixture status -> design-system chip state, mirroring the existing role maps in work-view.mjs.
+// `unverified` maps to the design system's neutral verification semantics (work-view.mjs
+// verificationRole); unknown statuses are rejected here instead of silently defaulting to neutral
+// inside statusChip's `state` destructure.
+const STATUS_STATES = Object.freeze({
+  neutral: 'neutral', active: 'active', verified: 'verified', attention: 'attention',
+  failed: 'failed', stale: 'stale', unavailable: 'unavailable', unverified: 'neutral',
+});
+const chip = (status, label) => {
+  if (!Object.hasOwn(STATUS_STATES, status)) throw new TypeError(`Unknown fixture status: ${status}`);
+  return { state: STATUS_STATES[status], label };
+};
 
 export function projectMapFixture() {
   return {
