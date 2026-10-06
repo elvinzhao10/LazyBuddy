@@ -1,0 +1,78 @@
+@import './style.css';
+
+/* T17 architecture lenses — existing design tokens only; no new status colors.
+   Ghost treatment: dashed outline + hollow chip for proposed components.
+   Motion: none beyond the shared button opacity fade reduced under
+   prefers-reduced-motion by tokens.css. */
+
+.architecture-view { container-type: inline-size; }
+.architecture-head .cluster { flex-wrap: wrap; }
+.architecture-subtitle, .architecture-coverage { margin: 0; }
+.architecture-toolbar { justify-content: space-between; }
+.architecture-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
+.architecture-legend li { display: inline-flex; align-items: center; gap: var(--s2); }
+.architecture-legend .legend-ghost::before { content: ''; inline-size: var(--s5); block-size: 0;
+  border-block-start: 2px dashed var(--muted); }
+.architecture-status { min-block-size: var(--control); display: flex; align-items: center; }
+
+.architecture-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem); gap: var(--s4); align-items: start; }
+.architecture-viewport { min-block-size: 16rem; max-block-size: 60rem; overflow: auto; border: var(--line) solid var(--border);
+  border-radius: var(--radius-card); background: var(--surface); padding: var(--s3); overscroll-behavior: contain; }
+.architecture-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+
+.architecture-product[hidden], .architecture-engineering[hidden] { display: none; }
+.architecture-journey { padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+.architecture-journey-steps { display: grid; gap: var(--s3); margin: 0; padding: 0; list-style: none; }
+.architecture-step { display: grid; gap: var(--s2); }
+.architecture-step[data-dimmed='true'] .architecture-step-control { opacity: 0.55; }
+.architecture-step-control { display: grid; gap: var(--s2); inline-size: 100%; text-align: start; padding: var(--s3);
+  background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); cursor: pointer; }
+.architecture-step-control:hover { background: var(--hover); }
+.architecture-step-control[aria-pressed='true'] { background: var(--selected); }
+.architecture-step-head { align-items: baseline; gap: var(--s2); }
+.architecture-step-index { font-weight: var(--strong); color: var(--muted); }
+.architecture-step-identity code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
+.architecture-step-source { overflow-wrap: anywhere; }
+
+.architecture-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: var(--s3); }
+.architecture-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.architecture-rowitem[aria-level='2'] { margin-inline-start: var(--s5); }
+.architecture-rowitem[aria-level='3'] { margin-inline-start: var(--s7); }
+.architecture-identity { display: grid; gap: var(--s2); inline-size: 100%; text-align: start; padding: var(--s3);
+  background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); cursor: pointer; }
+.architecture-identity:hover { background: var(--hover); }
+.architecture-identity[aria-pressed='true'] { background: var(--selected); }
+.architecture-identity-head { flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.architecture-identity-head code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
+/* Ghost treatment: proposed components render dashed and hollow, and carry the
+   visible proposed label (text carries the meaning, the dash reinforces it). */
+.architecture-identity[data-proposed='true'] { border-style: dashed; border-color: var(--muted); background: var(--canvas); }
+.architecture-detail { overflow-wrap: anywhere; }
+.architecture-chiprow { flex-wrap: wrap; gap: var(--s2); }
+.architecture-chiprow .meta { font-size: var(--caption); }
+
+.architecture-change-group { padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+.architecture-change-toggle { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--body); inline-size: fit-content; }
+.architecture-change-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.architecture-change-item .architecture-identity { padding: var(--s2); }
+
+.architecture-inspector { align-self: start; }
+.architecture-inspector h3, .architecture-inspector h4 { margin: 0; }
+.architecture-inspector h4 { font-size: var(--body); }
+.architecture-inspector code { overflow-wrap: anywhere; }
+.architecture-inspector section { margin: 0; display: grid; gap: var(--s2); padding-block-start: var(--s3); border-block-start: var(--line) solid var(--border); }
+
+.architecture-features { padding: var(--s4); }
+.architecture-features h3, .architecture-features h4, .architecture-features h5 { margin: 0; }
+.architecture-feature { padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+.architecture-feature-group { gap: var(--s2); }
+.architecture-feature-group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s1); }
+.architecture-feature-group ul.stack { gap: var(--s1); }
+.architecture-feature-group code { overflow-wrap: anywhere; }
+.architecture-feature-link { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content;
+  text-align: start; overflow-wrap: anywhere; }
+
+@container (max-width: 48rem) {
+  .architecture-columns { grid-template-columns: minmax(0, 1fr); }
+  .architecture-cards { grid-template-columns: minmax(0, 1fr); }
+}
