@@ -2,6 +2,7 @@ import { assertCapabilityRequest, assertCreateOptions, assertObservationInput, a
   assertProjectContext, assertProjectState, fail, unique, ProjectContractError } from './contract.mjs';
 import { canonicalJSON, commandDigest } from './history.mjs';
 import { projectSnapshot } from './projection.mjs';
+import { amendBaseline } from './baseline/amendment.mjs';
 import { adoptSource, captureFor, performSourceEdit, sourceEditPreview, sourceMapResult, syncAnchors } from './source-edit/editing.mjs';
 import { extractSourceAnchor, skeletonDigest } from './source-edit/markdown.mjs';
 
@@ -417,11 +418,15 @@ export function applyProjectCommand(state, command, context) {
     'artifact.register': artifactRegister,
     'source.edit': performSourceEdit,
     'source.adopt': adoptSource,
+    amend_baseline: amendBaseline,
     record_baseline_proposal: recordProposal,
     record_architecture_elements: recordArchitecture,
     record_research_findings: recordResearch };
   const outcome = operations[command.operation](next, command.payload, context);
   result.changed_ids = Array.isArray(outcome) ? outcome : outcome.changed_ids;
+  // Accepted amendments retain the exact relationships a behavioral change
+  // invalidated so reconciliation only ever visits affected work.
+  if (!Array.isArray(outcome) && outcome.invalidations?.length) result.invalidations = clone(outcome.invalidations);
   next.revision += 1;
   result.revision = next.revision; result.baseline_revision = next.baseline_revision;
   next.receipts.push({ command: clone(command), sha256: commandHash, receipt: clone(result) });

@@ -22,7 +22,7 @@ export const SOURCE_OPERATIONS = Object.freeze(['source.map', 'source.edit.previ
 export const CAPABILITY_OPERATIONS = Object.freeze(['project.read', 'project.change.preview', 'project.change.apply',
   'project.reconcile.request', 'plan.create', 'plan.edit', 'plan.transition', 'run.request', 'run.cancel.request', 'artifact.register']);
 export const OPERATIONS = Object.freeze([...CONTENT_OPERATIONS, ...CAPABILITY_OPERATIONS, ...SOURCE_OPERATIONS,
-  'record_baseline_proposal', 'record_architecture_elements', 'record_research_findings']);
+  'amend_baseline', 'record_baseline_proposal', 'record_architecture_elements', 'record_research_findings']);
 
 export class ProjectContractError extends Error {
   constructor(code, message = code) { super(message); this.name = 'ProjectContractError'; this.code = code; }
@@ -85,6 +85,9 @@ export function assertRelativeSourcePath(value, path = 'source.path') {
   if (value.startsWith('/') || value.includes('\\') || value.split('/').some(part => !part || part === '.' || part === '..' || part.includes(':'))) fail('UNSAFE_SOURCE_PATH', `${path} must be repository-relative`);
   const parts = value.toLowerCase().split('/');
   if (parts[0] === '.git' || /^\.lazy(buddy|trae|qoder|zcode|kimi|deepseek)$/.test(parts[0]) && ['dashboard', 'project'].includes(parts[1])) fail('PROTECTED_SOURCE_PATH', `${path} is protected storage`);
+  // The neutral registry namespace is service-owned identity, never registrable
+  // content: the contract itself refuses it so no route can accept it.
+  if (parts[0] === '.lazyseries') fail('PROTECTED_REGISTRY_PATH', `${path} is the protected registry namespace`);
 }
 const anchor = (value, path) => {
   text(value, path);
@@ -170,6 +173,21 @@ const proposal = (value, path) => {
 const architectureRelationship = (value, path) => object(value, {
   target_id: id, kind: choice(ARCHITECTURE_RELATIONSHIPS), note: text,
 }, ['note'], path);
+// Accepted-amendment receipts carry the exact relationships a behavioral change
+// invalidated, so reconciliation (T08) only ever visits affected work.
+const invalidationAffected = (value, path) => object(value, {
+  plan_id: id, considered_revision: positive, carried_forward: boolean,
+}, [], path);
+const invalidationFact = (value, path) => {
+  object(value, { item_id: id, from_revision: positive, to_revision: positive,
+    reason: literal('BEHAVIORAL_REQUIREMENT_CHANGE'), affected: array(invalidationAffected, 256) }, [], path);
+  if (value.to_revision <= value.from_revision) fail('INVALID_VALUE', `${path}.to_revision must exceed from_revision`);
+  unique(value.affected, entry => entry.plan_id, `${path}.affected`);
+  return value;
+};
+const planReferenceUpdate = (value, path) => object(value, {
+  plan_id: id, baseline_refs: array(baselineRef, 4096),
+}, [], path);
 const architectureRelationships = (value, path) => {
   array(architectureRelationship, 128)(value, path);
   unique(value, relationship => `${relationship.kind}:${relationship.target_id}`, `${path}`);
@@ -339,6 +357,21 @@ const payloads = {
   'artifact.register': (value, path) => object(value, {
     id, type: choice(ARTIFACT_TYPES), producer: text, path: assertRelativeSourcePath, sha256: hash,
   }, ['sha256'], path),
+  // One authorized acceptance: a journaled transaction that applies the source
+  // edit, re-records the affected baseline records against the amended content,
+  // and carries linked non-historical plan references forward coherently. The
+  // authority reference is mandatory — a proposal without it can never mutate
+  // the accepted baseline through this route.
+  amend_baseline: (value, path) => object(value, {
+    authority: text,
+    source: (value, path) => object(value, {
+      source_id: id, expected_sha256: hash, expected_source_revision: positive,
+    }, [], path),
+    edits: array(sourceEditOperation, 256),
+    items: array(itemInput, 1000),
+    plan_updates: array(planReferenceUpdate, 256),
+    proposal_id: nullable(id),
+  }, ['proposal_id'], path),
   record_baseline_proposal: (value, path) => object(value, {
     id, summary: text, patches: array(proposalPatch, 64), options: array(proposalOption, 16),
     impact: proposalImpact, evidence_observation_ids: array(id, 512),
@@ -370,7 +403,8 @@ const receipt = (value, path) => object(value, {
   schema_version: literal(1), command_id: id, project_id: id, operation: choice(OPERATIONS),
   status: choice(['saved', 'conflict']), revision: integer, baseline_revision: integer,
   actor: text, occurred_at: timestamp, reason: nullable(text), changed_ids: array(id),
-}, [], path);
+  invalidations: array(invalidationFact, 256),
+}, ['invalidations'], path);
 const receiptRecord = (value, path) => object(value, { command: assertProjectCommand, sha256: hash, receipt }, [], path);
 export function unique(values, key, label) {
   const found = new Set();

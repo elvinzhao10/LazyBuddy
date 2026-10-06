@@ -816,6 +816,18 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
         if payload.get("source_id") not in by_id:
             raise ProjectError("UNKNOWN_SOURCE")
         wanted[payload.get("source_id")] = by_id[payload.get("source_id")]
+    elif operation == "amend_baseline":
+        # The amendment's source edit and re-recorded items are captured before
+        # the reducer runs; its own write lands inside the journaled transaction.
+        by_id = {source["id"]: source["path"] for source in state["sources"]}
+        amendment = payload.get("source", {})
+        if amendment.get("source_id") not in by_id:
+            raise ProjectError("UNKNOWN_SOURCE")
+        wanted[amendment.get("source_id")] = by_id[amendment.get("source_id")]
+        for item in payload.get("items", []):
+            source_id = item.get("source", {}).get("source_id")
+            if source_id in by_id:
+                wanted[source_id] = by_id[source_id]
     else:
         references = [item.get("source", {}) for item in payload.get("items", [])] if operation == "record_baseline_items" else [payload.get("source", {})] if operation == "register_plan" else []
         by_id = {source["id"]: source["path"] for source in state["sources"]}

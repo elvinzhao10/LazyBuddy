@@ -168,9 +168,14 @@ rejects unsafe paths and protected native storage.
 
 ## Changes, revisions, and retries
 
-**Original Markdown is never rewritten by this slice.** After an external edit,
-`read` reports changed source observations while retaining the imported baseline
-and plan text. Accepting the new content is explicit:
+**Registered originals are rewritten only through the journaled `source.edit`
+and `amend_baseline` routes.** Both land their file writes inside one journaled
+transaction (intent first, atomic publication, crash recovery that never
+overwrites a newer external edit) and splice only targeted lines, so fenced
+examples, unrelated prose, and line endings keep their exact bytes. An
+external edit outside those routes is never adopted silently: `read` reports
+changed source observations while retaining the accepted baseline and plan
+text. Accepting external content explicitly:
 
 1. Reissue `register_source` for the source ID/path/role with a new command ID
    and current project revision. This accepts the new digest in the registry.
@@ -179,12 +184,16 @@ and plan text. Accepting the new content is explicit:
    does not replace imported item or plan text.
 
 An item's revision changes when its extracted title/text or accepted metadata
-changes. This is an exact comparison, not language-level semantic analysis.
-Updating only the source digest after an edit outside the item's anchor leaves
-its item revision unchanged. A baseline-changing command advances
-`baseline_revision` once. Plans retain their explicit item-revision references;
-outdated ones become `stale`, including historical completed plans, without
-reopening those plans automatically.
+changes. Through `record_baseline_items` this is an exact comparison, not
+language-level semantic analysis. The accepted-amendment route
+(`amend_baseline`) additionally treats a whitespace-only difference outside
+fenced examples as wording: it updates the record's bytes while preserving the
+item's semantic revision and every reference pinned to it. Updating only the
+source digest after an edit outside the item's anchor leaves its item revision
+unchanged. A baseline-changing command advances `baseline_revision` once.
+Plans retain their explicit item-revision references; outdated ones become
+`stale`, including historical completed plans, without reopening those plans
+automatically.
 
 Every newly accepted command advances project `revision`, including an accepted
 no-op. Replaying the same command ID and body returns its original receipt
@@ -192,6 +201,38 @@ without rolling state back, even after source removal. Different content under
 that ID raises `IDEMPOTENCY_CONFLICT`. A stale `expected_revision` returns a
 `conflict` receipt with `REVISION_CONFLICT`; it does not append a saved receipt.
 Read the latest state before composing a new command.
+
+## Accepted baseline amendments
+
+`amend_baseline` is the authority-checked acceptance route for baseline change
+(spec §3.3). One command, one receipt, one journaled transaction:
+
+- `authority` (required) records the acceptance reference — a user instruction
+  or a delegated mandate recorded as such. An acceptance without it is refused
+  before anything mutates, and a recorded proposal without acceptance
+  authority never touches the accepted baseline.
+- `source` + `edits` apply the document change through the same AST editor as
+  `source.edit` (stable anchors; `expected_sha256` and
+  `expected_source_revision` are CAS guards).
+- `items` re-record the affected baseline records against the post-amendment
+  digest, including applicability (repository-wide, component, environment, or
+  an explicit migration period). A wording-only difference preserves the item's
+  semantic revision; a behavioral change bumps it, advances `baseline_revision`
+  once, and emits invalidation facts naming exactly the plans that considered
+  an older revision — carried-forward references moved by this same
+  transaction are marked as such, everything else stays pending for
+  reconciliation. The facts are retained on the receipt and surfaced by the
+  snapshot's `invalidations` list.
+- `plan_updates` carry linked non-historical plans' baseline references to the
+  amended revisions coherently. A completed, superseded, or abandoned plan
+  keeps the revisions it considered (`HISTORICAL_PLAN_IMMUTABLE`): its later
+  alignment becomes unassessed without reopening its execution.
+- `proposal_id` optionally accepts a recorded `BaselineProposal`; its state
+  moves to `accepted` and the acceptance authority is recorded on it.
+
+An unaccepted suggestion stays a `BaselineProposal` in `proposed` state with
+zero baseline effect; accepted requirements without a contributing plan stay
+visible in `summary.unassigned_item_ids`.
 
 ## Native-run links and interpretation
 
@@ -274,7 +315,7 @@ node --test lazybuddy-plugin/shared/project/test/*.test.mjs
 
 This README records implementation behavior, not a test-pass certificate.
 
-Still pending: the project-only browser/UI, original-source editing, native chat
+Still pending: the project-only browser/UI, native chat
 delivery/consumption, metrics, Git/worktree projections, semantic conflict
 assessment, sibling native adapters, and pinned distribution. `shared/project`
 currently sits outside the pinned dashboard core. Any eventual incorporation

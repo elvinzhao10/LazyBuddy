@@ -46,6 +46,17 @@ export function projectSnapshot(state, options = {}) {
     observed_via_observation_ids: retainedObservations.filter(observation => observation.subject.kind === 'architecture'
       && observation.subject.id === element.id).map(observation => observation.id) }));
   const accepted = items.filter(item => item.state === 'accepted');
+  // Invalidation facts retained by accepted amendments: the exact plan
+  // relationships a behavioral baseline change invalidated. Carried-forward
+  // references moved in the same transaction; the rest stay pending until
+  // reconciliation (T08) assesses them. Historical plans keep their considered
+  // revisions here — their completion is never reopened.
+  const invalidations = state.receipts.flatMap(entry => (entry.receipt.invalidations ?? []).map(fact => ({
+    command_id: entry.command.command_id, occurred_at: entry.receipt.occurred_at,
+    item_id: fact.item_id, from_revision: fact.from_revision, to_revision: fact.to_revision,
+    reason: fact.reason, affected: fact.affected.map(entry => ({ plan_id: entry.plan_id,
+      considered_revision: entry.considered_revision, carried_forward: entry.carried_forward })),
+  })));
   const snapshot = { schema_version: 1, project_id: state.project_id, runtime: state.runtime,
     repository_key: identity ? identity.repository_key : state.repository_key,
     revision: state.revision, baseline_revision: state.baseline_revision,
@@ -53,6 +64,7 @@ export function projectSnapshot(state, options = {}) {
     sources, items, plans,
     proposals: (state.proposals ?? []).map(clone), architecture, research: (state.research ?? []).map(clone),
     reconciliations: (state.reconciliations ?? []).map(clone), observations: retainedObservations,
+    invalidations,
     artifacts: (state.artifacts ?? []).map(clone), requests: (state.requests ?? []).map(clone),
     summary: {
       accepted_features: accepted.filter(item => item.kind === 'feature').length,
