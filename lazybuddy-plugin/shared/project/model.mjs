@@ -1,7 +1,11 @@
 import { assertCapabilityRequest, assertCreateOptions, assertObservationInput, assertProjectCommand,
   assertProjectContext, assertProjectState, fail, unique, ProjectContractError } from './contract.mjs';
-import { canonicalJSON, commandDigest, sha256Text } from './history.mjs';
+import { canonicalJSON, commandDigest } from './history.mjs';
 import { projectSnapshot } from './projection.mjs';
+import { adoptSource, captureFor, performSourceEdit, sourceEditPreview, sourceMapResult, syncAnchors } from './source-edit/editing.mjs';
+import { extractSourceAnchor, skeletonDigest } from './source-edit/markdown.mjs';
+
+export { extractSourceAnchor };
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => canonicalJSON(left) === canonicalJSON(right);
@@ -12,55 +16,8 @@ export function createProject(options) {
   return { schema_version: 1, project_id: options.projectId, runtime: options.runtime,
     repository_key: options.repositoryKey, created_at: options.createdAt, revision: 0,
     baseline_revision: 0, observation_revision: 0, sources: [], items: [], plans: [], receipts: [],
-    proposals: [], architecture: [], research: [], reconciliations: [], observations: [], artifacts: [], requests: [] };
-}
-
-// This is an import anchor reader, not a Markdown rewriter. Ambiguous anchors fail closed.
-function headings(content) {
-  const result = []; let offset = 0; let fence = null;
-  for (const line of content.match(/[^\n]*(?:\n|$)/g) ?? []) {
-    if (!line.length) continue;
-    const bare = line.replace(/\r?\n$/, '');
-    const marker = bare.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
-    if (fence) {
-      if (marker && marker[1][0] === fence.character && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
-    } else if (marker && (marker[1][0] !== '`' || !marker[2].includes('`'))) {
-      fence = { character: marker[1][0], length: marker[1].length };
-    } else {
-      const heading = bare.match(/^ {0,3}(#{1,6})(?:[ \t]+(.*?)|[ \t]*)$/);
-      if (heading) {
-        const title = (heading[2] ?? '').replace(/[ \t]+#+[ \t]*$/, '').trim();
-        if (title) result.push({ title, level: heading[1].length, start: offset });
-      }
-    }
-    offset += line.length;
-  }
-  return result;
-}
-
-function captureFor(state, sourceId, context, expectedPath, expectedHash) {
-  const capture = context.capturedSources.find(entry => entry.source_id === sourceId);
-  if (!capture) fail('SOURCE_CAPTURE_REQUIRED', 'A trusted source capture is required');
-  if (capture.path !== expectedPath) fail('SOURCE_PATH_MISMATCH', 'The capture does not match its registered source path');
-  if (sha256Text(capture.content) !== capture.sha256) fail('SOURCE_HASH_MISMATCH', 'Captured content does not match its digest');
-  if (expectedHash && capture.sha256 !== expectedHash) fail('SOURCE_CHANGED', 'The source changed from the requested revision');
-  return capture;
-}
-
-export function extractSourceAnchor(content, anchorId, sourcePath = 'document.md') {
-  if (typeof content !== 'string' || typeof anchorId !== 'string') fail('INVALID_ANCHOR', 'Source content and anchor must be text');
-  const entries = headings(content);
-  if (anchorId === 'document') {
-    if (!content.trim()) fail('EMPTY_SOURCE', 'An empty source cannot establish project intent');
-    return { title: entries[0]?.title ?? sourcePath.split('/').pop(), text: content };
-  }
-  if (!anchorId.startsWith('heading:') || !anchorId.slice(8).trim()) fail('INVALID_ANCHOR', 'Unsupported source anchor');
-  const matches = entries.filter(entry => entry.title === anchorId.slice(8));
-  if (!matches.length) fail('ANCHOR_NOT_FOUND', 'The requested heading was not found');
-  if (matches.length !== 1) fail('AMBIGUOUS_ANCHOR', 'The requested heading is not unique');
-  const selected = matches[0];
-  const next = entries.find(entry => entry.start > selected.start && entry.level <= selected.level);
-  return { title: selected.title, text: content.slice(selected.start, next?.start ?? content.length) };
+    proposals: [], architecture: [], research: [], reconciliations: [], observations: [], artifacts: [],
+    requests: [], source_anchors: [] };
 }
 
 function resolveSource(state, reference, context) {
@@ -79,9 +36,15 @@ function registerSource(state, payload, context) {
   if (changed) {
     const replacement = { id: payload.id, path: payload.path, role: payload.role,
       accepted_sha256: capture.sha256, revision: (existing?.revision ?? 0) + 1,
-      registered_at: context.occurredAt };
+      registered_at: context.occurredAt, skeleton_sha256: skeletonDigest(capture.content) };
     if (existing) state.sources[state.sources.indexOf(existing)] = replacement;
     else state.sources.push(replacement);
+    // Registering or refreshing a source assigns stable anchors to its unambiguous
+    // headings; a copy under a new source identity receives fresh anchor ids.
+    const others = (state.source_anchors ?? []).filter(record => record.source_id !== payload.id);
+    const seed = (state.source_anchors ?? []).filter(record => record.source_id === payload.id);
+    const synced = syncAnchors(seed, state.source_anchors ?? [], payload.id, capture.content, state.revision + 1);
+    state.source_anchors = [...others, ...synced.records];
   }
   return changed ? [payload.id] : [];
 }
@@ -410,6 +373,24 @@ export function applyProjectCommand(state, command, context) {
       project_id: command.project_id, command_id: command.command_id,
       expected_revision: command.expected_revision, payload: command.payload }, context);
   }
+  // Source queries are revision-checked reads through the same command route:
+  // they never append a receipt and never mutate the accepted state.
+  if (command.operation === 'source.edit.preview' || command.operation === 'source.map') {
+    if (command.expected_revision !== state.revision) {
+      return { schema_version: 1, status: 'conflict', operation: command.operation,
+        reason: 'REVISION_CONFLICT', initialized: true };
+    }
+    const queryContext = context && typeof context === 'object' && Array.isArray(context.capturedSources)
+      ? context : { ...context, capturedSources: [] };
+    try {
+      if (command.operation === 'source.edit.preview') return sourceEditPreview(state, command.payload, queryContext);
+      return sourceMapResult(state, command.payload, queryContext);
+    } catch (error) {
+      if (!(error instanceof ProjectContractError)) throw error;
+      return { schema_version: 1, status: 'invalid', operation: command.operation,
+        reason: error.code, initialized: true };
+    }
+  }
   const commandHash = commandDigest(command);
   const previous = state.receipts.find(entry => entry.command.command_id === command.command_id);
   if (previous) {
@@ -434,13 +415,21 @@ export function applyProjectCommand(state, command, context) {
     'run.request': runRequest,
     'run.cancel.request': runCancelRequest,
     'artifact.register': artifactRegister,
+    'source.edit': performSourceEdit,
+    'source.adopt': adoptSource,
     record_baseline_proposal: recordProposal,
     record_architecture_elements: recordArchitecture,
     record_research_findings: recordResearch };
-  result.changed_ids = operations[command.operation](next, command.payload, context);
+  const outcome = operations[command.operation](next, command.payload, context);
+  result.changed_ids = Array.isArray(outcome) ? outcome : outcome.changed_ids;
   next.revision += 1;
   result.revision = next.revision; result.baseline_revision = next.baseline_revision;
   next.receipts.push({ command: clone(command), sha256: commandHash, receipt: clone(result) });
   assertProjectState(next);
+  // Source edits additionally return the exact file writes the native bridge
+  // must land inside its journaled transaction before publishing the state.
+  if (!Array.isArray(outcome) && outcome.writes && outcome.writes.length) {
+    return { state: next, receipt: result, writes: outcome.writes };
+  }
   return { state: next, receipt: result };
 }

@@ -10,6 +10,7 @@ Document captures are observations, not a transaction over external editors.
 # How to run: node lazybuddy-plugin/shared/project/cli.mjs init|read|command --project-root PATH --project-id ID --actor ID
 from __future__ import annotations
 
+import base64
 import fcntl
 import hashlib
 import importlib.util
@@ -30,6 +31,8 @@ LIMIT = 8 * 1024 * 1024
 SOURCE_LIMIT = 1024 * 1024
 REGISTRY_LIMIT = 64 * 1024
 REGISTRY_RELATIVE = ".lazyseries/project.json"
+JOURNAL_DIRECTORY = "edit-journal"
+JOURNAL_LIMIT = 32 * 1024 * 1024
 PLUGIN = Path(__file__).resolve().parents[2]
 REDUCER = PLUGIN / "shared/project/cli.mjs"
 _spec = importlib.util.spec_from_file_location("project_source_reader", PLUGIN / "shared/dashboard/service-read.py")
@@ -295,6 +298,73 @@ class ProjectFiles:
         finally:
             self.lock_descriptor = None
             os.close(descriptor)
+
+    def journal_directory(self, create: bool) -> int | None:
+        """Pinned, symlink-refusing handle on the source-edit journal directory."""
+        if getattr(self, "journal_descriptor", None) is not None:
+            return self.journal_descriptor
+        try:
+            descriptor = os.open(JOURNAL_DIRECTORY, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.descriptor)
+        except FileNotFoundError:
+            if not create:
+                return None
+            try:
+                os.mkdir(JOURNAL_DIRECTORY, 0o700, dir_fd=self.descriptor)
+                os.fsync(self.descriptor)
+            except FileExistsError:
+                pass
+            descriptor = os.open(JOURNAL_DIRECTORY, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self.descriptor)
+        metadata = os.fstat(descriptor)
+        if metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
+            raise ProjectError("UNSAFE_PROJECT_STORE")
+        self.stack.callback(os.close, descriptor)
+        self.directories.append((self.descriptor, JOURNAL_DIRECTORY, descriptor))
+        self.journal_descriptor = descriptor
+        self.require_current()
+        return descriptor
+
+    def journal_names(self) -> list[str]:
+        descriptor = self.journal_directory(False)
+        if descriptor is None:
+            return []
+        self.require_current()
+        return [name for name in os.listdir(descriptor) if re.fullmatch(r"[a-f0-9]{64}\.json", name)]
+
+    def journal_read(self, name: str) -> dict:
+        descriptor = self.journal_directory(False)
+        if descriptor is None:
+            raise ProjectError("EDIT_JOURNAL_INVALID")
+        handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=descriptor)
+        with os.fdopen(handle, "rb") as stream:
+            before = os.fstat(stream.fileno())
+            self.private(before)
+            if before.st_size > JOURNAL_LIMIT:
+                raise ProjectError("EDIT_JOURNAL_INVALID")
+            content = stream.read(JOURNAL_LIMIT + 1)
+        return strict_json(content)
+
+    def journal_install(self, name: str, content: bytes) -> None:
+        descriptor = self.journal_directory(True)
+        temporary = f".{name}.{os.urandom(8).hex()}"
+        target = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=descriptor)
+        with os.fdopen(target, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, name, src_dir_fd=descriptor, dst_dir_fd=descriptor)
+        os.fsync(descriptor)
+        self.require_current()
+
+    def journal_unlink(self, name: str) -> None:
+        descriptor = self.journal_directory(False)
+        if descriptor is None:
+            return
+        try:
+            os.unlink(name, dir_fd=descriptor)
+        except FileNotFoundError:
+            return
+        os.fsync(descriptor)
+        self.require_current()
 
     def close(self) -> None:
         self.stack.close()
@@ -606,6 +676,118 @@ def capture_source(files: ProjectFiles, source_id: str, path: str) -> dict:
     return {"source_id": source_id, "path": reference, "sha256": hashlib.sha256(content).hexdigest(), "content": text}
 
 
+def write_source(root: str, relative: object, content: bytes, from_sha256: str) -> None:
+    """Publish a reducer-authored source write atomically under a digest CAS.
+
+    The current bytes must still hash to `from_sha256`; any concurrent external
+    edit aborts the write instead of being overwritten.
+    """
+    reference = source_path(relative)
+    current = _reader.read(root, reference, SOURCE_LIMIT)
+    if hashlib.sha256(current).hexdigest() != from_sha256:
+        raise ProjectError("SOURCE_CHANGED_DURING_COMMAND")
+    parts = reference.split("/")
+    temporary = f".{parts[-1]}.{os.urandom(16).hex()}.lazybuddy-edit"
+    with ExitStack() as stack:
+        descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
+        stack.callback(os.close, descriptor)
+        for component in [*Path(root).parts[1:], *parts[:-1]]:
+            descriptor = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            stack.callback(os.close, descriptor)
+        present = os.stat(parts[-1], dir_fd=descriptor, follow_symlinks=False)
+        if not stat.S_ISREG(present.st_mode):
+            raise ProjectError("SOURCE_UNAVAILABLE")
+        try:
+            handle = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=descriptor)
+            with os.fdopen(handle, "wb") as stream:
+                stream.write(content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(temporary, present.st_mode & 0o777, dir_fd=descriptor, follow_symlinks=False)
+            os.replace(temporary, parts[-1], src_dir_fd=descriptor, dst_dir_fd=descriptor)
+            os.fsync(descriptor)
+        finally:
+            try:
+                os.unlink(temporary, dir_fd=descriptor)
+            except FileNotFoundError:
+                pass
+
+
+def journal_entry(command_id: str, writes: list, prior_state: bytes, next_state: bytes) -> dict:
+    return {
+        "schema_version": 1,
+        "command_id": command_id,
+        "created_at": now(),
+        "prior_state_sha256": hashlib.sha256(prior_state).hexdigest(),
+        "next_state_b64": base64.b64encode(next_state).decode("ascii"),
+        "writes": [{
+            "path": write.get("path"),
+            "from_sha256": write.get("from_sha256"),
+            "to_sha256": write.get("to_sha256"),
+            "content_b64": base64.b64encode(str(write.get("content", "")).encode("utf-8")).decode("ascii"),
+        } for write in writes],
+    }
+
+
+def journal_name(command_id: object) -> str:
+    if not isinstance(command_id, str):
+        raise ProjectError("INVALID_COMMAND")
+    return hashlib.sha256(command_id.encode("utf-8")).hexdigest() + ".json"
+
+
+def recover_edit_journal(files: ProjectFiles) -> bool:
+    """Complete or abandon interrupted source edits. Never overwrite a newer external edit.
+
+    A pending entry whose receipt is already published is just unlinked. For a
+    pending entry, each write is compared against the live file: matching
+    `to_sha256` means the write landed, matching `from_sha256` means it never
+    did, anything else is a newer external edit that must survive untouched.
+    """
+    recovered = False
+    entries = sorted(
+        ((name, files.journal_read(name)) for name in files.journal_names()),
+        key=lambda item: str(item[1].get("created_at", "")),
+    )
+    for name, entry in entries:
+        if not isinstance(entry, dict) or entry.get("schema_version") != 1 or not isinstance(entry.get("writes"), list):
+            raise ProjectError("EDIT_JOURNAL_INVALID")
+        state_bytes = files.optional("state.json")
+        if state_bytes is None:
+            raise ProjectError("PROJECT_NOT_INITIALIZED")
+        state = strict_json(state_bytes)
+        command_id = entry.get("command_id")
+        if any(record["command"]["command_id"] == command_id for record in state.get("receipts", [])):
+            files.journal_unlink(name)
+            continue
+        statuses = []
+        for write in entry["writes"]:
+            try:
+                live = _reader.read(files.root, write.get("path"), SOURCE_LIMIT)
+            except (OSError, ValueError, _reader.UnsafeReferenceError):
+                live = None
+            digest = hashlib.sha256(live).hexdigest() if live is not None else None
+            if digest == write.get("to_sha256"):
+                statuses.append("landed")
+            elif digest == write.get("from_sha256"):
+                statuses.append("pending")
+            else:
+                statuses.append("foreign")
+                break
+        if "foreign" in statuses:
+            files.journal_unlink(name)
+            continue
+        for write, status in zip(entry["writes"], statuses):
+            if status == "pending":
+                write_source(files.root, write.get("path"), base64.b64decode(write.get("content_b64", "")),
+                             write.get("from_sha256"))
+        if hashlib.sha256(state_bytes).hexdigest() != entry.get("prior_state_sha256"):
+            raise ProjectError("PROJECT_FILE_CHANGED")
+        files.install("state.json", base64.b64decode(entry.get("next_state_b64", "")), state_bytes)
+        files.journal_unlink(name)
+        recovered = True
+    return recovered
+
+
 def source_observations(files: ProjectFiles, state: dict) -> list[dict]:
     observations = []
     for source in state["sources"]:
@@ -629,6 +811,11 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
     wanted = {}
     if operation == "register_source":
         wanted[payload.get("id")] = payload.get("path")
+    elif operation in ("source.edit", "source.edit.preview", "source.map", "source.adopt"):
+        by_id = {source["id"]: source["path"] for source in state["sources"]}
+        if payload.get("source_id") not in by_id:
+            raise ProjectError("UNKNOWN_SOURCE")
+        wanted[payload.get("source_id")] = by_id[payload.get("source_id")]
     else:
         references = [item.get("source", {}) for item in payload.get("items", [])] if operation == "record_baseline_items" else [payload.get("source", {})] if operation == "register_plan" else []
         by_id = {source["id"]: source["path"] for source in state["sources"]}
@@ -731,27 +918,49 @@ def main(arguments: list[str]) -> object:
                 state = initial
             else:
                 state = strict_json(before)
+            state_changed = action == "init"
+            if before is not None and recover_edit_journal(files):
+                # Finish an interrupted source edit before serving this action.
+                before = files.optional("state.json")
+                state = strict_json(before)
+                state_changed = True
             reduce(node, "snapshot", state=state, context={})
             if state["project_id"] != project_id or state["runtime"] != "LazyBuddy" \
                     or state["repository_key"] != files.expected_state_key():
                 raise ProjectError("PROJECT_IDENTITY_MISMATCH")
             receipt = None
-            state_changed = action == "init"
+            query_result = None
             if action == "command":
                 captures, runs = command_captures(files, state, request)
                 reduction = reduce(node, "command", state=state, command=request,
                                    context={"actor": actor, "occurredAt": now(), "capturedSources": captures, "capturedRuns": runs})
-                receipt = reduction["receipt"]
-                if reduction["state"] != state:
-                    for capture in captures:
-                        fresh = capture_source(files, capture["source_id"], capture["path"])
-                        if fresh["sha256"] != capture["sha256"]:
-                            raise ProjectError("SOURCE_CHANGED_DURING_COMMAND")
-                    if runs and command_captures(files, state, request)[1] != runs:
-                        raise ProjectError("NATIVE_RUN_CHANGED_DURING_COMMAND")
-                    files.install("state.json", encoded(reduction["state"]), before)
-                    state = reduction["state"]
-                    state_changed = True
+                if "state" not in reduction:
+                    # Revision-checked query operations never mutate accepted state.
+                    query_result = reduction
+                else:
+                    receipt = reduction["receipt"]
+                    writes = reduction.get("writes") or []
+                    if reduction["state"] != state:
+                        for capture in captures:
+                            fresh = capture_source(files, capture["source_id"], capture["path"])
+                            if fresh["sha256"] != capture["sha256"]:
+                                raise ProjectError("SOURCE_CHANGED_DURING_COMMAND")
+                        if runs and command_captures(files, state, request)[1] != runs:
+                            raise ProjectError("NATIVE_RUN_CHANGED_DURING_COMMAND")
+                        if writes:
+                            # Journal the intent first: crash recovery distinguishes
+                            # this service's own writes from any external editor.
+                            entry_name = journal_name(request.get("command_id"))
+                            files.journal_install(entry_name, encoded(
+                                journal_entry(request.get("command_id"), writes, before, encoded(reduction["state"]))))
+                            for write in writes:
+                                write_source(root, write["path"], str(write.get("content", "")).encode("utf-8"),
+                                             write["from_sha256"])
+                        files.install("state.json", encoded(reduction["state"]), before)
+                        if writes:
+                            files.journal_unlink(entry_name)
+                        state = reduction["state"]
+                        state_changed = True
             if registry is not None and registry_root == root and state_changed:
                 registry = sync_registry_sources(node, root, registry, state)
             context = {"sourceObservations": source_observations(files, state)}
@@ -769,7 +978,12 @@ def main(arguments: list[str]) -> object:
                                                        for index, entry in enumerate(facts)]
             snapshot = reduce(node, "snapshot", state=state, context=context)
             # A link is identity only. Native execution, consumption and proof stay unobserved here.
-            return {"receipt": receipt, "snapshot": snapshot} if action == "command" else snapshot
+            if action != "command":
+                return snapshot
+            outcome = {"receipt": receipt, "snapshot": snapshot}
+            if query_result is not None:
+                outcome["result"] = query_result
+            return outcome
     except BaseException:
         if registry_created:
             # Roll back a registry this invocation created unless the native store has

@@ -1,4 +1,4 @@
-import { commandDigest } from './history.mjs';
+import { commandDigest, sha256Text } from './history.mjs';
 
 // Portable project records. These deliberately do not extend native run or proof contracts.
 export const RUNTIMES = Object.freeze(['LazyBuddy', 'LazyTrae', 'LazyQoder', 'LazyZCode', 'LazyKimi', 'LazyDeepSeek']);
@@ -18,9 +18,10 @@ export const RECONCILE_TRIGGERS = Object.freeze(['project_adoption', 'session_lo
 export const PROPOSAL_STATES = Object.freeze(['proposed', 'accepted', 'rejected', 'superseded']);
 export const REQUEST_KINDS = Object.freeze(['run', 'run_cancel']);
 export const CONTENT_OPERATIONS = Object.freeze(['register_source', 'record_baseline_items', 'register_plan', 'link_native_run']);
+export const SOURCE_OPERATIONS = Object.freeze(['source.map', 'source.edit.preview', 'source.edit', 'source.adopt']);
 export const CAPABILITY_OPERATIONS = Object.freeze(['project.read', 'project.change.preview', 'project.change.apply',
   'project.reconcile.request', 'plan.create', 'plan.edit', 'plan.transition', 'run.request', 'run.cancel.request', 'artifact.register']);
-export const OPERATIONS = Object.freeze([...CONTENT_OPERATIONS, ...CAPABILITY_OPERATIONS,
+export const OPERATIONS = Object.freeze([...CONTENT_OPERATIONS, ...CAPABILITY_OPERATIONS, ...SOURCE_OPERATIONS,
   'record_baseline_proposal', 'record_architecture_elements', 'record_research_findings']);
 
 export class ProjectContractError extends Error {
@@ -232,8 +233,19 @@ const itemInput = (value, path) => {
 };
 const source = (value, path) => object(value, {
   id, path: assertRelativeSourcePath, role: choice(SOURCE_ROLES), accepted_sha256: hash,
-  revision: positive, registered_at: timestamp,
-}, [], path);
+  revision: positive, registered_at: timestamp, skeleton_sha256: hash,
+}, ['skeleton_sha256'], path);
+// Stable document anchors: identities survive moves and renames, so they bind to
+// the normalized heading title fingerprint, never to a position.
+const sourceAnchor = (value, path) => {
+  object(value, { anchor_id: id, source_id: id, kind: literal('heading'), fingerprint: hash,
+    title: text, level: integer, assigned_revision: positive }, [], path);
+  if (value.level < 1 || value.level > 6) fail('INVALID_VALUE', `${path}.level must be a Markdown heading level`);
+  if (value.fingerprint !== sha256Text(value.title.replace(/\s+/g, ' ').trim())) {
+    fail('INVALID_VALUE', `${path}.fingerprint must match its normalized heading title`);
+  }
+  return value;
+};
 const item = (value, path) => {
   object(value, {
     id, kind: choice(ITEM_KINDS), title: text, text: string(1048576), source: sourceRef,
@@ -268,6 +280,37 @@ const innerChange = (value, path) => {
   payloads[value.operation](value.payload, `${path}.payload`);
   return value;
 };
+// AST-level edit units. Each names its target through a stable anchor plus a
+// checklist position; no edit may address bytes inside a fenced example.
+const sourceEditOperation = (value, path) => {
+  object(value, { kind: choice(['set_task_state', 'set_task_text', 'rename_heading', 'move_section']),
+    anchor_id: id, item: integer, state: choice(['checked', 'unchecked']), text: string(65536),
+    title: string(1024), before_anchor_id: nullable(id) },
+  ['item', 'state', 'text', 'title', 'before_anchor_id'], path);
+  const present = key => Object.hasOwn(value, key);
+  if (value.kind === 'set_task_state') {
+    if (!present('item') || !present('state') || present('text') || present('title') || present('before_anchor_id')) {
+      fail('INVALID_VALUE', `${path} set_task_state needs item and state only`);
+    }
+  } else if (value.kind === 'set_task_text') {
+    if (!present('item') || !present('text') || present('state') || present('title') || present('before_anchor_id')) {
+      fail('INVALID_VALUE', `${path} set_task_text needs item and text only`);
+    }
+    if (/[\r\n]/.test(value.text)) fail('INVALID_VALUE', `${path}.text must stay on one line`);
+  } else if (value.kind === 'rename_heading') {
+    if (!present('title') || present('item') || present('state') || present('text') || present('before_anchor_id')) {
+      fail('INVALID_VALUE', `${path} rename_heading needs title only`);
+    }
+    if (/[\r\n]/.test(value.title) || !value.title.trim()) fail('INVALID_VALUE', `${path}.title must be one nonempty line`);
+  } else if (present('item') || present('state') || present('text') || present('title')) {
+    fail('INVALID_VALUE', `${path} move_section takes only before_anchor_id`);
+  }
+  return value;
+};
+const sourceEditPayload = (value, path) => object(value, {
+  authority: text, source_id: id, expected_sha256: hash, expected_source_revision: positive,
+  edits: array(sourceEditOperation, 256),
+}, [], path);
 const payloads = {
   register_source: (value, path) => object(value, { id, path: assertRelativeSourcePath, role: choice(SOURCE_ROLES) }, [], path),
   record_baseline_items: (value, path) => object(value, { items: array(itemInput, 1000) }, [], path),
@@ -310,6 +353,12 @@ const payloads = {
       findings: string(1048576), uncertainty: nullable(text), recommendation: nullable(text),
       promotion_proposal_id: nullable(id) }, ['uncertainty', 'recommendation', 'promotion_proposal_id'], path);
   }, 256) }, [], path),
+  'source.map': (value, path) => object(value, { source_id: id }, [], path),
+  'source.edit.preview': sourceEditPayload,
+  'source.edit': sourceEditPayload,
+  'source.adopt': (value, path) => object(value, {
+    authority: text, source_id: id, expected_source_revision: positive,
+  }, ['expected_source_revision'], path),
 };
 export function assertProjectCommand(value, path = 'command') {
   object(value, { schema_version: literal(1), command_id: id, project_id: id, expected_revision: integer,
@@ -341,9 +390,16 @@ export function assertProjectState(value) {
     research: array(researchFinding, 1024), reconciliations: array(reconciliation, 1024),
     observations: array(observationRecord, 8192), artifacts: array(artifactRecord, 4096),
     requests: array(requestRecord, 4096), observation_revision: integer,
-  }, ['proposals', 'architecture', 'research', 'reconciliations', 'observations', 'artifacts', 'requests', 'observation_revision'], 'state');
+    source_anchors: array(sourceAnchor, 131072),
+  }, ['proposals', 'architecture', 'research', 'reconciliations', 'observations', 'artifacts', 'requests',
+    'observation_revision', 'source_anchors'], 'state');
   const sourceIds = unique(value.sources, entry => entry.id, 'sources');
   unique(value.sources, entry => entry.path, 'source paths');
+  unique(value.source_anchors ?? [], entry => entry.anchor_id, 'source anchors');
+  unique(value.source_anchors ?? [], entry => `${entry.source_id}\u0000${entry.fingerprint}`, 'source anchor fingerprints');
+  for (const entry of value.source_anchors ?? []) {
+    if (!sourceIds.has(entry.source_id)) fail('UNKNOWN_SOURCE', 'A source anchor references an unknown source');
+  }
   const itemIds = unique(value.items, entry => entry.id, 'items');
   const planIds = unique(value.plans, entry => entry.id, 'plans');
   unique(value.receipts, entry => entry.command.command_id, 'receipts');
