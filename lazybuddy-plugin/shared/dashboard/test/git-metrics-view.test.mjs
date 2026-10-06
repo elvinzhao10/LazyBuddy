@@ -298,6 +298,22 @@ test('git and metrics detail views render real T11 collections and T10 arithmeti
   assert.ok(recordsPanel.textContent.includes('usage reported for 7 of 10 recorded requests'));
   assert.ok(recordsPanel.textContent.includes('the totals cover only the reporting requests'));
 
+  // Regression (T18-R1, verifier F1): the totals drill-down lists exactly the
+  // requests that reported the field — a recorded request with no usage stays
+  // in the coverage denominator, never in the totals' contributing records.
+  view.openMetric('metric:usage:total_tokens');
+  const totalsRecords = [...recordsPanel.querySelectorAll('[data-record-id]')].map(node => node.dataset.recordId);
+  const reporting = usageCoverage.requests.filter(request => request.usage.total_tokens !== undefined);
+  assert.deepEqual(totalsRecords,
+    [...reporting.map(request => request.request_id), ...reporting.flatMap(request => request.source_record_ids)],
+    'the totals panel lists only the reporting requests and their source records, in model order');
+  assert.deepEqual(totalsRecords, ['req:0', 'req:1', 'req:2', 'req:3', 'req:4', 'req:5', 'req:6',
+    'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6']);
+  for (const id of ['req:7', 'req:8', 'req:9', 'd7', 'd8', 'd9']) {
+    assert.equal(recordsPanel.querySelector(`[data-record-id="${id}"]`), null,
+      `non-reporting ${id} never lists as a contributing record of the totals`);
+  }
+
   // Every opened total shows the exact §8 fields: scope, filters, window,
   // definition, unit, basis, source records, coverage, as-of.
   view.openMetric('metric:time:elapsed');

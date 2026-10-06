@@ -277,15 +277,18 @@ function usageMetrics(usage, context) {
     }));
   }
   const requestRecords = usage.requests.map(request => request.request_id);
-  const sourceRecords = usage.requests.flatMap(request => request.source_record_ids);
   const labels = { input_tokens: 'Input tokens', output_tokens: 'Output tokens', total_tokens: 'Total tokens' };
   const metrics = [];
   for (const [field, total] of Object.entries(usage.totals ?? {})) {
+    // A value total covers only the requests that reported the field; a
+    // recorded request with no usage for it is a coverage denominator entry,
+    // never a contributing record of the total.
+    const reporting = usage.requests.filter(request => request.usage[field] !== undefined);
     metrics.push(valueMetric({ id: `metric:usage:${field}`, area: 'usage', label: labels[field] ?? field,
       value: total, unit: 'tokens',
       definition: `normalized total at declared grain ${usage.grain ?? 'physical-provider-invocation'}; unknown stays null`,
       basis: 'T10 normalizeUsage · duplicate delivery is not a new request; parent aggregates never sum with children',
-      records: [...requestRecords, ...sourceRecords],
+      records: [...reporting.map(request => request.request_id), ...reporting.flatMap(request => request.source_record_ids)],
       coverageNote: total === null ? 'unknown (null) — not zero' : null }));
   }
   const { requests_with_usage, distinct_request_ids } = usage.coverage ?? {};
