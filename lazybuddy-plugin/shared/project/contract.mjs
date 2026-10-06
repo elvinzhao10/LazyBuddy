@@ -66,6 +66,15 @@ const array = (validate, maximum = 10000) => (value, path) => {
   }
 };
 const hash = (value, path) => { if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) fail('INVALID_VALUE', `${path} must be a SHA-256 digest`); };
+const boolean = (value, path) => { if (typeof value !== 'boolean') fail('INVALID_VALUE', `${path} must be a boolean`); };
+const repositoryKey = (value, path) => {
+  text(value, path);
+  if (!/^repo:[a-f0-9]{64}$/.test(value)) fail('INVALID_VALUE', `${path} must be a repository key of the form repo:<64 hex>`);
+};
+const commitId = (value, path) => {
+  text(value, path);
+  if (!/^([a-f0-9]{40}|[a-f0-9]{64})$/.test(value)) fail('INVALID_VALUE', `${path} must be a commit object id`);
+};
 const timestamp = (value, path) => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(value) ||
       !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 19) !== value.slice(0, 19)) fail('INVALID_VALUE', `${path} must be a UTC timestamp`);
@@ -480,9 +489,45 @@ export function assertProjectionOptions(value) {
     runtime: choice(RUNTIMES), native_project_id: id, run_id: id,
     execution: choice(['not_started', 'running', 'finished', 'failed', 'cancelled']), observed_at: timestamp,
   }, [], path);
-  object(value, { sourceObservations: array(sourceObservation, 512), runObservations: array(runObservation, 1024) }, ['sourceObservations', 'runObservations'], 'observations');
+  const identityObservation = (entry, path) => {
+    object(entry, { repository_key: repositoryKey, basis: choice(['registry', 'canonical-path']),
+      legacy_repository_key: nullable(repositoryKey) }, ['legacy_repository_key'], path);
+    if (entry.basis === 'canonical-path' && Object.hasOwn(entry, 'legacy_repository_key')) {
+      fail('INVALID_VALUE', `${path}.legacy_repository_key applies to a registry identity only`);
+    }
+    return entry;
+  };
+  const worktreeObservation = (entry, path) => {
+    object(entry, { root: text, kind: choice(['main', 'linked']), branch: nullable(text), head: nullable(commitId),
+      detached: boolean, bare: boolean, current: boolean }, [], path);
+    if ((entry.detached || entry.bare) && entry.branch !== null) {
+      fail('INVALID_VALUE', `${path}.branch must be null for a detached or bare worktree`);
+    }
+    if (!entry.detached && !entry.bare && entry.branch === null) {
+      fail('MISSING_FIELD', `${path}.branch is required for an attached worktree`);
+    }
+    return entry;
+  };
+  object(value, { sourceObservations: array(sourceObservation, 512), runObservations: array(runObservation, 1024),
+    identity: identityObservation, worktreeObservations: array(worktreeObservation, 64) },
+    ['sourceObservations', 'runObservations', 'identity', 'worktreeObservations'], 'observations');
   unique(value.sourceObservations ?? [], entry => entry.source_id, 'source observations');
   unique(value.runObservations ?? [], entry => JSON.stringify([entry.runtime, entry.native_project_id, entry.run_id]), 'run observations');
+  unique(value.worktreeObservations ?? [], entry => entry.root, 'worktree observations');
+  if (value.worktreeObservations && value.worktreeObservations.filter(entry => entry.current).length !== 1) {
+    fail('INVALID_VALUE', 'observations.worktreeObservations must mark exactly one current worktree');
+  }
+  return value;
+}
+
+// The runtime-neutral repository registry (`.lazyseries/project.json`): stable identity
+// and a source pointer list. It carries no document bodies and no execution authority.
+export function assertProjectRegistry(value) {
+  const registrySource = (entry, path) => object(entry, { id, role: choice(SOURCE_ROLES), path: assertRelativeSourcePath }, [], path);
+  object(value, { schema_version: literal(1), project_id: id, repository_key: repositoryKey,
+    runtime: choice(RUNTIMES), created_at: timestamp, sources: array(registrySource, 512) }, [], 'registry');
+  unique(value.sources, entry => entry.id, 'registry sources');
+  unique(value.sources, entry => entry.path, 'registry source paths');
   return value;
 }
 export function assertCapabilityRequest(value, path = 'request') {

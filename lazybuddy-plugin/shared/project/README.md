@@ -8,8 +8,9 @@ decision. A native run is optional.
 The [contract](contract.mjs), [model](model.mjs), and
 [projection](projection.mjs) recognize all six LazySeries runtime names. The
 [CLI](cli.mjs) and [native bridge](../../scripts/state/project-dashboard-bridge.py)
-currently implement **LazyBuddy only, for one canonical repository root**.
-Runtime enums are not evidence of sibling integration.
+currently implement **LazyBuddy only**; repository identity is runtime-neutral
+through `.lazyseries/project.json`. Runtime enums are not evidence of sibling
+integration.
 
 ## Ownership and entry points
 
@@ -224,9 +225,17 @@ individual imported items can still reference an older source capture.
 
 The native store is `.lazybuddy/project/`: `owner.json` binds the project ID and
 repository key, `state.json` retains current imported records plus saved command
-receipts, and `lock` serializes bridge access. The key hashes the canonical root
-path; it is not a portable Git identity. Moving the root, migration, and linked
-worktree binding require future work.
+receipts, and `lock` serializes bridge access. Identity is anchored by the
+runtime-neutral `.lazyseries/project.json` registry at the repository root: it
+holds a generated stable repository key plus a source pointer list (ids, roles,
+paths — no document bodies, no execution authority) and is created only by
+explicit `init`, never by a read. The native `owner.json` records its registry
+link. A moved root and linked Git worktrees resolve to the same registry
+identity; `git worktree list --porcelain -z` facts distinguish worktrees and
+their separate working revisions without flattening them. A store created under
+the earlier canonical-path identity migrates additively through explicit
+`init`: `state.json` and its retained receipts stay byte-identical, the owner
+records the replaced path key, and reads before migration keep working.
 
 The store is user-owned and private; symlinks, hard-linked state files,
 directory replacement, unsafe permissions, and ownership collisions are

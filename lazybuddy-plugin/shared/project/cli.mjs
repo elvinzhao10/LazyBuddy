@@ -3,6 +3,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createProject, applyProjectCommand } from './model.mjs';
+import { assertProjectRegistry } from './contract.mjs';
 import { projectSnapshot } from './projection.mjs';
 
 const LIMIT = 8 * 1024 * 1024;
@@ -70,6 +71,7 @@ async function main(argv) {
     if (input.action === 'create') result = createProject(input.options);
     else if (input.action === 'command') result = applyProjectCommand(input.state, input.command, input.context);
     else if (input.action === 'snapshot') result = projectSnapshot(input.state, input.context);
+    else if (input.action === 'registry') result = assertProjectRegistry(input.registry);
     else throw new ProjectBridgeError('INVALID_REDUCER_ACTION');
     const output = JSON.stringify(result);
     if (Buffer.byteLength(output) > LIMIT) throw new ProjectBridgeError('OUTPUT_TOO_LARGE');

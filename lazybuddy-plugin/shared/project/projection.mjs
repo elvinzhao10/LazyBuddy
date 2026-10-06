@@ -1,10 +1,12 @@
 import { assertProjectState, assertProjectionOptions, fail } from './contract.mjs';
+import { sha256Text } from './history.mjs';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const runKey = value => JSON.stringify([value.runtime, value.native_project_id, value.run_id]);
 
 export function projectSnapshot(state, options = {}) {
   assertProjectState(state); assertProjectionOptions(options);
+  const identity = options.identity ?? null;
   const sourceById = new Map(state.sources.map(source => [source.id, source]));
   const observations = new Map((options.sourceObservations ?? []).map(value => [value.source_id, value]));
   for (const observation of observations.values()) {
@@ -44,8 +46,9 @@ export function projectSnapshot(state, options = {}) {
     observed_via_observation_ids: retainedObservations.filter(observation => observation.subject.kind === 'architecture'
       && observation.subject.id === element.id).map(observation => observation.id) }));
   const accepted = items.filter(item => item.state === 'accepted');
-  return { schema_version: 1, project_id: state.project_id, runtime: state.runtime,
-    repository_key: state.repository_key, revision: state.revision, baseline_revision: state.baseline_revision,
+  const snapshot = { schema_version: 1, project_id: state.project_id, runtime: state.runtime,
+    repository_key: identity ? identity.repository_key : state.repository_key,
+    revision: state.revision, baseline_revision: state.baseline_revision,
     observation_revision: state.observation_revision ?? 0,
     sources, items, plans,
     proposals: (state.proposals ?? []).map(clone), architecture, research: (state.research ?? []).map(clone),
@@ -60,4 +63,17 @@ export function projectSnapshot(state, options = {}) {
       unassigned_item_ids: accepted.filter(item => item.contributing_plan_ids.length === 0).map(item => item.id),
       pending_proposals: (state.proposals ?? []).filter(proposal => proposal.state === 'proposed').length,
     }, issues };
+  if (identity) snapshot.identity = { repository_key: identity.repository_key, basis: identity.basis,
+    legacy_repository_key: identity.legacy_repository_key ?? null };
+  if (options.worktreeObservations) {
+    // Worktrees of one repository share the registry identity while carrying separate
+    // working revisions; without a registry each root keeps its own path-derived key.
+    const shared = Boolean(identity && identity.basis === 'registry');
+    snapshot.worktrees = { status: 'observed',
+      identity: { basis: identity ? identity.basis : 'canonical-path',
+        repository_key: identity ? identity.repository_key : state.repository_key, shared },
+      entries: options.worktreeObservations.map(entry => ({ ...entry,
+        ...(shared ? {} : { repository_key: `repo:${sha256Text(entry.root)}` }) })) };
+  }
+  return snapshot;
 }
