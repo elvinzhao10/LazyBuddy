@@ -1,0 +1,23 @@
+@import './overview.css';
+
+/* T14 project shell — the project name leads, the selected product is a compact
+   identity badge, destinations render only after initialization (IO-2). Tokens
+   only; no animation, shared var(--fast) transitions only. */
+
+.project-shell { display: grid; gap: var(--s4); }
+.shell-head h1 { margin: 0; font-size: var(--heading); }
+.shell-title { overflow-wrap: anywhere; }
+.shell-product-badge .status { min-block-size: auto; }
+.shell-context { flex-wrap: wrap; margin: 0; }
+
+.shell-destinations { flex-wrap: wrap; gap: var(--s2); }
+.shell-destinations [data-destination] { border-radius: var(--radius-pill); }
+.shell-destinations [data-destination][data-state='live'][aria-pressed='true'] { background: var(--selected); }
+.shell-destination-reason { font-size: var(--caption); align-self: center; }
+
+.shell-content { display: grid; gap: var(--s4); }
+
+@media (max-width: 44rem) {
+  .shell-destinations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shell-destination-reason { grid-column: 1 / -1; }
+}

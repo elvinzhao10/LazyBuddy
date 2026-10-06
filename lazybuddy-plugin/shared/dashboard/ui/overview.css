@@ -1,0 +1,40 @@
+@import './project-map-spike.css';
+
+/* T14 Overview — statement, status sentence, metric strip, attention queue and
+   contributing-records inspector over the T03 composition view. Consumes the
+   existing design tokens only; no animation, and the only transitions ride the
+   shared var(--fast) duration so reduced-motion collapses them. */
+
+.overview-view { display: grid; gap: var(--s4); }
+.overview-head h2 { margin: 0; }
+.overview-statement p { margin: 0; max-inline-size: var(--measure); }
+.overview-sentence-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: 0; max-inline-size: none; }
+.overview-clause { min-block-size: auto; padding: var(--s1) var(--s2); border-radius: var(--radius-pill);
+  border: var(--line) solid var(--border); background: var(--surface); font-size: var(--caption); }
+.overview-clause[aria-pressed='true'] { background: var(--selected); }
+.overview-clause-unavailable { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--caption); color: var(--muted); }
+
+.overview-metric-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.overview-metric { display: grid; gap: var(--s1); min-inline-size: var(--card-min); max-inline-size: 22rem;
+  padding: var(--s2); border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.overview-metric [data-metric-id] { inline-size: 100%; text-align: start; justify-content: space-between; overflow-wrap: anywhere; }
+.overview-metric-unavailable [data-metric-id] { border-style: dashed; }
+.overview-metric .meta { margin: 0; }
+
+.overview-queue-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; max-inline-size: var(--measure); }
+.overview-queue-item { display: grid; gap: var(--s1); padding: var(--s3); border: var(--line) solid var(--border);
+  border-left: 3px solid var(--attention-ink); border-radius: var(--radius-card); background: var(--surface); }
+.overview-queue-item .cluster { flex-wrap: wrap; gap: var(--s2); }
+.overview-queue-item .meta { margin: 0; }
+.overview-queue-item [data-queue-id] { justify-self: start; min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); }
+
+.overview-records { align-self: start; position: sticky; top: var(--s2); max-inline-size: var(--inspector); }
+.overview-records h3 { margin: 0; }
+.overview-records .meta { margin: 0; }
+.overview-record-list { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.overview-record-list code { overflow-wrap: anywhere; }
+
+@media (max-width: 44rem) {
+  .overview-records { position: static; max-inline-size: none; }
+  .overview-metric { min-inline-size: 100%; }
+}
