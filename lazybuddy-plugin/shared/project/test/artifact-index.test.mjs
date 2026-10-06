@@ -528,7 +528,12 @@ test('registration goes through the real CLI command route with digest, size and
       expected_sha256: sha(Buffer.from('wrong digest')) }],
     [{ producer: 'producer:t12-suite', path: '.lazybuddy/runs/run-beta/artifacts/submission-1' }],
   ];
-  const expectedCodes = ['UNSAFE_SOURCE_PATH', 'PROTECTED_SOURCE_PATH', 'PROTECTED_ARTIFACT_PATH',
+  // A `.lazyseries` registration surfaces PROTECTED_REGISTRY_PATH, not
+  // PROTECTED_ARTIFACT_PATH: assertRegistrableArtifactPath applies the shared
+  // contract's relative-source rules first, and the contract-level registry
+  // namespace protection (T06) precedes the compose-layer artifact rule (T12).
+  // The `.lazybuddy/{dashboard,project}` native storage stays PROTECTED_SOURCE_PATH.
+  const expectedCodes = ['UNSAFE_SOURCE_PATH', 'PROTECTED_SOURCE_PATH', 'PROTECTED_REGISTRY_PATH',
     'ARTIFACT_SYMLINK_REFUSED', 'ARTIFACT_TOO_LARGE', 'ARTIFACT_MISSING', 'ARTIFACT_DIGEST_MISMATCH',
     'ARTIFACT_TYPE_REQUIRED'];
   for (let index = 0; index < refusals.length; index += 1) {

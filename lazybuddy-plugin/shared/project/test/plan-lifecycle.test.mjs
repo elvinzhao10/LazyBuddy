@@ -139,6 +139,31 @@ test('a change between preview and launch is rechecked and refuses admission', (
   assert.equal(retracted.reason.code, 'GATE_INVALIDATED');
 });
 
+test('identical criterion revisions in a different insertion order never refuses admission', () => {
+  const state = planState();
+  const twoCriteria = criteria => ({ schema_version: 1, plan_id: 'plan:upstream', plan_revision: 1,
+    content_sha256: HASH('upstream'),
+    tasks: [{ id: 'u1', title: 'Upstream work', criteria, dependencies: [] }] });
+  const facts = normalizeDependencyFacts([finishedFact('fact:u1-exec'),
+    verifyFact('fact:u1-verify', { criterion: { 'c-main': 1, 'c-second': 1 } })]);
+  const previewSet = composeGraphSet([twoCriteria([{ id: 'c-main', revision: 1 }, { id: 'c-second', revision: 1 }])], { state });
+  const preview = previewAdmission(state, previewSet, facts, { plan_id: 'plan:upstream', task_id: 'u1' });
+  assert.equal(preview.status, 'eligible');
+  assert.deepEqual(Object.keys(preview.basis.criterion_revisions), ['c-main', 'c-second']);
+  // A re-authored graph document with the same plan_revision and content_sha256
+  // but the same criterion entries in a different insertion order is not drift.
+  const reorderedSet = composeGraphSet([twoCriteria([{ id: 'c-second', revision: 1 }, { id: 'c-main', revision: 1 }])], { state });
+  const reordered = recheckAdmission(state, reorderedSet, facts, preview);
+  assert.equal(reordered.status, 'admitted');
+  // The comparison is order insensitive, not absent: a genuine per-key value
+  // change in the same map still refuses with STALE_PREVIEW.
+  const bumpedSet = composeGraphSet([twoCriteria([{ id: 'c-main', revision: 1 }, { id: 'c-second', revision: 2 }])], { state });
+  const bumped = recheckAdmission(state, bumpedSet, facts, preview);
+  assert.equal(bumped.status, 'refused');
+  assert.equal(bumped.reason.code, 'STALE_PREVIEW');
+  assert.match(bumped.reason.detail, /criterion_revisions/);
+});
+
 test('invalid cycles cannot be accepted, and retries are attempts never cycles', () => {
   const state = planState({ plans: [
     planState().plans[0], planState().plans[1],

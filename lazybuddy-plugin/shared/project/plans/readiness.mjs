@@ -350,8 +350,15 @@ export function recheckAdmission(state, set, factsInput, preview) {
     const previous = preview.basis[key];
     if (value !== null && typeof value === 'object') {
       // criterion_revisions is a map: compare by value so an unchanged map of
-      // criterion revisions never falsely reports drift.
-      return JSON.stringify(previous) !== JSON.stringify(value);
+      // criterion revisions never falsely reports drift. Key insertion order is
+      // not content — the same entries in a different order are compared by key
+      // set and per-key values, never by serialized shape.
+      const previousMap = previous !== null && typeof previous === 'object' ? previous : {};
+      const previousKeys = Object.keys(previousMap);
+      const currentKeys = Object.keys(value);
+      if (previousKeys.length !== currentKeys.length) return true;
+      if (!currentKeys.every(key => Object.hasOwn(previousMap, key))) return true;
+      return currentKeys.some(key => previousMap[key] !== value[key]);
     }
     return previous !== value;
   }).map(([key]) => key);
