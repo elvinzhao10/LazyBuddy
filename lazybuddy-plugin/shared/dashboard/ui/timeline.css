@@ -1,0 +1,33 @@
+/* T16 actual-run timeline — one shared time axis, one lane per observed agent.
+   Interval color follows the shared semantic states (blue executing/verifying,
+   green finished-verified is NOT used here: a finished execution is neutral; amber
+   attention, red failure, purple stale with a dashed open end). */
+
+.execution-timeline-panel { padding: var(--s4); }
+.execution-timeline-panel h3 { margin: 0; }
+.execution-timeline-viewport { overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; }
+.execution-axis { position: relative; block-size: var(--s5); margin-inline-start: 13rem; margin-inline-end: var(--s4); border-block-end: var(--line) solid var(--border); }
+.execution-axis-tick { position: absolute; inset-block-start: 0; }
+.execution-axis-tick .meta { display: block; font-family: var(--mono); transform: translateX(-50%); }
+.execution-lanes { display: grid; gap: var(--s2); margin: 0; padding: var(--s2) 0; list-style: none; }
+.execution-lane { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: var(--s3); align-items: center; }
+.execution-lane-label { display: flex; min-inline-size: 0; }
+.execution-lane-label .meta { overflow-wrap: anywhere; }
+.execution-track { position: relative; min-block-size: var(--s6); margin-inline-end: var(--s4); border: var(--line) dashed var(--border); border-radius: var(--radius-control); }
+.execution-interval { position: absolute; inset-block: var(--s2) var(--s2); display: flex; align-items: center; min-inline-size: 2px;
+  border-radius: var(--radius-control); padding-inline: var(--s1); border: var(--line) solid var(--state-ink, var(--control-edge));
+  background: var(--state-fill, var(--neutral-fill)); color: var(--state-ink, var(--neutral-ink)); cursor: pointer; }
+.execution-interval[data-state='executing'], .execution-interval[data-state='waiting'] { --state-ink: var(--active-ink); --state-fill: var(--active-fill); }
+.execution-interval[data-state='blocked'] { --state-ink: var(--attention-ink); --state-fill: var(--attention-fill); }
+.execution-interval[data-state='failed'], .execution-interval[data-state='cancelled'] { --state-ink: var(--failed-ink); --state-fill: var(--failed-fill); }
+.execution-interval[data-state='stale'] { --state-ink: var(--stale-ink); --state-fill: var(--stale-fill); border-style: dashed; }
+.execution-interval[data-open='true']::after { content: 'open · no terminal record'; font-size: var(--caption); padding-inline-start: var(--s2); white-space: nowrap; }
+.execution-interval-label { font-size: var(--caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.execution-interval:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+.execution-notes { display: grid; gap: var(--s1); margin: 0; padding: var(--s2) 0 0 var(--s4); list-style: none; }
+
+@container (max-width: 44rem) {
+  .execution-axis { margin-inline-start: 0; }
+  .execution-lane { grid-template-columns: minmax(0, 1fr); gap: var(--s1); }
+  .execution-track { margin-inline-start: 0; }
+}
