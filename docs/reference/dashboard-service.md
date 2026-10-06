@@ -12,12 +12,30 @@ this overview never overrides it.
 | --- | --- |
 | `lazybuddy-plugin/shared/dashboard/` | The family's portable dashboard core: projection, command and queue reducers, the browser UI, and the service runtime. |
 | `lazybuddy-plugin/shared/dashboard.vendor.json` | Hash-pinned vendoring manifest recording the source revision and `treeSha256` for the vendored tree. |
-| `scripts/vendor-dashboard.mjs` | The vendoring tool; `--check` verifies every family root against the pinned tree. |
+| `lazybuddy-plugin/shared/project/` | The 1.4.0 persistent project layer (contracts, model, projection, CLI, source editing, reconciliation, observations) vendored as a second family tree. |
+| `lazybuddy-plugin/shared/project.vendor.json` | Hash-pinned manifest for the project tree (`scripts/project-vendor-manifest.v1.json` is the tracked source copy). |
+| `scripts/vendor-dashboard.mjs` | The vendoring tool; `--check` verifies every family root against the pinned tree, `--family project` selects the project tree. |
 | `.github/workflows/dashboard-family-drift.yml` | LazyBuddy-run CI job that rejects dashboard drift across the six sibling repositories. |
 
 LazyBuddy is the vendoring source. The vendored bytes are drift-guarded: do
 not edit `shared/dashboard/` in place; a change must go through the vendoring
 tool so the pinned manifest and every sibling tree move together.
+
+The project family (`--family project`) pins 31 files: the closed portable
+runtime unit (contract, model, history, projection, CLI, architecture,
+usage-accounting, reconciliation, `artifacts/`, `baseline/`, `plans/`,
+`git-observation/`, `source-edit/`) plus the portable QA harness
+(`qa/helpers.mjs`, `qa/inactivity-baseline.mjs`, `qa/store-boundary.test.mjs`).
+It deliberately excludes `test/` and `qa/native-identity.mjs` (Buddy-side
+contract proof bound to dashboard dev fixtures that no family manifest
+distributes), `qa/fault-hooks/` (deliberate fault injection must never
+distribute), and generated `__pycache__` caches; the recorded rationale lives
+in the manifest's `selection` block. Until the T21–T25 ports vendor the tree
+into the five siblings, `--check --family project` reports those roots as
+`PENDING_PORTS` (never as passing) and fails closed on any missing file,
+edited byte, unpinned extra file, or sidecar drift in every root that has the
+tree; `--require-complete` turns absent roots into failures for post-T26
+strictness.
 
 ## The authenticated browser service
 
