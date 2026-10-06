@@ -808,6 +808,11 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
     if command.get("expected_revision") != state["revision"] or command.get("project_id") != state["project_id"]:
         return [], []
     operation, payload = command.get("operation"), command.get("payload", {})
+    if operation in ("project.change.preview", "project.change.apply"):
+        # The capability wrappers carry the same source references as the
+        # content operation they wrap; captures follow the inner change.
+        change = payload.get("change", {})
+        operation, payload = change.get("operation"), change.get("payload", {})
     wanted = {}
     if operation == "register_source":
         wanted[payload.get("id")] = payload.get("path")
@@ -829,7 +834,7 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
             if source_id in by_id:
                 wanted[source_id] = by_id[source_id]
     else:
-        references = [item.get("source", {}) for item in payload.get("items", [])] if operation == "record_baseline_items" else [payload.get("source", {})] if operation == "register_plan" else []
+        references = [item.get("source", {}) for item in payload.get("items", [])] if operation == "record_baseline_items" else [payload.get("source", {})] if operation in ("register_plan", "plan.create", "plan.edit") else []
         by_id = {source["id"]: source["path"] for source in state["sources"]}
         for reference in references:
             source_id = reference.get("source_id")

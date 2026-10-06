@@ -24,7 +24,7 @@
       ".mcp.json"
     ],
     "file_count": 63,
-    "inventory_sha256": "cf50f85033c48c58433ab9040cae518c0b554264eb14842ca1ad6dfa11a454d6"
+    "inventory_sha256": "8ccb4bb58ab6c8757842fc371a4d0e9582a510d5c5931d8b2aa99f8b9d888dc0"
   },
   "default_routes": {
     "codebuddy-ide": "codebuddy-marketplace",
