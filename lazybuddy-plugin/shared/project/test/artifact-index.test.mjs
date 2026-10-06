@@ -748,3 +748,51 @@ test('research records promotion links fail-closed and grant no verification or 
     grants_verification: false, accepts_requirement: false,
     accepted_requirements_unchanged: authority.accepted_requirement_ids }));
 });
+
+test('composeResearchFindings refuses malformed requests with typed INVALID_RESEARCH_REQUEST (T12-R1)', async t => {
+  await assert.rejects(async () => composeResearchFindings({ project_id: 'project:artifact-index', expected_revision: 1 }),
+    error => {
+      assert.equal(error.name, 'Error', 'The refusal must be a plain Error, never a raw TypeError');
+      assert.equal(error.code, 'INVALID_RESEARCH_REQUEST');
+      assert.match(error.message, /INVALID_RESEARCH_REQUEST/);
+      return true;
+    });
+  t.diagnostic('code=INVALID_RESEARCH_REQUEST present on the Error');
+});
+
+test('composeResearchFindings refuses empty findings with typed EMPTY_CHANGE (T12-R1)', async t => {
+  await assert.rejects(async () => composeResearchFindings({
+    command_id: 't12:r1-empty', project_id: 'project:artifact-index', expected_revision: 1, findings: [],
+  }), error => {
+    assert.equal(error.name, 'Error', 'The refusal must be a plain Error, never a raw TypeError');
+    assert.equal(error.code, 'EMPTY_CHANGE');
+    assert.match(error.message, /EMPTY_CHANGE/);
+    return true;
+  });
+  t.diagnostic('code=EMPTY_CHANGE present on the Error');
+});
+
+test('researchPromotionView refuses unknown promotion links with typed UNKNOWN_PROPOSAL (T12-R1)', async t => {
+  await assert.rejects(async () => researchPromotionView({
+    proposals: [{ id: 'proposal:known', state: 'proposed' }],
+    research: [{ id: 'research:r1', promotion_proposal_id: 'proposal:missing' }],
+  }), error => {
+    assert.equal(error.name, 'Error', 'The refusal must be a plain Error, never a raw TypeError');
+    assert.equal(error.code, 'UNKNOWN_PROPOSAL');
+    assert.match(error.message, /UNKNOWN_PROPOSAL/);
+    return true;
+  });
+  t.diagnostic('code=UNKNOWN_PROPOSAL present on the Error');
+});
+
+test('assertResearchGrantsNothing refuses smuggled authority with typed RESEARCH_AUTHORITY_LEAK naming the key (T12-R1)', async t => {
+  await assert.rejects(async () => assertResearchGrantsNothing({
+    research: [{ id: 'research:r1', question: 'Smuggle acceptance?', verification: 'verified' }],
+  }), error => {
+    assert.equal(error.name, 'Error', 'The refusal must be a plain Error, never a raw TypeError');
+    assert.equal(error.code, 'RESEARCH_AUTHORITY_LEAK');
+    assert.match(error.message, /RESEARCH_AUTHORITY_LEAK: verification$/, 'The message must name the smuggled key');
+    return true;
+  });
+  t.diagnostic('code=RESEARCH_AUTHORITY_LEAK present; smuggled key named in the message');
+});

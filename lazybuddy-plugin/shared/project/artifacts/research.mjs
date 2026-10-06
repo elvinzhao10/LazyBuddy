@@ -24,10 +24,10 @@ export function composeResearchFindings(request) {
   if (typeof command_id !== 'string' || !command_id.length ||
       typeof project_id !== 'string' || !project_id.length ||
       !Number.isSafeInteger(expected_revision) || expected_revision < 0) {
-    throw new Object.assign(new Error('INVALID_RESEARCH_REQUEST'), { code: 'INVALID_RESEARCH_REQUEST' });
+    throw Object.assign(new Error('INVALID_RESEARCH_REQUEST'), { code: 'INVALID_RESEARCH_REQUEST' });
   }
   if (!Array.isArray(findings) || !findings.length) {
-    throw new Object.assign(new Error('EMPTY_CHANGE'), { code: 'EMPTY_CHANGE' });
+    throw Object.assign(new Error('EMPTY_CHANGE'), { code: 'EMPTY_CHANGE' });
   }
   return { schema_version: 1, command_id, project_id, expected_revision,
     operation: 'record_research_findings', payload: { findings } };
@@ -38,7 +38,7 @@ export function researchPromotionView(snapshot) {
   return (snapshot?.research ?? []).map(finding => {
     const proposal = finding.promotion_proposal_id != null ? proposals.get(finding.promotion_proposal_id) : undefined;
     if (finding.promotion_proposal_id != null && !proposal) {
-      throw new Object.assign(new Error('UNKNOWN_PROPOSAL'), { code: 'UNKNOWN_PROPOSAL' });
+      throw Object.assign(new Error('UNKNOWN_PROPOSAL'), { code: 'UNKNOWN_PROPOSAL' });
     }
     const status = proposal ? (proposal.state === 'accepted' ? 'linked_accepted' : 'linked_proposed') : 'unlinked';
     return {
@@ -64,7 +64,7 @@ export function assertResearchGrantsNothing(snapshot) {
   for (const finding of findings) {
     for (const key of Object.keys(finding ?? {})) {
       if (/^(accepted|verified|verification|requirement|state|status|authority|proof)/i.test(key)) {
-        throw new Object.assign(new Error(`RESEARCH_AUTHORITY_LEAK: ${key}`), { code: 'RESEARCH_AUTHORITY_LEAK' });
+        throw Object.assign(new Error(`RESEARCH_AUTHORITY_LEAK: ${key}`), { code: 'RESEARCH_AUTHORITY_LEAK' });
       }
     }
   }
