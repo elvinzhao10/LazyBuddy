@@ -29,10 +29,8 @@ function usageRecord(record, path) {
   if (typeof record.request_id !== 'string' || !record.request_id.length) fail('INVALID_VALUE', `${path}.request_id binds the record to its physical invocation`);
   if (!RECORD_KINDS.includes(record.kind)) fail('INVALID_VALUE', `${path}.kind must be a declared accounting kind`);
   if (!isTimestamp(record.observed_at)) fail('INVALID_VALUE', `${path}.observed_at must be a UTC timestamp`);
-  if (record.subject === undefined) record.subject = null;
-  else if (typeof record.subject !== 'string') fail('INVALID_VALUE', `${path}.subject must be text or null`);
-  if (record.status === undefined) record.status = 'completed';
-  else if (!['completed', 'failed', 'cancelled'].includes(record.status)) {
+  if (record.subject !== undefined && typeof record.subject !== 'string') fail('INVALID_VALUE', `${path}.subject must be text or null`);
+  if (record.status !== undefined && !['completed', 'failed', 'cancelled'].includes(record.status)) {
     fail('INVALID_VALUE', `${path}.status must be completed, failed or cancelled — failed and cancelled requests keep their reported usage`);
   }
   if (!plain(record.usage)) fail('INVALID_VALUE', `${path}.usage must be a plain object`);
@@ -43,8 +41,8 @@ function usageRecord(record, path) {
     }
   }
   return { id: record.id, request_id: record.request_id, kind: record.kind,
-    observed_at: record.observed_at, subject: record.subject, usage: { ...record.usage },
-    status: record.status };
+    observed_at: record.observed_at, subject: record.subject ?? null, usage: { ...record.usage },
+    status: record.status ?? 'completed' };
 }
 
 const INTERVAL_FIELDS = Object.freeze(['agent_id', 'role', 'started_at', 'ended_at']);
@@ -103,39 +101,51 @@ export function normalizeUsage(records, { window: usageWindow } = {}) {
   }
   const latestSnapshot = new Map();
   const finalValues = new Map();
+  const kindPrecedence = { delta: 1, 'cumulative-snapshot': 2, 'final-value': 3 };
+  const byAccountingTime = (a, b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)
+    || kindPrecedence[a.kind] - kindPrecedence[b.kind]
+    || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   for (const record of normalized) {
     if (record.kind === 'cumulative-snapshot') {
       const current = latestSnapshot.get(record.request_id);
-      if (!current || record.observed_at >= current.observed_at) latestSnapshot.set(record.request_id, record);
+      if (!current || byAccountingTime(record, current) > 0) latestSnapshot.set(record.request_id, record);
     } else if (record.kind === 'final-value') {
       const current = finalValues.get(record.request_id);
-      if (!current || record.observed_at >= current.observed_at) finalValues.set(record.request_id, record);
+      if (!current || byAccountingTime(record, current) > 0) finalValues.set(record.request_id, record);
     }
   }
   const perRequest = new Map();
   const parentRequests = new Set();
+  const applicable = new Map();
   for (const record of normalized) {
     if (record.kind === 'parent-aggregate') { parentRequests.add(record.request_id); continue; }
     if (record.kind === 'cumulative-snapshot' && latestSnapshot.get(record.request_id) !== record) continue;
     if (record.kind === 'final-value' && finalValues.get(record.request_id) !== record) continue;
-    const current = perRequest.get(record.request_id);
-    if (!current) perRequest.set(record.request_id, { usage: { ...record.usage }, sources: [record.id], kinds: new Set([record.kind]) });
-    else {
-      if (current.kinds.has('delta') && record.kind === 'delta') {
+    const list = applicable.get(record.request_id) ?? [];
+    list.push(record); applicable.set(record.request_id, list);
+  }
+  for (const [requestId, list] of applicable) {
+    list.sort(byAccountingTime);
+    for (const record of list) {
+      const current = perRequest.get(requestId);
+      if (!current) perRequest.set(requestId, { usage: { ...record.usage }, sources: [record.id] });
+      else if (record.kind === 'delta') {
         for (const [field, value] of Object.entries(record.usage)) {
           const base = current.usage[field] ?? 0;
           current.usage[field] = value === null ? current.usage[field] ?? null : base + value;
         }
+        current.sources.push(record.id);
       } else {
         for (const [field, value] of Object.entries(record.usage)) current.usage[field] = value;
+        current.sources.push(record.id);
       }
-      current.sources.push(record.id); current.kinds.add(record.kind);
+      if (record.kind === 'final-value') break; // the latest final replaces at its timestamp and ends accumulation
     }
   }
   for (const parent of parentRequests) perRequest.delete(parent);
   const fieldTotals = {};
   const requestTotals = [];
-  for (const [requestId, entry] of perRequest) {
+  for (const [requestId, entry] of [...perRequest.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
     requestTotals.push({ request_id: requestId, usage: entry.usage, source_record_ids: entry.sources });
     for (const [field, value] of Object.entries(entry.usage)) {
       if (value === null) { fieldTotals[field] = null; continue; }
@@ -149,7 +159,7 @@ export function normalizeUsage(records, { window: usageWindow } = {}) {
     if (Object.keys(entry.usage).length > 0) withReportedFields.add(requestId);
   }
   return { grain: 'physical-provider-invocation', requests: requestTotals, totals: fieldTotals,
-    parent_aggregate_requests_excluded: [...parentRequests],
+    parent_aggregate_requests_excluded: [...parentRequests].sort(),
     window: usageWindow ?? null,
     coverage: { requests_with_usage: withReportedFields.size, distinct_request_ids: requestsReported.size } };
 }

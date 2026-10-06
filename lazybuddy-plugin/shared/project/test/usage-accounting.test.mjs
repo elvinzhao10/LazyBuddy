@@ -37,6 +37,77 @@ test('cumulative values 40, 100 and final 100 total 100', () => {
   assert.equal(result.coverage.requests_with_usage, 2);
 });
 
+test('a stale snapshot delivered after a later final-value never regresses the total (T10-R1)', () => {
+  // The T10 independent-verification reorder fixture: the final-value is
+  // delivered BEFORE an older cumulative snapshot. Final values replace at
+  // their observed time, so the total stays 100 in every delivery order.
+  const finalFirst = [
+    { id: 'fin', request_id: 'req:1', kind: 'final-value', observed_at: '2026-10-06T12:03:00Z', usage: { total_tokens: 100 } },
+    { id: 's1', request_id: 'req:1', kind: 'cumulative-snapshot', observed_at: '2026-10-06T12:00:00Z', usage: { total_tokens: 40 } },
+  ];
+  const finalDeliveredFirst = normalizeUsage(finalFirst);
+  const snapshotDeliveredFirst = normalizeUsage([...finalFirst].reverse());
+  assert.equal(finalDeliveredFirst.totals.total_tokens, 100);
+  assert.equal(snapshotDeliveredFirst.totals.total_tokens, 100);
+  assert.deepEqual(finalDeliveredFirst, snapshotDeliveredFirst);
+  // The lane fixture with its final delivered first: still 100.
+  const laneReordered = normalizeUsage([
+    { id: 'r1-final', request_id: 'req:1', kind: 'final-value', observed_at: '2026-10-06T12:03:00Z', usage: { total_tokens: 100 } },
+    { id: 'r1-s1', request_id: 'req:1', kind: 'cumulative-snapshot', observed_at: '2026-10-06T12:00:00Z', usage: { total_tokens: 40 } },
+    { id: 'r1-s2', request_id: 'req:1', kind: 'cumulative-snapshot', observed_at: '2026-10-06T12:02:00Z', usage: { total_tokens: 100 } },
+    { id: 'r2-d1', request_id: 'req:2', kind: 'delta', observed_at: '2026-10-06T12:04:00Z', usage: { total_tokens: 0 } },
+  ]);
+  assert.equal(laneReordered.totals.total_tokens, 100);
+  // A delta observed before the final is replaced where their fields overlap;
+  // a delta observed after the final adds nothing — the final ends accumulation.
+  const earlyDelta = normalizeUsage([
+    { id: 'd-early', request_id: 'req:1', kind: 'delta', observed_at: '2026-10-06T12:01:00Z', usage: { total_tokens: 7 } },
+    ...finalFirst,
+  ]);
+  assert.equal(earlyDelta.totals.total_tokens, 100);
+  const lateDelta = normalizeUsage([
+    ...finalFirst,
+    { id: 'd-late', request_id: 'req:1', kind: 'delta', observed_at: '2026-10-06T12:05:00Z', usage: { total_tokens: 999 } },
+  ]);
+  assert.equal(lateDelta.totals.total_tokens, 100);
+});
+
+test('mixed snapshot and deltas total identically under every delivery order (T10-R1)', () => {
+  // The snapshot sets 40 at 12:00; deltas observed later add 6 and 4 (and 9 on
+  // a second request) — 59 regardless of how the records were delivered.
+  const records = [
+    { id: 's1', request_id: 'req:1', kind: 'cumulative-snapshot', observed_at: '2026-10-06T12:00:00Z', usage: { total_tokens: 40 } },
+    { id: 'd1', request_id: 'req:1', kind: 'delta', observed_at: '2026-10-06T12:02:00Z', usage: { total_tokens: 6 } },
+    { id: 'd2', request_id: 'req:1', kind: 'delta', observed_at: '2026-10-06T12:04:00Z', usage: { total_tokens: 4 } },
+    { id: 'x1', request_id: 'req:2', kind: 'delta', observed_at: '2026-10-06T12:01:00Z', usage: { total_tokens: 9 } },
+  ];
+  const permutations = (list) => list.length <= 1 ? [list]
+    : list.flatMap((item, index) => permutations([...list.slice(0, index), ...list.slice(index + 1)]).map(rest => [item, ...rest]));
+  const results = permutations(records).map(order => normalizeUsage(order));
+  assert.equal(results.length, 24);
+  for (const result of results) {
+    assert.equal(result.totals.total_tokens, 59);
+    assert.deepEqual(result.requests, [
+      { request_id: 'req:1', usage: { total_tokens: 50 }, source_record_ids: ['s1', 'd1', 'd2'] },
+      { request_id: 'req:2', usage: { total_tokens: 9 }, source_record_ids: ['x1'] },
+    ]);
+  }
+  for (const result of results) assert.deepEqual(result, results[0]);
+});
+
+test('normalizeUsage never mutates its input records; a re-pass over the same objects is identical (T10-R1)', () => {
+  const records = [
+    { id: 'd1', request_id: 'req:1', kind: 'delta', observed_at: '2026-10-06T12:00:00Z', usage: { total_tokens: 5 } },
+    { id: 's1', request_id: 'req:2', kind: 'cumulative-snapshot', observed_at: '2026-10-06T12:01:00Z', usage: { total_tokens: 40 } },
+  ];
+  const before = JSON.parse(JSON.stringify(records));
+  const first = normalizeUsage(records);
+  assert.deepEqual(records, before); // subject/status defaults never land on the caller's objects
+  const second = normalizeUsage(records);
+  assert.deepEqual(second, first);
+  assert.equal(second.totals.total_tokens, 45);
+});
+
 test('duplicate delivery is not a new request; parent aggregates are not summed with children', () => {
   const result = normalizeUsage([
     { id: 'a', request_id: 'req:1', kind: 'delta', observed_at: '2026-10-06T12:00:00Z', usage: { total_tokens: 10 } },
