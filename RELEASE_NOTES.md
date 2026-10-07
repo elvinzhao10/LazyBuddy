@@ -11,8 +11,9 @@ is the vendoring source that distributes and drift-guards it.
   CLI, architecture, usage accounting, reconciliation, artifacts, baseline,
   plans, source-edit, git-observation, portable qa harness) is hash-pinned by
   `project.vendor.json` and distributed byte-identically to the five sibling
-  packages; the T26 re-pin records tree `95c0e0fc…` at source revision
-  `7bf5bd8`, and the CI family-drift workflow now requires all six roots
+  packages; the family re-pinned at T26 to tree `95c0e0fc…`, then to the
+  final tree `1feb5646…` at source revision `537f393` at delivery prep, and
+  the CI family-drift workflow now requires all six roots
   complete (`--require-complete`) for both families.
 - Over that core, LazyBuddy (as family source) carries the project dashboard
   views, the chat/MCP project tools, transactional original-source editing,
