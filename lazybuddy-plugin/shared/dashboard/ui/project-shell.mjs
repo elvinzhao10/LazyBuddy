@@ -4,20 +4,21 @@
 // destination until a projection exists). The project name leads the shell,
 // the selected LazySeries product is a compact identity badge, and the header
 // shows repository/worktree, branch and observation freshness. Destination
-// views beyond Overview land with their owning tasks (T15/T16/T18/T19); each
-// disabled destination explains exactly that.
+// views beyond Overview landed as committed page modules (T15/T16/T18/T19)
+// but are not yet wired into this shell's navigation; each disabled
+// destination explains exactly that.
 import { button, element, statusChip } from './components.mjs';
 import { createOverviewView } from './overview.mjs';
 import { overviewFixture } from './overview-fixture.mjs';
 
 export const PROJECT_DESTINATIONS = Object.freeze([
   { id: 'overview', label: 'Overview', landsWith: null },
-  { id: 'project', label: 'Project', landsWith: 'T15 (project and plan editors)' },
-  { id: 'plans', label: 'Plans', landsWith: 'T15 (project and plan editors)' },
-  { id: 'execution', label: 'Execution', landsWith: 'T16 (nested execution and timeline)' },
-  { id: 'git', label: 'Git', landsWith: 'T18 (Git and metrics detail views)' },
-  { id: 'evidence', label: 'Evidence', landsWith: 'T19 (evidence and research views)' },
-  { id: 'research', label: 'Research', landsWith: 'T19 (evidence and research views)' },
+  { id: 'project', label: 'Project', landsWith: 'the service-navigation wiring (the T15 project and plan editors view module has landed; it is not yet selectable here)' },
+  { id: 'plans', label: 'Plans', landsWith: 'the service-navigation wiring (the T15 project and plan editors view module has landed; it is not yet selectable here)' },
+  { id: 'execution', label: 'Execution', landsWith: 'the service-navigation wiring (the T16 nested execution and timeline view module has landed; it is not yet selectable here)' },
+  { id: 'git', label: 'Git', landsWith: 'the service-navigation wiring (the T18 Git and metrics detail view module has landed; it is not yet selectable here)' },
+  { id: 'evidence', label: 'Evidence', landsWith: 'the service-navigation wiring (the T19 evidence and research view module has landed; it is not yet selectable here)' },
+  { id: 'research', label: 'Research', landsWith: 'the service-navigation wiring (the T19 evidence and research view module has landed; it is not yet selectable here)' },
 ]);
 
 export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {} }) {

@@ -327,6 +327,8 @@ Since the first slice, the pending list has landed: the project dashboard
 views and native chat routes live in the dashboard layer, this tree ships as
 the byte-pinned project vendor family (siblings receive it verbatim through
 `project.vendor.json` at their plugin's `shared/project`), and each sibling's
-native adapter is port-authored outside this tree. Conflict assessment remains
+native adapter is port-authored outside this tree. Those dashboard-layer view
+modules are not yet exposed by the production served dashboard navigation
+(run-scoped asset-manifest routes only). Conflict assessment remains
 deterministic only — no language-level semantic analysis is built. The runtime
 enums above are still not evidence of sibling native integration.

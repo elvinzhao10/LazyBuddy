@@ -20,6 +20,14 @@ is the vendoring source that distributes and drift-guards it.
   observations with usage/time accounting and local Git/worktree collectors.
   Ports consume the same vendored runtime through their own adapters, which
   remain port-authored and distinct.
+- Honest scope of those views: the project dashboard views ship as committed
+  page modules plus the standalone project shell entry; the production served
+  dashboard does not yet expose project destinations (its asset-manifest routes
+  stay run-scoped only), and the §14 comprehension targets were measured on the
+  shell entry, not the production service (see the G2 verdict — deferral R-2:
+  typed project read route, post-init-only destination swap, bounded
+  asset-manifest allowlist, single navigation surface, dedicated verifier and a
+  comprehension re-measure remain future work).
 - Boundaries stay honest: host embedding, chat handoff, and host wake remain
   unobserved on every surface; conflict assessment is deterministic only (no
   language-level semantic analysis); an immutable archive of older Markdown
