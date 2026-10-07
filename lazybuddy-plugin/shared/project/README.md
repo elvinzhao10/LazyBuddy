@@ -7,9 +7,12 @@ decision. A native run is optional.
 
 The [contract](contract.mjs), [model](model.mjs), and
 [projection](projection.mjs) recognize all six LazySeries runtime names. The
-[CLI](cli.mjs) and [native bridge](../../scripts/state/project-dashboard-bridge.py)
-currently implement **LazyBuddy only**; repository identity is runtime-neutral
-through `.lazyseries/project.json`. Runtime enums are not evidence of sibling
+[CLI](cli.mjs) resolves its [native
+bridge](../../scripts/state/project-dashboard-bridge.py) in the owning package:
+Buddy canonically, and each port ships its own bridge beside the vendored tree
+(Trae is the exception — its owning adapter is a Node store that does not ship
+this bridge); repository identity is runtime-neutral through
+`.lazyseries/project.json`. Runtime enums are not evidence of sibling
 integration.
 
 ## Ownership and entry points
@@ -303,11 +306,16 @@ not a complete recoverable document-version history.
 
 ## Contributor handoff
 
-[Model tests](test/project-model.test.mjs), [adversarial tests](test/project-adversarial.test.mjs),
-[native CLI tests](test/project-cli.test.mjs), and the
-[offline-notebook fixtures](test/fixtures/offline-notebook/) specify continuity
-across plans/reloads, explicit source refresh, revision conflicts, idempotency,
-anchors, and refusal of fabricated verification. The focused entry point is:
+The Buddy-side proof — the model tests (`test/project-model.test.mjs`), the
+adversarial tests (`test/project-adversarial.test.mjs`), the native CLI tests
+(`test/project-cli.test.mjs`), and the offline-notebook fixtures
+(`test/fixtures/offline-notebook/`) — specify continuity across
+plans/reloads, explicit source refresh, revision conflicts, idempotency,
+anchors, and refusal of fabricated verification. Those files are named here as
+text, not links, because the family selection deliberately excludes `test/`
+from the pinned distribution: sibling ports receive the runtime modules and the
+portable qa harness only and author their own adapter tests, so a link would
+resolve only in this source repository. The focused entry point is:
 
 ```bash
 node --test lazybuddy-plugin/shared/project/test/*.test.mjs
@@ -315,10 +323,10 @@ node --test lazybuddy-plugin/shared/project/test/*.test.mjs
 
 This README records implementation behavior, not a test-pass certificate.
 
-Still pending: the project-only browser/UI, native chat
-delivery/consumption, metrics, Git/worktree projections, semantic conflict
-assessment, sibling native adapters, and pinned distribution. `shared/project`
-currently sits outside the pinned dashboard core. Any eventual incorporation
-into `shared/dashboard` is an intentional vendor/manifest change requiring the
-family's distribution checks; this directory is not already ported merely
-because its pure contract lists six runtimes.
+Since the first slice, the pending list has landed: the project dashboard
+views and native chat routes live in the dashboard layer, this tree ships as
+the byte-pinned project vendor family (siblings receive it verbatim through
+`project.vendor.json` at their plugin's `shared/project`), and each sibling's
+native adapter is port-authored outside this tree. Conflict assessment remains
+deterministic only — no language-level semantic analysis is built. The runtime
+enums above are still not evidence of sibling native integration.

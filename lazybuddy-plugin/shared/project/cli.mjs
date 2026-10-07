@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Native Buddy entry point for the persistent, run-independent project record. */
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createProject, applyProjectCommand } from './model.mjs';
 import { assertProjectRegistry } from './contract.mjs';
@@ -94,7 +95,7 @@ async function main(argv) {
   process.stdout.write(JSON.stringify(result) + '\n');
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (process.argv[1] && pathToFileURL(fs.realpathSync(process.argv[1])).href === import.meta.url) {
   main(process.argv.slice(2)).catch(error => {
     const code = typeof error.code === 'string' && /^[A-Z][A-Z0-9_]{0,127}$/.test(error.code) ? error.code : 'PROJECT_COMMAND_FAILED';
     process.stderr.write(code + '\n'); process.exitCode = 65;
