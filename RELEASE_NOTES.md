@@ -4,6 +4,29 @@ A feature release across the six LazySeries siblings: the family's portable
 dashboard core is vendored byte-identically into every package, and LazyBuddy
 is the vendoring source that distributes and drift-guards it.
 
+## Project platform (2026-10-07)
+
+- The persistent project record ships as a second vendored family:
+  `lazybuddy-plugin/shared/project/` (contract, model, history, projection,
+  CLI, architecture, usage accounting, reconciliation, artifacts, baseline,
+  plans, source-edit, git-observation, portable qa harness) is hash-pinned by
+  `project.vendor.json` and distributed byte-identically to the five sibling
+  packages; the T26 re-pin records tree `95c0e0fc…` at source revision
+  `7bf5bd8`, and the CI family-drift workflow now requires all six roots
+  complete (`--require-complete`) for both families.
+- Over that core, LazyBuddy (as family source) carries the project dashboard
+  views, the chat/MCP project tools, transactional original-source editing,
+  authority-checked baseline amendments with reconciliation, and producer
+  observations with usage/time accounting and local Git/worktree collectors.
+  Ports consume the same vendored runtime through their own adapters, which
+  remain port-authored and distinct.
+- Boundaries stay honest: host embedding, chat handoff, and host wake remain
+  unobserved on every surface; conflict assessment is deterministic only (no
+  language-level semantic analysis); an immutable archive of older Markdown
+  bodies is not built (receipts retain commands and digests); the vendored
+  `qa/store-boundary.test.mjs` is Buddy-namespaced Buddy-side proof by design
+  and does not run in siblings.
+
 ## Eval-driven fixes
 
 - The portable dashboard core (projection, command/queue reducers, browser UI)

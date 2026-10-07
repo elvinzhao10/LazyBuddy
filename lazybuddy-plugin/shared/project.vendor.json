@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "638ad1dd27f301d053b2431f1cdfc844b9233b9d",
+    "revision": "7bf5bd8489843ff825ed508f259d778226cd6aff",
     "path": "lazybuddy-plugin/shared/project",
-    "treeSha256": "92a51b87db946f6fe6187b32f20fc6439ebad70e3e96f07268c54c6b81573849"
+    "treeSha256": "95c0e0fc265d5f7fff9679d31d4b9fee7459466fe18d960e66d6df4256647940"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -69,8 +69,8 @@
     },
     {
       "path": "cli.mjs",
-      "bytes": 5232,
-      "sha256": "bfc38a0afd0d34f3a684aa5ecbfc922624609ea6e9bec02dac7ec3144a16ecb8"
+      "bytes": 5275,
+      "sha256": "768ae3e1ebfbbf45edb5763fb30fb3313fa11083c1c1dfc65fcc157593ade89d"
     },
     {
       "path": "contract.mjs",
@@ -154,8 +154,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 14854,
-      "sha256": "8095ced4a1bb1d08bfeb04a43c4367002cdb63d0d06170a0b6befaf4eb9a71ba"
+      "bytes": 15413,
+      "sha256": "069034b44dfe9a933e84dca7783663322576442bbdb495239b5bbeb577d8651c"
     },
     {
       "path": "reconciliation.mjs",

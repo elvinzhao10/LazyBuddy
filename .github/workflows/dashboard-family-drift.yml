@@ -79,10 +79,10 @@ jobs:
           --root LazyZCode="$GITHUB_WORKSPACE/LazyZCode"
           --root LazyKimi="$GITHUB_WORKSPACE/LazyKimi"
           --root LazyDeepSeek="$GITHUB_WORKSPACE/LazyDeepSeek"
-      - name: Reject project family drift (pending ports listed, never passed)
+      - name: Reject project family drift (all six roots required)
         working-directory: LazyBuddy
         run: >-
-          node scripts/vendor-dashboard.mjs --check --family project
+          node scripts/vendor-dashboard.mjs --check --family project --require-complete
           --root LazyBuddy="$GITHUB_WORKSPACE/LazyBuddy"
           --root LazyTrae="$GITHUB_WORKSPACE/LazyTrae"
           --root LazyQoder="$GITHUB_WORKSPACE/LazyQoder"
