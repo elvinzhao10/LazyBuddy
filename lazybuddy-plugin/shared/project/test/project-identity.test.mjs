@@ -341,6 +341,47 @@ test('a legacy canonical-path store migrates additively with byte-identical hist
     historical_lifecycle: completed.declared_lifecycle, current_alignment: completed.alignment }));
 });
 
+// F-04: the neutral registry is shared across runtimes. A registry another
+// runtime owns is foreign state: init refuses typed instead of creating a
+// second owner, and the foreign registry stays byte-identical.
+test('init refuses a registry another runtime owns and never adopts its identity', async t => {
+  const root = fixture(t, 'foreign-runtime');
+  put(root, 'docs/requirements.md', REQUIREMENTS);
+  const registryPath = join(root, '.lazyseries/project.json');
+  const deepSorted = value => Array.isArray(value) ? value.map(deepSorted)
+    : value && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, deepSorted(value[key])]))
+      : value;
+  // The bridge persists registries in its canonical sorted-keys encoding; a
+  // hand-authored fixture must match it or the mirror CAS reports drift.
+  const registryBytes = value => `${JSON.stringify(deepSorted(value))}\n`;
+  const foreign = { schema_version: 1, project_id: PROJECT_ID,
+    repository_key: `repo:${'ab'.repeat(32)}`, runtime: 'LazyQoder',
+    created_at: '2026-10-01T00:00:00.000Z',
+    sources: [{ id: 'source:req', role: 'requirements', path: 'docs/requirements.md' }] };
+  put(root, '.lazyseries/project.json', registryBytes(foreign));
+  const owned = readFileSync(registryPath);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    assertFailure(await invoke(root, 'init'), /^REGISTRY_FOREIGN_RUNTIME\n$/);
+    assert.equal(readFileSync(registryPath).compare(owned), 0,
+      'a refused foreign-runtime init must leave the registry byte-identical');
+  }
+  assert.equal(existsSync(join(root, '.lazybuddy')), false,
+    'a refused foreign-runtime init creates no second project owner');
+  const registry = assertProjectRegistry(JSON.parse(readFileSync(registryPath, 'utf8')));
+  assert.equal(registry.runtime, 'LazyQoder');
+  assert.deepEqual(registry.sources.map(source => source.id), ['source:req'],
+    'the owning runtime source list stays stable across repeated refusals');
+  // A registry naming Buddy's own runtime still inits and re-inits normally.
+  put(root, '.lazyseries/project.json', registryBytes({ ...foreign, runtime: 'LazyBuddy' }));
+  const own = parseSuccess(await invoke(root, 'init'));
+  assert.equal(own.repository_key, foreign.repository_key);
+  const repeat = parseSuccess(await invoke(root, 'init'));
+  assert.equal(repeat.revision, own.revision);
+  t.diagnostic(JSON.stringify({ foreign_runtime: 'LazyQoder', refusal: 'REGISTRY_FOREIGN_RUNTIME',
+    registry_bytes_stable: true, matching_runtime_reinit: true }));
+});
+
 test('a second checkout with a different identity does not collide; foreign or corrupt registries refuse closed', async t => {
   const first = fixture(t, 'checkout-a');
   const second = fixture(t, 'checkout-b');

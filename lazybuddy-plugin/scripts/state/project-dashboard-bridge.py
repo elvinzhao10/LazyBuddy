@@ -632,6 +632,10 @@ def resolve_registry(node: str, root: str, facts: list[dict] | None) -> tuple[di
 
 def sync_registry_sources(node: str, root: str, registry: dict, state: dict) -> dict:
     """Mirror registered source ids/roles/paths into the neutral registry (registry-root authority only)."""
+    if registry.get("runtime") != "LazyBuddy":
+        # The registry names another owning runtime; mirroring this store's
+        # sources would flap the shared pointer list between runtimes.
+        raise ProjectError("REGISTRY_FOREIGN_RUNTIME")
     mirror = [{"id": source["id"], "role": source["role"], "path": source["path"]} for source in state["sources"]]
     if registry.get("sources") == mirror:
         return registry
@@ -1002,6 +1006,10 @@ def main(arguments: list[str]) -> object:
     registry, registry_root, main_root = resolve_registry(node, root, facts)
     if registry is not None and registry["project_id"] != project_id:
         raise ProjectError("PROJECT_IDENTITY_MISMATCH")
+    if action == "init" and registry is not None and registry.get("runtime") != "LazyBuddy":
+        # A registry another runtime owns is never adopted: init fails closed
+        # instead of creating a second owner that flaps the shared sources.
+        raise ProjectError("REGISTRY_FOREIGN_RUNTIME")
     effective_key = registry["repository_key"] if registry is not None \
         else "repo:" + hashlib.sha256(root.encode()).hexdigest()
     registry_files: RegistryFiles | None = None
@@ -1035,6 +1043,9 @@ def main(arguments: list[str]) -> object:
                     registry, registry_root = candidate, target
             if registry["project_id"] != project_id:
                 raise ProjectError("PROJECT_IDENTITY_MISMATCH")
+            if registry.get("runtime") != "LazyBuddy":
+                # Another runtime created the registry first; never adopt it.
+                raise ProjectError("REGISTRY_FOREIGN_RUNTIME")
             effective_key = registry["repository_key"]
         # Validate identity before creating any native directories.
         initial = reduce(node, "create", options={"projectId": project_id, "runtime": "LazyBuddy",
