@@ -560,12 +560,22 @@ export function assertProjectState(value) {
 export function assertCreateOptions(value) {
   return object(value, { projectId: id, runtime: choice(RUNTIMES), repositoryKey: text, createdAt: timestamp }, [], 'options');
 }
+// A completion authority the native runtime recorded for one linked run: the
+// bridge validates the record against the dashboard's own binding (current
+// repository head, applicable finished criteria, worker != verifier) before
+// offering it, and the model gates lifecycle `completed` on its presence.
+const authorityRef = (value, path) => object(value, {
+  runtime: choice(RUNTIMES), native_project_id: id, run_id: id, repo_head: commitId,
+}, [], path);
 export function assertProjectContext(value) {
   const capture = (entry, path) => object(entry, { source_id: id, path: assertRelativeSourcePath,
     sha256: hash, content: string(8388608) }, [], path);
-  object(value, { actor: text, occurredAt: timestamp, capturedSources: array(capture, 512), capturedRuns: array(nativeRef, 1024) }, ['capturedRuns'], 'context');
+  object(value, { actor: text, occurredAt: timestamp, capturedSources: array(capture, 512),
+    capturedRuns: array(nativeRef, 1024), completionAuthorities: array(authorityRef, 1024) },
+    ['capturedRuns', 'completionAuthorities'], 'context');
   unique(value.capturedSources, entry => entry.source_id, 'captured sources');
   unique(value.capturedRuns ?? [], entry => JSON.stringify([entry.runtime, entry.native_project_id, entry.run_id]), 'captured runs');
+  unique(value.completionAuthorities ?? [], entry => entry.run_id, 'captured completion authorities');
   return value;
 }
 export function assertProjectionOptions(value) {

@@ -18,6 +18,38 @@ test('spec §8.1 acceptance fixture: 30-minute window arithmetic', () => {
   assert.equal(result.distinct_agents, 3);
 });
 
+test('intervals clip to the reporting window and touching half-open intervals never overlap (F-08)', () => {
+  // Minute 20–50 inside a 30-minute window: wall is 10, not 30.
+  const overhang = accountTime({ window_start: '2026-10-06T12:00:00Z', window_end: '2026-10-06T12:30:00Z',
+    intervals: [{ agent_id: 'agent:A', role: 'worker', started_at: '2026-10-06T12:20:00Z', ended_at: '2026-10-06T12:50:00Z' }] });
+  assert.equal(overhang.observed_execution_wall_minutes, 10);
+  assert.equal(overhang.recorded_agent_minutes, 10);
+  // An interval fully outside the window counts toward nothing.
+  const outside = accountTime({ window_start: '2026-10-06T12:00:00Z', window_end: '2026-10-06T12:30:00Z',
+    intervals: [{ agent_id: 'agent:A', started_at: '2026-10-06T12:40:00Z', ended_at: '2026-10-06T12:50:00Z' }] });
+  assert.equal(outside.observed_execution_wall_minutes, 0);
+  assert.equal(outside.peak_concurrency, 0);
+  assert.equal(outside.distinct_agents, 0);
+  // [0,5)+[5,10) touch without overlapping: peak 1, wall 10.
+  const touching = accountTime({ window_start: '2026-10-06T12:00:00Z', window_end: '2026-10-06T12:30:00Z',
+    intervals: [
+      { agent_id: 'agent:A', started_at: '2026-10-06T12:00:00Z', ended_at: '2026-10-06T12:05:00Z' },
+      { agent_id: 'agent:B', started_at: '2026-10-06T12:05:00Z', ended_at: '2026-10-06T12:10:00Z' },
+    ] });
+  assert.equal(touching.peak_concurrency, 1);
+  assert.equal(touching.observed_execution_wall_minutes, 10);
+});
+
+test('timestamps must exist on the UTC calendar; impossible dates fail closed (F-08)', () => {
+  assert.throws(() => accountTime({ window_start: '2026-13-45T99:99:99Z', window_end: '2026-10-06T12:10:00Z', intervals: [] }),
+    error => error.code === 'INVALID_VALUE');
+  assert.throws(() => accountTime({ window_start: '2026-10-06T12:00:00Z', window_end: '2026-10-06T12:10:00Z',
+    intervals: [{ agent_id: 'a', started_at: '2026-13-45T99:99:99Z', ended_at: '2026-10-06T12:05:00Z' }] }),
+    error => error.code === 'INVALID_VALUE');
+  assert.throws(() => normalizeUsage([{ id: 'x', request_id: 'r', kind: 'delta', observed_at: '2026-02-30T00:00:00Z', usage: {} }]),
+    error => error.code === 'INVALID_VALUE');
+});
+
 test('subset token fixture: 100 incl. cached 40 + 50 incl. reasoning 20 totals 150, not 210', () => {
   const result = usageWithSubsets({ input_total: 100, cached_input: 40, output_total: 50, reasoning_output: 20 });
   assert.equal(result.total_tokens, 150);

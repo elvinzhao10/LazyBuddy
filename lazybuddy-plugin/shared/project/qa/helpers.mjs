@@ -48,9 +48,18 @@ export function inventory(root, prefix = '') {
 
 export function seedNative(root) {
   const files = {
-    '.lazybuddy/runs/run-old/state.json': '{"dashboard_project_id":"native-old","run_id":"run-old","plan_reference":"old-plan.md","revision":4}\n',
+    // create-run.sh shape plus the dashboard project binding: link_native_run
+    // accepts only runs the native producer actually created.
+    '.lazybuddy/runs/run-old/state.json': JSON.stringify({
+      schema_version: '2', run_id: 'run-old', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z',
+      objective: 'Legacy native run fixture', status: 'done', plan_reference: 'old-plan.md',
+      tasks: [], progress: { total_checkboxes: 0, completed_checkboxes: 0 }, verification_gates: [],
+      review_status: 'not_started', iteration: { count: 0, max: 500, mode: 'normal' }, last_checkpoint: null,
+      budget: { max_tokens: null, max_cost_usd: null }, session_ids: [], runtime_fingerprints: [],
+      dashboard_project_id: 'native-old', revision: 4,
+    }) + '\n',
     '.lazybuddy/runs/run-old/plan.md': '# Native old plan\n- [x] old task\n',
-    '.lazybuddy/runs/run-old/events.jsonl': '{"event_id":"old-1","type":"confirmed"}\n',
+    '.lazybuddy/runs/run-old/events.jsonl': '{"ts":"2026-10-01T00:00:00Z","run_id":"run-old","event":"run_created","objective":"Legacy native run fixture"}\n',
     '.lazybuddy/runs/run-old/receipts/verifier.json': '{"result":"confirmed","subject":"old-content"}\n',
     '.lazybuddy/dashboard/service.json': '{"credential":"review-secret-fixture-only","owner":"native"}\n',
     '.lazybuddy/dashboard-queue/queue.json': '{"project_id":"native-old","revision":5,"plans":[]}\n',

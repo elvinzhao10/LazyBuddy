@@ -2,7 +2,7 @@ import { assertCapabilityRequest, assertCreateOptions, assertObservationInput, a
   assertProjectContext, assertProjectState, fail, unique, ProjectContractError } from './contract.mjs';
 import { canonicalJSON, commandDigest } from './history.mjs';
 import { projectSnapshot } from './projection.mjs';
-import { amendBaseline } from './baseline/amendment.mjs';
+import { amendBaseline, invalidationFact, itemSemanticallyEqual } from './baseline/amendment.mjs';
 import { adoptSource, captureFor, performSourceEdit, sourceEditPreview, sourceMapResult, syncAnchors } from './source-edit/editing.mjs';
 import { extractSourceAnchor, skeletonDigest } from './source-edit/markdown.mjs';
 
@@ -50,11 +50,16 @@ function registerSource(state, payload, context) {
   return changed ? [payload.id] : [];
 }
 
+// Re-recording baseline items. New items and wording-only refreshes stay
+// authority-free; changing the extracted MEANING of an already-accepted item
+// requires the same authority and emits the same invalidation facts as
+// amend_baseline, so the register/record route cannot bypass amendment
+// guarantees (F-05).
 function recordItems(state, payload, context) {
   if (!payload.items.length) fail('EMPTY_CHANGE', 'At least one baseline item is required');
   unique(payload.items, entry => entry.id, 'baseline command items');
   const known = new Set([...state.items.map(entry => entry.id), ...payload.items.map(entry => entry.id)]);
-  const changedIds = []; let meaningChanged = false;
+  const changedIds = []; const invalidations = []; let meaningChanged = false;
   for (const input of payload.items) {
     const source = resolveSource(state, input.source, context);
     const existing = state.items.find(entry => entry.id === input.id);
@@ -76,9 +81,11 @@ function recordItems(state, payload, context) {
       strength: input.strength ?? (input.kind === 'principle' ? 'binding' : 'advisory'), related_item_ids: [...related],
       applicability: input.applicability, rationale: input.rationale, authority: input.authority,
       chosen: input.chosen, rejected: input.rejected, superseded_by: input.superseded_by }));
-    const priorDetails = existing && compact(Object.fromEntries(Object.keys(details).map(key => [key, existing[key]])));
-    const semanticChange = !existing || !equal(details, priorDetails);
+    const semanticChange = !existing || !itemSemanticallyEqual(details, existing);
     const changed = semanticChange || !equal(input.source, existing.source);
+    if (existing && semanticChange && existing.state === 'accepted' && !input.authority) {
+      fail('AMENDMENT_AUTHORITY_REQUIRED', 'Changing the meaning of an accepted item requires authority; route it through amend_baseline or record the item with its authority reference');
+    }
     if (changed) {
       const replacement = { id: input.id, ...details, source: clone(input.source),
         revision: (existing?.revision ?? 0) + (semanticChange ? 1 : 0),
@@ -86,11 +93,15 @@ function recordItems(state, payload, context) {
       if (existing) state.items[state.items.indexOf(existing)] = replacement;
       else state.items.push(replacement);
       changedIds.push(input.id);
+      if (existing && semanticChange) {
+        const fact = invalidationFact(state, input.id, existing.revision, replacement.revision);
+        if (fact) invalidations.push(fact);
+      }
     }
     meaningChanged ||= semanticChange;
   }
   if (meaningChanged) state.baseline_revision += 1;
-  return changedIds;
+  return { changed_ids: changedIds, invalidations };
 }
 
 function registerPlan(state, payload, context) {
@@ -181,6 +192,20 @@ function planTransition(state, payload, context) {
   }
   if (payload.to_lifecycle === 'active' && !plan.native_runs.length) {
     fail('NATIVE_RUN_REQUIRED', 'Active requires a linked native run');
+  }
+  if (payload.to_lifecycle === 'completed') {
+    // Completed is the user-visible claim that scoped work was executed AND
+    // independently verified. Only the completion authority the native runtime
+    // recorded for one of this plan's linked runs — captured and bound by the
+    // bridge (worker != verifier, current revisions) — can back it; a linked
+    // run file alone never suffices (F-03).
+    const linked = new Set(plan.native_runs.map(run =>
+      JSON.stringify([run.runtime, run.native_project_id, run.run_id])));
+    const trusted = (context.completionAuthorities ?? []).some(entry =>
+      linked.has(JSON.stringify([entry.runtime, entry.native_project_id, entry.run_id])));
+    if (!trusted) {
+      fail('COMPLETION_AUTHORITY_REQUIRED', 'Completing a plan requires the native completion authority recorded for one of its linked runs');
+    }
   }
   if (['superseded', 'abandoned'].includes(payload.to_lifecycle) && !payload.reason) {
     fail('MISSING_FIELD', 'Retiring a plan requires its reason');
@@ -346,12 +371,12 @@ export function projectCapability(state, request, context = {}) {
       ? context : { ...context, capturedSources: [] };
     try {
       const change = request.payload.change;
-      const changedIds = contentReducers[change.operation](next, change.payload, previewContext);
+      const outcome = contentReducers[change.operation](next, change.payload, previewContext);
       assertProjectState(next);
       return { schema_version: 1, status: 'valid', operation: 'project.change.preview', initialized: true,
         project_id: state.project_id, revision: state.revision, next_revision: state.revision + 1,
         next_baseline_revision: next.baseline_revision, next_observation_revision: next.observation_revision ?? 0,
-        changed_ids: changedIds };
+        changed_ids: Array.isArray(outcome) ? outcome : outcome.changed_ids };
     } catch (error) {
       if (!(error instanceof ProjectContractError)) throw error;
       return { schema_version: 1, status: 'invalid', operation: 'project.change.preview',

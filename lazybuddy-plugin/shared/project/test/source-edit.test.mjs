@@ -248,6 +248,30 @@ test('a material external edit is a typed conflict and stays a visible working c
     'A material external edit stays a visible working change');
 });
 
+test('a fabricated expected digest refuses typed; the tolerance names the accepted revision (F-11)', () => {
+  const { root, planPath } = setupProject('fabricated-sha');
+  const before = fs.readFileSync(planPath, 'utf8');
+  const stateBefore = stateBytes(root);
+  const tasks = anchorFor(root, 'Tasks');
+  // A 64-hex digest naming neither the live bytes nor the accepted revision is
+  // a typed refusal even though the file itself never moved.
+  const fabricated = invoke(root, 'command', command(root, 'edit:fabricated', 'source.edit', {
+    authority: 'ui:plan-editor', source_id: 'source:plan', expected_sha256: 'a'.repeat(64),
+    expected_source_revision: 1, edits: [{ kind: 'set_task_state', anchor_id: tasks, item: 0, state: 'checked' }] }));
+  assert.notEqual(fabricated.status, 0);
+  assert.match(fabricated.stderr, /^SOURCE_CHANGED\n$/);
+  assert.equal(fs.readFileSync(planPath, 'utf8'), before);
+  assert.deepEqual(stateBytes(root).compare(stateBefore), 0);
+  // The documented tolerance survives: the client composed against the
+  // accepted revision and the live file drifted formatting-only since.
+  fs.writeFileSync(planPath, `${before}\n`);
+  const tolerated = invoke(root, 'command', command(root, 'edit:tolerated', 'source.edit', {
+    authority: 'ui:plan-editor', source_id: 'source:plan', expected_sha256: sha256(before),
+    expected_source_revision: 1, edits: [{ kind: 'set_task_state', anchor_id: tasks, item: 0, state: 'checked' }] }));
+  assert.equal(tolerated.status, 0, tolerated.stderr);
+  assert.equal(tolerated.json.receipt.status, 'saved');
+});
+
 test('formatting-only external changes are adoptable; material adoption is refused', () => {
   const { root, planPath } = setupProject('adopt-formatting');
   const reformatted = PLAN.replace('Intro prose that must survive edits untouched.',

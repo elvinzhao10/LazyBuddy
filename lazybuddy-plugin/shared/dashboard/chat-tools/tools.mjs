@@ -20,8 +20,11 @@ const notInitialized = action => ({
     question: 'No project record is initialized for this repository. Ask the user whether to run the explicit project init command; this tool never creates or initializes a project.' },
 });
 
+// A typed refusal detected before the bridge answered carries no initialization
+// claim: the failure may precede any project store, so the field stays absent
+// rather than asserting a state this path never observed.
 const invalid = (action, reason) => ({
-  schema_version: 1, status: 'invalid', operation: action, reason, initialized: true,
+  schema_version: 1, status: 'invalid', operation: action, reason,
 });
 
 // Unobserved-delivery receipt (spec 6 step 8): recording a request or saving a

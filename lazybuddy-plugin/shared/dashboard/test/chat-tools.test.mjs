@@ -196,6 +196,27 @@ test('pre-init project tool calls return the typed NOT_INITIALIZED hint and crea
     files_after: Object.keys(manifest(root)).length, registry_created: false }));
 });
 
+// F-10: a malformed request is refused by contract validation before the
+// bridge is ever consulted, so its typed invalid answer carries no
+// initialization claim — the field is omitted rather than asserted.
+test('a malformed pre-init request answers invalid without claiming an initialization state', async t => {
+  const { root } = fixture(t, 'malformed-preinit');
+  const before = manifest(root);
+  const chatCli = join(PLUGIN_ROOT, 'shared/dashboard/chat-tools/cli.mjs');
+  const malformed = spawnSync(process.execPath, [chatCli, '--project-root', root, '--project-id', PROJECT_ID,
+    '--actor', ACTOR, '--action', 'project.read'], { input: '{}', encoding: 'utf8', timeout: 60000 });
+  assert.equal(malformed.error, undefined, malformed.error?.message);
+  assert.equal(malformed.status, 0, malformed.stderr);
+  const answer = JSON.parse(malformed.stdout);
+  assert.equal(answer.result.status, 'invalid');
+  assert.equal(answer.result.reason, 'INVALID_ID');
+  assert.equal(answer.result.operation, 'project.read');
+  assert.equal(Object.hasOwn(answer.result, 'initialized'), false,
+    'an initialization state this path never observed is omitted, never asserted true');
+  assert.deepEqual(manifest(root), before, 'a malformed request creates nothing');
+  t.diagnostic(JSON.stringify({ refusal: answer.result.reason, initialized_field_present: false }));
+});
+
 // After explicit init through the CLI, project.read returns the snapshot and
 // the context provider is strictly read-only.
 test('after CLI init project.read returns the snapshot and project.context is a read-only summary', async t => {

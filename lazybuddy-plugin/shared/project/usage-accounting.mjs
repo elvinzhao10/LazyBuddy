@@ -11,7 +11,11 @@ const RECORD_KINDS = Object.freeze(['delta', 'cumulative-snapshot', 'final-value
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const isTimestamp = value => typeof value === 'string' && TIMESTAMP.test(value) && Date.parse(value) !== Number.NaN;
+// A timestamp must round-trip through the UTC calendar: comparing against NaN
+// with !== is always true, so malformed dates like 2026-13-45T99:99:99Z need
+// the finite-parse plus canonical-render check to fail closed.
+const isTimestamp = value => typeof value === 'string' && TIMESTAMP.test(value)
+  && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19);
 
 function fields(value, allowed, path) {
   if (!plain(value)) fail('INVALID_VALUE', `${path} must be a plain object`);
@@ -66,10 +70,11 @@ function intervalRecord(record, path) {
 }
 
 function unionLength(intervals) {
-  // Union of [start, end) intervals in ms.
+  // Union of [start, end) intervals in ms. At equal timestamps an end is swept
+  // before a start, so touching half-open intervals never overlap.
   if (!intervals.length) return 0;
   const points = intervals.flatMap(item => [[Date.parse(item.started_at), 1], [Date.parse(item.ended_at), -1]])
-    .sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   let depth = 0; let total = 0; let openAt = 0;
   for (const [time, delta] of points) {
     if (depth > 0) total += time - openAt;
@@ -169,8 +174,16 @@ export function accountTime({ window_start, window_end, intervals, session_durat
   if (!isTimestamp(window_start) || !isTimestamp(window_end)) fail('INVALID_VALUE', 'A reporting window needs UTC bounds');
   if (Date.parse(window_end) < Date.parse(window_start)) fail('INVALID_VALUE', 'The reporting window ends before it starts');
   if (intervals !== undefined && !Array.isArray(intervals)) fail('INVALID_VALUE', 'Intervals must be an array');
-  const recorded = (intervals ?? []).map((record, index) => intervalRecord(record, `intervals[${index}]`));
-  const elapsedMs = Date.parse(window_end) - Date.parse(window_start);
+  const windowFrom = Date.parse(window_start); const windowTo = Date.parse(window_end);
+  // Intervals are half-open and clip to the reporting window: time outside the
+  // window is not this window's accounting, and a clipped-away interval counts
+  // toward nothing here (union, agent totals, peak or agent count).
+  const recorded = (intervals ?? []).map((record, index) => intervalRecord(record, `intervals[${index}]`))
+    .map(interval => ({ ...interval,
+      started_at: new Date(Math.max(Date.parse(interval.started_at), windowFrom)).toISOString(),
+      ended_at: new Date(Math.min(Date.parse(interval.ended_at), windowTo)).toISOString() }))
+    .filter(interval => Date.parse(interval.ended_at) > Date.parse(interval.started_at));
+  const elapsedMs = windowTo - windowFrom;
   const wallMs = unionLength(recorded);
   const perAgent = new Map();
   for (const interval of recorded) {
@@ -181,7 +194,7 @@ export function accountTime({ window_start, window_end, intervals, session_durat
   for (const list of perAgent.values()) agentMs += unionLength(list);
   let peak = 0; let depth = 0;
   const points = recorded.flatMap(item => [[Date.parse(item.started_at), 1], [Date.parse(item.ended_at), -1]])
-    .sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   for (const [, delta] of points) { depth += delta; peak = Math.max(peak, depth); }
   const result = {
     window: { start: window_start, end: window_end },

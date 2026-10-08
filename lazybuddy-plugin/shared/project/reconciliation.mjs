@@ -40,7 +40,9 @@ export function coalesceTriggers(triggers) {
 }
 
 // Which accepted objects a changed set touches: the items themselves, plans
-// that reference them at any revision, and proposals targeting them.
+// that reference them at any revision, and proposals whose impact names them.
+// Items carry no plan back-references: contributing plans derive from the
+// plans' own baseline_refs (the same derivation the projection uses).
 export function affectedScope(state, changedItemIds) {
   if (!Array.isArray(changedItemIds)) fail('INVALID_VALUE', 'changedItemIds must be an array');
   const itemIds = new Set(changedItemIds);
@@ -49,7 +51,7 @@ export function affectedScope(state, changedItemIds) {
     if ((plan.baseline_refs ?? []).some(reference => itemIds.has(reference.item_id))) plans.push(plan.id);
   }
   for (const proposal of state.proposals ?? []) {
-    if ((proposal.targets ?? []).some(target => itemIds.has(target))) proposals.push(proposal.id);
+    if ((proposal.impact?.item_ids ?? []).some(target => itemIds.has(target))) proposals.push(proposal.id);
   }
   return { item_ids: [...itemIds], plan_ids: plans, proposal_ids: proposals };
 }
@@ -77,7 +79,7 @@ export function deterministicChecks(state) {
   }
   const byTarget = new Map();
   for (const proposal of state.proposals ?? []) {
-    for (const target of proposal.targets ?? []) {
+    for (const target of proposal.impact?.item_ids ?? []) {
       const list = byTarget.get(target) ?? [];
       list.push(proposal.id); byTarget.set(target, list);
     }
@@ -90,7 +92,9 @@ export function deterministicChecks(state) {
     }
   }
   for (const item of state.items ?? []) {
-    if (item.state === 'accepted' && (item.plans ?? []).length === 0 && item.kind === 'requirement') {
+    const contributing = (state.plans ?? []).filter(plan =>
+      (plan.baseline_refs ?? []).some(reference => reference.item_id === item.id));
+    if (item.state === 'accepted' && contributing.length === 0 && item.kind === 'requirement') {
       findings.push({ type: 'missing-evidence', subject: { kind: 'item', id: item.id },
         detail: `Accepted requirement ${item.id} has no contributing plan; it stays visible as unassigned`,
         citations: [{ kind: 'item', id: item.id, revision: item.revision }] });
@@ -130,8 +134,10 @@ export function recordSemanticAssessment(state, assessment) {
 // instruction that already chooses the behavior is sufficient authority (spec
 // §6 step 6): retain the accepted side and revise the proposal's passage, or
 // amend the requirement (which the caller then accepts through amend_baseline).
-// Either way the result is an exact patch plus a reconciliation record, and no
-// unrelated plan is touched.
+// Either way the result stays a contract-valid project state — a proposal has
+// no free-form passage or resolution fields, so the revision lands on the
+// proposal's own patch records and its revision counter — and no unrelated
+// plan is touched.
 export function resolveContradictionWithAuthority(state, { conflict_id, choice, authority, patch }, options = {}) {
   fields(authority, ['kind', 'reference'], 'authority');
   if (authority.kind !== 'user-instruction') {
@@ -154,8 +160,16 @@ export function resolveContradictionWithAuthority(state, { conflict_id, choice, 
     if (typeof patch.revised_passage.text !== 'string' || !patch.revised_passage.text.length) {
       fail('INVALID_VALUE', 'The revised passage is the exact replacement text');
     }
-    proposal.passage = { ...patch.revised_passage };
-    proposal.resolution = { conflict_id, retained: 'baseline', authority_reference: authority.reference };
+    if (typeof patch.revised_passage.anchor !== 'string' || !patch.revised_passage.anchor.length) {
+      fail('INVALID_VALUE', 'The revised passage names the proposal patch anchor it replaces');
+    }
+    // A proposal's passage IS one of its patches: the revision rewrites that
+    // patch's proposed text. The record itself carries the consumed authority
+    // and the resolution semantics; the proposal stays state 'proposed'.
+    const target = (proposal.patches ?? []).find(entry => entry.anchor_id === patch.revised_passage.anchor);
+    if (!target) fail('INVALID_REFERENCE', 'The revised passage must name one of the proposal\'s patches');
+    target.proposed_text = patch.revised_passage.text;
+    proposal.revision += 1;
     record.patch = { kind: 'proposal-passage-revision', proposal_id: proposal.id,
       revised_text: patch.revised_passage.text, still_a_proposal: true };
     record.acceptance_effect = 'none — the revised idea remains a proposal until accepted through the baseline authority';

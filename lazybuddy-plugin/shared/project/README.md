@@ -187,16 +187,18 @@ text. Accepting external content explicitly:
    does not replace imported item or plan text.
 
 An item's revision changes when its extracted title/text or accepted metadata
-changes. Through `record_baseline_items` this is an exact comparison, not
-language-level semantic analysis. The accepted-amendment route
-(`amend_baseline`) additionally treats a whitespace-only difference outside
-fenced examples as wording: it updates the record's bytes while preserving the
-item's semantic revision and every reference pinned to it. Updating only the
-source digest after an edit outside the item's anchor leaves its item revision
-unchanged. A baseline-changing command advances `baseline_revision` once.
-Plans retain their explicit item-revision references; outdated ones become
-`stale`, including historical completed plans, without reopening those plans
-automatically.
+changes. `record_baseline_items` compares at the same semantic grain as
+`amend_baseline` (a whitespace-only difference outside fenced examples is
+wording), and changing the meaning of an item that is already `accepted`
+requires that item's `authority` reference and emits the same invalidation
+facts as `amend_baseline`: without authority the command refuses typed with
+`AMENDMENT_AUTHORITY_REQUIRED`, so the register/record route cannot bypass
+amendment guarantees. Recording new items stays authority-free. Updating only
+the source digest after an edit outside the item's anchor leaves its item
+revision unchanged. A baseline-changing command advances `baseline_revision`
+once. Plans retain their explicit item-revision references; outdated ones
+become `stale`, including historical completed plans, without reopening those
+plans automatically.
 
 Every newly accepted command advances project `revision`, including an accepted
 no-op. Replaying the same command ID and body returns its original receipt
@@ -251,15 +253,27 @@ The fourth operation, `link_native_run`, has exactly this payload:
 
 Use the usual command envelope and current revision. The bridge inspects
 `.lazybuddy/runs/<run_id>/state.json`; `run_id` and `dashboard_project_id` must
-match. It creates no run and records only an inspected identity link. Native
-execution, revision consumption, agent activity, and proof remain unobserved
-through this CLI.
+match, and the run must carry the shape a real created run has (schema 2 with
+its dispatchable status block plus a nonempty journaled `events.jsonl`) — a
+hand-written identity file refuses typed (`NATIVE_RUN_MALFORMED`). It creates
+no run and records only an inspected identity link. Native execution, revision
+consumption, agent activity, and proof remain unobserved through this CLI.
 
 `declared_lifecycle` is imported metadata. Checkboxes, `completed`, accepted
 baseline items, and saved command receipts grant no verification. Projection
 `alignment` remains `unassessed`; current revision references do not establish
 semantic compatibility. Source observations distinguish `current`, `changed`,
 `missing`, `unavailable`, and `unobserved`.
+
+Transitioning a plan to `completed` additionally requires the native
+completion authority the runtime already trusts: the bridge captures
+`.lazybuddy/runs/<run_id>/completion-authority.json` for the plan's linked
+runs and offers only records that satisfy the dashboard's own binding — the
+repository's current HEAD, applicable criteria that are finished with a
+zero-exit evidence receipt, an approved review, and a verifier distinct from
+the executor (worker ≠ verifier). Without such a record the transition
+refuses typed with `COMPLETION_AUTHORITY_REQUIRED`; a linked run alone is an
+identity reference, never completion evidence.
 
 The snapshot's `issues` list covers source registry freshness and outdated
 baseline references. An empty list is not an overall project-health verdict;

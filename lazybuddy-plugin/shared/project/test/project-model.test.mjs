@@ -278,7 +278,19 @@ test('an accepted requirement amendment stales its old references without recrea
   captured.content = captured.content.replace('Cloud sign-in is not a prerequisite.', 'Optional cloud sign-in must never block local reading or search.');
   captured.sha256 = hash(captured.content);
   refreshRegisteredSource(h, 'source:requirements');
-  h.apply('record_baseline_items', { items: baselineItems(h, ITEM_DEFINITIONS.slice(0, 2)) });
+  // Without authority the same re-record is the F-05 bypass and refuses typed.
+  assert.throws(() => applyProjectCommand(h.state, {
+    schema_version: 1, command_id: 'negative:f-05-authority-bypass', project_id: PROJECT_ID,
+    expected_revision: h.state.revision, operation: 'record_baseline_items',
+    payload: { items: baselineItems(h, ITEM_DEFINITIONS.slice(0, 2)) },
+  }, h.context()), error => error.code === 'AMENDMENT_AUTHORITY_REQUIRED');
+  const amended = h.apply('record_baseline_items', { items: baselineItems(h, ITEM_DEFINITIONS.slice(0, 2))
+    .map(item => item.id === 'requirement:offline'
+      ? { ...item, authority: 'user decision 2026-10-06: cloud sign-in stays optional' } : item) });
+  // The authority-bearing meaning change carries the same decision receipt as
+  // amend_baseline: invalidation facts naming the affected plans (F-05).
+  assert.ok(amended.receipt.invalidations.some(fact => fact.item_id === 'requirement:offline'
+    && fact.affected.some(entry => entry.plan_id === 'plan:foundation')));
   const snapshot = h.snapshot();
   assert.equal(snapshot.summary.accepted_features, 1);
   assert.equal(byId(snapshot.items, 'feature:notes').revision, oldFeature.revision);
@@ -369,6 +381,33 @@ test('native run registration requires the matching captured runtime/project/run
   assert.equal(byId(snapshot.plans, 'plan:search').native_observations.length, 1);
   assert.equal(byId(snapshot.plans, 'plan:search').native_observations[0].execution, 'finished');
   assert.equal(byId(snapshot.plans, 'plan:search').alignment, 'unassessed');
+});
+
+test('completing an active plan requires the captured completion authority of a linked run (F-03)', () => {
+  const h = continuityProject();
+  const capture = { runtime: 'LazyBuddy', native_project_id: 'native:offline-notebook', run_id: 'run:search' };
+  const linked = applyProjectCommand(h.state,
+    h.command('link_native_run', { plan_id: 'plan:search', native_project_id: capture.native_project_id, run_id: capture.run_id }),
+    { ...h.context(), capturedRuns: [capture] });
+  assert.equal(linked.receipt.status, 'saved');
+  h.state = linked.state;
+  // A linked run alone — even a real one — is an identity reference, not
+  // completion evidence: the transition refuses typed without an authority.
+  assert.throws(() => applyProjectCommand(h.state,
+    h.command('plan.transition', { plan_id: 'plan:search', to_lifecycle: 'completed' }), h.context()),
+  error => error.code === 'COMPLETION_AUTHORITY_REQUIRED');
+  // An authority for a run this plan never linked satisfies nothing.
+  assert.throws(() => applyProjectCommand(h.state,
+    h.command('plan.transition', { plan_id: 'plan:search', to_lifecycle: 'completed' }),
+    { ...h.context(), completionAuthorities: [{ runtime: 'LazyBuddy', native_project_id: 'native:offline-notebook',
+      run_id: 'run:other', repo_head: 'a'.repeat(40) }] }),
+  error => error.code === 'COMPLETION_AUTHORITY_REQUIRED');
+  const trusted = applyProjectCommand(h.state,
+    h.command('plan.transition', { plan_id: 'plan:search', to_lifecycle: 'completed' }),
+    { ...h.context(), completionAuthorities: [{ runtime: 'LazyBuddy', native_project_id: 'native:offline-notebook',
+      run_id: 'run:search', repo_head: 'a'.repeat(40) }] });
+  assert.equal(trusted.receipt.status, 'saved');
+  assert.equal(byId(trusted.state.plans, 'plan:search').declared_lifecycle, 'completed');
 });
 
 test('a checked source plan and imported completed lifecycle grant neither proof nor live agent status', () => {
@@ -466,7 +505,10 @@ test('heading anchors must identify a unique real heading outside fenced code', 
   captured.content += '\n## Duplicate requirement\nFirst meaning.\n\n## Duplicate requirement\nDifferent meaning.\n';
   captured.sha256 = hash(captured.content);
   refreshRegisteredSource(h, 'source:requirements');
-  h.apply('record_baseline_items', { items: baselineItems(h) });
+  // The appended real headings truncate the last section, so this refresh is
+  // a meaning change on an accepted item and carries its authority reference.
+  h.apply('record_baseline_items', { items: baselineItems(h).map(item => item.id === 'requirement:offline'
+    ? { ...item, authority: 'test: refreshed requirements document' } : item) });
   expectContractFailure(() => h.apply('record_baseline_items', { items: [{
     id: 'requirement:ambiguous', kind: 'requirement', state: 'accepted',
     source: sourceReference(h, 'source:requirements', 'heading:Duplicate requirement'),

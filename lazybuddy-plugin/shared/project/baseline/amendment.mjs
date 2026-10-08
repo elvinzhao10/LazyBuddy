@@ -44,14 +44,18 @@ function validateItemInput(state, input, knownIds) {
 }
 
 // Semantic equality reuses the source-edit skeleton concept: whitespace-only
-// differences outside fenced examples are wording, not meaning.
-function itemSemanticallyEqual(details, prior) {
+// differences outside fenced examples are wording, not meaning. Shared with
+// record_baseline_items so both accepted-item routes enforce one semantics.
+export function itemSemanticallyEqual(details, prior) {
   if (!METADATA_KEYS.every(key => sameJSON(details[key], prior[key]))) return false;
   return normalizeHeadingTitle(details.title) === normalizeHeadingTitle(prior.title) &&
     skeletonText(details.text) === skeletonText(prior.text);
 }
 
-function invalidationFact(state, itemId, fromRevision, toRevision) {
+// The invalidation fact an accepted-item meaning change owes every plan still
+// considering an older revision of that item. Shared with the authority-gated
+// record_baseline_items route so both emit identical decision receipts.
+export function invalidationFact(state, itemId, fromRevision, toRevision) {
   const affected = state.plans
     .filter(plan => plan.baseline_refs.some(reference => reference.item_id === itemId &&
       reference.item_revision < toRevision))

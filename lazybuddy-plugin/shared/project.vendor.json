@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "537f3939226f5bd9f753fb74d6f31af4f8fd9ba3",
+    "revision": "a0bbf90bd43ed8cc66f7829781f69734342373b9",
     "path": "lazybuddy-plugin/shared/project",
-    "treeSha256": "1feb5646e70ef5831bce36f88e80226ff28521b5f33d7d9c0498170d2df6e69b"
+    "treeSha256": "b22019c2c1d27652f5f07377ebf618609208d7752b5add733688f52ad8eca040"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -64,8 +64,8 @@
     },
     {
       "path": "baseline/amendment.mjs",
-      "bytes": 13465,
-      "sha256": "8efd9e99a7bc1168b37675e060e82d6dcf5a856f692ecc9908a8319bc75a56d7"
+      "bytes": 13799,
+      "sha256": "51a7052197f064d163c5c8b2ce35578644ccda3b0f7daf67045772bbe8294794"
     },
     {
       "path": "cli.mjs",
@@ -74,8 +74,8 @@
     },
     {
       "path": "contract.mjs",
-      "bytes": 42968,
-      "sha256": "29aa3c30b955566269042660761efcb692d35bed00adf1b86738ba9b4b4a52ec"
+      "bytes": 43613,
+      "sha256": "732deb977f144d1413b002a52598039ae2b33c79a6047e81a6e0c84936d6e95c"
     },
     {
       "path": "git-observation/command.mjs",
@@ -104,8 +104,8 @@
     },
     {
       "path": "model.mjs",
-      "bytes": 26408,
-      "sha256": "df80a92395c151d0b2aa6534169b9301c2e238b718e097c10037728050b79585"
+      "bytes": 28105,
+      "sha256": "53a76772823afca6688dcd9cc7b3f208d217948a40be6190682d030df14f89b2"
     },
     {
       "path": "plans/dependencies.mjs",
@@ -134,8 +134,8 @@
     },
     {
       "path": "qa/helpers.mjs",
-      "bytes": 3344,
-      "sha256": "ee6bba5c64e73c5e4724e9e4715449585834d484431d4bb04305cab51de303b9"
+      "bytes": 4059,
+      "sha256": "328758e52fda78eb9d1008af208cd1ed0783ea1b2874fc498428f7e074f93edd"
     },
     {
       "path": "qa/inactivity-baseline.mjs",
@@ -154,18 +154,18 @@
     },
     {
       "path": "README.md",
-      "bytes": 15555,
-      "sha256": "4a26c52b2e33058a6606abea28e3b2db0a360015606e18e7b088b38ba696af94"
+      "bytes": 16567,
+      "sha256": "26dab4b9579846edda34de428cae403e6762e1809a7934244e59c9236b392367"
     },
     {
       "path": "reconciliation.mjs",
-      "bytes": 9890,
-      "sha256": "ff3cd3f4574f9d8f32ae35b84b4570959452733a3b1183be15470d0389c9349b"
+      "bytes": 10918,
+      "sha256": "beae2161a7163aaa393532efee3162ab06d3a04862bc70ebba69157e0d82061e"
     },
     {
       "path": "source-edit/editing.mjs",
-      "bytes": 16974,
-      "sha256": "d5f678d69483ed35a5773cacf5bcd53120f17b467c89f7b5ee1a33f92e004691"
+      "bytes": 17430,
+      "sha256": "a5001ecfab0cbaa29aef5f4946c7d108ccf226d6b8f194e8ff9684f6f86f3484"
     },
     {
       "path": "source-edit/markdown.mjs",
@@ -174,8 +174,8 @@
     },
     {
       "path": "usage-accounting.mjs",
-      "bytes": 12697,
-      "sha256": "7b643d9b0f63802dd2dd1b09637ecd94936de4bcb2bc1d310e5549bb13049f10"
+      "bytes": 13701,
+      "sha256": "877976b865e8dbe21a399e20d9f262776e78924c5a21a02604ef31e9615677b4"
     }
   ],
   "selection": {

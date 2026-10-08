@@ -801,12 +801,100 @@ def source_observations(files: ProjectFiles, state: dict) -> list[dict]:
     return observations
 
 
-def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[list, list]:
+def git_head(root: str) -> str | None:
+    try:
+        result = subprocess.run(["git", "-C", root, "rev-parse", "--verify", "HEAD"],
+                                capture_output=True, timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode or len(result.stdout) > 1024:
+        return None
+    head = result.stdout.decode(errors="replace").strip()
+    return head if re.fullmatch(r"[a-f0-9]{40,64}", head) else None
+
+
+def read_json_record(root: str, relative: object) -> dict | None:
+    if not isinstance(relative, str) or not relative or relative.startswith("/") or ".." in relative.split("/"):
+        return None
+    try:
+        value = strict_json(_reader.read(root, relative, LIMIT))
+    except (FileNotFoundError, OSError, ValueError, ProjectError, _reader.UnsafeReferenceError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def criterion_satisfied(files: ProjectFiles, authority: dict, criterion: dict) -> bool:
+    # The same binding the dashboard's completion chain enforces: a finished
+    # criterion, an evidence receipt pinned to the authority's revision with a
+    # zero exit, and an approved review whose verifier is the receipt's
+    # verifier and never its executor (worker != verifier).
+    if criterion.get("status") != "complete":
+        return False
+    for key in ("task_id", "criterion_id", "evidence_path", "review_path"):
+        if not isinstance(criterion.get(key), str) or not criterion[key]:
+            return False
+    evidence = read_json_record(files.root, criterion["evidence_path"])
+    review = read_json_record(files.root, criterion["review_path"])
+    if evidence is None or review is None:
+        return False
+    if evidence.get("schema_version") != "lazyseries.completion-evidence.v1":
+        return False
+    if evidence.get("repo_head") != authority.get("repo_head") or evidence.get("exit_code") != 0:
+        return False
+    if (evidence.get("run_id") != authority.get("run_id")
+            or evidence.get("task_id") != criterion["task_id"]
+            or evidence.get("criterion_id") != criterion["criterion_id"]):
+        return False
+    executor, verifier, review_verifier = evidence.get("executor"), evidence.get("verifier"), review.get("verifier")
+    for identity in (executor, verifier, review_verifier):
+        if not isinstance(identity, dict) or not isinstance(identity.get("identity"), str) or not identity["identity"]:
+            return False
+    if verifier["identity"] != review_verifier["identity"] or executor["identity"] == verifier["identity"]:
+        return False
+    return review.get("verdict") == "approved"
+
+
+def package_version() -> str | None:
+    try:
+        value = strict_json((PLUGIN / "tooling" / "package.json").read_bytes())
+    except (OSError, ValueError, ProjectError):
+        return None
+    version = value.get("version") if isinstance(value, dict) else None
+    return version if isinstance(version, str) and version else None
+
+
+def completion_authority(files: ProjectFiles, run: dict, head: str | None) -> dict | None:
+    """Mirror the dashboard's completion-authority binding (current revision,
+    applicable finished criteria, worker != verifier) or offer nothing."""
+    authority = read_json_record(files.root, f".lazybuddy/runs/{run['run_id']}/completion-authority.json")
+    if authority is None or authority.get("schema_version") != "lazyseries.completion-authority.v1":
+        return None
+    if authority.get("run_id") != run["run_id"]:
+        return None
+    if not isinstance(authority.get("repo_head"), str) or head is None or authority["repo_head"] != head:
+        return None
+    version = package_version()
+    if version is not None and authority.get("package_version") != version:
+        return None
+    plan = authority.get("plan")
+    if not isinstance(plan, dict) or not isinstance(plan.get("path"), str) or not isinstance(plan.get("sha256"), str):
+        return None
+    criteria = authority.get("criteria")
+    if not isinstance(criteria, list) or not criteria:
+        return None
+    applicable = [entry for entry in criteria if isinstance(entry, dict) and entry.get("applicable") is True]
+    if not applicable or not all(criterion_satisfied(files, authority, entry) for entry in applicable):
+        return None
+    return {"runtime": "LazyBuddy", "native_project_id": run["native_project_id"],
+            "run_id": run["run_id"], "repo_head": authority["repo_head"]}
+
+
+def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[list, list, list]:
     # Replay must remain usable after an accepted source is edited or removed.
     if any(record["command"]["command_id"] == command.get("command_id") for record in state["receipts"]):
-        return [], []
+        return [], [], []
     if command.get("expected_revision") != state["revision"] or command.get("project_id") != state["project_id"]:
-        return [], []
+        return [], [], []
     operation, payload = command.get("operation"), command.get("payload", {})
     if operation in ("project.change.preview", "project.change.apply"):
         # The capability wrappers carry the same source references as the
@@ -842,6 +930,7 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
                 wanted[source_id] = by_id[source_id]
     captures = [capture_source(files, source_id, path) for source_id, path in wanted.items()]
     runs = []
+    authorities = []
     if operation == "link_native_run":
         run_id = payload.get("run_id")
         if not isinstance(run_id, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", run_id) is None:
@@ -854,8 +943,37 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
             raise ProjectError("NATIVE_RUN_UNBOUND")
         if native["dashboard_project_id"] != payload.get("native_project_id"):
             raise ProjectError("NATIVE_RUN_IDENTITY_MISMATCH")
+        # A link accepts only a run the native producer actually created: the
+        # create-run.sh shape (schema 2 with its dispatchable status block)
+        # plus its journaled event log. A hand-written identity file is not a
+        # run, so a two-field state.json refuses typed.
+        for field in ("schema_version", "status", "objective", "created_at", "updated_at", "plan_reference", "review_status"):
+            if not isinstance(native.get(field), str):
+                raise ProjectError("NATIVE_RUN_MALFORMED")
+        if native["schema_version"] != "2":
+            raise ProjectError("NATIVE_RUN_MALFORMED")
+        for field in ("tasks", "verification_gates", "session_ids", "runtime_fingerprints", "progress", "iteration"):
+            if not isinstance(native.get(field), (list, dict)):
+                raise ProjectError("NATIVE_RUN_MALFORMED")
+        try:
+            journal = _reader.read(files.root, f".lazybuddy/runs/{run_id}/events.jsonl", LIMIT)
+        except (FileNotFoundError, OSError, _reader.UnsafeReferenceError) as error:
+            raise ProjectError("NATIVE_RUN_JOURNAL_MISSING") from error
+        if not journal.strip():
+            raise ProjectError("NATIVE_RUN_JOURNAL_MISSING")
         runs = [{"runtime": "LazyBuddy", "native_project_id": native["dashboard_project_id"], "run_id": run_id}]
-    return captures, runs
+    elif operation == "plan.transition" and payload.get("to_lifecycle") == "completed":
+        # The model gates `completed` on a captured completion authority; only
+        # records satisfying the dashboard's own binding are offered.
+        plan = next((entry for entry in state["plans"] if entry["id"] == payload.get("plan_id")), None)
+        if plan is None:
+            raise ProjectError("UNKNOWN_PLAN")
+        head = git_head(files.root)
+        for run in plan["native_runs"]:
+            record = completion_authority(files, run, head)
+            if record is not None:
+                authorities.append(record)
+    return captures, runs, authorities
 
 
 def main(arguments: list[str]) -> object:
@@ -948,9 +1066,10 @@ def main(arguments: list[str]) -> object:
             receipt = None
             query_result = None
             if action == "command":
-                captures, runs = command_captures(files, state, request)
+                captures, runs, authorities = command_captures(files, state, request)
                 reduction = reduce(node, "command", state=state, command=request,
-                                   context={"actor": actor, "occurredAt": now(), "capturedSources": captures, "capturedRuns": runs})
+                                   context={"actor": actor, "occurredAt": now(), "capturedSources": captures,
+                                            "capturedRuns": runs, "completionAuthorities": authorities})
                 if "state" not in reduction:
                     # Revision-checked query operations never mutate accepted state.
                     query_result = reduction
@@ -964,6 +1083,8 @@ def main(arguments: list[str]) -> object:
                                 raise ProjectError("SOURCE_CHANGED_DURING_COMMAND")
                         if runs and command_captures(files, state, request)[1] != runs:
                             raise ProjectError("NATIVE_RUN_CHANGED_DURING_COMMAND")
+                        if authorities and command_captures(files, state, request)[2] != authorities:
+                            raise ProjectError("COMPLETION_AUTHORITY_CHANGED_DURING_COMMAND")
                         if writes:
                             # Journal the intent first: crash recovery distinguishes
                             # this service's own writes from any external editor.

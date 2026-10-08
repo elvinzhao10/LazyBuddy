@@ -164,7 +164,10 @@ function seedEvidenceTree(root) {
     progress: { total_checkboxes: 0, completed_checkboxes: 0 },
     verification_gates: [{ name: 'gate:tests', status: 'passed' }, { name: 'gate:build', status: 'pending' }],
     review_status: 'not_started', iteration: {}, last_checkpoint: null, budget: {}, session_ids: [],
+    runtime_fingerprints: [],
   }) + '\n');
+  put(root, '.lazybuddy/runs/run-alpha/events.jsonl',
+    '{"ts":"2026-10-05T00:00:00Z","run_id":"run-alpha","event":"run_created","objective":"Seed the T12 evidence tree"}\n');
   put(root, '.lazybuddy/runs/run-alpha/evidence/report.md', REPORT_MD);
   put(root, '.lazybuddy/runs/run-alpha/evidence/run-log.txt', '2026-10-05 run started\n2026-10-05 run finished\n');
   put(root, '.lazybuddy/runs/run-alpha/evidence/shot.png', PNG_BYTES);

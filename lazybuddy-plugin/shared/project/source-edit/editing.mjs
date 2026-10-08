@@ -175,8 +175,14 @@ export function performSourceEdit(state, payload, context) {
     fail('SOURCE_REVISION_CONFLICT', 'The source moved past the requested semantic revision');
   }
   const capture = captureFor(state, payload.source_id, context, source.path);
+  // The expected digest is a real CAS, not an advisory: it must name the live
+  // bytes, or — the documented formatting-only tolerance — the accepted
+  // revision's digest while the live file's skeleton still equals the accepted
+  // skeleton (drift bounded to whitespace/fence formatting by that equality).
+  // Any other 64-hex value, fabricated or unknown to this source, is refused.
   if (capture.sha256 !== payload.expected_sha256 &&
-      (typeof source.skeleton_sha256 !== 'string' || skeletonDigest(capture.content) !== source.skeleton_sha256)) {
+      (payload.expected_sha256 !== source.accepted_sha256 ||
+        typeof source.skeleton_sha256 !== 'string' || skeletonDigest(capture.content) !== source.skeleton_sha256)) {
     fail('SOURCE_CHANGED', 'The source changed materially from the requested revision');
   }
   const others = (state.source_anchors ?? []).filter(record => record.source_id !== payload.source_id);

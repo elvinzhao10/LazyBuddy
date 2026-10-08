@@ -328,7 +328,11 @@ test('actual source edits remain observations until accepted and only affected b
   assert.deepEqual(fileRecord(f.statePath), stateBeforeEdit, 'A read must not accept or persist the external change');
 
   await f.send('register_source', sourcePayload(SOURCES[0]));
-  await f.send('record_baseline_items', baselinePayload(f, ITEM_DEFINITIONS.slice(0, 2)));
+  const amended = await f.send('record_baseline_items', { items: baselinePayload(f, ITEM_DEFINITIONS.slice(0, 2)).items
+    .map(item => item.id === 'requirement:offline'
+      ? { ...item, authority: 'user decision 2026-10-06: cloud sign-in stays optional' } : item) });
+  assert.ok(amended.receipt.invalidations.some(fact => fact.item_id === 'requirement:offline'),
+    'an authority-bearing meaning change emits the amendment invalidation receipt');
   const accepted = await f.read();
   assert.equal(accepted.baseline_revision, oldBaseline + 1);
   assert.equal(byId(accepted.items, 'requirement:offline').revision, 2);
@@ -365,10 +369,19 @@ test('unrelated native files survive init and commands; a linked native done cla
   const f = fixture(t);
   put(f.root, '.lazybuddy/state.json', '{"legacy_state":"preserve"}\n');
   put(f.root, '.lazybuddy/decisions/ledger.jsonl', '{"decision":"preserve"}\n');
+  // A real created-run shape (create-run.sh) with its journaled events; the
+  // self-asserted done/verified claims inside are data, never authority.
   put(f.root, '.lazybuddy/runs/existing-run/state.json', JSON.stringify({
-    run_id: 'existing-run', dashboard_project_id: 'native:test', status: 'done', verification: 'verified',
+    schema_version: '2', run_id: 'existing-run', created_at: '2026-10-05T00:00:00Z', updated_at: '2026-10-05T00:00:00Z',
+    objective: 'Legacy run', status: 'done', dashboard_project_id: 'native:test', verification: 'verified',
+    plan_reference: '.omo/plans/search.md',
     tasks: [{ id: 'legacy-task', status: 'done', verification: 'verified' }],
+    progress: { total_checkboxes: 0, completed_checkboxes: 0 }, verification_gates: [],
+    review_status: 'not_started', iteration: { count: 0, max: 500, mode: 'normal' }, last_checkpoint: null,
+    budget: { max_tokens: null, max_cost_usd: null }, session_ids: [], runtime_fingerprints: [],
   }) + '\n');
+  put(f.root, '.lazybuddy/runs/existing-run/events.jsonl',
+    '{"ts":"2026-10-05T00:00:00Z","run_id":"existing-run","event":"run_created","objective":"Legacy run"}\n');
   const nativePaths = ['.lazybuddy/state.json', '.lazybuddy/decisions/ledger.jsonl', '.lazybuddy/runs/existing-run/state.json'];
   const nativeBefore = Object.fromEntries(nativePaths.map(path => [path, fileRecord(join(f.root, path))]));
   await seedContinuity(f);
