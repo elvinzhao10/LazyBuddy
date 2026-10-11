@@ -69,7 +69,7 @@ async function refreshProject({ force = false } = {}) {
           runId: envelope?.snapshot?.run_id ?? null, runSnapshot: envelope?.snapshot ?? null,
           onDestinationRequest: destination => projectShell?.selectDestination(destination) });
       }
-      projectShell = createProjectShell({ projectionProvider: () => projectAdapter.bundle(), product: { name: 'LazyBuddy' },
+      projectShell = createProjectShell({ projectionProvider: () => projectAdapter.bundle(), product: { name: project?.runtime ?? 'LazySeries' },
         views: projectViews?.views ?? {}, callbacks: { onPlanDrill({ nodeId, drill }) {
           const planId = project?.plans.some(plan => plan.id === nodeId) ? nodeId : drill;
           if (planId) projectViews?.openPlan(planId);
