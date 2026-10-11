@@ -227,7 +227,7 @@ function timeMetrics(time, context) {
       area: 'time',
       label: { elapsed: 'Elapsed run time', wall: 'Observed execution wall time',
         agent: 'Recorded agent time', peak: 'Peak concurrency' }[name],
-      note: 'Time accounting not projected (no T10 result supplied).',
+      note: 'Time accounting not projected; no accounting result was supplied.',
     }));
   }
   const records = time.source_record_ids ?? [];
@@ -236,33 +236,33 @@ function timeMetrics(time, context) {
     valueMetric({ id: 'metric:time:elapsed', area: 'time', label: 'Elapsed run time',
       value: time.elapsed_minutes, unit: 'minutes',
       definition: 'window end minus start (or as-of minus start); includes waiting',
-      basis: `T10 accountTime · ${time.basis?.definition ?? 'window arithmetic'}`, records, coverageNote: recordsNote }),
+      basis: `recorded time accounting · ${time.basis?.definition ?? 'window arithmetic'}`, records, coverageNote: recordsNote }),
     valueMetric({ id: 'metric:time:wall', area: 'time', label: 'Observed execution wall time',
       value: time.observed_execution_wall_minutes, unit: 'minutes',
       definition: 'union of observed execution intervals; parallel agents add once',
-      basis: `T10 accountTime · union of intervals`, records, coverageNote: recordsNote,
+      basis: 'recorded time accounting · union of intervals', records, coverageNote: recordsNote,
       zeroNote: 'zero-length union of observed execution intervals (no intervals recorded)' }),
     valueMetric({ id: 'metric:time:agent', area: 'time', label: 'Recorded agent time',
       value: time.recorded_agent_minutes, unit: 'minutes',
       definition: 'sum over distinct agents of each agent interval union; parallel agents add to agent time but not wall time',
-      basis: 'T10 accountTime · per-agent unions summed', records, coverageNote: recordsNote,
+      basis: 'recorded time accounting · per-agent unions summed', records, coverageNote: recordsNote,
       zeroNote: 'zero-length per-agent unions (no intervals recorded)' }),
     valueMetric({ id: 'metric:time:peak', area: 'time', label: 'Peak concurrency',
       value: time.peak_concurrency, unit: 'agents',
       definition: 'maximum number of simultaneously open observed intervals in the window',
-      basis: 'T10 accountTime · sweep-line depth', records, coverageNote: recordsNote,
+      basis: 'recorded time accounting · sweep-line depth', records, coverageNote: recordsNote,
       zeroNote: 'no overlapping or open intervals in the window' }),
     valueMetric({ id: 'metric:time:distinct-agents', area: 'time', label: 'Distinct agents',
       value: time.distinct_agents, unit: 'agents',
       definition: 'distinct agent identities with at least one recorded interval',
-      basis: 'T10 accountTime · interval identities', records, coverageNote: recordsNote }),
+      basis: 'recorded time accounting · interval identities', records, coverageNote: recordsNote }),
   ];
   if (time.recorded_session_minutes != null) {
     metrics.push(valueMetric({ id: 'metric:time:session', area: 'time',
       label: `Recorded session duration (${time.session_duration_label ?? 'recorded-session-duration'})`,
       value: time.recorded_session_minutes, unit: 'minutes',
       definition: 'sum of recorded session-boundary durations; labeled recorded-session-duration, never agent time',
-      basis: 'T10 accountTime · session durations', records, coverageNote: recordsNote }));
+      basis: 'recorded time accounting · session durations', records, coverageNote: recordsNote }));
   }
   return metrics.map(metric => stamped(metric, context));
 }
@@ -273,7 +273,7 @@ function usageMetrics(usage, context) {
       id: `metric:usage:${name}`,
       area: 'usage',
       label: { input: 'Input tokens', output: 'Output tokens', total: 'Total tokens', requests: 'Reported request coverage' }[name],
-      note: 'Usage accounting not projected (no T10 result supplied).',
+      note: 'Usage accounting not projected; no usage result was supplied.',
     }));
   }
   const requestRecords = usage.requests.map(request => request.request_id);
@@ -287,7 +287,7 @@ function usageMetrics(usage, context) {
     metrics.push(valueMetric({ id: `metric:usage:${field}`, area: 'usage', label: labels[field] ?? field,
       value: total, unit: 'tokens',
       definition: `normalized total at declared grain ${usage.grain ?? 'physical-provider-invocation'}; unknown stays null`,
-      basis: 'T10 normalizeUsage · duplicate delivery is not a new request; parent aggregates never sum with children',
+      basis: 'normalized usage · duplicate delivery is not a new request; parent aggregates never sum with children',
       records: [...reporting.map(request => request.request_id), ...reporting.flatMap(request => request.source_record_ids)],
       coverageNote: total === null ? 'unknown (null) — not zero' : null }));
   }
@@ -295,7 +295,7 @@ function usageMetrics(usage, context) {
   metrics.push(valueMetric({ id: 'metric:usage:coverage', area: 'usage', label: 'Reported request coverage',
     value: requests_with_usage ?? null, unit: 'requests',
     definition: 'usage reported for N of M recorded requests; this does not establish that a share of tokens was captured',
-    basis: 'T10 normalizeUsage coverage',
+    basis: 'normalized usage coverage',
     records: requestRecords,
     coverage: distinct_request_ids != null ? { reported: requests_with_usage, total: distinct_request_ids } : null,
     coverageNote: distinct_request_ids == null
@@ -304,7 +304,7 @@ function usageMetrics(usage, context) {
     metrics.push(valueMetric({ id: 'metric:usage:parent-excluded', area: 'usage', label: 'Parent aggregates excluded from totals',
       value: usage.parent_aggregate_requests_excluded.length, unit: 'requests',
       definition: 'parent aggregate requests are displayed separately and never summed with their child records',
-      basis: 'T10 normalizeUsage · parent/child no-double-count',
+      basis: 'normalized usage · parent/child no-double-count',
       records: usage.parent_aggregate_requests_excluded }));
   }
   return metrics.map(metric => stamped(metric, context));
@@ -321,16 +321,16 @@ function subsetMetrics(subsets, context) {
   return [
     valueMetric({ id: 'metric:usage:subsets:input', area: 'usage', label: 'Input tokens (incl. declared subset)',
       value: subsets.input_total, unit: 'tokens', definition: 'provider input total; already includes its declared cached subset',
-      basis: 'T10 usageWithSubsets · declared subset categories', records,
+      basis: 'normalized usage · declared subset categories', records,
       coverageNote: subsetNote('cached', subsets.cached_input, subsets.input_total) }),
     valueMetric({ id: 'metric:usage:subsets:output', area: 'usage', label: 'Output tokens (incl. declared subset)',
       value: subsets.output_total, unit: 'tokens', definition: 'provider output total; already includes its declared reasoning subset',
-      basis: 'T10 usageWithSubsets · declared subset categories', records,
+      basis: 'normalized usage · declared subset categories', records,
       coverageNote: subsetNote('reasoning', subsets.reasoning_output, subsets.output_total) }),
     valueMetric({ id: 'metric:usage:subsets:total', area: 'usage', label: 'Total tokens (subsets never added again)',
       value: subsets.total_tokens, unit: 'tokens',
       definition: `input total + output total; ${subsets.subset_rule}`,
-      basis: 'T10 usageWithSubsets', records,
+      basis: 'normalized usage with declared subsets', records,
       coverageNote: subsets.total_tokens === null ? 'unknown (null) — not zero' : null }),
   ].map(metric => stamped(metric, context));
 }
@@ -351,31 +351,31 @@ function gitCountMetrics(git) {
   const metrics = [
     valueMetric({ id: 'metric:git:worktrees', area: 'git-ci', label: 'Worktrees observed',
       value: observedWorktrees.length, unit: 'worktrees',
-      definition: 'observed worktrees of the repository (T11 worktree list)',
-      basis: 'T11 collectLocalGitFacts',
+      definition: 'observed worktrees of the repository',
+      basis: 'bounded local Git observation',
       records: worktreeRecords,
       coverage: git.coverage ? { reported: git.coverage.worktrees_reported, total: git.coverage.worktrees_total } : null,
       coverageNote: git.coverage?.worktrees_truncated ? 'worktree list truncated at the collector limit' : null }),
     valueMetric({ id: 'metric:git:changed-paths', area: 'git-ci', label: 'Changed paths (union across worktrees)',
       value: unionTotal, unit: 'paths',
       definition: 'per worktree the union of staged/unstaged/untracked/unmerged (one path with staged+unstaged changes counts once), summed across distinct worktrees',
-      basis: 'T11 collectLocalGitFacts · union path counting', records: worktreeRecords,
+      basis: 'bounded local Git observation · union path counting', records: worktreeRecords,
       coverageNote: truncated ? 'at least one worktree path list was truncated; counts stay exact' : null }),
     valueMetric({ id: 'metric:git:unmerged', area: 'git-ci', label: 'Actual unmerged index paths',
       value: unmergedTotal, unit: 'paths',
       definition: 'actual unmerged index state — the only class that is a real Git conflict',
-      basis: 'T11 collectLocalGitFacts · actual_unmerged_index', records: worktreeRecords,
+      basis: 'bounded local Git observation · actual unmerged index', records: worktreeRecords,
       zeroNote: 'no unmerged index paths observed (exact zero)' }),
     valueMetric({ id: 'metric:git:binary-counts', area: 'git-ci', label: 'Binary diff line counts',
       value: null, unit: 'lines', definition: 'line counts for binary diffs',
-      basis: 'T11 collectLocalGitFacts · binary_diff_counts',
+      basis: 'bounded local Git observation · binary diff counts',
       records: worktreeRecords, coverageNote: 'unavailable — binary line counts are labeled unavailable where appropriate' }),
   ];
   const pr = git.pullRequests;
   metrics.push(pr.status === 'observed'
     ? valueMetric({ id: 'metric:git:open-prs', area: 'git-ci', label: 'Observed pull requests',
       value: pr.list.length, unit: 'pull requests', definition: 'PRs listed by the gh collector for the observed remote',
-      basis: 'T11 collectRemoteFacts', records: pr.list.map(entry => `pr:${entry.number}`),
+      basis: 'bounded remote pull-request observation', records: pr.list.map(entry => `pr:${entry.number}`),
       coverage: pr.coverage, coverageNote: pr.coverage?.total == null ? 'list hit the collector limit; denominator unknown' : null })
     : unavailableMetric({ id: 'metric:git:open-prs', area: 'git-ci', label: 'Observed pull requests',
       note: `Remote PR observation unavailable (${pr.reason}); this is not zero pull requests.` }));
@@ -394,7 +394,7 @@ export function metricsDetailModel({ scope, filters = [], window: usageWindow = 
   const subsets = accounting.subsets ?? null;
   const sections = [
     { id: 'metrics:time', title: 'Time accounting', kind: 'time',
-      note: 'Elapsed/wall/agent per spec §8.1 — Git stages never appear in this section.',
+      note: 'Elapsed, wall and agent time stay distinct; Git stages never appear in this section.',
       metrics: timeMetrics(time, context) },
     { id: 'metrics:usage', title: 'Token usage', kind: 'usage',
       note: 'Normalized at the declared grain; declared subsets render as subsets; unallocated usage stays visible rather than being invented onto plans.',

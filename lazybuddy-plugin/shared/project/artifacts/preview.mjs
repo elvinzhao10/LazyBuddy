@@ -116,7 +116,7 @@ function canonicalJSON(value) {
   return JSON.stringify(value);
 }
 
-export async function renderArtifactPreview(root, entry) {
+export async function renderArtifactPreview(root, entry, { readFile = readArtifactFile } = {}) {
   const original = { path: entry.path, link: entry.path };
   const profile = previewProfile(entry.path);
   const base = { artifact_id: entry.id, source_path: entry.path, original, status: entry.status, sanitized: true };
@@ -128,12 +128,12 @@ export async function renderArtifactPreview(root, entry) {
     if (entry.bytes > PREVIEW_IMAGE_LIMIT) {
       return { ...base, kind: 'image', available: false, reason: 'image_too_large', total_bytes: entry.bytes };
     }
-    const { bytes } = await readArtifactFile(root, entry.path, PREVIEW_IMAGE_LIMIT);
+    const { bytes } = await readFile(root, entry.path, PREVIEW_IMAGE_LIMIT);
     return { ...base, kind: 'image', available: true,
       image: { mime: profile.mime, bytes: bytes.length, sha256: sha256Bytes(bytes),
         data_url: `data:${profile.mime};base64,${bytes.toString('base64')}` } };
   }
-  const { bytes } = await readArtifactFile(root, entry.path, ARTIFACT_FILE_LIMIT);
+  const { bytes } = await readFile(root, entry.path, ARTIFACT_FILE_LIMIT);
   const totalBytes = bytes.length;
   if (profile.kind === 'markdown') {
     const rendered = sanitizeMarkdown(bytes.toString('utf8'));

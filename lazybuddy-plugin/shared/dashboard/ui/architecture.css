@@ -36,6 +36,25 @@
 
 .architecture-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: var(--s3); }
 .architecture-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.architecture-graph-wrap { display: grid; gap: var(--s2); min-inline-size: 0; }
+.architecture-graph-viewport { min-block-size: 28rem; max-block-size: min(70dvb, 48rem); overflow: auto;
+  border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface);
+  overscroll-behavior: contain; cursor: grab; }
+.architecture-graph-viewport.is-panning { cursor: grabbing; user-select: none; }
+.architecture-graph-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+.architecture-graph { display: block; max-inline-size: none; }
+.architecture-graph foreignObject { overflow: visible; }
+.architecture-graph-edges path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.architecture-graph-edges [data-kind='contains'] path { stroke: var(--border); stroke-dasharray: 6 4; }
+.architecture-graph-edges [data-kind='replaces'] path { stroke: var(--stale-ink); stroke-dasharray: 2 4; }
+.architecture-graph-edges text { fill: var(--muted); font-size: var(--caption); font-family: var(--sans);
+  paint-order: stroke; stroke: var(--surface); stroke-width: 6px; stroke-linejoin: round; pointer-events: none; }
+.architecture-graph-node { block-size: 100%; overflow: visible; align-content: start; }
+.architecture-graph-title { line-height: 21px; overflow-wrap: anywhere; }
+.architecture-graph-kind, .architecture-graph-role { overflow-wrap: anywhere; }
+.architecture-graph-wrap .graph-viewport-controls { justify-content: flex-end; gap: var(--s1); }
+.architecture-graph-wrap .graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--s2); }
+.architecture-graph-wrap .graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: tabular-nums; }
 .architecture-rowitem[aria-level='2'] { margin-inline-start: var(--s5); }
 .architecture-rowitem[aria-level='3'] { margin-inline-start: var(--s7); }
 .architecture-identity { display: grid; gap: var(--s2); inline-size: 100%; text-align: start; padding: var(--s3);

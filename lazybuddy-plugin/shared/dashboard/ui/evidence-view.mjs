@@ -95,7 +95,8 @@ export function createEvidenceView({ fixture: initialFixture, nav = { scope: 'gl
     head.append(element('h2', '', currentFixture.title), element('p', 'meta evidence-subtitle', currentFixture.subtitle));
     const projectLine = element('p', 'meta evidence-project');
     projectLine.dataset.testid = 'evidence-project';
-    projectLine.textContent = `project revision ${currentFixture.projectRevision ?? 'none'} · scan ${currentFixture.scan.runs_indexed ?? '?'} runs · ${currentFixture.scan.files_seen ?? '?'} files seen · indexed ${currentFixture.total} artifacts`;
+    projectLine.textContent = `project revision ${currentFixture.projectRevision ?? 'none'} · scan ${currentFixture.scan.runs_indexed ?? '?'} runs · ${currentFixture.scan.files_seen ?? '?'} files seen · indexed ${currentFixture.total} artifacts`
+      + (currentFixture.scan.history_status === 'unavailable' ? ` · native history unavailable: ${currentFixture.scan.history_reason}` : '');
     head.append(projectLine);
 
     const toolbar = element('div', 'cluster evidence-toolbar');

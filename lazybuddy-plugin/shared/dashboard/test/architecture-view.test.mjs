@@ -23,7 +23,7 @@ globalThis.document = dom.document;
 const { collectLocalGitFacts } = await import('../../project/git-observation/local.mjs');
 const { authorPlanGraph, composeGraphSet } = await import('../../project/plans/dependencies.mjs');
 const { architectureFixture, ArchitectureProjectionError } = await import('../ui/architecture-model.mjs');
-const { createArchitectureView } = await import('../ui/architecture-view.mjs');
+const { architectureGraphModel, createArchitectureView } = await import('../ui/architecture-view.mjs');
 const asSet = values => new Set(values);
 
 const projectCLI = fileURLToPath(new URL('../../project/cli.mjs', import.meta.url));
@@ -368,7 +368,49 @@ test('architecture lenses render the real fixture with shared identities and sta
   assert.match(view.element.querySelector('[data-testid="architecture-inspector"]').textContent, /proposal:cloud-relay/,
     'the ghost inspector names the pending decision that backs the proposed treatment');
 
-  // 5. Implemented-without-evidence is visibly not green; verified is green.
+  // 5. Authored containment and typed relationships render as an interactive
+  //    graph without reinterpreting them as task dependencies. Relationship
+  //    cycles are valid architecture and stay drawable.
+  view.setMode('graph');
+  const graph = architectureGraphModel(projected, 'planned');
+  assert.deepEqual(graph.nodes.map(node => node.id).sort(), projected.planned.map(node => node.id).sort());
+  assert.equal(graph.edges.filter(edge => edge.kind === 'contains').length, 4, 'authored parent links become containment edges');
+  assert.deepEqual(graph.edges.filter(edge => edge.kind === 'uses').map(edge => `${edge.from}->${edge.to}`).sort(), [
+    'component:cloud-sync->component:note-store',
+    'component:notes-ui->component:search-index',
+    'component:search-index->component:note-store',
+  ]);
+  const cyclic = structuredClone(projected);
+  cyclic.components['component:note-store'].authored.relationships.push({
+    kind: 'calls', to: 'component:search-index', basis: 'authored', note: 'callback notification',
+  });
+  const cyclicGraph = architectureGraphModel(cyclic, 'planned');
+  assert.ok(cyclicGraph.edges.some(edge => edge.kind === 'uses'
+    && edge.from === 'component:search-index' && edge.to === 'component:note-store'));
+  assert.ok(cyclicGraph.edges.some(edge => edge.kind === 'calls'
+    && edge.from === 'component:note-store' && edge.to === 'component:search-index'),
+  'reverse authored relationship remains visible instead of becoming a DAG cycle error');
+  assert.equal(view.element.querySelectorAll('.architecture-graph-node').length, projected.planned.length);
+  assert.deepEqual([...view.element.querySelectorAll('.architecture-graph-edges [data-kind]')]
+    .map(edge => edge.dataset.kind).sort(), graph.edges.map(edge => edge.kind).sort());
+  assert.ok(view.element.querySelectorAll('.architecture-graph-edges text').some(label => label.textContent === 'uses'),
+    'relationship type is printed on the canvas');
+  const graphNode = view.element.querySelector('.architecture-graph-node[data-component-id="component:note-store"]');
+  graphNode.click();
+  assert.equal(view.getStats().selectedId, 'component:note-store', 'graph selection uses the shared component identity');
+  const graphRegion = view.element.querySelector('[data-testid="architecture-graph"]');
+  graphRegion.clientWidth = 640; graphRegion.clientHeight = 420;
+  view.setViewport({ scale: 1.25, scrollLeft: 90, scrollTop: 45 }, 'test');
+  assert.deepEqual(view.getStats().graphViewport, { scale: 1.25, scrollLeft: 90, scrollTop: 45 });
+  const graphRefresh = view.applyUpdate(projected);
+  assert.equal(graphRefresh.selectedPreserved, true);
+  assert.equal(view.getStats().mode, 'graph');
+  assert.equal(view.getStats().selectedId, 'component:note-store');
+  assert.deepEqual(view.getStats().graphViewport, { scale: 1.25, scrollLeft: 90, scrollTop: 45 },
+    'graph pan and zoom survive a status refresh');
+
+  // 6. Implemented-without-evidence is visibly not green; verified is green.
+  view.setMode('cards');
   const storeChips = chipStates(view.element.querySelector('.architecture-identity[data-component-id="component:note-store"]'));
   assert.equal(storeChips[0].state, 'neutral');
   assert.match(storeChips[0].label, /observed at/);
@@ -377,7 +419,7 @@ test('architecture lenses render the real fixture with shared identities and sta
   const verifiedChips = chipStates(view.element.querySelector('.architecture-identity[data-component-id="component:search-index"]'));
   assert.equal(verifiedChips[1].state, 'verified');
 
-  // 6. Journey navigation from the feature reaches plans, code, open decisions
+  // 7. Journey navigation from the feature reaches plans, code, open decisions
   //    and verification with the exact recorded identities — no drift.
   const featuresPanel = view.element.querySelector('[data-testid="architecture-features"]');
   const featureArticle = featuresPanel.querySelector('article[data-feature-id="feature:notes"]');
@@ -400,7 +442,7 @@ test('architecture lenses render the real fixture with shared identities and sta
   view.element.querySelector('.architecture-step-control[data-component-id="component:search-index"]').click();
   assert.match(view.element.querySelector('[data-testid="architecture-inspector"]').textContent, /docs\/project\/architecture\.md#component:search-index/);
 
-  // 7. Narrow equivalent: list mode shares ids and keyboard drives selection.
+  // 8. Narrow equivalent: list mode shares ids and keyboard drives selection.
   view.setMode('list'); view.setLens('engineering'); view.setView('planned');
   const listIds = [...view.element.querySelectorAll('.architecture-list [data-component-id]')].map(node => node.dataset.componentId).sort();
   assert.deepEqual(listIds, ['application:notes-app', 'component:cloud-sync', 'component:note-store', 'component:notes-ui', 'component:search-index']);
@@ -421,7 +463,7 @@ test('architecture lenses render the real fixture with shared identities and sta
   lensButtons[1].click();
   assert.equal(view.getStats().lens, 'engineering', 'the engineering lens activates from the switcher');
 
-  // 8. A real polling tick (second collector pass after another content edit)
+  // 9. A real polling tick (second collector pass after another content edit)
   //    preserves lens, view, mode, selection and the viewport marker.
   writeFileSync(join(fixture.root, 'src/search/index.ts'),
     'export function find() { return []; }\n// touched for observation\n// second observation pass\n');

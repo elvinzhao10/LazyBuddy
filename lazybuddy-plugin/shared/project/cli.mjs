@@ -63,6 +63,7 @@ function invoke(action, options, request) {
 
 export const initProject = options => invoke('init', options);
 export const readProject = options => invoke('read', options);
+export const readProjectSource = (options, sourceId) => invoke('source', options, { source_id: sourceId });
 export const executeProjectCommand = (options, command) => invoke('command', options, command);
 
 async function main(argv) {
@@ -79,8 +80,8 @@ async function main(argv) {
     process.stdout.write(output + '\n'); return;
   }
   const [action, ...arguments_] = argv;
-  if (!['init', 'read', 'command'].includes(action) || arguments_.length !== 6) {
-    throw new ProjectBridgeError('USAGE_INIT_READ_COMMAND_PROJECT_ROOT_PROJECT_ID_ACTOR');
+  if (!['init', 'read', 'source', 'command'].includes(action) || arguments_.length !== 6) {
+    throw new ProjectBridgeError('USAGE_INIT_READ_SOURCE_COMMAND_PROJECT_ROOT_PROJECT_ID_ACTOR');
   }
   const values = new Map();
   for (let index = 0; index < arguments_.length; index += 2) {
@@ -90,8 +91,8 @@ async function main(argv) {
     values.set(arguments_[index], arguments_[index + 1]);
   }
   const options = { projectRoot: values.get('--project-root'), projectId: values.get('--project-id'), actor: values.get('--actor') };
-  // Preserve command bytes until the native strict parser can reject duplicate keys.
-  const result = await invoke(action, options, action === 'command' ? await inputBytes() : undefined);
+  // Preserve command/source bytes until the native strict parser can reject duplicate keys.
+  const result = await invoke(action, options, ['command', 'source'].includes(action) ? await inputBytes() : undefined);
   process.stdout.write(JSON.stringify(result) + '\n');
 }
 

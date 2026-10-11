@@ -222,7 +222,10 @@ export function overviewFixture(bundle) {
 
   const statusSentence = { text: '', clauses: [] };
   const clause = (id, text, ref, records, unavailable = false) => statusSentence.clauses.push({ id, text, ref, records, unavailable });
-  if (activePlanIds.length) clause('clause:delivery', `delivery active on ${activePlanIds[0]}`, activePlanIds[0], activePlanIds);
+  if (activePlanIds.length) clause('clause:delivery', `declared active plan: ${activePlanIds[0]}`, activePlanIds[0], activePlanIds);
+  for (const planId of activePlanIds.filter(id => readiness[id] == null)) {
+    clause(`clause:readiness:${planId}`, `readiness not projected for ${planId}`, planId, [], true);
+  }
   if (pendingProposals.length) {
     clause('clause:decisions', `${pendingProposals.length} baseline decision${pendingProposals.length === 1 ? '' : 's'} pending`, pendingProposals[0].id, pendingProposals.map(proposal => proposal.id));
   }
@@ -248,9 +251,9 @@ export function overviewFixture(bundle) {
 
   const metrics = [
     { id: 'metric:plans', label: 'Plans', value: `${plansByGroup.active.length} active · ${plansByGroup.future.length} future · ${plansByGroup.historical.length} historical`,
-      coverage: 'T07 plan lifecycle counts', records: snapshot.plans.map(plan => plan.id) },
+      coverage: 'declared plan lifecycle counts', records: snapshot.plans.map(plan => plan.id) },
     { id: 'metric:active-progress', label: 'Active delivery', value: bundle.progress ? `${bundle.progress.summary.active_satisfied} of ${bundle.progress.summary.active_required} obligations satisfied` : null,
-      coverage: bundle.progress ? 'unique required tasks and criteria among active plans (T07)' : 'progress not projected',
+      coverage: bundle.progress ? 'unique required tasks and criteria among active plans' : 'progress not projected',
       records: bundle.progress ? bundle.progress.plans.active : [] },
     { id: 'metric:baseline', label: 'Accepted baseline', value: `${snapshot.summary.accepted_features} features · ${snapshot.summary.accepted_requirements} requirements · ${snapshot.summary.accepted_principles} principles · ${snapshot.summary.accepted_decisions} decisions`,
       coverage: `accepted baseline revision ${snapshot.baseline_revision}`, records: acceptedItems.map(item => item.id) },
@@ -258,13 +261,13 @@ export function overviewFixture(bundle) {
       coverage: snapshot.summary.unassigned_item_ids.length ? 'accepted items with no contributing plan' : 'none unassigned (exact zero)',
       records: snapshot.summary.unassigned_item_ids },
     { id: 'metric:usage', label: 'Usage', value: usage ? `${totalTokens} tokens · ${usage.coverage.requests_with_usage} of ${usage.coverage.distinct_request_ids} requests reported` : null,
-      coverage: usage ? 'declared subsets never add to totals (T10)' : 'usage not projected',
+      coverage: usage ? 'declared subsets never add to totals' : 'usage not projected',
       records: usage ? usage.requests.map(request => request.request_id) : [] },
     { id: 'metric:time', label: 'Time', value: time ? `${formatMinutes(time.elapsed_minutes)} elapsed · ${formatMinutes(time.observed_execution_wall_minutes)} wall · ${formatMinutes(time.recorded_agent_minutes)} agent · peak ${time.peak_concurrency}` : null,
-      coverage: time ? (time.source_record_ids?.length ? 'observed intervals per distinct agent (T10)' : 'contributing interval records not supplied') : 'time accounting not projected',
+      coverage: time ? (time.source_record_ids?.length ? 'observed intervals per distinct agent' : 'contributing interval records not supplied') : 'time accounting not projected',
       records: time?.source_record_ids ?? [] },
     { id: 'metric:git', label: 'Git', value: changedPaths != null ? `${changedPaths} changed path${changedPaths === 1 ? '' : 's'} · ${observedWorktrees.length} worktree${observedWorktrees.length === 1 ? '' : 's'}` : null,
-      coverage: changedPaths != null ? 'local git facts, union across observed worktrees (T11)' : 'git facts not projected',
+      coverage: changedPaths != null ? 'local Git facts, union across observed worktrees' : 'git facts not projected',
       records: observedWorktrees.map(worktree => `worktree:${worktree.branch ?? worktree.root}`) },
   ];
   for (const metric of metrics) if (metric.value == null) { metric.unavailable = true; metric.value = 'unavailable'; }
@@ -299,7 +302,8 @@ export function overviewFixture(bundle) {
     title: bundle.project_name ?? snapshot.project_id,
     subtitle: 'Macro map · durable feature areas, plans, inter-plan dependencies and attention (read-only projection)',
     statement, nodes, edges, statusSentence, metrics, attentionQueue,
-    context: currentWorktree ? { branch: currentWorktree.branch, head: currentWorktree.head, observed_at: bundle.git.observed_at } : null,
+    context: bundle.context ?? (currentWorktree ? { branch: currentWorktree.branch, head: currentWorktree.head,
+      observed_at: bundle.git.observed_at } : null),
     projection: { project_id: snapshot.project_id, runtime: snapshot.runtime, repository_key: snapshot.repository_key,
       revision: snapshot.revision, baseline_revision: snapshot.baseline_revision, observation_revision: snapshot.observation_revision },
   };

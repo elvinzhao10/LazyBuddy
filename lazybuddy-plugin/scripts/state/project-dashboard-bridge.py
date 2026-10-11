@@ -981,7 +981,7 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
 
 
 def main(arguments: list[str]) -> object:
-    if len(arguments) != 9 or arguments[0] not in ("init", "read", "command") or len(set(arguments[1::2])) != 4:
+    if len(arguments) != 9 or arguments[0] not in ("init", "read", "source", "command") or len(set(arguments[1::2])) != 4:
         raise ProjectError("INVALID_ARGUMENTS")
     action = arguments[0]
     options = dict(zip(arguments[1::2], arguments[2::2]))
@@ -995,13 +995,17 @@ def main(arguments: list[str]) -> object:
     if not root.startswith("/") or str(Path(root).resolve()) != root:
         raise ProjectError("UNSAFE_PROJECT_ROOT")
     request = None
-    if action == "command":
+    if action in ("command", "source"):
         content = sys.stdin.buffer.read(LIMIT + 1)
         if len(content) > LIMIT:
             raise ProjectError("INPUT_TOO_LARGE")
         request = strict_json(content)
         if not isinstance(request, dict):
-            raise ProjectError("INVALID_COMMAND")
+            raise ProjectError("INVALID_COMMAND" if action == "command" else "INVALID_SOURCE_REQUEST")
+        if action == "source" and (set(request) != {"source_id"}
+                                   or not isinstance(request.get("source_id"), str)
+                                   or not request["source_id"] or len(request["source_id"]) > 256):
+            raise ProjectError("INVALID_SOURCE_REQUEST")
     facts = worktree_facts(root)
     registry, registry_root, main_root = resolve_registry(node, root, facts)
     if registry is not None and registry["project_id"] != project_id:
@@ -1110,6 +1114,11 @@ def main(arguments: list[str]) -> object:
                             files.journal_unlink(entry_name)
                         state = reduction["state"]
                         state_changed = True
+            if action == "source":
+                source = next((entry for entry in state["sources"] if entry["id"] == request["source_id"]), None)
+                if source is None:
+                    raise ProjectError("UNKNOWN_SOURCE")
+                return capture_source(files, source["id"], source["path"])
             if registry is not None and registry_root == root and state_changed:
                 registry = sync_registry_sources(node, root, registry, state)
             context = {"sourceObservations": source_observations(files, state)}

@@ -9,7 +9,6 @@
 // destination explains exactly that.
 import { button, element, statusChip } from './components.mjs';
 import { createOverviewView } from './overview.mjs';
-import { overviewFixture } from './overview-fixture.mjs';
 
 export const PROJECT_DESTINATIONS = Object.freeze([
   { id: 'overview', label: 'Overview', landsWith: null },
@@ -21,13 +20,73 @@ export const PROJECT_DESTINATIONS = Object.freeze([
   { id: 'research', label: 'Research', landsWith: 'the service-navigation wiring (the T19 evidence and research view module has landed; it is not yet selectable here)' },
 ]);
 
-export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {} }) {
+export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {}, views = {} }) {
   if (typeof projectionProvider !== 'function') throw new TypeError('projectionProvider is required');
   const root = element('section', 'project-shell stack');
   root.dataset.testid = 'project-shell';
+  root.dataset.live = String(Object.keys(views).length > 0);
   let activeDestination = 'overview';
   let overview = null;
   let bundle = null;
+  let content = null;
+
+  const viewFor = id => id === 'overview' ? overview : views[id] ?? null;
+
+  function compactLiveOverview() {
+    if (!Object.keys(views).length || !overview?.element || overview.element.dataset.liveCompact === 'true') return;
+    const node = overview.element;
+    node.dataset.liveCompact = 'true';
+    const details = element('details', 'panel overview-context stack');
+    details.append(element('summary', '', 'Project context, coverage and attention'));
+    const head = node.querySelector('.overview-head');
+    const title = head?.querySelector('h2'); const subtitle = head?.querySelector('.meta');
+    if (title) details.append(element('p', 'meta', title.textContent));
+    if (subtitle) details.append(subtitle);
+    title?.remove();
+    const statement = node.querySelector('.overview-statement'); if (statement) details.append(statement);
+    const statusHeading = node.querySelector('.overview-sentence h3');
+    if (statusHeading) { node.querySelector('.overview-sentence')?.setAttribute('aria-label', statusHeading.textContent); details.append(statusHeading); }
+    const unavailableClauses = [...node.querySelectorAll('.overview-clause-unavailable')];
+    for (const clause of unavailableClauses.slice(1)) details.append(clause);
+    const sentenceCoverage = node.querySelector('.overview-sentence > .meta'); if (sentenceCoverage) details.append(sentenceCoverage);
+    const definitions = element('section', 'stack overview-definitions');
+    definitions.append(element('h3', '', 'Metric definitions'));
+    const metricsHeading = node.querySelector('.overview-metrics h3');
+    if (metricsHeading) { node.querySelector('.overview-metrics')?.setAttribute('aria-label', metricsHeading.textContent); details.append(metricsHeading); }
+    for (const metric of node.querySelectorAll('.overview-metric')) {
+      const coverage = metric.querySelector('.meta'); const label = metric.querySelector('[data-metric-id]')?.textContent;
+      if (coverage) { definitions.append(element('p', 'meta', `${label} · ${coverage.textContent}`)); coverage.remove(); }
+    }
+    const metricsNote = node.querySelector('.overview-metrics > .meta'); if (metricsNote) definitions.append(metricsNote);
+    details.append(definitions);
+    const metricCards = [...node.querySelectorAll('.overview-metric')];
+    const compactMetric = new Map([
+      ['metric:plans', 'Plans · active / future / history'],
+      ['metric:active-progress', 'Delivery progress'],
+      ['metric:baseline', 'Accepted baseline'],
+      ['metric:unassigned', 'Unassigned requirements'],
+    ]);
+    for (const metric of metricCards.slice(0, 4)) {
+      const control = metric.querySelector('[data-metric-id]');
+      if (!control) continue;
+      control.setAttribute('aria-label', control.textContent);
+      const label = compactMetric.get(control.dataset.metricId);
+      const original = control.textContent; const separator = original.indexOf(':');
+      control.textContent = `${label ?? original.slice(0, separator)} · ${original.slice(separator + 1).trim()}`;
+    }
+    for (const metric of metricCards.slice(4)) details.append(metric);
+    const queue = node.querySelector('.overview-queue'); if (queue) details.append(queue);
+    const spikeHead = node.querySelector('.spike-head'); if (spikeHead) details.append(spikeHead);
+    const legend = node.querySelector('.spike-legend');
+    const toolbar = node.querySelector('.spike-toolbar');
+    const layoutStatus = node.querySelector('.spike-status');
+    if (layoutStatus && toolbar) toolbar.prepend(layoutStatus);
+    if (legend && toolbar) {
+      const legendDetails = element('details', 'spike-legend-details');
+      legendDetails.append(element('summary', '', 'Edge legend'), legend); toolbar.append(legendDetails);
+    }
+    node.append(details);
+  }
 
   function renderUninitialized() {
     root.replaceChildren();
@@ -45,8 +104,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     const context = element('p', 'meta shell-context cluster');
     context.dataset.testid = 'shell-context';
     const parts = [`${fixture.projection.repository_key} · ${fixture.projection.runtime}`];
-    if (fixture.context) parts.push(`branch ${fixture.context.branch ?? 'unknown'} @ ${(fixture.context.head ?? '').slice(0, 12)}`,
-      `observed ${fixture.context.observed_at}`);
+    if (fixture.context) {
+      parts.push(`branch ${fixture.context.branch ?? 'unknown'} @ ${(fixture.context.head ?? '').slice(0, 12) || 'head not reported'}`);
+      if (fixture.context.observed_at) parts.push(`observed ${fixture.context.observed_at}`);
+    }
     else parts.push('git observation: not projected');
     parts.push(`projection revision ${fixture.projection.revision} · baseline revision ${fixture.projection.baseline_revision}`);
     context.textContent = parts.join(' · ');
@@ -57,9 +118,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     const nav = element('nav', 'cluster shell-destinations');
     nav.setAttribute('aria-label', 'Project destinations');
     for (const destination of PROJECT_DESTINATIONS) {
-      const control = button(destination.label, destination.landsWith ? null : () => selectDestination(destination.id));
+      const available = destination.id === 'overview' || Boolean(views[destination.id]);
+      const control = button(destination.label, available ? () => selectDestination(destination.id) : null);
       control.dataset.destination = destination.id;
-      if (destination.landsWith) {
+      if (!available) {
         control.disabled = true;
         control.dataset.state = 'pending';
         const reason = element('span', 'meta shell-destination-reason', `View lands with ${destination.landsWith}.`);
@@ -84,11 +146,16 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   }
 
   function selectDestination(id) {
+    const selected = viewFor(id);
+    if (!selected) return false;
     activeDestination = id;
     for (const control of root.querySelectorAll('[data-destination]')) {
       control.setAttribute('aria-pressed', String(control.dataset.destination === id));
     }
+    content?.replaceChildren(selected.element ?? selected);
+    selected.activate?.();
     callbacks.onDestinationChange?.({ destination: id });
+    return true;
   }
 
   function renderInitialized() {
@@ -100,14 +167,18 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     title.dataset.testid = 'shell-title';
     const badge = element('span', 'shell-product-badge');
     badge.dataset.testid = 'shell-product-badge';
-    badge.append(statusChip({ state: 'verified', label: product.name }));
+    const identityChip = statusChip({ state: 'neutral', label: product.name });
+    identityChip.dataset.identity = 'product'; badge.append(identityChip);
     identity.append(title, badge);
     header.append(identity, renderContextLine(overview.getFixture()));
     root.append(header, renderDestinationBar());
 
-    const content = element('div', 'shell-content stack');
+    content = element('div', 'shell-content stack');
     content.dataset.testid = 'shell-content';
-    content.append(overview.element);
+    const selected = viewFor(activeDestination) ?? overview;
+    if (!viewFor(activeDestination)) activeDestination = 'overview';
+    content.append(selected.element ?? selected);
+    selected.activate?.();
     root.append(content);
     callbacks.onStateChange?.({ initialized: true, destinations: PROJECT_DESTINATIONS.map(destination => destination.id) });
   }
@@ -127,11 +198,17 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
       // new projection arrives; only the data changes, never the user's place.
       const previous = overview?.getStats() ?? null;
       if (overview) overview.element.remove();
-      overview = createOverviewView({ bundle });
+      overview = createOverviewView({ bundle, callbacks: {
+        onNodeSelect: event => callbacks.onNodeSelect?.(event),
+        onNodeDrill: event => callbacks.onPlanDrill?.(event),
+        onMapViewportChange: event => callbacks.onMapViewportChange?.(event),
+      } });
+      compactLiveOverview();
       renderInitialized();
       if (previous?.map?.mode) overview.setMode(previous.map.mode);
       if (previous?.selectedNodeId) overview.select(previous.selectedNodeId);
     }
+    for (const view of Object.values(views)) view?.update?.(bundle.snapshot ?? bundle);
   }
 
   update();

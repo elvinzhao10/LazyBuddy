@@ -2,6 +2,7 @@
 // Fixture-only presentation: no fetch, no commands, no scheduler authority, no persistence.
 // Layout replies are tagged with a view revision; stale replies are discarded, never displayed.
 import { button, element, statusChip } from './components.mjs';
+import { createGraphViewportController } from './graph-viewport.mjs';
 import { listModel, measureNodeCard, presentationModel, layoutProjectGraph, SpikePresentationError } from './project-presentation.mjs';
 
 const defaultScheduler = model => layoutProjectGraph(model);
@@ -25,6 +26,10 @@ function nodeCard(node, state) {
   card.setAttribute('aria-pressed', String(state.selectedId === node.id));
   card.setAttribute('aria-label', `${node.kind.replace('-', ' ')}: ${measure.fullTitle}`);
   card.title = measure.truncated ? measure.fullTitle : '';
+  card.addEventListener('click', event => {
+    if (event.target !== card && event.target.tagName === 'BUTTON') return;
+    state.onSelect(node.id);
+  });
   const identity = element('span', 'spike-identity');
   identity.append(element('code', '', node.id));
   card.append(identity);
@@ -36,7 +41,12 @@ function nodeCard(node, state) {
     row.append(element('span', 'meta', kind), statusChip(value));
     card.append(row);
   }
-  card.append(element('span', 'meta spike-summary', node.summary));
+  const summary = element('span', 'meta spike-summary', measure.summaryLines.join(' '));
+  if (measure.summaryTruncated) {
+    summary.dataset.truncated = 'true';
+    summary.title = measure.fullSummary;
+  }
+  card.append(summary);
   if (node.expandable) {
     const toggle = button(node.collapsedGroup ? 'Expand checks' : 'Collapse checks', () => state.onToggle(node.id));
     toggle.className = 'spike-toggle';
@@ -113,6 +123,12 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   inspector.tabIndex = 0;
   inspector.setAttribute('role', 'region');
   inspector.setAttribute('aria-label', 'Contextual inspector');
+  const graphViewport = createGraphViewportController({
+    label: 'Project composition graph',
+    getRegion: () => root.querySelector('.spike-graph-viewport'),
+    getSvg: () => root.querySelector('.spike-graph'),
+    onChange: event => callbacks.onViewportChange?.(event),
+  });
 
   function nodeById(id) {
     return currentFixture.nodes.find(node => node.id === id) ?? currentFixture.nodes.flatMap(node => node.children ?? []).find(child => child.id === id);
@@ -176,7 +192,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     if (!appliedLayout) return;
     const previousViewport = root.querySelector('.spike-graph-viewport');
     const focusedId = previousViewport?.contains(document.activeElement) ? document.activeElement.dataset.nodeId : null;
-    const scroll = { left: previousViewport?.scrollLeft ?? 0, top: previousViewport?.scrollTop ?? 0 };
+    graphViewport.capture();
     const wrap = root.querySelector('.spike-graph-wrap') ?? element('div', 'spike-graph-wrap');
     wrap.replaceChildren();
     const region = element('div', 'spike-graph-viewport');
@@ -215,10 +231,10 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     }
     svg.append(edgeLayer, nodeLayer);
     region.append(svg);
-    wrap.append(region);
+    wrap.append(graphViewport.controls(), region);
     const body = root.querySelector('.spike-body');
     body.prepend(wrap);
-    region.scrollLeft = scroll.left; region.scrollTop = scroll.top;
+    graphViewport.bind(region, svg, appliedLayout.width, appliedLayout.height);
     if (focusedId) region.querySelector(`.spike-node[data-node-id="${focusedId}"]`)?.focus();
   }
 
@@ -317,6 +333,20 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     if (selectedId && !nodeById(selectedId)) selectedId = null;
     renderInspector();
     requestLayout();
+  }
+
+  function applyUpdate(nextFixture) {
+    const priorGroups = new Set(currentFixture.nodes.filter(node => node.children?.length).map(node => node.id));
+    const preserved = { selectedId, collapsed: [...collapsed], viewport: graphViewport.capture(), mode: currentMode };
+    currentFixture = structuredClone(nextFixture);
+    const available = new Set([...currentFixture.nodes.map(node => node.id), ...currentFixture.nodes.flatMap(node => (node.children ?? []).map(child => child.id))]);
+    collapsed = new Set([...collapsed].filter(id => available.has(id)));
+    for (const node of currentFixture.nodes) if (node.collapsed && !priorGroups.has(node.id)) collapsed.add(node.id);
+    if (selectedId && !available.has(selectedId)) selectedId = null;
+    renderInspector();
+    requestLayout();
+    return { selectedPreserved: preserved.selectedId == null || preserved.selectedId === selectedId,
+      collapsed: [...collapsed].sort(), viewport: graphViewport.getState(), mode: currentMode };
   }
 
   function focusNode(nodeId) {
@@ -475,16 +505,19 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     select,
     focusNode,
     showFixture,
+    applyUpdate,
     renameNode,
     toggleGroup,
     setMode,
+    setViewport: (viewport, reason) => graphViewport.setViewport(viewport, reason),
+    fitViewport: () => graphViewport.fit(),
     getStats() {
       return {
         viewRevision, appliedRevision, pendingCount, discardedCount: discarded.length, discarded: structuredClone(discarded),
         nodeCount: appliedLayout?.nodes.length ?? 0, edgeCount: appliedLayout?.edges.length ?? 0,
         layoutWidth: appliedLayout?.width ?? 0, layoutHeight: appliedLayout?.height ?? 0,
         lastApplyMs, mode: currentMode, selectedId, collapsed: [...collapsed].sort(),
-        docId: currentFixture.docId, layoutError: layoutError?.code ?? null,
+        docId: currentFixture.docId, layoutError: layoutError?.code ?? null, viewport: graphViewport.getState(),
       };
     },
     getFixture() { return structuredClone(currentFixture); },

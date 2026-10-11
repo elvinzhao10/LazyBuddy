@@ -3,6 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   EVIDENCE_DIRECTORIES, RUN_ID_PATTERN, SCAN_DEPTH_LIMIT, SCAN_FILE_BUDGET, readArtifactFile,
+  artifactFail,
 } from './paths.mjs';
 import { previewProfile } from './preview.mjs';
 import { researchSourcePaths } from './research.mjs';
@@ -18,6 +19,23 @@ const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
 const VIDEO_EXTENSIONS = new Set(['.mkv', '.mov', '.mp4', '.webm']);
 const ARTIFACT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
 const STATUSES = ['available', 'missing', 'moved', 'redacted', 'unsupported', 'inaccessible'];
+export const NATIVE_STATE_ROOTS = Object.freeze({ LazyBuddy: '.lazybuddy', LazyTrae: '.lazytrae',
+  LazyQoder: '.lazyqoder', LazyZCode: '.lazyzcode', LazyKimi: '.lazykimi', LazyDeepSeek: '.lazydeepseek' });
+
+function nativeStateRoot(options) {
+  const runtime = options.snapshot?.runtime ?? 'LazyBuddy';
+  const root = NATIVE_STATE_ROOTS[runtime];
+  if (!root) throw new TypeError('UNKNOWN_RUNTIME');
+  return root;
+}
+
+export function assertRuntimeArtifactPath(value, selectedRoot) {
+  const first = typeof value === 'string' ? value.split('/')[0].toLowerCase() : '';
+  if (Object.values(NATIVE_STATE_ROOTS).includes(first) && first !== selectedRoot) {
+    artifactFail('FOREIGN_NATIVE_ARTIFACT_PATH', 'An artifact belongs to another native runtime state root');
+  }
+  return value;
+}
 
 export function classifyArtifact(relativePath) {
   const segments = relativePath.toLowerCase().split('/');
@@ -41,16 +59,19 @@ function stableId(path) {
   return ARTIFACT_ID_PATTERN.test(candidate) ? candidate : `artifact:scan:${sha256Bytes(path)}`;
 }
 
-function referencePath(runId, reference) {
+function referencePath(nativeRoot, runId, reference) {
   const value = typeof reference === 'string' ? reference : plain(reference) && typeof reference.path === 'string' ? reference.path : null;
   if (!value || value.includes('\\') || value.split('/').some(part => !part || part === '.' || part === '..')) return null;
-  return value.startsWith('.lazybuddy/') ? value : `.lazybuddy/runs/${runId}/${value}`;
+  if (/^\.lazy(?:buddy|trae|qoder|zcode|kimi|deepseek)\//i.test(value)) {
+    return assertRuntimeArtifactPath(value, nativeRoot);
+  }
+  return `${nativeRoot}/runs/${runId}/${value}`;
 }
 
 // Tolerant, deterministic extraction from either recognized run-state shape: the
 // dashboard contract (revision, plan_revision, tasks with criteria/attempts/evidence)
 // or the native v2 record (verification_gates, tasks with evidence paths).
-function runStateFacts(runId, state) {
+function runStateFacts(nativeRoot, runId, state) {
   const facts = { run_id: runId, revision: null, plan_revision: null, task_ids: [], attempt_ids: [],
     criterion_versions: [], gate_names: [], references: [], expected_digests: new Map() };
   if (!plain(state)) return facts;
@@ -89,7 +110,7 @@ function runStateFacts(runId, state) {
       if (Array.isArray(task.evidence)) evidenceLists.push({ evidence: task.evidence, task_id: taskId, attempt_id: null, criterion_id: null });
       for (const list of evidenceLists) {
         for (const reference of list.evidence) {
-          const path = referencePath(runId, reference);
+          const path = referencePath(nativeRoot, runId, reference);
           if (!path) continue;
           const digest = plain(reference) && DIGEST_PATTERN.test(reference.sha256 ?? '') ? reference.sha256 : null;
           facts.references.push({ path, task_id: list.task_id, attempt_id: list.attempt_id,
@@ -101,17 +122,17 @@ function runStateFacts(runId, state) {
   if (Array.isArray(state.evidence_submissions)) {
     for (const submission of state.evidence_submissions) {
       if (!plain(submission) || !boundedText(submission.archived_path)) continue;
-      const path = referencePath(runId, submission.archived_path);
+      const path = referencePath(nativeRoot, runId, submission.archived_path);
       if (path && DIGEST_PATTERN.test(submission.archived_sha256 ?? '')) facts.expected_digests.set(path, submission.archived_sha256);
     }
   }
   return facts;
 }
 
-async function walkEvidenceTree(root, runId, sink) {
-  const runRoot = join(root, '.lazybuddy', 'runs', runId);
+async function walkEvidenceTree(root, nativeRoot, runId, sink) {
+  const runRoot = join(root, nativeRoot, 'runs', runId);
   for (const directory of EVIDENCE_DIRECTORIES) {
-    await walk(join(runRoot, directory), `.lazybuddy/runs/${runId}/${directory}`, 0);
+    await walk(join(runRoot, directory), `${nativeRoot}/runs/${runId}/${directory}`, 0);
   }
   async function walk(absolute, relative, depth) {
     if (depth > SCAN_DEPTH_LIMIT) { sink.skipped.push({ path: relative, reason: 'depth_limit_exceeded' }); return; }
@@ -153,11 +174,16 @@ function uniqueSorted(values) {
 
 export async function buildArtifactIndex(root, options = {}) {
   const snapshot = plain(options.snapshot) ? options.snapshot : null;
+  const nativeRoot = nativeStateRoot(options);
+  const runtime = snapshot?.runtime ?? 'LazyBuddy';
   const scan = { scanned_at: new Date().toISOString(), directories: [...EVIDENCE_DIRECTORIES],
+    native_state_root: nativeRoot,
+    history_status: runtime === 'LazyTrae' ? 'unavailable' : 'observed',
+    history_reason: runtime === 'LazyTrae' ? 'TRAE_LOOP_HISTORY_NOT_INDEXED' : null,
     runs_discovered: 0, runs_indexed: 0, files_seen: 0, skipped: [], notes: [] };
   const entries = new Map();
 
-  const runsDirectory = join(root, '.lazybuddy', 'runs');
+  const runsDirectory = join(root, nativeRoot, 'runs');
   let runDirents = [];
   try {
     runDirents = (await readdir(runsDirectory, { withFileTypes: true }))
@@ -171,17 +197,17 @@ export async function buildArtifactIndex(root, options = {}) {
     if (!RUN_ID_PATTERN.test(dirent.name)) { scan.notes.push({ run_id: dirent.name, reason: 'unsupported_run_id' }); continue; }
     if (dirent.isSymbolicLink() || !dirent.isDirectory()) { scan.notes.push({ run_id: dirent.name, reason: 'run_not_a_directory' }); continue; }
     const runId = dirent.name;
-    let facts = runStateFacts(runId, null);
+    let facts = runStateFacts(nativeRoot, runId, null);
     try {
-      const state = JSON.parse((await readArtifactFile(root, `.lazybuddy/runs/${runId}/state.json`)).bytes.toString('utf8'));
-      facts = runStateFacts(runId, state);
+      const state = JSON.parse((await readArtifactFile(root, `${nativeRoot}/runs/${runId}/state.json`)).bytes.toString('utf8'));
+      facts = runStateFacts(nativeRoot, runId, state);
     } catch (error) {
       if (error.code === 'ARTIFACT_MISSING') scan.notes.push({ run_id: runId, reason: 'state_absent' });
       else if (error.code === 'ARTIFACT_TOO_LARGE') scan.notes.push({ run_id: runId, reason: 'state_too_large' });
       else scan.notes.push({ run_id: runId, reason: 'state_unparseable' });
     }
     const sink = { files: 0, skipped: scan.skipped, filesystems: [] };
-    await walkEvidenceTree(root, runId, sink);
+    await walkEvidenceTree(root, nativeRoot, runId, sink);
     scan.files_seen += sink.files;
 
     for (const found of sink.filesystems) {
@@ -225,6 +251,7 @@ export async function buildArtifactIndex(root, options = {}) {
   if (snapshot && Array.isArray(snapshot.artifacts)) {
     for (const record of snapshot.artifacts) {
       if (!plain(record) || !boundedText(record.path)) continue;
+      assertRuntimeArtifactPath(record.path, nativeRoot);
       const entry = entries.get(record.path) ?? baseEntry(record.path, 'registered');
       if (!entry.origins.includes('registered')) entry.origins.push('registered');
       entry.registered = { id: record.id, type: record.type, producer: record.producer,
@@ -251,6 +278,7 @@ export async function buildArtifactIndex(root, options = {}) {
     for (const finding of snapshot.research) {
       if (!plain(finding)) continue;
       for (const source of researchSourcePaths(finding).paths) {
+        assertRuntimeArtifactPath(source, nativeRoot);
         const entry = entries.get(source) ?? baseEntry(source, 'research');
         if (!entry.origins.includes('research')) entry.origins.push('research');
         entry.producer ??= `research:${finding.id}`;
@@ -344,6 +372,7 @@ export async function buildArtifactIndex(root, options = {}) {
   const sorted = [...entries.values()].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
   const byStatus = Object.fromEntries(STATUSES.map(status => [status, 0]));
   for (const entry of sorted) byStatus[entry.status] += 1;
-  return { schema_version: 1, root, project_id: snapshot?.project_id ?? null, scan,
+  return { schema_version: 1, root, project_id: snapshot?.project_id ?? null, runtime,
+    native_state_root: nativeRoot, scan,
     entries: sorted, coverage: { total: sorted.length, by_status: byStatus, truncation: 'none' } };
 }

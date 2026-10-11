@@ -9,14 +9,16 @@ import { readReceipt, writePrivate, challenge, started, sign, removeReceipt } fr
 
 export async function binding(options) {
   await canonicalDirectory(options.projectRoot);
-  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(options.runId) || typeof options.projectId !== 'string' || !options.projectId.length || options.projectId.length > 256) throw new ServiceError('INVALID_BINDING');
-  await canonicalDirectory(join(options.projectRoot, '.lazybuddy/runs', options.runId));
+  const runId = options.runId ?? null;
+  if ((runId !== null && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(runId))
+    || typeof options.projectId !== 'string' || !options.projectId.length || options.projectId.length > 256) throw new ServiceError('INVALID_BINDING');
+  if (runId !== null) await canonicalDirectory(join(options.projectRoot, '.lazybuddy/runs', runId));
   if (options.assetRoot) await canonicalDirectory(options.assetRoot);
   const port = options.port ?? 0;
   if (!Number.isSafeInteger(port) || (options.port !== undefined && (port < 1 || port > 65535))) throw new ServiceError('INVALID_PORT');
   const parent = await privateDirectory(join(options.projectRoot, '.lazybuddy/dashboard'));
-  const directory = await privateDirectory(join(parent, hash(`${options.projectId}\n${options.runId}`)));
-  return { ...options, port, directory };
+  const directory = await privateDirectory(join(parent, hash(`${options.projectId}\n${runId === null ? '@project' : runId}`)));
+  return { ...options, runId, port, directory };
 }
 export function publicIdentity(options, identity) {
   return { status: 'running', identity, url: `http://127.0.0.1:${identity.port}`, credential_file: join(options.directory, 'credential') };
@@ -49,7 +51,13 @@ export async function lifecycle(action, rawOptions) {
       if (options.port && identity.port !== options.port) throw new ServiceError('PORT_BINDING_MISMATCH', 409);
       return publicIdentity(options, identity);
     }
-    await authorityFor(options).read(options);
+    if (options.runId === null) {
+      try { await authorityFor(options).readProject(options, 'dashboard:preflight'); }
+      catch (error) {
+        if (error?.code === 'PROJECT_NOT_INITIALIZED') throw new ServiceError(error.code, 404);
+        throw error;
+      }
+    } else await authorityFor(options).read(options);
     if (interrupted) throw new ServiceError('START_INTERRUPTED');
     let credential;
     try { credential = (await privateRead(options.directory, 'credential')).toString(); }

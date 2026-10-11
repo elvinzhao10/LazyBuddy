@@ -213,7 +213,7 @@ export function evidenceFixture({ index, snapshot, refusals = [] } = {}) {
     viewId: 'evidence',
     docId: `evidence:${snapshot?.project_id ?? index.project_id ?? 'unknown'}`,
     title: 'Evidence and research',
-    subtitle: 'Indexed artifacts with safe previews, honest pagination and distinct access states over the T12 artifact index (read-only)',
+    subtitle: 'Indexed artifacts with safe previews, honest pagination and distinct access states (read-only)',
     projectRevision: Number.isSafeInteger(snapshot?.revision) ? snapshot.revision : null,
     statuses: [...STATUSES],
     stateSentences: Object.fromEntries(STATUSES.map(status => [status, STATE_SENTENCES[status]()])),
@@ -228,7 +228,8 @@ export function evidenceFixture({ index, snapshot, refusals = [] } = {}) {
       accepted_requirement_ids_before_research: [...authority.accepted_requirement_ids] },
     refusals: validateRefusals(refusals),
     scan: { scanned_at: index.scan?.scanned_at ?? null, runs_indexed: index.scan?.runs_indexed ?? null,
-      files_seen: index.scan?.files_seen ?? null },
+      files_seen: index.scan?.files_seen ?? null, native_state_root: index.scan?.native_state_root ?? null,
+      history_status: index.scan?.history_status ?? 'observed', history_reason: index.scan?.history_reason ?? null },
   };
   fixture.total = fixture.entries.length;
 

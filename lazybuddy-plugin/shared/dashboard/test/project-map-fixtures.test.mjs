@@ -8,7 +8,7 @@ const dom = createMiniDom();
 globalThis.document = dom.document;
 
 const { attemptFixture, batchFixture, planFixture, projectMapFixture } = await import('../ui/project-fixtures.mjs');
-const { listModel, measureNodeCard, presentationModel, layoutProjectGraph, wrapLabel, SpikePresentationError, NODE_KINDS } = await import('../ui/project-presentation.mjs');
+const { CARD, listModel, measureNodeCard, presentationModel, layoutProjectGraph, wrapLabel, SpikePresentationError, NODE_KINDS } = await import('../ui/project-presentation.mjs');
 const { createProjectMapSpike } = await import('../ui/project-map-spike.mjs');
 const { statusChip } = await import('../ui/components.mjs');
 
@@ -174,6 +174,82 @@ test('editing a long title recalculates geometry through the existing engine', a
   assert.ok(wrapped.height > oneLine.height);
   assert.equal(overflowing.truncated, true);
   assert.equal(overflowing.fullTitle.length, 240);
+});
+
+test('card geometry accounts for status rows and progressively discloses long summaries', async () => {
+  const fixture = projectMapFixture();
+  const model = presentationModel(fixture);
+  const layout = layoutProjectGraph(model);
+  for (const placed of layout.nodes) {
+    const node = model.byId.get(placed.id);
+    const measure = measureNodeCard(node);
+    assert.equal(placed.height, measure.height, `${node.id} uses its complete measured card extent`);
+    assert.equal(measure.chipRows.length, 2, `${node.id} measures execution and verification rows`);
+    assert.ok(measure.chipRows.every(height => height >= 20), `${node.id} reserves readable status-row height`);
+  }
+  const conflict = model.byId.get('conflict:offline-vs-cloud');
+  const measure = measureNodeCard(conflict);
+  assert.equal(measure.summaryTruncated, true, 'long card summary becomes a deliberate teaser');
+  const view = await renderedView(fixture);
+  const summary = view.element.querySelector('.spike-node[data-node-id="conflict:offline-vs-cloud"] .spike-summary');
+  assert.equal(summary.dataset.truncated, 'true');
+  assert.equal(summary.title, conflict.summary, 'full summary remains available and renders in the inspector after selection');
+  assert.ok(summary.textContent.endsWith('…'));
+});
+
+test('pointer selection, viewport controls and polling updates preserve the graph place', async () => {
+  const selected = [];
+  const viewportEvents = [];
+  const fixture = planFixture('search');
+  const view = await renderedView(fixture, { callbacks: {
+    onSelect: event => selected.push(event),
+    onViewportChange: event => viewportEvents.push(event),
+  } });
+  const card = view.element.querySelector('.spike-node[data-node-id="batch:index-build"]');
+  card.click();
+  assert.equal(view.getStats().selectedId, 'batch:index-build');
+  assert.deepEqual(selected, [{ nodeId: 'batch:index-build' }]);
+
+  const viewport = view.element.querySelector('.spike-graph-viewport');
+  viewport.clientWidth = 640;
+  viewport.clientHeight = 400;
+  view.setViewport({ scale: 1.5, scrollLeft: 120, scrollTop: 80 }, 'test');
+  assert.deepEqual(view.getStats().viewport, { scale: 1.5, scrollLeft: 120, scrollTop: 80 });
+  const zoomOut = [...view.element.querySelectorAll('.graph-viewport-action')]
+    .find(control => control.getAttribute('aria-label') === 'Zoom graph out');
+  assert.ok(zoomOut, 'zoom-out control is present and named');
+  zoomOut.click();
+  assert.equal(view.getStats().viewport.scale, 1.25);
+  viewport.focus();
+  viewport.dispatchEvent({ type: 'keydown', key: '+' });
+  assert.equal(view.getStats().viewport.scale, 1.5, 'keyboard zoom is equivalent to the toolbar control');
+  viewport.dispatchEvent({ type: 'keydown', key: 'ArrowRight' });
+  assert.ok(view.getStats().viewport.scrollLeft > 120, 'focused viewport supports keyboard panning');
+  const beforeDrag = view.getStats().viewport;
+  viewport.dispatchEvent({ type: 'pointerdown', pointerId: 1, button: 0, clientX: 300, clientY: 220 });
+  viewport.dispatchEvent({ type: 'pointermove', pointerId: 1, clientX: 240, clientY: 180 });
+  viewport.dispatchEvent({ type: 'pointerup', pointerId: 1, clientX: 240, clientY: 180 });
+  assert.equal(view.getStats().viewport.scrollLeft, beforeDrag.scrollLeft + 60, 'background drag pans horizontally one-to-one');
+  assert.equal(view.getStats().viewport.scrollTop, beforeDrag.scrollTop + 40, 'background drag pans vertically one-to-one');
+  const selectionBeforeNodeDrag = view.getStats().selectedId;
+  card.dispatchEvent({ type: 'pointerdown', pointerId: 2, button: 0, clientX: 200, clientY: 200 });
+  card.dispatchEvent({ type: 'pointermove', pointerId: 2, clientX: 100, clientY: 100 });
+  card.dispatchEvent({ type: 'pointerup', pointerId: 2, clientX: 100, clientY: 100 });
+  assert.equal(view.getStats().selectedId, selectionBeforeNodeDrag, 'node pointer gestures never mutate graph geometry or selection');
+
+  view.toggleGroup('gate:wave-1');
+  await settle();
+  const before = view.getStats();
+  const refreshed = structuredClone(fixture);
+  refreshed.nodes.find(node => node.id === 'batch:index-build').execution.state = 'attention';
+  refreshed.nodes.find(node => node.id === 'batch:index-build').execution.label = 'Executing';
+  const update = view.applyUpdate(refreshed);
+  await settle();
+  assert.equal(update.selectedPreserved, true);
+  assert.equal(view.getStats().selectedId, 'batch:index-build');
+  assert.equal(view.getStats().collapsed.includes('gate:wave-1'), false, 'user expansion survives a status refresh');
+  assert.deepEqual(view.getStats().viewport, before.viewport, 'nonzero pan and zoom survive the relayout');
+  assert.ok(viewportEvents.some(event => event.reason === 'keyboard-pan'));
 });
 
 test('switching plans while a layout is pending discards the stale reply and never displays it', async () => {
@@ -386,7 +462,12 @@ test('long labels wrap deterministically and unbroken tokens split', () => {
 
 test('spike styles respect reduced motion and modules add no dependencies', async () => {
   const css = await readFile(new URL('project-map-spike.css', UI), 'utf8');
+  const tokens = await readFile(new URL('tokens.css', UI), 'utf8');
   assert.equal(/@keyframes|animation:/.test(css), false, 'no decorative animation');
+  assert.match(css, /\.spike-node\s+\.spike-chiprow\s*\{[^}]*display:\s*grid/, 'card-scoped selector keeps status rows on the measured grid after later shared CSS imports');
+  assert.match(css, /\.spike-node\s*\{[^}]*padding:\s*var\(--s3\)/s, 'card uses the shared s3 padding token');
+  assert.match(tokens, /--s3:\s*\.75rem/, 's3 remains twelve CSS pixels at the root font size');
+  assert.equal(CARD.paddingY, 12, 'layout geometry reserves the same vertical padding rendered by the card');
   for (const declaration of css.match(/transition:[^;]+;/g) ?? []) assert.match(declaration, /var\(--fast\)/);
   for (const file of ['project-fixtures.mjs', 'project-presentation.mjs', 'project-map-spike.mjs', 'project-map-page.mjs']) {
     const source = await readFile(new URL(file, UI), 'utf8');

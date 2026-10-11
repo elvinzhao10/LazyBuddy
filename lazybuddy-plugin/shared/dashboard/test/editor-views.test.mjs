@@ -24,6 +24,12 @@ const PLAN = `# Delivery plan
 
 Intro prose that must survive edits untouched.
 
+**Owner:** \`dashboard\`
+
+| Surface | State |
+| --- | --- |
+| Project | connected |
+
 ## Requirement — Offline operation
 
 - [ ] Work without a network
@@ -169,21 +175,26 @@ async function draftCriterionEdit(view, text = BEHAVIORAL_TEXT, authority = 'use
   await settled(view);
 }
 
-test('the rendered view shows the registered original markdown with fences as code and tasks as checkable rows', async () => {
+test('the rendered view uses semantic Markdown for emphasis, tables, fences and read-only tasks', async () => {
   const project = setupProject('rendered-original');
   const { editor } = await mountEditor(project.root);
   assert.equal(byTestid(editor, 'source-meta').textContent.includes(PLAN_RELATIVE), true);
   const rendered = byTestid(editor, 'editor-rendered');
-  const heading = rendered.querySelector('.editor-heading');
+  const document = rendered.querySelector('.markdown-document');
+  const heading = document.querySelector('[data-source-line="1"]');
   assert.equal(heading.textContent, 'Delivery plan');
-  assert.equal(heading.dataset.level, '1');
   const fence = rendered.querySelector('pre');
   assert.equal(fence.textContent.includes('lazybuddy verify --strict'), true);
   assert.equal(fence.textContent.includes('fake checklist item inside the fence'), true);
-  const tasks = rendered.querySelectorAll('.editor-task');
+  const tasks = rendered.querySelectorAll('.markdown-task');
   assert.equal(tasks.length, 3, 'the three real checklist items render; the fenced one does not');
   const offline = [...tasks].find(row => row.textContent.includes('Work without a network'));
-  assert.equal(offline.dataset.checked, 'false');
+  assert.equal(offline.querySelector('input').hasAttribute('checked'), false);
+  assert.equal(offline.querySelector('input').disabled, true);
+  assert.equal(rendered.querySelectorAll('table').length, 1, 'a Markdown table stays a table');
+  assert.equal(rendered.querySelector('strong').textContent, 'Owner:');
+  assert.equal(document.querySelector('code').textContent, 'dashboard');
+  assert.equal(rendered.textContent.includes('**Owner:**'), false, 'raw emphasis syntax is not shown');
 });
 
 test('source.map through the command route lists anchors with their linked plans and criteria', async () => {

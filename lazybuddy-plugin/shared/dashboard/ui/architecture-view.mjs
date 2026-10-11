@@ -6,6 +6,7 @@
 // No commands, no fetch, no scheduler authority. Keyboard operation and an
 // equivalent list mode serve narrow widths.
 import { button, element, statusChip } from './components.mjs';
+import { createGraphViewportController } from './graph-viewport.mjs';
 
 const LENSES = ['product', 'engineering'];
 const VIEWS = ['current', 'planned', 'change'];
@@ -14,6 +15,7 @@ const KIND_LABELS = { application: 'Application', subsystem: 'Subsystem', compon
 const RELATIONSHIP_LABELS = { contains: 'contains', depends_on: 'depends on', uses: 'uses', provides: 'provides',
   calls: 'calls', extends: 'extends', replaces: 'replaces' };
 const CHANGE_KINDS = ['additions', 'open_migrations', 'replacements'];
+const GRAPH = Object.freeze({ nodeWidth: 264, nodeHeight: 196, columnGap: 168, rowGap: 56, padding: 32 });
 
 function changeIdSet(fixture) {
   return new Set(fixture.change.additions.concat(fixture.change.open_migrations, fixture.change.replacements)
@@ -32,6 +34,47 @@ function depthOf(fixture, id) {
   let current = fixture.components[id]?.authored?.parent_id ?? null;
   while (current && depth < 16) { depth += 1; current = fixture.components[current]?.authored?.parent_id ?? null; }
   return depth;
+}
+
+/** Deterministic authored-only graph. Observations and execution dependencies never create edges. */
+export function architectureGraphModel(fixture, view) {
+  const active = new Set(viewIdsOf(fixture, view));
+  const columns = [];
+  for (const id of [...active].sort((left, right) => left.localeCompare(right))) {
+    const component = fixture.components[id];
+    if (!component) continue;
+    const depth = component.authored ? depthOf(fixture, id) : 0;
+    if (!columns[depth]) columns[depth] = [];
+    columns[depth].push(id);
+  }
+  const nodes = [];
+  for (let column = 0; column < columns.length; column += 1) {
+    for (const [row, id] of (columns[column] ?? []).entries()) {
+      nodes.push({ id, column, x: GRAPH.padding + column * (GRAPH.nodeWidth + GRAPH.columnGap),
+        y: GRAPH.padding + row * (GRAPH.nodeHeight + GRAPH.rowGap), width: GRAPH.nodeWidth, height: GRAPH.nodeHeight });
+    }
+  }
+  const byId = new Map(nodes.map(node => [node.id, node]));
+  const edges = [];
+  const seen = new Set();
+  const addEdge = (from, to, kind, basis) => {
+    if (!byId.has(from) || !byId.has(to)) return;
+    const key = `${from}|${kind}|${to}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    edges.push({ id: key, from, to, kind, basis, label: RELATIONSHIP_LABELS[kind] ?? kind });
+  };
+  for (const id of [...active].sort((left, right) => left.localeCompare(right))) {
+    const authored = fixture.components[id]?.authored;
+    if (!authored) continue;
+    if (authored.parent_id) addEdge(authored.parent_id, id, 'contains', 'authored containment');
+    for (const relationship of authored.relationships ?? []) {
+      addEdge(id, relationship.to, relationship.kind, relationship.basis);
+    }
+  }
+  const width = Math.max(480, ...nodes.map(node => node.x + node.width + GRAPH.padding));
+  const height = Math.max(320, ...nodes.map(node => node.y + node.height + GRAPH.padding));
+  return { nodes, edges: edges.sort((left, right) => left.id.localeCompare(right.id)), byId, width, height };
 }
 
 function chipsRow(component) {
@@ -76,7 +119,7 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
   let currentFixture = structuredClone(initialFixture);
   let currentLens = LENSES.includes(lens) ? lens : 'product';
   let currentView = VIEWS.includes(view) ? view : 'current';
-  let currentMode = mode === 'list' ? 'list' : 'cards';
+  let currentMode = ['graph', 'list'].includes(mode) ? mode : 'cards';
   let selectedId = null;
   let collapsedGroups = new Set(collapsed.filter(kind => CHANGE_KINDS.includes(kind)));
   let viewRevision = 0;
@@ -101,6 +144,12 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
   viewport.tabIndex = 0;
   viewport.setAttribute('role', 'region');
   viewport.setAttribute('aria-label', 'Architecture content');
+  const graphViewport = createGraphViewportController({
+    label: 'Architecture graph',
+    getRegion: () => viewport.querySelector('.architecture-graph-viewport'),
+    getSvg: () => viewport.querySelector('.architecture-graph'),
+    onChange: event => callbacks.onViewportChange?.(event),
+  });
 
   const componentOf = id => currentFixture.components[id] ?? null;
 
@@ -134,7 +183,7 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
     };
     toolbar.append(makeSwitcher('lens', LENSES, { product: 'Product lens', engineering: 'Engineering lens' }, currentLens, setLens));
     toolbar.append(makeSwitcher('view', VIEWS, { current: 'Current', planned: 'Planned', change: 'Change' }, currentView, setView));
-    toolbar.append(makeSwitcher('mode', ['cards', 'list'], { cards: 'Cards', list: 'List' }, currentMode, setMode));
+    toolbar.append(makeSwitcher('mode', ['graph', 'cards', 'list'], { graph: 'Graph', cards: 'Cards', list: 'List' }, currentMode, setMode));
     const legend = element('ul', 'cluster architecture-legend');
     legend.setAttribute('aria-label', 'Treatment legend');
     const ghost = element('li', 'legend-ghost');
@@ -268,6 +317,93 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
     return surface;
   }
 
+  function graphEdgeGeometry(edge, layout, index) {
+    const source = layout.byId.get(edge.from);
+    const target = layout.byId.get(edge.to);
+    const y1 = source.y + source.height / 2;
+    const y2 = target.y + target.height / 2;
+    if (source.x === target.x) {
+      const side = source.x + source.width + 48 + (index % 3) * 18;
+      return { path: `M ${source.x + source.width} ${y1} C ${side} ${y1}, ${side} ${y2}, ${target.x + target.width} ${y2}`,
+        labelX: side + 4, labelY: (y1 + y2) / 2 };
+    }
+    const forward = target.x > source.x;
+    const x1 = forward ? source.x + source.width : source.x;
+    const x2 = forward ? target.x : target.x + target.width;
+    const bend = (x1 + x2) / 2;
+    return { path: `M ${x1} ${y1} C ${bend} ${y1}, ${bend} ${y2}, ${x2} ${y2}`,
+      labelX: bend + 4, labelY: (y1 + y2) / 2 - 6 };
+  }
+
+  function renderArchitectureGraph() {
+    const layout = architectureGraphModel(currentFixture, currentView);
+    const wrap = element('div', 'architecture-graph-wrap');
+    wrap.append(graphViewport.controls());
+    const region = element('div', 'architecture-graph-viewport');
+    region.dataset.testid = 'architecture-graph';
+    region.tabIndex = 0;
+    region.setAttribute('role', 'region');
+    region.setAttribute('aria-label', `Authored architecture graph for the ${currentView} view`);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('architecture-graph');
+    svg.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
+    svg.setAttribute('width', layout.width);
+    svg.setAttribute('height', layout.height);
+
+    const edgeLayer = document.createElementNS(svg.namespaceURI, 'g');
+    edgeLayer.classList.add('architecture-graph-edges');
+    layout.edges.forEach((edge, index) => {
+      const geometry = graphEdgeGeometry(edge, layout, index);
+      const group = document.createElementNS(svg.namespaceURI, 'g');
+      group.dataset.edgeId = edge.id;
+      group.dataset.kind = edge.kind;
+      const path = document.createElementNS(svg.namespaceURI, 'path');
+      path.setAttribute('d', geometry.path);
+      path.setAttribute('aria-label', `${edge.label}: ${edge.from} to ${edge.to} · ${edge.basis}`);
+      const label = document.createElementNS(svg.namespaceURI, 'text');
+      label.setAttribute('x', geometry.labelX);
+      label.setAttribute('y', geometry.labelY);
+      label.textContent = edge.label;
+      group.append(path, label);
+      edgeLayer.append(group);
+    });
+
+    const nodeLayer = document.createElementNS(svg.namespaceURI, 'g');
+    nodeLayer.classList.add('architecture-graph-nodes');
+    for (const placed of layout.nodes) {
+      const component = componentOf(placed.id);
+      const authored = component?.authored;
+      const foreign = document.createElementNS(svg.namespaceURI, 'foreignObject');
+      foreign.dataset.componentId = placed.id;
+      foreign.setAttribute('x', placed.x);
+      foreign.setAttribute('y', placed.y);
+      foreign.setAttribute('width', placed.width);
+      foreign.setAttribute('height', placed.height);
+      const control = button('');
+      control.className = 'architecture-identity architecture-graph-node';
+      control.dataset.componentId = placed.id;
+      control.dataset.surface = 'engineering-graph';
+      control.dataset.containmentDepth = String(placed.column);
+      control.setAttribute('aria-pressed', String(placed.id === selectedId));
+      control.setAttribute('aria-label', `${KIND_LABELS[authored?.kind] ?? authored?.kind ?? 'Observed identity'}: ${authored?.title ?? placed.id}`);
+      if (component?.status.proposed) control.dataset.proposed = 'true';
+      const head = element('span', 'cluster architecture-identity-head');
+      head.append(element('code', '', placed.id));
+      if (component?.status.proposed) head.append(proposedLabel());
+      control.append(head, element('strong', 'architecture-graph-title', authored?.title ?? placed.id),
+        element('span', 'meta architecture-graph-kind', KIND_LABELS[authored?.kind] ?? authored?.kind ?? 'Observed identity'),
+        element('span', 'meta architecture-graph-role', `${authored?.contains.length ?? 0} contained · ${authored?.relationships.length ?? 0} typed relationship${authored?.relationships.length === 1 ? '' : 's'}`));
+      control.addEventListener('click', () => select(placed.id));
+      foreign.append(control);
+      nodeLayer.append(foreign);
+    }
+    svg.append(edgeLayer, nodeLayer);
+    region.append(svg);
+    wrap.append(region);
+    graphViewport.bind(region, svg, layout.width, layout.height);
+    return wrap;
+  }
+
   function renderEngineeringSurface() {
     const surface = element('section', 'architecture-engineering stack');
     surface.dataset.testid = 'architecture-engineering';
@@ -278,6 +414,13 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
       return surface;
     }
     const ids = viewIdsOf(currentFixture, currentView);
+    if (currentMode === 'graph') {
+      surface.append(renderArchitectureGraph());
+      const attention = ids.filter(id => componentOf(id)?.status.verification.state === 'attention').length;
+      if (attention) surface.append(element('p', 'meta',
+        `${attention} component${attention === 1 ? '' : 's'} in this view ${attention === 1 ? 'is' : 'are'} implemented but not verified — select a node for status and evidence.`));
+      return surface;
+    }
     const list = currentMode === 'list' ? element('ol', 'architecture-list') : element('div', 'architecture-cards');
     for (const id of ids) {
       const component = componentOf(id);
@@ -462,6 +605,7 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
 
   function fullRender() {
     const scroll = { left: viewport.scrollLeft ?? 0, top: viewport.scrollTop ?? 0 };
+    graphViewport.capture();
     const focused = viewport.contains(document.activeElement)
       ? document.activeElement.dataset.componentId : null;
     const product = renderProductSurface();
@@ -512,7 +656,7 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
   }
 
   function setMode(nextMode) {
-    const value = nextMode === 'list' ? 'list' : 'cards';
+    const value = ['graph', 'list'].includes(nextMode) ? nextMode : 'cards';
     if (value === currentMode) return;
     currentMode = value;
     fullRender();
@@ -568,11 +712,14 @@ export function createArchitectureView({ fixture: initialFixture, lens = 'produc
       return Boolean(target);
     },
     setLens, setView, setMode,
+    setViewport: (next, reason) => graphViewport.setViewport(next, reason),
+    fitViewport: () => graphViewport.fit(),
     applyUpdate,
     getStats() {
       return {
         lens: currentLens, view: currentView, mode: currentMode, selectedId, docId: currentFixture.docId,
-        viewRevision, collapsed: [...collapsedGroups].sort(), viewport: root.dataset.viewport ?? null, lastUpdate,
+        viewRevision, collapsed: [...collapsedGroups].sort(), viewport: root.dataset.viewport ?? null,
+        graphViewport: graphViewport.getState(), lastUpdate,
         identities: [...currentFixture.identities],
         viewIds: { current: viewIdsOf(currentFixture, 'current'), planned: viewIdsOf(currentFixture, 'planned'),
           change: viewIdsOf(currentFixture, 'change') },

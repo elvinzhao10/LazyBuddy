@@ -22,7 +22,9 @@
 .spike-legend .edge-group::before { border-block-start-color: var(--border); }
 .spike-legend .edge-history::before { border-block-start-style: dotted; border-block-start-color: var(--stale-ink); }
 
-.spike-graph-viewport { min-block-size: 25rem; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; }
+.spike-graph-wrap { display: grid; gap: var(--s2); min-inline-size: 0; }
+.spike-graph-viewport { min-block-size: 25rem; max-block-size: min(70dvb, 48rem); overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; cursor: grab; }
+.spike-graph-viewport.is-panning { cursor: grabbing; user-select: none; }
 .spike-graph { display: block; max-inline-size: none; }
 .spike-graph-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
 .spike-graph foreignObject { overflow: visible; }
@@ -39,11 +41,15 @@
 .spike-node[aria-pressed='true'] { background: var(--selected); }
 .spike-node .spike-identity { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
 .spike-node .spike-identity code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
-.spike-title { font-weight: var(--strong); overflow-wrap: anywhere; max-block-size: calc(6 * 21px); overflow: hidden; }
+.spike-title { font-weight: var(--strong); line-height: 21px; overflow-wrap: anywhere; max-block-size: calc(5 * 21px); overflow: hidden; }
 .spike-title[data-truncated='true']::after { content: ''; }
-.spike-chiprow { gap: var(--s2); }
+.spike-node .spike-chiprow { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: var(--s2); align-items: start; }
 .spike-chiprow .meta { font-size: var(--caption); }
+.spike-chiprow .status { min-inline-size: 0; overflow-wrap: anywhere; white-space: normal; }
 .spike-summary { overflow-wrap: anywhere; }
+.graph-viewport-controls { justify-content: flex-end; gap: var(--s1); }
+.graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--s2); }
+.graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: tabular-nums; }
 .spike-node.kind-boundary, .spike-list .kind-boundary > .spike-row-control { border-style: dashed; }
 .spike-toggle { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content; }
 

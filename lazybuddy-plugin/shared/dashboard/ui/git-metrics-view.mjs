@@ -337,7 +337,7 @@ function metricRow(metric, state) {
 function renderMetricsPane(metrics, state) {
   const pane = element('section', 'panel stack metrics-pane');
   pane.dataset.testid = 'metrics-pane';
-  pane.append(element('h3', '', 'Metrics — time and token accounting (spec §8 drill-down)'));
+  pane.append(element('h3', '', 'Metrics — time and token accounting'));
   const header = element('p', 'meta');
   header.dataset.testid = 'metrics-context';
   header.append(document.createTextNode(
@@ -433,7 +433,7 @@ export function createGitMetricsView({ git: initialGit, metrics: initialMetrics,
       onSelectWorktree: selectWorktree, onSelectCommit: selectCommit, onOpenMetric: openMetric };
     const head = element('header', 'stack git-metrics-head');
     head.append(element('h2', '', 'Git and metrics detail'),
-      element('p', 'meta', 'Where the work lives in Git (spec §9) and what resources were used (spec §8). Git stages and time/token accounting render as distinct panes; every total opens its contributing records.'));
+      element('p', 'meta', 'Where the work lives in Git and what resources were used. Git stages and time/token accounting render as distinct panes; every total opens its contributing records.'));
     const focused = document.activeElement?.parentNode ? document.activeElement : null;
     const focusedMetricId = focused?.dataset?.metricId ?? null;
     const focusedWorktreeId = focused?.dataset?.worktreeId ?? null;

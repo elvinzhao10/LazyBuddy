@@ -18,10 +18,10 @@ export class SpikePresentationError extends Error {
 
 // Deterministic text measurement (documented estimate, no font metrics dependency):
 // body text 15px system sans ≈ 8.4px average glyph advance; line height 21px.
-const TEXT = Object.freeze({ charWidth: 8.4, lineHeight: 21, titleLinesMax: 6 });
+const TEXT = Object.freeze({ charWidth: 8.4, captionCharWidth: 7.2, lineHeight: 21, captionLineHeight: 20, titleLinesMax: 5, summaryLinesMax: 3 });
 
 // Card geometry constants (px), kept in one place so tests and evidence agree.
-export const CARD = Object.freeze({ width: 224, paddingX: 12, paddingY: 10, rowGap: 6, idRow: 18, chipRow: 22, metaRow: 18, separator: 8, heightMin: 96, gap: { column: 104, row: 32 }, canvasPadding: 32 });
+export const CARD = Object.freeze({ width: 256, paddingX: 12, paddingY: 12, border: 2, rowGap: 8, idRow: 20, chipLabelWidth: 76, chipIconWidth: 24, chipPaddingX: 16, chipPaddingY: 8, metaRow: 20, toggleRow: 34, separator: 8, heightMin: 176, gap: { column: 104, row: 32 }, canvasPadding: 32 });
 
 /** Wrap a label to a pixel width using the documented estimate; unbroken tokens hard-split (overflow-wrap: anywhere). */
 export function wrapLabel(label, maxWidth = CARD.width - CARD.paddingX * 2) {
@@ -49,8 +49,26 @@ export function measureNodeCard(node) {
   const truncated = lines.length > TEXT.titleLinesMax;
   const shown = truncated ? [...lines.slice(0, TEXT.titleLinesMax - 1), `${lines[TEXT.titleLinesMax - 1].slice(0, -1)}…`] : lines;
   const titleBlock = Math.max(1, shown.length) * TEXT.lineHeight;
-  const height = Math.max(CARD.heightMin, CARD.paddingY * 2 + CARD.idRow + CARD.separator + titleBlock + CARD.rowGap + CARD.chipRow + CARD.rowGap + CARD.chipRow + CARD.separator + CARD.metaRow);
-  return { width: CARD.width, height, titleLines: shown, lineCount: shown.length, truncated, fullTitle: node.title };
+  const contentWidth = CARD.width - CARD.paddingX * 2;
+  const captionLines = (value, width = contentWidth) => wrapLabel(value ?? '', width * (TEXT.charWidth / TEXT.captionCharWidth));
+  const identityLines = Math.max(1, captionLines(node.id).length);
+  const chipTextWidth = contentWidth - CARD.chipLabelWidth - CARD.rowGap - CARD.chipIconWidth - CARD.chipPaddingX;
+  const chipRows = [node.execution?.label, node.verification?.label].map(label => {
+    const lineCount = Math.max(1, captionLines(label, chipTextWidth).length);
+    return Math.max(TEXT.captionLineHeight, lineCount * TEXT.captionLineHeight + CARD.chipPaddingY);
+  });
+  const summary = captionLines(node.summary ?? '');
+  const summaryLimit = node.collapsedGroup || node.kind === 'join' ? Number.POSITIVE_INFINITY : TEXT.summaryLinesMax;
+  const summaryTruncated = summary.length > summaryLimit;
+  const summaryLines = summaryTruncated
+    ? [...summary.slice(0, summaryLimit - 1), `${summary[summaryLimit - 1].slice(0, -1)}…`]
+    : summary;
+  const blocks = [identityLines * TEXT.captionLineHeight, titleBlock, ...chipRows, Math.max(1, summaryLines.length) * TEXT.captionLineHeight];
+  if (node.expandable || node.children?.length) blocks.push(CARD.toggleRow);
+  const height = Math.max(CARD.heightMin, CARD.border + CARD.paddingY * 2 + blocks.reduce((sum, value) => sum + value, 0)
+    + CARD.rowGap * (blocks.length - 1));
+  return { width: CARD.width, height, titleLines: shown, lineCount: shown.length, truncated, fullTitle: node.title,
+    summaryLines, summaryTruncated, fullSummary: node.summary ?? '', chipRows, identityLines };
 }
 
 function validateFixture(fixture) {

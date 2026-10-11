@@ -26,8 +26,10 @@ const { composeGraphSet } = await import('../../project/plans/dependencies.mjs')
 const { evaluateTaskGate, normalizeDependencyFacts } = await import('../../project/plans/readiness.mjs');
 const { executionDocument, recordExecutionObservations, tasksWithAttempts } = await import('../ui/execution-model.mjs');
 const { createExecutionView } = await import('../ui/execution-view.mjs');
+const { liveExecutionProjection } = await import('../ui/live-execution-model.mjs');
 const { intervalGeometry, parseAttemptObservations, timelineModel } = await import('../ui/timeline-model.mjs');
 const { presentationModel } = await import('../ui/project-presentation.mjs');
+const { capture: captureServiceSnapshot } = await import('../service-snapshot.mjs');
 
 const plugin = fileURLToPath(new URL('../../../', import.meta.url));
 const producer = join(plugin, 'shared/dashboard/producers.mjs');
@@ -59,9 +61,9 @@ function launch(root, args) {
   return { pid: child.pid, child, done };
 }
 
-async function context(root, attempt, worker, task, index) {
+async function context(root, attempt, worker, task, index, criterion = 'C1') {
   const result = await processCall([process.execPath, producer, 'context', '--parent-task-id', 'P', '--task-id', task,
-    '--criterion-id', 'C1', '--attempt-id', attempt, '--worker-id', worker,
+    '--criterion-id', criterion, '--attempt-id', attempt, '--worker-id', worker,
     '--plan-commands-file', join(root, '.lazybuddy/runs/probe/commands.json'), '--command-index', String(index),
     '--project-root', root, '--project-id', PROJECT_ID, '--run-id', 'probe', '--actor', ACTOR, '--python', python]);
   assert.equal(result.code, 0, result.stderr);
@@ -129,11 +131,11 @@ test.before(async () => {
   state.status = 'active'; state.plan_reference = '.lazybuddy/runs/probe/plan.md'; state.plan_revision = 1;
   state._approved_plan_sha256 = digest(plan); state.dashboard_project_id = PROJECT_ID;
   state.tasks = [{ id: 'P', title: 'Parent', status: 'running', depends_on: [], execution_authority: {
-    repo_head: head, criterion_ids: ['C1'], plan_reference: state.plan_reference, plan_sha256: digest(plan),
+    repo_head: head, criterion_ids: ['C1', 'C2'], plan_reference: state.plan_reference, plan_sha256: digest(plan),
     plan_commands_path: '.lazybuddy/runs/probe/commands.json', plan_commands_sha256: digest(commandsBytes),
   } },
   { id: 'A', title: 'Produce the artifact', status: 'queued', depends_on: [], criteria },
-  { id: 'B', title: 'Overlap branch', status: 'queued', depends_on: [], criteria }];
+  { id: 'B', title: 'Overlap branch', status: 'queued', depends_on: [], criteria: criteria.map(item => ({ ...item, id: 'C2', task_id: 'B' })) }];
   mkdirSync(join(run, 'checkpoints'), { recursive: true });
   writeFileSync(join(run, 'plan.md'), plan);
   writeFileSync(join(run, 'checkpoints/plan-revision.md'), plan);
@@ -222,7 +224,7 @@ test('nested execution and timeline render the two required fixtures from real r
     const ctxR = await context(root, 'executor:resumed', 'worker:executor-a', 'A', 0);
     const r = launch(root, ['execute', '--context-file', ctxR, '--artifact-path', '.lazybuddy/runs/probe/actual.txt']);
     await waitForFile(fixture.markerR);
-    const ctxB = await context(root, 'executor:overlap-b', 'worker:executor-b', 'B', 1);
+    const ctxB = await context(root, 'executor:overlap-b', 'worker:executor-b', 'B', 1, 'C2');
     const b = launch(root, ['execute', '--context-file', ctxB, '--artifact-path', '.lazybuddy/runs/probe/overlap.txt']);
     await waitForFile(fixture.markerB);
     await writeFile(fixture.releaseR, 'go\n'); await writeFile(fixture.releaseB, 'go\n');
@@ -242,6 +244,23 @@ test('nested execution and timeline render the two required fixtures from real r
     const executorManifest = JSON.parse(readFileSync(join(run, 'producer-attempts', digest('executor:resumed'), 'terminal.json'), 'utf8'));
     assert.equal(executorManifest.worker_id, 'worker:executor-a');
     assert.notEqual(review.verifier.identity, executorManifest.worker_id, 'verifier identity stays distinct from the worker');
+
+    // The production service snapshot and live adapter consume these same
+    // producer records without inventing batches, steps, agents or retry edges.
+    const capturedRun = await captureServiceSnapshot({ projectRoot: root, projectId: PROJECT_ID, runId: 'probe', python });
+    const liveProjection = liveExecutionProjection(capturedRun.snapshot, { asOf: new Date().toISOString() });
+    assert.deepEqual(liveProjection.document.nodes.map(node => node.id).sort(), ['A', 'B', 'P']);
+    const nativeAttempts = capturedRun.snapshot.tasks.flatMap(task => task.attempts);
+    assert.ok(nativeAttempts.length >= 3, 'real execute and verify producers create distinct native attempts');
+    assert.equal(new Set(nativeAttempts.map(attempt => attempt.id)).size, nativeAttempts.length);
+    assert.ok(liveProjection.timeline.intervals.length >= 2, 'timestamped native attempts render on the production timeline');
+    assert.ok(liveProjection.timeline.intervals.every(interval => Number.isFinite(interval.startMs)
+      && typeof interval.agentId === 'string' && interval.agentId.length > 0
+      && ['executing', 'finished', 'failed', 'cancelled'].includes(interval.state)));
+    assert.deepEqual(liveProjection.timeline.retryChains, [], 'attempt ordering never fabricates a retry relationship');
+    const liveTask = liveExecutionProjection(capturedRun.snapshot, { taskId: 'A', asOf: new Date().toISOString() });
+    assert.deepEqual(liveTask.document.nodes.map(node => node.id).sort(),
+      capturedRun.snapshot.tasks.find(task => task.id === 'A').attempts.map(attempt => attempt.id).sort());
 
     // 4. Observations derive from the recorded native evidence (T09 producer route).
     const observedAt = new Date().toISOString();
@@ -444,6 +463,40 @@ test('nested execution and timeline render the two required fixtures from real r
   assert.notEqual(dagPane, timelinePane);
   assert.ok(viewA.element.querySelectorAll('.execution-node').length >= 2);
   assert.equal(viewA.element.querySelectorAll('.execution-lane').length, 3);
+  const liveDocument = { ...structuredClone(documents.aBatch),
+    graphLabel: 'Run task dependency graph',
+    graphDescription: 'Recorded task dependencies for this bound native run.',
+    timelineLabel: 'Recorded attempts',
+    timelineDescription: 'Only attempts with recorded timestamps appear.',
+    laneLabel: 'Reported worker',
+    durationLabel: 'native attempt timestamps',
+    inspectorSource: 'Authenticated native run run:fixture at revision 4',
+    levelLabels: { plan: 'Project', batch: 'Run', task: 'Task' } };
+  const liveView = createExecutionView({ document: liveDocument, timeline: model });
+  assert.equal(liveView.element.querySelector('.execution-graph-heading').textContent, 'Run task dependency graph');
+  assert.equal(liveView.element.querySelector('[data-testid="execution-dag"]').getAttribute('aria-label'), 'Run task dependency graph');
+  assert.equal(liveView.element.querySelector('.execution-timeline-heading').textContent, 'Recorded attempts');
+  assert.equal(liveView.element.querySelector('.execution-timeline-viewport').getAttribute('aria-label'), 'Recorded attempts by Reported worker');
+  assert.ok([...liveView.element.querySelectorAll('.execution-lane-label')]
+    .every(label => label.textContent.startsWith('Reported worker · ')));
+  assert.match(liveView.element.querySelector('.execution-notes').textContent, /durations are native attempt timestamps/);
+  assert.doesNotMatch(liveView.element.querySelector('.execution-notes').textContent, /recorded-session-duration/);
+  assert.match(liveView.element.querySelector('.execution-pane-legend').textContent, /Recorded task dependencies/);
+  assert.doesNotMatch(liveView.element.querySelector('.execution-pane-legend').textContent, /accepted plan graph|agent lane/);
+  assert.match(liveView.element.querySelector('[data-testid="execution-breadcrumbs"]').textContent, /Project: .*Run:/);
+  assert.doesNotMatch(liveView.element.querySelector('[data-testid="execution-breadcrumbs"]').textContent, /Plan:|Batch:/);
+  assert.match(liveView.element.querySelector('[data-testid="execution-status"]').textContent, /level Run/);
+  assert.doesNotMatch(liveView.element.querySelector('[data-testid="execution-status"]').textContent, /level batch/);
+  assert.match(liveView.element.querySelector('.execution-notes').textContent, /concurrent attempts? at peak/);
+  assert.match(liveView.element.querySelector('.execution-notes').textContent, /on different reported worker lanes/);
+  const sameLaneTimeline = structuredClone(model);
+  sameLaneTimeline.overlaps.push({ a: 'same-worker:first', b: 'same-worker:second', laneA: 0, laneB: 0, ms: 12 });
+  const sameLaneView = createExecutionView({ document: liveDocument, timeline: sameLaneTimeline });
+  assert.match(sameLaneView.element.querySelector('.execution-notes').textContent, /on the same reported worker lane/);
+  liveView.select('A');
+  assert.match(liveView.element.querySelector('[data-testid="execution-inspector"]').textContent,
+    /Authenticated native run run:fixture at revision 4/);
+  assert.doesNotMatch(liveView.element.querySelector('[data-testid="execution-inspector"]').textContent, /Accepted plan/);
   const bars = [...viewA.element.querySelectorAll('.execution-interval')];
   assert.equal(bars.length, 4);
   const staleBar = bars.find(bar => bar.dataset.attemptId === 'executor:killed');
@@ -456,6 +509,11 @@ test('nested execution and timeline render the two required fixtures from real r
   const overlapBar = bars.find(bar => bar.dataset.attemptId === 'executor:overlap-b');
   assert.notEqual(resumedBar.dataset.lane, overlapBar.dataset.lane, 'overlapping agents occupy different lanes');
   const left = geometry.get('executor:resumed'); const right = geometry.get('executor:overlap-b');
+  assert.equal(resumedBar.getAttribute('x'), `${left.leftPercent.toFixed(3)}%`);
+  assert.equal(resumedBar.getAttribute('width'), `${left.widthPercent.toFixed(3)}%`);
+  assert.ok(bars.every(bar => !bar.hasAttribute('style')), 'timeline intervals use CSP-safe SVG presentation attributes');
+  assert.ok([...viewA.element.querySelectorAll('.execution-axis-tick')].every(tick => !tick.hasAttribute('style')),
+    'timeline ticks use CSP-safe SVG presentation attributes');
   assert.ok(left.leftPercent < right.leftPercent + right.widthPercent && right.leftPercent < left.leftPercent + left.widthPercent,
     'interval bars overlap on the shared time axis');
 
@@ -473,6 +531,10 @@ test('nested execution and timeline render the two required fixtures from real r
   viewA.toggleGroup('verifier:worker:verifier-1');
   viewA.select('A');
   viewA.focusNode('A');
+  viewA.setViewport({ scale: 1.5, scrollLeft: 96, scrollTop: 48 }, 'test-refresh');
+  const timelineBefore = viewA.element.querySelector('.execution-timeline-viewport');
+  timelineBefore.scrollLeft = 72;
+  timelineBefore.scrollTop = 18;
   const viewportBefore = viewA.getStats();
   const nextTimeline = timelineModel(attempts, { asOf: new Date(Date.now() + 60000).toISOString() });
   const update = viewA.applyUpdate(documents.aBatch, nextTimeline);
@@ -482,7 +544,9 @@ test('nested execution and timeline render the two required fixtures from real r
   assert.deepEqual(viewA.getStats().collapsed, ['verifier:worker:verifier-1']);
   assert.equal(viewA.getStats().level, 'batch');
   assert.deepEqual(viewA.getStats().viewport, viewportBefore.viewport);
-  assert.equal(viewA.element.dataset.timelineViewport, viewportBefore.timelineViewport);
+  assert.equal(viewA.element.dataset.timelineViewport, '72,18');
+  assert.deepEqual(viewA.getStats().viewport, { scale: 1.5, scrollLeft: 96, scrollTop: 48 },
+    'nonzero graph pan and zoom survive the status refresh');
   assert.ok(viewA.element.querySelector('[data-testid="execution-breadcrumbs"]'));
 
   // The drill-down control exists for tasks and batches, absent at the attempt level.

@@ -5,6 +5,7 @@
 // source.edit, amend_baseline, plan.transition). The view never writes files,
 // never grants verification and never composes execution operations.
 import { button, element, statusChip } from './components.mjs';
+import { renderMarkdown } from './markdown.mjs';
 
 export const EDITOR_MODES = Object.freeze(['rendered', 'structured', 'source', 'baseline']);
 // Candidate lifecycle targets for the legality display. The values mirror
@@ -568,27 +569,9 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     if (!capture.content) { pane.append(element('p', 'meta', 'The registered original has not been captured yet.')); return; }
     pane.append(element('h3', '', 'Rendered original'));
     pane.append(element('p', 'meta', `${capture.path} · ${capture.sha256?.slice(0, 12)}… · fenced examples render as authored content`));
-    const article = element('article', 'editor-document stack');
-    for (const block of parseMarkdownView(capture.content).blocks) {
-      if (block.kind === 'heading') {
-        const heading = element(`h${Math.min(6, block.level)}`, 'editor-heading', block.title);
-        heading.dataset.level = String(block.level);
-        heading.dataset.line = String(block.line);
-        article.append(heading);
-      } else if (block.kind === 'fence') {
-        const fence = element('pre', 'editor-fence', block.text);
-        fence.dataset.line = String(block.line);
-        article.append(fence);
-      } else if (block.kind === 'task') {
-        const row = element('div', 'editor-task cluster');
-        row.dataset.checked = String(block.checked);
-        row.dataset.line = String(block.line);
-        row.append(statusChip({ state: block.checked ? 'verified' : 'neutral', label: block.checked ? 'done' : 'open' }),
-          element('span', '', block.text));
-        article.append(row);
-      } else article.append(element('p', '', block.text));
-    }
-    pane.append(article);
+    const rendered = renderMarkdown(capture.content);
+    rendered.element.classList.add('editor-document');
+    pane.append(rendered.element);
   }
   function renderAnchorSurface() {
     const anchorOptions = mapped.anchors.map(anchor => option(anchor.anchor_id ?? 'unassigned',

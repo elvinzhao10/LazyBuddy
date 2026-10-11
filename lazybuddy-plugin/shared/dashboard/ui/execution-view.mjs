@@ -4,6 +4,7 @@
 // existing engine via the T03 presentation model. Polling updates (applyUpdate)
 // re-render while preserving breadcrumbs, selection, collapsed groups and viewport.
 import { button, element, statusChip } from './components.mjs';
+import { createGraphViewportController } from './graph-viewport.mjs';
 import { listModel, measureNodeCard, presentationModel, layoutProjectGraph, SpikePresentationError } from './project-presentation.mjs';
 import { intervalGeometry, timelineAxis } from './timeline-model.mjs';
 
@@ -15,6 +16,32 @@ const EDGE_LEGEND = [
 ];
 const ROLE_LABELS = { worker: 'Worker', verifier: 'Verifier', mixed: 'Mixed roles', unreported: 'Role unreported' };
 const INTERVAL_STATES = new Set(['finished', 'failed', 'cancelled', 'stale', 'waiting', 'executing', 'blocked']);
+const DEFAULT_PRESENTATION = Object.freeze({
+  graphLabel: 'Planned dependency DAG',
+  graphDescription: 'Planned dependencies from the accepted plan graph.',
+  timelineLabel: 'Actual run timeline',
+  timelineDescription: 'Real concurrent intervals on one shared time axis, from recorded attempt observations. Drawn separately from the planned DAG above.',
+  laneLabel: null,
+  durationLabel: 'recorded-session-duration',
+});
+
+function presentationOf(document_) {
+  const value = (name, fallback) => typeof document_?.[name] === 'string' && document_[name].trim()
+    ? document_[name].trim() : fallback;
+  return {
+    graphLabel: value('graphLabel', DEFAULT_PRESENTATION.graphLabel),
+    graphDescription: value('graphDescription', DEFAULT_PRESENTATION.graphDescription),
+    timelineLabel: value('timelineLabel', DEFAULT_PRESENTATION.timelineLabel),
+    timelineDescription: value('timelineDescription', DEFAULT_PRESENTATION.timelineDescription),
+    laneLabel: value('laneLabel', DEFAULT_PRESENTATION.laneLabel),
+    durationLabel: value('durationLabel', DEFAULT_PRESENTATION.durationLabel),
+  };
+}
+
+function levelName(document_, level) {
+  const custom = document_?.levelLabels?.[level];
+  return typeof custom === 'string' && custom.trim() ? custom.trim() : LEVEL_NAMES[level] ?? level;
+}
 
 function intervalChipState(state) {
   if (state === 'finished') return 'neutral';
@@ -34,7 +61,10 @@ function nodeCard(node, state) {
   card.setAttribute('aria-pressed', String(state.selectedId === node.id));
   card.setAttribute('aria-label', `${node.kind} ${node.id}: ${measure.fullTitle}`);
   card.title = measure.truncated ? measure.fullTitle : '';
-  card.addEventListener('click', () => state.onSelect(node.id));
+  card.addEventListener('click', event => {
+    if (event.target !== card && event.target.tagName === 'BUTTON') return;
+    state.onSelect(node.id);
+  });
   const identity = element('span', 'execution-identity');
   identity.append(element('code', '', node.id));
   card.append(identity);
@@ -46,7 +76,12 @@ function nodeCard(node, state) {
     row.append(element('span', 'meta', kind), statusChip(value));
     card.append(row);
   }
-  card.append(element('span', 'meta execution-summary', node.summary));
+  const summary = element('span', 'meta execution-summary', measure.summaryLines.join(' '));
+  if (measure.summaryTruncated) {
+    summary.dataset.truncated = 'true';
+    summary.title = measure.fullSummary;
+  }
+  card.append(summary);
   if (node.expandable) {
     const toggle = button(node.collapsedGroup ? 'Expand checks' : 'Collapse checks', () => state.onToggle(node.id));
     toggle.className = 'execution-toggle';
@@ -82,27 +117,33 @@ function edgePath(edge) {
   return `M ${edge.x1} ${edge.y1} C ${edge.x1 + bend} ${edge.y1}, ${edge.x2 - bend} ${edge.y2}, ${edge.x2} ${edge.y2}`;
 }
 
-function renderTimeline(model, state) {
+function renderTimeline(model, state, presentation) {
   const pane = element('section', 'panel execution-timeline-panel stack');
   pane.dataset.testid = 'execution-timeline';
   const head = element('header', 'stack');
-  head.append(element('h3', '', 'Actual run timeline'));
-  head.append(element('p', 'meta',
-    'Real concurrent intervals on one shared time axis, from recorded attempt observations. Drawn separately from the planned DAG above.'));
+  head.append(element('h3', 'execution-timeline-heading', presentation.timelineLabel));
+  head.append(element('p', 'meta', presentation.timelineDescription));
   pane.append(head);
   const viewport = element('div', 'execution-timeline-viewport');
   viewport.tabIndex = 0;
   viewport.setAttribute('role', 'region');
-  viewport.setAttribute('aria-label', 'Actual run timeline by agent');
+  viewport.setAttribute('aria-label', `${presentation.timelineLabel} by ${presentation.laneLabel ?? 'agent'}`);
   const geometry = intervalGeometry(model);
-  const axisRow = element('div', 'execution-axis');
+  const axisRow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  axisRow.classList.add('execution-axis');
+  axisRow.setAttribute('width', '100%');
+  axisRow.setAttribute('height', '24');
   axisRow.setAttribute('role', 'none');
-  for (const tick of timelineAxis(model)) {
-    const mark = element('span', 'execution-axis-tick');
-    mark.setAttribute('style', `left:${tick.percent.toFixed(3)}%`);
-    mark.append(element('span', 'meta', tick.label));
+  const ticks = timelineAxis(model);
+  ticks.forEach((tick, index) => {
+    const mark = document.createElementNS(axisRow.namespaceURI, 'text');
+    mark.classList.add('execution-axis-tick');
+    mark.setAttribute('x', `${tick.percent.toFixed(3)}%`);
+    mark.setAttribute('y', '15');
+    mark.setAttribute('text-anchor', index === 0 ? 'start' : index === ticks.length - 1 ? 'end' : 'middle');
+    mark.textContent = tick.label;
     axisRow.append(mark);
-  }
+  });
   viewport.append(axisRow);
   const laneList = element('ol', 'execution-lanes');
   for (const lane of model.lanes) {
@@ -110,12 +151,16 @@ function renderTimeline(model, state) {
     item.dataset.agentId = lane.agentId;
     item.dataset.role = lane.role;
     const label = element('span', 'execution-lane-label');
-    label.append(element('span', 'meta', `${ROLE_LABELS[lane.role] ?? lane.role} · ${lane.agentId}`));
-    const track = element('div', 'execution-track');
+    label.append(element('span', 'meta', `${presentation.laneLabel ?? ROLE_LABELS[lane.role] ?? lane.role} · ${lane.agentId}`));
+    const track = document.createElementNS(axisRow.namespaceURI, 'svg');
+    track.classList.add('execution-track');
+    track.setAttribute('width', '100%');
+    track.setAttribute('height', '48');
     for (const interval of model.intervals.filter(entry => entry.lane === lane.lane)) {
       if (!INTERVAL_STATES.has(interval.state)) continue;
       const position = geometry.get(interval.attemptId);
-      const bar = element('div', `execution-interval state-${interval.state}`);
+      const bar = document.createElementNS(track.namespaceURI, 'foreignObject');
+      bar.classList.add('execution-interval', `state-${interval.state}`);
       bar.dataset.attemptId = interval.attemptId;
       bar.dataset.agentId = interval.agentId;
       bar.dataset.role = interval.role;
@@ -126,13 +171,21 @@ function renderTimeline(model, state) {
       bar.dataset.endMs = interval.open ? '' : String(interval.endMs);
       if (interval.open) bar.dataset.open = 'true';
       if (interval.resumesAttemptId) bar.dataset.resumes = interval.resumesAttemptId;
-      bar.setAttribute('style', `left:${position.leftPercent.toFixed(3)}%;width:${position.widthPercent.toFixed(3)}%`);
+      bar.setAttribute('x', `${position.leftPercent.toFixed(3)}%`);
+      bar.setAttribute('y', '8');
+      bar.setAttribute('width', `${position.widthPercent.toFixed(3)}%`);
+      bar.setAttribute('height', '32');
       bar.setAttribute('role', 'button');
+      bar.setAttribute('focusable', 'true');
+      bar.setAttribute('aria-label', `${interval.attemptId} · ${interval.state}${interval.open ? ' · open interval, no terminal record' : ''}`);
       bar.tabIndex = 0;
-      bar.title = `${interval.attemptId} · ${interval.state}${interval.open ? ' · open interval, no terminal record' : ''}`;
       bar.addEventListener('click', () => state.onSelect(interval.attemptId));
-      bar.append(element('span', 'execution-interval-label',
+      const title = document.createElementNS(track.namespaceURI, 'title');
+      title.textContent = `${interval.attemptId} · ${interval.state}${interval.open ? ' · open interval, no terminal record' : ''}`;
+      const body = element('div', 'execution-interval-body');
+      body.append(element('span', 'execution-interval-label',
         `${interval.attemptId} · ${interval.state}${interval.resumesAttemptId ? ` · resumes ${interval.resumesAttemptId}` : ''}`));
+      bar.append(title, body);
       track.append(bar);
     }
     item.append(label, track);
@@ -142,14 +195,14 @@ function renderTimeline(model, state) {
   pane.append(viewport);
   const notes = element('ul', 'execution-notes');
   notes.append(element('li', 'meta',
-    `${model.lanes.length} agent lane${model.lanes.length === 1 ? '' : 's'} · peak concurrency ${model.peakConcurrency} · durations are recorded-session-duration`));
+    `${model.lanes.length} ${presentation.laneLabel ?? 'agent'} lane${model.lanes.length === 1 ? '' : 's'} · ${model.peakConcurrency} concurrent attempt${model.peakConcurrency === 1 ? '' : 's'} at peak · durations are ${presentation.durationLabel}`));
   for (const overlap of model.overlaps) {
     notes.append(element('li', 'meta',
-      `concurrent: ${overlap.a} and ${overlap.b} overlapped ${Math.round(overlap.ms)}ms on different lanes`));
+      `concurrent: ${overlap.a} and ${overlap.b} overlapped ${Math.round(overlap.ms)}ms ${overlap.laneA === overlap.laneB ? 'on the same reported worker lane' : 'on different reported worker lanes'}`));
   }
   for (const chain of model.retryChains) {
     notes.append(element('li', 'meta',
-      `retry: ${chain.from} interrupted, ${chain.to} is a new attempt on the same lane — the plan DAG gains no cycle`));
+      `retry: ${chain.from} interrupted, ${chain.to} is a new attempt on the same lane — ${presentation.graphLabel === DEFAULT_PRESENTATION.graphLabel ? 'the plan DAG' : presentation.graphLabel} gains no cycle`));
   }
   const stale = model.intervals.filter(interval => interval.state === 'stale');
   for (const interval of stale) {
@@ -160,13 +213,15 @@ function renderTimeline(model, state) {
   return pane;
 }
 
-function renderGraph(document_, state) {
+function renderGraph(document_, state, viewport, presentation) {
   const model = presentationModel(document_, { collapsed: state.collapsed });
   const layout = layoutProjectGraph(model);
   const wrap = element('div', 'execution-graph-wrap');
+  const head = element('header', 'stack');
+  head.append(element('h3', 'execution-graph-heading', presentation.graphLabel), element('p', 'meta', presentation.graphDescription));
   const region = element('div', 'execution-graph-viewport');
   region.tabIndex = 0;
-  region.setAttribute('aria-label', 'Planned dependency DAG');
+  region.setAttribute('aria-label', presentation.graphLabel);
   region.dataset.testid = 'execution-dag';
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('execution-graph');
@@ -199,7 +254,8 @@ function renderGraph(document_, state) {
   }
   svg.append(edgeLayer, nodeLayer);
   region.append(svg);
-  wrap.append(region);
+  wrap.append(head, viewport.controls(), region);
+  viewport.bind(region, svg, layout.width, layout.height);
   return { wrap, region, layout, model };
 }
 
@@ -226,6 +282,13 @@ export function createExecutionView({ document: initialDocument, timeline: initi
   inspector.tabIndex = 0;
   inspector.setAttribute('role', 'region');
   inspector.setAttribute('aria-label', 'Contextual inspector');
+  const graphViewport = createGraphViewportController({
+    label: 'Execution graph',
+    getRegion: () => root.querySelector('.execution-graph-viewport'),
+    getSvg: () => root.querySelector('.execution-graph'),
+    onChange: event => callbacks.onViewportChange?.(event),
+  });
+  let timelineScroll = { scrollLeft: 0, scrollTop: 0 };
 
   function nodeById(id) {
     if (currentDocument.nodes.some(node => node.id === id)) return currentDocument.nodes.find(node => node.id === id);
@@ -240,7 +303,7 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     crumbs.append(element('span', 'meta', 'Execution'));
     currentDocument.breadcrumbs?.forEach((crumb, index) => {
       crumbs.append(element('span', 'meta', '/'));
-      const control = button(`${LEVEL_NAMES[crumb.level] ?? crumb.level}: ${crumb.label}`, () => {
+      const control = button(`${levelName(currentDocument, crumb.level)}: ${crumb.label}`, () => {
         callbacks.onNavigate?.({ level: crumb.level, focusId: crumb.label });
       });
       control.dataset.crumbLevel = crumb.level;
@@ -279,7 +342,9 @@ export function createExecutionView({ document: initialDocument, timeline: initi
       legend.append(item);
     }
     toolbar.append(legend);
-    const dagLegend = element('p', 'meta', 'Pane 1 — planned dependency DAG from the accepted plan graph. Pane 2 — actual run timeline.');
+    const presentation = presentationOf(currentDocument);
+    const dagLegend = element('p', 'meta execution-pane-legend',
+      `Pane 1 — ${presentation.graphLabel}: ${presentation.graphDescription} Pane 2 — ${presentation.timelineLabel}: ${presentation.timelineDescription}`);
     head.append(toolbar, dagLegend);
     const body = element('div', 'execution-body stack');
     body.dataset.testid = 'execution-body';
@@ -291,11 +356,13 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     const previousGraph = body.querySelector('.execution-graph-viewport');
     const previousTimeline = body.querySelector('.execution-timeline-viewport');
     const focusedId = previousGraph?.contains(document.activeElement) ? document.activeElement.dataset.nodeId : null;
-    const graphScroll = { left: previousGraph?.scrollLeft ?? 0, top: previousGraph?.scrollTop ?? 0 };
-    const timelineScroll = { left: previousTimeline?.scrollLeft ?? 0, top: previousTimeline?.scrollTop ?? 0 };
+    graphViewport.capture();
+    if (previousTimeline) timelineScroll = { scrollLeft: previousTimeline.scrollLeft ?? timelineScroll.scrollLeft,
+      scrollTop: previousTimeline.scrollTop ?? timelineScroll.scrollTop };
     body.replaceChildren();
     const state = { selectedId, collapsed, onToggle: toggleGroup, onSelect: select };
-    const { wrap, region } = renderGraph(currentDocument, state);
+    const presentation = presentationOf(currentDocument);
+    const { wrap, region } = renderGraph(currentDocument, state, graphViewport, presentation);
     wrap.hidden = currentMode === 'list';
     body.append(wrap);
     const list = element('ol', 'execution-list');
@@ -303,20 +370,21 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     for (const row of listModel(currentDocument, { collapsed }).rows) list.append(listRow(row, state));
     list.hidden = currentMode !== 'list';
     body.append(list);
-    body.append(renderTimeline(currentTimeline, state));
-    region.scrollLeft = graphScroll.left; region.scrollTop = graphScroll.top;
-    root.dataset.viewport = `${graphScroll.left},${graphScroll.top}`;
-    const timelineViewport = body.querySelector('.execution-timeline-viewport');
-    if (timelineViewport) {
-      timelineViewport.scrollLeft = timelineScroll.left;
-      timelineViewport.scrollTop = timelineScroll.top;
-      root.dataset.timelineViewport = `${timelineScroll.left},${timelineScroll.top}`;
+    body.append(renderTimeline(currentTimeline, state, presentation));
+    const currentViewport = graphViewport.getState();
+    root.dataset.viewport = `${currentViewport.scrollLeft},${currentViewport.scrollTop},${currentViewport.scale}`;
+    const nextTimelineViewport = body.querySelector('.execution-timeline-viewport');
+    if (nextTimelineViewport) {
+      nextTimelineViewport.scrollLeft = timelineScroll.scrollLeft;
+      nextTimelineViewport.scrollTop = timelineScroll.scrollTop;
+      root.dataset.timelineViewport = `${timelineScroll.scrollLeft},${timelineScroll.scrollTop}`;
     }
     if (focusedId) region.querySelector(`.execution-node[data-node-id="${focusedId}"]`)?.focus();
     root.dataset.level = currentDocument.level;
     root.dataset.docId = currentDocument.docId;
     root.dataset.viewId = currentDocument.viewId;
-    status.textContent = `${currentDocument.nodes.length} nodes · level ${currentDocument.level}${currentDocument.focusId ? ` · focus ${currentDocument.focusId}` : ''} · view revision ${viewRevision}${currentDocument.ignoredObservations?.length ? ` · ${currentDocument.ignoredObservations.length} unsupported observations unrendered` : ''}`;
+    const visibleLevel = currentDocument.levelLabels ? levelName(currentDocument, currentDocument.level) : currentDocument.level;
+    status.textContent = `${currentDocument.nodes.length} nodes · level ${visibleLevel}${currentDocument.focusId ? ` · focus ${currentDocument.focusId}` : ''} · view revision ${viewRevision}${currentDocument.ignoredObservations?.length ? ` · ${currentDocument.ignoredObservations.length} unsupported observations unrendered` : ''}`;
   }
 
   function select(nodeId) {
@@ -344,9 +412,11 @@ export function createExecutionView({ document: initialDocument, timeline: initi
       return;
     }
     inspector.append(element('code', '', node.id), element('p', '', node.title));
+    const inspectorSource = typeof currentDocument.inspectorSource === 'string' && currentDocument.inspectorSource.trim()
+      ? currentDocument.inspectorSource.trim() : `Accepted plan ${currentDocument.docId} · recorded observations only`;
     const sections = [
       ['Summary', node.summary ?? 'No summary recorded.'],
-      ['Source', `Accepted plan ${currentDocument.docId} · recorded observations only`],
+      ['Source', inspectorSource],
       ['Changes', 'None · this view has no editing authority; the shared command route owns changes.'],
       ['Evidence', `${node.meta ?? 'No evidence recorded.'} · worker artifacts and verifier receipts keep separate identities.`],
     ];
@@ -399,10 +469,14 @@ export function createExecutionView({ document: initialDocument, timeline: initi
   /** Simulated polling tick: re-render from the next document/timeline while
    *  preserving breadcrumbs, selection, collapsed groups and viewport. */
   function applyUpdate(nextDocument, nextTimeline) {
+    graphViewport.capture();
+    const liveTimeline = root.querySelector('.execution-timeline-viewport');
+    if (liveTimeline) timelineScroll = { scrollLeft: liveTimeline.scrollLeft ?? timelineScroll.scrollLeft,
+      scrollTop: liveTimeline.scrollTop ?? timelineScroll.scrollTop };
     const preserved = {
       level: currentDocument.level, focusId: currentDocument.focusId ?? null,
       selectedId, collapsed: [...collapsed].sort(), mode: currentMode,
-      viewport: root.dataset.viewport ?? null, timelineViewport: root.dataset.timelineViewport ?? null,
+      viewport: graphViewport.getState(), timelineViewport: { ...timelineScroll },
     };
     currentDocument = structuredClone(nextDocument);
     currentTimeline = structuredClone(nextTimeline);
@@ -518,13 +592,15 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     toggleGroup,
     setMode,
     applyUpdate,
+    setViewport: (viewport, reason) => graphViewport.setViewport(viewport, reason),
+    fitViewport: () => graphViewport.fit(),
     getStats() {
       return {
         viewRevision, mode: currentMode, selectedId, collapsed: [...collapsed].sort(),
         level: currentDocument.level, focusId: currentDocument.focusId ?? null,
         docId: currentDocument.docId, viewId: currentDocument.viewId,
         nodeCount: currentDocument.nodes.length, edgeCount: currentDocument.edges.length,
-        lastUpdate, viewport: root.dataset.viewport ?? null, timelineViewport: root.dataset.timelineViewport ?? null,
+        lastUpdate, viewport: graphViewport.getState(), timelineViewport: root.dataset.timelineViewport ?? null,
       };
     },
     getDocument() { return structuredClone(currentDocument); },

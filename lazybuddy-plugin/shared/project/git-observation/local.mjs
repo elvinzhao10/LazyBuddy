@@ -286,6 +286,12 @@ export async function collectLocalGitFacts(options = {}) {
     // linked worktree; worktree list always prints the main worktree first.
     let subjectRoot = repositoryRoot;
     try { subjectRoot = realpathSync(repositoryRoot); } catch { /* keep the caller value */ }
+    if (!listed.some(entry => entry.root === subjectRoot)) {
+      return { collector: LOCAL_COLLECTOR, status: 'unavailable', reason: 'PROJECT_ROOT_NOT_WORKTREE',
+        detail: 'The requested project root is nested inside a Git worktree; select the exact worktree root for repository observations',
+        observed_at: nowIso(), source_scope: scope, commands, repository: { root: subjectRoot,
+          git_dir: gitDir, git_common_dir: gitCommonDir } };
+    }
     const worktrees = [];
     let primaryFirstStatusBytes = null;
     for (let index = 0; index < listed.length && index < maxWorktrees; index += 1) {

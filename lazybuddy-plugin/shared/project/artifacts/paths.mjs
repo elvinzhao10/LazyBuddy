@@ -27,7 +27,7 @@ export class ArtifactIndexError extends Error {
 export const artifactFail = (code, message) => { throw new ArtifactIndexError(code, message); };
 
 // Reuses the contract's protected-path rules (relative-only, no traversal, no `.git`,
-// no `.lazybuddy/{dashboard,project}` native storage) and additionally protects the
+// no LazySeries runtime's `{dashboard,project}` native storage) and additionally protects the
 // neutral `.lazyseries` registry namespace, which is identity storage, not evidence.
 export function assertRegistrableArtifactPath(value, label = 'artifact.path') {
   if (typeof value !== 'string' || !value.length || value.length > ARTIFACT_PATH_LIMIT || value.includes('\0')) {

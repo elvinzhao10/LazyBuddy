@@ -30,7 +30,11 @@ function clauseControl(clause, onOpen) {
 export function createOverviewView({ bundle, callbacks = {} }) {
   const fixture = overviewFixture(bundle);
   const mapFixture = { ...fixture, statement: undefined, metrics: undefined, attentionQueue: undefined, statusSentence: undefined, context: undefined, projection: undefined };
-  const spike = createProjectMapSpike({ fixture: mapFixture });
+  const spike = createProjectMapSpike({ fixture: mapFixture, callbacks: {
+    onSelect: event => callbacks.onNodeSelect?.(event),
+    onDrill: event => callbacks.onNodeDrill?.(event),
+    onViewportChange: event => callbacks.onMapViewportChange?.(event),
+  } });
 
   const root = element('section', 'overview-view stack');
   root.dataset.testid = 'overview-view';
@@ -123,7 +127,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     const queue = element('section', 'overview-queue stack');
     queue.dataset.testid = 'overview-queue';
     queue.append(element('h3', '', 'Decisions and attention'));
-    if (!fixture.attentionQueue.length) queue.append(element('p', 'meta', 'No pending proposals, conflicts or blocked readiness in the projected records.'));
+    if (!fixture.attentionQueue.length) queue.append(element('p', 'meta', 'No pending proposals or recorded alignment issues in the projected records; unprojected readiness remains unknown.'));
     const list = element('ul', 'overview-queue-list');
     for (const item of fixture.attentionQueue) {
       const entry = element('li', 'overview-queue-item stack');
@@ -149,6 +153,9 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     focusNode: nodeId => spike.focusNode(nodeId),
     toggleGroup: nodeId => spike.toggleGroup(nodeId),
     setMode: mode => spike.setMode(mode),
+    setViewport: (viewport, reason) => spike.setViewport(viewport, reason),
+    fitViewport: () => spike.fitViewport(),
+    applyMapUpdate: nextMapFixture => spike.applyUpdate(nextMapFixture),
     openRecords,
     getStats() {
       return {

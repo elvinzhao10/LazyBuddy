@@ -19,7 +19,9 @@
 .execution-legend .edge-gate::before { border-block-start-style: dashed; border-block-start-color: var(--active-ink); }
 .execution-legend .edge-history::before { border-block-start-style: dotted; border-block-start-color: var(--stale-ink); }
 
-.execution-graph-viewport { min-block-size: 22rem; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; }
+.execution-graph-wrap { display: grid; gap: var(--s2); min-inline-size: 0; }
+.execution-graph-viewport { min-block-size: 22rem; max-block-size: min(70dvb, 48rem); overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; cursor: grab; }
+.execution-graph-viewport.is-panning { cursor: grabbing; user-select: none; }
 .execution-graph { display: block; max-inline-size: none; }
 .execution-graph-viewport:focus-visible, .execution-timeline-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
 .execution-graph foreignObject { overflow: visible; }
@@ -36,9 +38,10 @@
 .execution-node.kind-attempt { border-style: dashed; }
 .execution-identity { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
 .execution-identity code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
-.execution-title { font-weight: var(--strong); overflow-wrap: anywhere; max-block-size: calc(6 * 21px); overflow: hidden; }
-.execution-chiprow { gap: var(--s2); }
+.execution-title { font-weight: var(--strong); line-height: 21px; overflow-wrap: anywhere; max-block-size: calc(5 * 21px); overflow: hidden; }
+.execution-chiprow { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: var(--s2); align-items: start; }
 .execution-chiprow .meta { font-size: var(--caption); }
+.execution-chiprow .status { min-inline-size: 0; overflow-wrap: anywhere; white-space: normal; }
 .execution-summary { overflow-wrap: anywhere; }
 .execution-toggle { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content; }
 
@@ -61,6 +64,9 @@
 .execution-reason { margin: 0; }
 .execution-action { justify-self: start; }
 .execution-graph-wrap[hidden] { display: none; }
+.execution-graph-wrap .graph-viewport-controls { justify-content: flex-end; gap: var(--s1); }
+.execution-graph-wrap .graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--s2); }
+.execution-graph-wrap .graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: tabular-nums; }
 
 @container (max-width: 44rem) {
   .execution-graph-wrap { display: none; }
