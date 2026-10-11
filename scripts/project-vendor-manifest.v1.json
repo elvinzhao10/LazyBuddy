@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "a0bbf90bd43ed8cc66f7829781f69734342373b9",
+    "revision": "1046052c9044d879f1365c3880bedeeb78ceeb88",
     "path": "lazybuddy-plugin/shared/project",
-    "treeSha256": "b22019c2c1d27652f5f07377ebf618609208d7752b5add733688f52ad8eca040"
+    "treeSha256": "8dbe3e22e40ec0998ed2740f3f070425148772101251e46ab4bad41c9c21a7c5"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -29,18 +29,18 @@
     },
     {
       "path": "artifacts/index.mjs",
-      "bytes": 17886,
-      "sha256": "f188a486625b78a78ef6e87fc540ca2fcde51eecfa8dc43e7ddc23f52276606d"
+      "bytes": 19330,
+      "sha256": "b5616c669bdd05a262d245c00f242f5797cc428a54fe67fdd5d74eae987ba3fa"
     },
     {
       "path": "artifacts/paths.mjs",
-      "bytes": 4554,
-      "sha256": "73209fb94c23808844a4e33ff48fe9ad1cc52441a4165c157ad9705cd727c4ae"
+      "bytes": 4564,
+      "sha256": "dbb0962c8eba1f2e44d161270a59f9d180c8452b7b60e6427d3126400a8b9ee9"
     },
     {
       "path": "artifacts/preview.mjs",
-      "bytes": 7417,
-      "sha256": "c7ed4ee4e3f0aa080edb1eb0dd9d36a783591a5923d4af6bed003a6b23ce0553"
+      "bytes": 7439,
+      "sha256": "531ceffdfafa78857febdd679b3bc29e68ecd9ad315f232f7ac23bc020f76cc2"
     },
     {
       "path": "artifacts/query.mjs",
@@ -69,8 +69,8 @@
     },
     {
       "path": "cli.mjs",
-      "bytes": 5275,
-      "sha256": "768ae3e1ebfbbf45edb5763fb30fb3313fa11083c1c1dfc65fcc157593ade89d"
+      "bytes": 5425,
+      "sha256": "95ce20406246f8cc316671d153899de745c5c556f91566951a9143b0e414c4d0"
     },
     {
       "path": "contract.mjs",
@@ -84,8 +84,8 @@
     },
     {
       "path": "git-observation/local.mjs",
-      "bytes": 19985,
-      "sha256": "3ce54a131511b478dde60f75394378269bab46141d75e6ad4dbbb8c40f443546"
+      "bytes": 20449,
+      "sha256": "ecc19436f7e4bdcde55f9fed545945275fc93c2fbef5211a177443bb62f3c05f"
     },
     {
       "path": "git-observation/records.mjs",
