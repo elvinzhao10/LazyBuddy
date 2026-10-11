@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "1046052c9044d879f1365c3880bedeeb78ceeb88",
+    "revision": "da1bc0ab9309a071b848a704605505aceb811a92",
     "path": "lazybuddy-plugin/shared/project",
     "treeSha256": "8dbe3e22e40ec0998ed2740f3f070425148772101251e46ab4bad41c9c21a7c5"
   },

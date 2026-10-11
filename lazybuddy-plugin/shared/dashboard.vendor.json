@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "1046052c9044d879f1365c3880bedeeb78ceeb88",
+    "revision": "da1bc0ab9309a071b848a704605505aceb811a92",
     "path": "lazybuddy-plugin/shared/dashboard",
-    "treeSha256": "f9db94cefe99b90c181a6645cb4df3946e95d72adda20e01ff81c92e2ec5b237"
+    "treeSha256": "c5f56578417ac33d3b59b0f59d8840a1f1d9714865a358570aa0625a3ad40f3a"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -272,8 +272,8 @@
     },
     {
       "path": "ui/index.mjs",
-      "bytes": 8799,
-      "sha256": "ced10bc9320ccf82219549ae64b32fc9c97959cded8a19cd0b95e21e5d5d83c1"
+      "bytes": 8820,
+      "sha256": "d85d990e143aa7f0921fb38c69f16c1ec5046884537de9d2b6e2a6e731bfe276"
     },
     {
       "path": "ui/inspector-view.mjs",
