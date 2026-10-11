@@ -96,7 +96,14 @@ LazyBuddy vendors the family's portable dashboard core in
 `lazybuddy-plugin/shared/dashboard.vendor.json`. This package is the family's
 vendoring source: `scripts/vendor-dashboard.mjs` distributes the tree, and
 `.github/workflows/dashboard-family-drift.yml` is the LazyBuddy-run CI job that
-rejects dashboard drift across the six sibling repositories.
+rejects dashboard drift across the six sibling repositories. The 1.4.0
+persistent project layer is vendored the same way as a second family tree:
+`lazybuddy-plugin/shared/project/` is pinned in
+`lazybuddy-plugin/shared/project.vendor.json` (31 files — the portable runtime
+modules and QA harness; tests, native-identity QA, and fault hooks stay
+Buddy-side by recorded decision), checked with `--family project`; until the
+T21–T25 ports land, sibling roots without the tree are reported as
+`PENDING_PORTS`, never as passing.
 
 The `status-dashboard` MCP server exposes six tools: the four status views plus
 `dashboard_service` (`start`, `status`, `stop`, `open`) and `copy_task_context`,

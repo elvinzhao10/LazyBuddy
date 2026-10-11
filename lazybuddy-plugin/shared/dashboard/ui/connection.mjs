@@ -40,6 +40,40 @@ export function createDashboardConnection({ fetchImpl = globalThis.fetch } = {})
       const response = await fetchImpl('/api/commands', { method: 'POST', headers: headers({ 'content-type': 'application/json' }), body: JSON.stringify(command) });
       return decode(response);
     },
+    async project() {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      return decode(await fetchImpl('/api/project', { headers: headers() }));
+    },
+    async projectDetail(kind) {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      if (!['architecture', 'git', 'evidence'].includes(kind)) throw new DashboardRequestError(0, { code: 'INVALID_PROJECT_DETAIL' });
+      return decode(await fetchImpl(`/api/project/${kind}`, { headers: headers() }));
+    },
+    async projectSource(sourceId) {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      if (typeof sourceId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(sourceId)) {
+        throw new DashboardRequestError(0, { code: 'INVALID_SOURCE_ID' });
+      }
+      return decode(await fetchImpl(`/api/project/sources/${encodeURIComponent(sourceId)}`, { headers: headers() }));
+    },
+    async projectCommand(command) {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      return decode(await fetchImpl('/api/project/commands', { method: 'POST',
+        headers: headers({ 'content-type': 'application/json' }), body: JSON.stringify(command) }));
+    },
+    async assessProjectTransition(request) {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      return decode(await fetchImpl('/api/project/plan-transition-assessment', { method: 'POST',
+        headers: headers({ 'content-type': 'application/json' }), body: JSON.stringify(request) }));
+    },
+    async projectEvidencePreview(artifactId) {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      if (typeof artifactId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(artifactId)) {
+        throw new DashboardRequestError(0, { code: 'INVALID_ARTIFACT_ID' });
+      }
+      return decode(await fetchImpl('/api/project/evidence/preview', { method: 'POST',
+        headers: headers({ 'content-type': 'application/json' }), body: JSON.stringify({ artifact_id: artifactId }) }));
+    },
     async evidence(path) {
       if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
       if (typeof path !== 'string' || !/^\/api\/evidence\/[a-f0-9]{64}$/.test(path)) throw new DashboardRequestError(0, { code: 'INVALID_EVIDENCE_PATH' });

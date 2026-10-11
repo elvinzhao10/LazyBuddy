@@ -1,0 +1,77 @@
+@import './style.css';
+
+/* T18 Git and metrics detail — the Git pane and the metrics pane are visually
+   distinct surfaces (different accent edges, headings and testids) so a Git
+   stage count can never read as a token count or vice versa. Existing design
+   tokens only; no animation, no new status colors. */
+
+.git-metrics-view { display: grid; gap: var(--s4); }
+.git-metrics-head h2 { margin: 0; }
+.git-metrics-status { min-block-size: var(--control); display: flex; align-items: center; margin: 0; }
+
+/* Git pane — structural left accent; stage/dirty/PR/CI subjects live ONLY here. */
+.git-pane { border-left: 3px solid var(--active-ink); }
+.git-pane h3, .metrics-pane h3 { margin: 0; }
+.git-pane h4 { margin: 0; font-size: var(--body); }
+.git-pane .meta { margin: 0; }
+
+.git-worktree-row { display: grid; gap: var(--s3); }
+.git-worktree { display: grid; gap: var(--s2); text-align: start; padding: var(--s3);
+  background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); }
+.git-worktree[aria-pressed='true'] { background: var(--selected); }
+.git-worktree-current { border-block-start: 3px solid var(--active-ink); }
+.git-identity { gap: var(--s2); }
+.git-identity .meta { font-size: var(--caption); }
+.git-identity code, .git-parent-oid, .git-worktree-root { font-size: var(--caption); overflow-wrap: anywhere; }
+.git-worktree-root { color: var(--muted); }
+
+.git-counts { gap: var(--s2) var(--s3); }
+.git-count .meta { margin: 0; }
+.git-count-union strong { font-weight: var(--strong); }
+.git-snapshot { gap: var(--s2); }
+.git-path-list { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.git-path { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: baseline; }
+.git-path .meta { margin: 0; font-size: var(--caption); }
+.git-path code { overflow-wrap: anywhere; }
+.git-path[data-stage='unmerged'] code { color: var(--failed-ink); }
+
+.git-binding { gap: var(--s2); padding: var(--s2); border: var(--line) dashed var(--border); border-radius: var(--radius-control); }
+.git-binding .meta { margin: 0; }
+
+.git-commit-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.git-commit { display: grid; gap: var(--s2); text-align: start; padding: var(--s3);
+  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+.git-commit[aria-pressed='true'] { background: var(--selected); }
+.git-commit code { overflow-wrap: anywhere; }
+.git-commit > .cluster { gap: var(--s2); }
+.git-commit .meta { margin: 0; }
+
+.git-pr-section, .git-conflicts { gap: var(--s2); }
+.git-pr-field { gap: var(--s2); }
+.git-pr-field .meta { margin: 0; min-inline-size: 12ch; }
+.git-pr-field code { overflow-wrap: anywhere; font-size: var(--caption); }
+.git-conflict { gap: var(--s2); }
+.git-conflict .meta { margin: 0; }
+
+/* Metrics pane — no left accent, tabular rows; counts-only git summaries. */
+.metrics-pane { border-left: 3px solid var(--stale-ink); }
+.metrics-pane h4 { margin: 0; font-size: var(--body); }
+.metrics-pane .meta { margin: 0; }
+.metrics-section { gap: var(--s2); }
+.metric-rows { gap: var(--s2); }
+.metric-row { justify-content: space-between; text-align: start; overflow-wrap: anywhere; }
+.metric-row[data-unavailable='true'] { border-style: dashed; }
+.metric-row[data-zero-reported='true'] { border-style: double; }
+
+.metrics-records { align-self: start; position: sticky; top: var(--s2); }
+.metrics-records h3 { margin: 0; }
+.metric-field { gap: var(--s2); align-items: baseline; }
+.metric-field .meta { margin: 0; min-inline-size: 10ch; }
+.metric-record-list { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.metric-record-list code { overflow-wrap: anywhere; }
+
+@media (max-width: 44rem) {
+  .metrics-records { position: static; }
+  .git-pane, .metrics-pane { border-left: none; border-block-start: 3px solid var(--active-ink); }
+  .metrics-pane { border-block-start-color: var(--stale-ink); }
+}

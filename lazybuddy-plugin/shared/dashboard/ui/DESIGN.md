@@ -70,3 +70,33 @@ Inspector scroll ownership: the bounded dialog has an auto header row and minmax
 Keyboard and reduced-motion users are primary personas. Native labels, buttons and dialog supply keyboard semantics. Status always has text and a glyph; absence/loading never resembles a pass. Focus ring is persistent while keyboard focused. Long labels and unbroken strings wrap; narrow forms have no horizontal navigation. No live-announcement loop. Fixture state changes announce via one polite status region.
 
 Browser evidence must cover light/dark at 390, 768 and 1440 CSS pixels, all fixture state selections, inspector Escape/return, repeated interruption, invalid criterion, cycle rejection, queue reorder and long input. Automated contrast checks measure computed foreground/fill pairs; Node18 syntax checks verify shipped module compatibility. Screen-reader speech and native-host readiness are not observed by this component work. Independent review is owned by the root task and remains required before C1's showcase gate is accepted. No accepted product accessibility debt is claimed.
+
+## 9. Live project shell integration
+
+The authenticated production entry uses the seven destinations Overview, Project, Plans, Execution, Git, Evidence and Research. The project name remains the leading identity; LazyBuddy is a compact product badge. The old run-scoped Work, Verification and Plan edits surfaces live inside Execution and keep their existing native run authority. A repository without an initialized native project record keeps that run dashboard available and renders no project destination bar.
+
+Plans uses a source-ordered list/detail composition. At wide widths the plan index is the single bounded secondary scroll owner and the document stays in normal page flow; below 44rem the index precedes the detail in one column and neither becomes a miniature desktop canvas. The detail owns a visible `Plans / <plan>` breadcrumb and Back control. Registered Markdown is rendered through the read-only document primitive with a sticky outline at wide widths, source mode, horizontal overflow only for tables and code, and no checklist mutation semantics.
+
+The project map measures every visible status row before layout. Its graph controls allow directional pan, explicit Fit, and zoom from 25% through 200% in 25% steps, starting at 100%. Pointer drag pans only from the canvas/edge surface and ignores button, input and link descendants; it never changes layout or dependencies. Polling preserves the selected object, collapsed groups, mode and viewport; drilling a plan opens that plan's registered document. At widths at or below 44rem the equivalent hierarchical list keeps full labels and selection. The current layered DAG implementation remains the package-portable layout mechanism; the proposed ELK worker is deferred because no ELK asset is shipped in this package.
+
+## 10. Live states and authority
+
+Every project read, registered-source read and project command uses the same authenticated in-memory browser session and the selected runtime's project authority adapter. A source request carries only a registered source identity; the native adapter resolves its recorded path and performs the descriptor-pinned, one-MiB Markdown capture. The browser has no arbitrary path route. Project commands retain native project binding, expected revision and command idempotency checks. Disconnect marks run editing read-only and retains the last observed project, selection and drafts without painting a write as successful.
+
+Unavailable native data is an actionable hollow state: no linked run explains how to open a run; a linked run outside the service binding names that run; absent worktree, artifact or research records say which native record is missing. The interface never turns missing data into a zero metric, fabricated observation, scheduler claim or verification claim.
+
+## 11. Accessibility constraints and accepted debt
+
+Destination buttons and plan rows use native buttons, 44px minimum targets, visible focus, text labels and `aria-pressed`. Left and right arrows move among enabled destinations without crossing into unavailable controls. Source order remains Overview context, destinations, list, detail. Polling does not move focus. The document and page own vertical scroll except for the plan index, inspector, wide tables and code.
+
+Accepted debt for this slice: Git shows the worktree identity and HEAD already returned by the native project projection; deeper changed-file, remote PR/CI and usage metrics remain explicitly unavailable until their existing bounded collectors are connected by the owning runtime. The production shell does not bundle a new scheduler or a new Git collector.
+
+## 12. Bound-run execution composition
+
+Execution projects the authenticated bound-run snapshot into the shared nested execution view. The first pane is the native task dependency graph from `tasks[].depends_on`; it is labeled Run, never Batch, because the run snapshot records no batch topology. Drilling a task changes aggregation to its distinct native attempts. Attempt ordering never creates a retry edge, and missing worker identity, timestamps, step identity, role or agent topology remains unavailable.
+
+The timeline includes only attempts with a reported worker identity and valid native `started_at`/`finished_at` timestamps. Open running intervals extend to the dashboard read time without inventing a terminal result. Lanes are reported worker identities, peak concurrency counts attempts, and overlap copy distinguishes the same worker lane from different lanes. The service CSP remains strict: timeline geometry uses SVG attributes rather than inline styles.
+
+PlanRecord → bound run → task → attempt breadcrumbs preserve selection and graph/timeline viewport through polling. A PlanRecord linked to another run shows an explicit binding requirement because this service has no arbitrary alternate-run reader. The original Work, Verification and Plan edits dashboard remains the mutation/evidence authority inside a disclosure; an explicit action opens it from any execution depth, and its open state, selected tab and drafts survive polling because the original DOM instance is retained.
+
+Research similarly retains its selected finding, registered-source document instance and Rendered/Source mode when an unchanged project revision is polled. Evidence navigation resolves the matching artifact through the authenticated opaque-ID preview route rather than a path read.

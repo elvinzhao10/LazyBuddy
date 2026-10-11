@@ -26,7 +26,9 @@ export function authentication(credential) {
   };
 }
 export function checkRequest(request, origin) {
-  if (request.url.length > 2048 || request.url.includes('?') || request.url.includes('#') || request.url.includes('%') || request.url.includes('\\')) throw new ServiceError('INVALID_ROUTE');
+  const encodedSource = /^\/api\/project\/sources\/(?:[A-Za-z0-9._:@-]|%[0-9A-Fa-f]{2}){1,768}$/.test(request.url);
+  if (request.url.length > 2048 || request.url.includes('?') || request.url.includes('#')
+    || (request.url.includes('%') && !encodedSource) || request.url.includes('\\')) throw new ServiceError('INVALID_ROUTE');
   if (request.headers.host !== origin.slice(7)) throw new ServiceError('INVALID_HOST', 403);
   const supplied = request.headers.origin;
   if ((supplied !== undefined && supplied !== origin) || (request.method === 'POST' && supplied !== origin)) throw new ServiceError('INVALID_ORIGIN', 403);

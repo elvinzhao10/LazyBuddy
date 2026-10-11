@@ -1,0 +1,84 @@
+@import './style.css';
+
+/* T03 project composition spike — consumes the existing design tokens only.
+   Motion: no animation/keyframes; the only transition is the shared button
+   opacity fade from style.css, which tokens.css reduces to 0ms under
+   prefers-reduced-motion. */
+
+.project-spike { container-type: inline-size; }
+.spike-head .cluster { flex-wrap: wrap; }
+.spike-subtitle { margin: 0; }
+.spike-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); max-inline-size: none; }
+.spike-clause { min-block-size: auto; padding: var(--s1) var(--s2); border-radius: var(--radius-pill); border: var(--line) solid var(--border); background: var(--surface); font-size: var(--caption); }
+.spike-clause[aria-pressed='true'] { background: var(--selected); }
+.spike-status { min-block-size: var(--control); display: flex; align-items: center; }
+.spike-toolbar { justify-content: space-between; }
+.spike-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
+.spike-legend li { display: inline-flex; align-items: center; gap: var(--s2); }
+.spike-legend li::before { content: ''; inline-size: var(--s5); block-size: 0; border-block-start: 2px solid var(--muted); }
+.spike-legend .edge-gate::before { border-block-start-style: dashed; border-block-start-color: var(--active-ink); }
+.spike-legend .edge-external::before { border-block-start-style: dotted; }
+.spike-legend .edge-conflict::before { border-block-start-color: var(--attention-ink); }
+.spike-legend .edge-group::before { border-block-start-color: var(--border); }
+.spike-legend .edge-history::before { border-block-start-style: dotted; border-block-start-color: var(--stale-ink); }
+
+.spike-graph-wrap { display: grid; gap: var(--s2); min-inline-size: 0; }
+.spike-graph-viewport { min-block-size: 25rem; max-block-size: min(70dvb, 48rem); overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; cursor: grab; }
+.spike-graph-viewport.is-panning { cursor: grabbing; user-select: none; }
+.spike-graph { display: block; max-inline-size: none; }
+.spike-graph-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+.spike-graph foreignObject { overflow: visible; }
+.spike-graph path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.spike-graph path[data-kind='gate'] { stroke-dasharray: 6 4; stroke: var(--active-ink); }
+.spike-graph path[data-kind='external'] { stroke-dasharray: 2 4; }
+.spike-graph path[data-kind='conflict'] { stroke: var(--attention-ink); stroke-width: 2; }
+.spike-graph path[data-kind='group'] { stroke: var(--border); }
+.spike-graph path[data-kind='history'] { stroke-dasharray: 2 4; stroke: var(--stale-ink); }
+
+.spike-node { display: grid; gap: var(--s2); inline-size: 100%; block-size: 100%; overflow: hidden; text-align: start;
+  padding: var(--s3); background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); cursor: pointer; }
+.spike-node:hover { background: var(--hover); }
+.spike-node[aria-pressed='true'] { background: var(--selected); }
+.spike-node .spike-identity { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.spike-node .spike-identity code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
+.spike-title { font-weight: var(--strong); line-height: 21px; overflow-wrap: anywhere; max-block-size: calc(5 * 21px); overflow: hidden; }
+.spike-title[data-truncated='true']::after { content: ''; }
+.spike-node .spike-chiprow { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: var(--s2); align-items: start; }
+.spike-chiprow .meta { font-size: var(--caption); }
+.spike-chiprow .status { min-inline-size: 0; overflow-wrap: anywhere; white-space: normal; }
+.spike-summary { overflow-wrap: anywhere; }
+.graph-viewport-controls { justify-content: flex-end; gap: var(--s1); }
+.graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--s2); }
+.graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: tabular-nums; }
+.spike-node.kind-boundary, .spike-list .kind-boundary > .spike-row-control { border-style: dashed; }
+.spike-toggle { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content; }
+
+.spike-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.spike-list[hidden] { display: none; }
+.spike-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s3); align-items: center;
+  padding: var(--s3); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+.spike-row[aria-level='2'] { margin-inline-start: var(--s5); }
+.spike-row[aria-level='3'] { margin-inline-start: var(--s7); }
+.spike-row[aria-level='4'] { margin-inline-start: var(--s8); }
+.spike-row-control { inline-size: 100%; text-align: start; overflow-wrap: anywhere; }
+.spike-row .spike-summary { grid-column: 1 / -1; }
+.spike-row .spike-toggle { grid-column: 1 / -1; justify-self: start; }
+
+.spike-inspector { align-self: start; }
+.spike-inspector h3, .spike-inspector h4 { margin: 0; }
+.spike-inspector h4 { font-size: var(--body); }
+.spike-inspector code { overflow-wrap: anywhere; }
+.spike-inspector section { margin: 0; display: grid; gap: var(--s2); padding-block-start: var(--s3); border-block-start: var(--line) solid var(--border); }
+.spike-reason { margin: 0; }
+.spike-action { justify-self: start; }
+
+@container (max-width: 44rem) {
+  .spike-graph-wrap { display: none; }
+  .spike-list[hidden] { display: grid; }
+  .spike-toolbar .view-switcher { display: none; }
+  .spike-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 44rem) {
+  .spike-inspector section { gap: var(--s1); }
+}

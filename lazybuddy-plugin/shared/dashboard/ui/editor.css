@@ -1,0 +1,61 @@
+@import './tokens.css';
+
+/* T15 project and plan editors — consumes the existing design tokens only.
+   Motion: no animation/keyframes; the only transition is the shared button
+   opacity fade from style.css, which tokens.css reduces to 0ms under
+   prefers-reduced-motion. */
+
+.editor-root { container-type: inline-size; }
+.editor-root > header .cluster { flex-wrap: wrap; }
+.editor-status { min-block-size: var(--control); display: flex; align-items: center; }
+.editor-status[data-state='saved'] { color: var(--verified-ink); }
+.editor-status[data-state='valid'] { color: var(--active-ink); }
+.editor-status[data-state='conflict'] { color: var(--stale-ink); }
+.editor-status[data-state='refused'], .editor-status[data-state='invalid'] { color: var(--failed-ink); }
+.editor-status[data-state='pending'] { color: var(--muted); }
+
+.editor-modes { flex-wrap: wrap; }
+.editor-pane { min-block-size: 12rem; }
+.editor-pane[hidden] { display: none; }
+
+.editor-grid { flex-wrap: wrap; gap: var(--s3); }
+.editor-field { display: grid; gap: var(--s1); max-inline-size: 26rem; }
+.editor-field > span { font-size: var(--caption); color: var(--muted); }
+.editor-field input, .editor-field select { inline-size: 100%; }
+
+.editor-document { gap: var(--s3); }
+.editor-document .editor-heading { margin: 0; }
+.editor-fence { margin: 0; padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card);
+  background: var(--surface); font-family: var(--mono); font-size: var(--caption); overflow-x: auto; white-space: pre; }
+.editor-task { gap: var(--s2); padding: var(--s1) 0; border-block-start: var(--line) solid transparent; }
+.editor-task[data-checked='true'] .status { color: var(--verified-ink); }
+
+.editor-tasklist { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.editor-tasklist li { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.editor-facts { gap: var(--s2); margin: 0; }
+.editor-facts .cluster, .editor-affected .cluster { gap: var(--s2); flex-wrap: wrap; }
+.editor-facts dt, .editor-affected dt { font-size: var(--caption); color: var(--muted); }
+.editor-facts dd, .editor-affected dd { margin: 0; overflow-wrap: anywhere; }
+
+.editor-transition { display: grid; gap: var(--s2); padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.editor-transition button[disabled] { opacity: .6; }
+.editor-reasons { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s1); }
+.editor-reasons li { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
+
+.editor-patch { margin: 0; padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card);
+  background: var(--surface); font-family: var(--mono); font-size: var(--caption); white-space: pre; overflow-x: auto; }
+.editor-invalidations { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s2); }
+.editor-invalidations ul { margin: 0; padding-inline-start: var(--s4); }
+
+.editor-narrow-list { display: none; margin: 0; padding: 0; list-style: none; gap: var(--s2); }
+.editor-root[data-narrow='true'] .editor-narrow-list { display: grid; }
+.editor-row { display: grid; gap: var(--s1); padding: var(--s2); border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.editor-row-control { text-align: start; max-inline-size: none; overflow-wrap: anywhere; }
+.editor-row .meta { font-size: var(--caption); }
+
+@media (max-width: 700px) {
+  .editor-root[data-narrow='true'] .editor-pane { display: none; }
+  .editor-field { max-inline-size: none; }
+}
+
+@media (prefers-reduced-motion: reduce) { .editor-root * { transition: none; } }

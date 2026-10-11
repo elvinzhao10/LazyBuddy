@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries 1.4.0 Git and metrics detail views (T18). Data is the recorded T11/T10 fixture; no live collector or service is connected.">
+  <title>Git and metrics detail</title>
+  <script>
+    document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The Git and metrics views could not load. Reload this page to try again. No live collector is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./git-metrics.css">
+  <script id="git-metrics-module" type="module" src="./git-metrics-page.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / T18 Git and metrics detail</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Git and metrics — where the work lives, what it used</h1>
+      <p>Worktree/commit selection with branch labels and commit identity kept distinct, explicit uncommitted snapshots with read-only dirty bindings, observed PR/CI subjects, and the full spec §8 metric drill-down over T10 arithmetic.</p>
+      <p class="fixture-label">Recorded T11 collector + T10 accounting fixture · No live run, no commands, read-only</p>
+      <p id="load-status" role="status">Loading Git and metrics fixture…</p>
+      <nav class="cluster" aria-label="Fixture views"><span class="meta">View</span></nav>
+    </header>
+    <div id="git-metrics-root" class="stack"></div>
+    <footer>T18 Git and metrics detail views. Observation and accounting authority stay with the T11 collectors, the T10 accounting functions and the shared command route; nothing here mutates Git or records usage.</footer>
+  </main>
+</body>
+</html>

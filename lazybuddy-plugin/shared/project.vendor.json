@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/elvinzhao10/LazyBuddy",
+    "revision": "da1bc0ab9309a071b848a704605505aceb811a92",
+    "path": "lazybuddy-plugin/shared/project",
+    "treeSha256": "8dbe3e22e40ec0998ed2740f3f070425148772101251e46ab4bad41c9c21a7c5"
+  },
+  "boundary": {
+    "hostAdapter": "not-included",
+    "siblingRuntime": "pending-native-ports-t21-t25",
+    "entrypoints": [
+      "contract.mjs",
+      "model.mjs",
+      "history.mjs",
+      "projection.mjs",
+      "cli.mjs"
+    ]
+  },
+  "license": {
+    "spdx": "MIT",
+    "files": []
+  },
+  "files": [
+    {
+      "path": "architecture.mjs",
+      "bytes": 7829,
+      "sha256": "fbb2fb80c418e36cb94b799dea485dcf85a6dc205caf386eac0bb50883b16de7"
+    },
+    {
+      "path": "artifacts/index.mjs",
+      "bytes": 19330,
+      "sha256": "b5616c669bdd05a262d245c00f242f5797cc428a54fe67fdd5d74eae987ba3fa"
+    },
+    {
+      "path": "artifacts/paths.mjs",
+      "bytes": 4564,
+      "sha256": "dbb0962c8eba1f2e44d161270a59f9d180c8452b7b60e6427d3126400a8b9ee9"
+    },
+    {
+      "path": "artifacts/preview.mjs",
+      "bytes": 7439,
+      "sha256": "531ceffdfafa78857febdd679b3bc29e68ecd9ad315f232f7ac23bc020f76cc2"
+    },
+    {
+      "path": "artifacts/query.mjs",
+      "bytes": 3323,
+      "sha256": "6582b310acf4316708fb8b97f8ab27763aa59c1073fc8b3dfcaf99c366c409fd"
+    },
+    {
+      "path": "artifacts/README.md",
+      "bytes": 2813,
+      "sha256": "c7db1e980bf0dc68d2001993551867b3b005c01f3b9168c803dc1148830a3c9d"
+    },
+    {
+      "path": "artifacts/register.mjs",
+      "bytes": 2424,
+      "sha256": "22c481f60f0b58b2eadd5f2924eae84136b91439fb3808b01338b8e24303fdf8"
+    },
+    {
+      "path": "artifacts/research.mjs",
+      "bytes": 3475,
+      "sha256": "dac6138ab8e34c94de6c7b85226b580e66397eb0c9b70fc17e028be141d7e59b"
+    },
+    {
+      "path": "baseline/amendment.mjs",
+      "bytes": 13799,
+      "sha256": "51a7052197f064d163c5c8b2ce35578644ccda3b0f7daf67045772bbe8294794"
+    },
+    {
+      "path": "cli.mjs",
+      "bytes": 5425,
+      "sha256": "95ce20406246f8cc316671d153899de745c5c556f91566951a9143b0e414c4d0"
+    },
+    {
+      "path": "contract.mjs",
+      "bytes": 43613,
+      "sha256": "732deb977f144d1413b002a52598039ae2b33c79a6047e81a6e0c84936d6e95c"
+    },
+    {
+      "path": "git-observation/command.mjs",
+      "bytes": 4350,
+      "sha256": "636e32a972a54bae8e99ab0e658bffdf53b3ff2444b57389c04c876010df50ea"
+    },
+    {
+      "path": "git-observation/local.mjs",
+      "bytes": 20449,
+      "sha256": "ecc19436f7e4bdcde55f9fed545945275fc93c2fbef5211a177443bb62f3c05f"
+    },
+    {
+      "path": "git-observation/records.mjs",
+      "bytes": 7622,
+      "sha256": "dcf18339abd45e3a459d12221fa3e17229ddfe3b7efe3c5cf6d2ad1a5af0a997"
+    },
+    {
+      "path": "git-observation/remote.mjs",
+      "bytes": 6139,
+      "sha256": "ddad5be283262366cfc770ae83cab55405aef9287f0659c53d18aa3056968b26"
+    },
+    {
+      "path": "history.mjs",
+      "bytes": 616,
+      "sha256": "b9a524f41f9367bbfe35478d4a7cad00218cff07d02af976309390e0f2fbb851"
+    },
+    {
+      "path": "model.mjs",
+      "bytes": 28105,
+      "sha256": "53a76772823afca6688dcd9cc7b3f208d217948a40be6190682d030df14f89b2"
+    },
+    {
+      "path": "plans/dependencies.mjs",
+      "bytes": 21128,
+      "sha256": "3e3715b9f4a1927847f2b0e8e846d983deb88916b2a6666b0fddec7781c4b17e"
+    },
+    {
+      "path": "plans/lifecycle.mjs",
+      "bytes": 5910,
+      "sha256": "435eebcadea1132813e35d2133fae177ae8a72db6374228c1872b803dc5fefb2"
+    },
+    {
+      "path": "plans/progress.mjs",
+      "bytes": 5418,
+      "sha256": "9347ba243e811cc2e3c60315bc7651e155e2b6fbcf564eb392ca85cec8f10499"
+    },
+    {
+      "path": "plans/readiness.mjs",
+      "bytes": 22440,
+      "sha256": "d082d8dd021a3e54efe32df7b5236bf2645dbd9264a07e2558c78ff3f2f94913"
+    },
+    {
+      "path": "projection.mjs",
+      "bytes": 6541,
+      "sha256": "a273a97fb0bdf56883051e9905ca4dca5c1adabad98dc5c6ac76a1aaed8918a0"
+    },
+    {
+      "path": "qa/helpers.mjs",
+      "bytes": 4059,
+      "sha256": "328758e52fda78eb9d1008af208cd1ed0783ea1b2874fc498428f7e074f93edd"
+    },
+    {
+      "path": "qa/inactivity-baseline.mjs",
+      "bytes": 9796,
+      "sha256": "d88e9537c631a1cbfa6e0369cd05078d2a49f1901ff915ed1a11c3c624c0f575"
+    },
+    {
+      "path": "qa/README.md",
+      "bytes": 2024,
+      "sha256": "65fe7dcf78e20ade7fd2e57daf27d081bf81780b0454f6abd3828c98ba150cdf"
+    },
+    {
+      "path": "qa/store-boundary.test.mjs",
+      "bytes": 21574,
+      "sha256": "a3a1917e73b40f9ead8d13645624c4a9ae80df294b217671d588e34e1ffe7b0d"
+    },
+    {
+      "path": "README.md",
+      "bytes": 16567,
+      "sha256": "26dab4b9579846edda34de428cae403e6762e1809a7934244e59c9236b392367"
+    },
+    {
+      "path": "reconciliation.mjs",
+      "bytes": 10918,
+      "sha256": "beae2161a7163aaa393532efee3162ab06d3a04862bc70ebba69157e0d82061e"
+    },
+    {
+      "path": "source-edit/editing.mjs",
+      "bytes": 17430,
+      "sha256": "a5001ecfab0cbaa29aef5f4946c7d108ccf226d6b8f194e8ff9684f6f86f3484"
+    },
+    {
+      "path": "source-edit/markdown.mjs",
+      "bytes": 10294,
+      "sha256": "9ac0e5c4edd573a427bca60af2aee0cb00c361a6d7cc737c35cc263bed2ed8bc"
+    },
+    {
+      "path": "usage-accounting.mjs",
+      "bytes": 13701,
+      "sha256": "877976b865e8dbe21a399e20d9f262776e78924c5a21a02604ef31e9615677b4"
+    }
+  ],
+  "selection": {
+    "mode": "full-tree-excluding",
+    "excludedPaths": [
+      "test",
+      "qa/fault-hooks",
+      "qa/native-identity.mjs"
+    ],
+    "excludedDirectoryNames": [
+      "__pycache__"
+    ],
+    "rationale": "Ships the closed portable unit: the runtime modules (contract, model, history, projection, cli, architecture, usage-accounting, reconciliation, artifacts/, baseline/, plans/, git-observation/, source-edit/) plus the portable qa harness (helpers, inactivity-baseline, store-boundary). Runtime modules and the portable qa harness import nothing outside this tree. Excludes test/ and qa/native-identity.mjs because they are Buddy-side contract proof bound to dashboard dev files (dashboard/test/command-fixture.mjs, dashboard/test/queue-fixture.mjs, dashboard/test/producer-workload.mjs, dashboard/producers.mjs) that no family manifest distributes, so they cannot run in siblings; ports author their own adapter tests against the vendored runtime, and the fixtures stay with their tests. Excludes qa/fault-hooks because deliberate fault-injection hooks must never distribute to sibling packages. Excludes generated __pycache__ bytecode caches (git-ignored). Siblings receive this tree byte-identically at T21-T25 via --write --family project."
+  }
+}
