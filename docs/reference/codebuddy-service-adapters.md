@@ -25,7 +25,12 @@ signals an unverified PID.
 `--ephemeral` is supported only for `serve` and adds the documented
 `--no-session-persistence` flag. Non-loopback HTTP endpoints return
 `status: unsupported` with `reason: non_loopback_bind` before a listener is
-launched. The adapter does not invent a host bind flag.
+launched. The official CLI reference now documents `serve` bind and access
+flags — `--host`, `--auth <password|none>`, and `--base-path` — observed on
+2026-10-18 ([CLI reference](https://www.codebuddy.ai/docs/cli/cli-reference)).
+The adapter deliberately does not adopt them: requests naming a non-loopback
+endpoint stay `unsupported`, and no documented bind flag is passed through,
+so the loopback-only boundary is a policy choice, not a missing flag.
 
 Prewarm activation sends one NDJSON message with the documented `cwd`,
 `sessionId`, `args: ["--serve", "--port", 0]`, and `ackMode: "ready"`. The
