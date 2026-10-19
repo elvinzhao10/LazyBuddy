@@ -1,77 +1,116 @@
 @import './style.css';
 
-/* T18 Git and metrics detail — the Git pane and the metrics pane are visually
-   distinct surfaces (different accent edges, headings and testids) so a Git
-   stage count can never read as a token count or vice versa. Existing design
-   tokens only; no animation, no new status colors. */
+/* T18 Git and metrics detail redesign — composed from the T12 component
+   library on tokens v2. The Git pane and the metrics pane are visually
+   distinct surfaces (different structural edges, headings and testids) so a
+   Git stage count can never read as a token count or vice versa. Every
+   value here resolves to a tokens.css v2 name; no color, size, spacing,
+   radius or duration literals. No animation beyond the token transitions the
+   shared layer already owns. */
 
-.git-metrics-view { display: grid; gap: var(--s4); }
+.git-metrics-view { display: grid; gap: var(--space-3); }
+.git-metrics-head { display: grid; gap: var(--space-1); }
 .git-metrics-head h2 { margin: 0; }
+/* The lead sentence is the one readable statement of what is happening. */
+.gm-lead { font-size: var(--type-md-size); line-height: var(--type-md-lh); max-inline-size: var(--measure); }
 .git-metrics-status { min-block-size: var(--control); display: flex; align-items: center; margin: 0; }
 
-/* Git pane — structural left accent; stage/dirty/PR/CI subjects live ONLY here. */
-.git-pane { border-left: 3px solid var(--active-ink); }
-.git-pane h3, .metrics-pane h3 { margin: 0; }
-.git-pane h4 { margin: 0; font-size: var(--body); }
+/* -- Git pane: structural left edge; stages/dirty/PR/CI live ONLY here ----- */
+.git-pane { border-block-start: var(--line) solid var(--active-ink); }
+.git-pane h3, .metrics-pane h3 { margin: 0; font-size: var(--type-md-size); line-height: var(--type-md-lh); }
+.git-pane h4, .metrics-pane h4, .gm-detail-panel h4 { margin: 0; font-size: var(--type-sm-size); line-height: var(--type-sm-lh); font-weight: var(--weight-strong); }
 .git-pane .meta { margin: 0; }
+.git-pane > .stack { gap: var(--space-2); }
 
-.git-worktree-row { display: grid; gap: var(--s3); }
-.git-worktree { display: grid; gap: var(--s2); text-align: start; padding: var(--s3);
-  background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); }
-.git-worktree[aria-pressed='true'] { background: var(--selected); }
-.git-worktree-current { border-block-start: 3px solid var(--active-ink); }
-.git-identity { gap: var(--s2); }
-.git-identity .meta { font-size: var(--caption); }
-.git-identity code, .git-parent-oid, .git-worktree-root { font-size: var(--caption); overflow-wrap: anywhere; }
-.git-worktree-root { color: var(--muted); }
+/* Master-detail: selectable master list + detail column. The detail is not a
+   dialog — it is the reading surface for the selected row. */
+.gm-master-detail { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: start; }
+.gm-master { min-inline-size: 0; }
+.gm-master-heading { margin-block-start: var(--space-2); }
+.gm-git-detail { min-inline-size: 0; padding: var(--lb-card-pad); background: var(--inset); border-radius: var(--radius-md); }
 
-.git-counts { gap: var(--s2) var(--s3); }
-.git-count .meta { margin: 0; }
-.git-count-union strong { font-weight: var(--strong); }
-.git-snapshot { gap: var(--s2); }
-.git-path-list { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
-.git-path { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: baseline; }
-.git-path .meta { margin: 0; font-size: var(--caption); }
-.git-path code { overflow-wrap: anywhere; }
-.git-path[data-stage='unmerged'] code { color: var(--failed-ink); }
+.git-worktree-list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.git-worktree { display: grid; gap: var(--space-half); text-align: start; padding: var(--space-2);
+  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
+.git-worktree[aria-pressed='true'] { background: var(--selected); border-color: var(--product-accent); }
+.git-worktree-current { border-block-start: calc(var(--line) * 3) solid var(--active-ink); }
+.gm-identity { gap: var(--space-1); }
+.gm-identity .meta { font-size: var(--type-xs-size); }
+.gm-identity code, .git-parent-oid, .gm-detail-root, .gm-worktree-facts code { font-size: var(--type-sm-size); overflow-wrap: anywhere; }
+.gm-worktree-facts { color: var(--subtle); }
+.gm-worktree-counts .meta { font-variant-numeric: var(--numeric); }
+.gm-count-union strong { font-weight: var(--weight-strong); }
 
-.git-binding { gap: var(--s2); padding: var(--s2); border: var(--line) dashed var(--border); border-radius: var(--radius-control); }
-.git-binding .meta { margin: 0; }
+/* Detail: the dirty-snapshot visualization. */
+.gm-detail-panel { display: grid; gap: var(--space-2); }
+.gm-detail-panel code { overflow-wrap: anywhere; }
+.gm-snapshot, .gm-binding { display: grid; gap: var(--space-1); }
+.gm-binding { padding: var(--space-2); border: var(--line) dashed var(--border); border-radius: var(--radius-sm); }
+.gm-counts { gap: var(--space-1) var(--space-2); }
+.gm-count { gap: var(--space-half); }
+.gm-count .meta { margin: 0; font-variant-numeric: var(--numeric); }
+.gm-path-list { display: grid; gap: var(--space-half); margin: 0; padding: 0; list-style: none; }
+.gm-path { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.gm-path .meta { margin: 0; font-size: var(--type-xs-size); }
+.gm-path code { overflow-wrap: anywhere; font-size: var(--type-sm-size); }
+.gm-detail-empty { padding: var(--space-2); border: var(--line) dashed var(--border); border-radius: var(--radius-sm); }
 
-.git-commit-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
-.git-commit { display: grid; gap: var(--s2); text-align: start; padding: var(--s3);
-  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
-.git-commit[aria-pressed='true'] { background: var(--selected); }
-.git-commit code { overflow-wrap: anywhere; }
-.git-commit > .cluster { gap: var(--s2); }
-.git-commit .meta { margin: 0; }
+/* Commits master: the T12 data table carries the structure; row identity and
+   selection ride the dataset attributes the view decorates on. */
+.lb-table tbody tr[data-commit-oid] td { cursor: default; }
+.lb-table tbody tr[data-selected='true'] { background: var(--selected); }
+.git-commit-open { min-block-size: var(--density-control-compact); padding: var(--space-half) var(--space-1); font-family: var(--mono); }
+.git-commit-open[aria-pressed='true'] { border-color: var(--product-accent); }
+.gm-commit-subject { gap: var(--space-half); min-inline-size: var(--space-7); }
+.gm-parents { gap: var(--space-1); }
+.gm-commit-times { display: grid; gap: var(--space-half); justify-items: end; }
+.gm-commit-times .meta { margin: 0; font-variant-numeric: var(--numeric); }
 
-.git-pr-section, .git-conflicts { gap: var(--s2); }
-.git-pr-field { gap: var(--s2); }
-.git-pr-field .meta { margin: 0; min-inline-size: 12ch; }
-.git-pr-field code { overflow-wrap: anywhere; font-size: var(--caption); }
-.git-conflict { gap: var(--s2); }
-.git-conflict .meta { margin: 0; }
+/* PR/CI subjects: each subject is its own row — head, base, tested subject,
+   test-merge SHA and checks never merge. */
+.gm-pr-section, .gm-conflicts { gap: var(--space-1); }
+.gm-pr-field { gap: var(--space-2); }
+.gm-pr-field .meta { margin: 0; min-inline-size: var(--space-7); }
+.gm-pr-field code { overflow-wrap: anywhere; font-size: var(--type-sm-size); }
+.gm-conflict { gap: var(--space-2); }
+.gm-conflict .meta { margin: 0; }
 
-/* Metrics pane — no left accent, tabular rows; counts-only git summaries. */
-.metrics-pane { border-left: 3px solid var(--stale-ink); }
-.metrics-pane h4 { margin: 0; font-size: var(--body); }
+/* -- Metrics pane: tabular tables + compact bars; counts-only git summaries.
+   No active-ink edge here — the panes stay visually distinct sections. ----- */
+.metrics-pane { border-block-start: var(--line) solid var(--stale-ink); }
 .metrics-pane .meta { margin: 0; }
-.metrics-section { gap: var(--s2); }
-.metric-rows { gap: var(--s2); }
-.metric-row { justify-content: space-between; text-align: start; overflow-wrap: anywhere; }
-.metric-row[data-unavailable='true'] { border-style: dashed; }
-.metric-row[data-zero-reported='true'] { border-style: double; }
+.gm-metrics-section { gap: var(--space-2); }
+.metric-row { font-weight: var(--weight-regular); }
+.metric-row[aria-pressed='true'] { border-color: var(--product-accent); font-weight: var(--weight-strong); }
+.gm-metric-value { font-variant-numeric: var(--numeric); }
+.gm-metric-value[data-unavailable='true'] { color: var(--subtle); }
+.gm-coverage { gap: var(--space-half); }
 
-.metrics-records { align-self: start; position: sticky; top: var(--s2); }
-.metrics-records h3 { margin: 0; }
-.metric-field { gap: var(--s2); align-items: baseline; }
-.metric-field .meta { margin: 0; min-inline-size: 10ch; }
-.metric-record-list { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+/* Compact bar visualization: pure CSS from tokens. Widths are data (inline
+   percentages of the largest reported same-unit value); everything visual is
+   a token. Unavailable totals render a hollow dashed track, never a bar that
+   would read as zero. */
+.gm-bars { gap: var(--space-2); }
+.gm-bar-group { gap: var(--space-half); }
+.gm-bar-row { display: grid; grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; }
+.gm-bar-label { min-inline-size: 0; }
+.gm-bar-track { position: relative; block-size: var(--space-2); background: var(--inset); border-radius: var(--radius-full); }
+.gm-bar-fill { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: var(--radius-full); background: var(--text); }
+.gm-bar-fill[data-state='zero'] { background: var(--subtle); }
+.gm-bar-track[data-unavailable='true'] { background: transparent; border: var(--line) dashed var(--border); }
+.gm-bar-value { font-variant-numeric: var(--numeric); font-size: var(--type-sm-size); color: var(--subtle); white-space: nowrap; }
+.gm-bar-row[data-unavailable='true'] .gm-bar-value { font-style: italic; }
+
+/* Dock drill-down (the T12 dock carries the surface; these are its rows). */
+.metric-field { gap: var(--space-2); align-items: baseline; }
+.metric-field .meta { margin: 0; min-inline-size: var(--space-7); }
+.metric-record-list { display: grid; gap: var(--space-half); margin: 0; padding: 0; list-style: none; }
 .metric-record-list code { overflow-wrap: anywhere; }
 
 @media (max-width: 44rem) {
-  .metrics-records { position: static; }
-  .git-pane, .metrics-pane { border-left: none; border-block-start: 3px solid var(--active-ink); }
+  .gm-master-detail { grid-template-columns: minmax(0, 1fr); }
+  .git-pane, .metrics-pane { border-block-start-color: var(--active-ink); }
   .metrics-pane { border-block-start-color: var(--stale-ink); }
+  .gm-bar-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-half); }
+  .gm-bar-value { justify-self: end; }
 }

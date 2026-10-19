@@ -222,13 +222,15 @@ function valueMetric({ id, area, label, value, unit, definition, basis, records 
 
 function timeMetrics(time, context) {
   if (time == null) {
-    return ['elapsed', 'wall', 'agent', 'peak'].map(name => unavailableMetric({
+    // Unprojected metrics still carry the exact scope/filters/window/as-of
+    // context — unavailable is typed, never scope-less.
+    return ['elapsed', 'wall', 'agent', 'peak'].map(name => stamped(unavailableMetric({
       id: `metric:time:${name}`,
       area: 'time',
       label: { elapsed: 'Elapsed run time', wall: 'Observed execution wall time',
         agent: 'Recorded agent time', peak: 'Peak concurrency' }[name],
       note: 'Time accounting not projected; no accounting result was supplied.',
-    }));
+    }), context));
   }
   const records = time.source_record_ids ?? [];
   const recordsNote = records.length ? null : 'contributing interval records not supplied';
@@ -269,12 +271,12 @@ function timeMetrics(time, context) {
 
 function usageMetrics(usage, context) {
   if (usage == null) {
-    return ['input', 'output', 'total', 'requests'].map(name => unavailableMetric({
+    return ['input', 'output', 'total', 'requests'].map(name => stamped(unavailableMetric({
       id: `metric:usage:${name}`,
       area: 'usage',
       label: { input: 'Input tokens', output: 'Output tokens', total: 'Total tokens', requests: 'Reported request coverage' }[name],
       note: 'Usage accounting not projected; no usage result was supplied.',
-    }));
+    }), context));
   }
   const requestRecords = usage.requests.map(request => request.request_id);
   const labels = { input_tokens: 'Input tokens', output_tokens: 'Output tokens', total_tokens: 'Total tokens' };

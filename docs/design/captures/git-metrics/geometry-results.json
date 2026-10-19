@@ -1,0 +1,231 @@
+{
+  "overlaps": [
+    {
+      "where": "commit-table",
+      "a": "stack gm-commit-subject",
+      "textA": "merge: side work+4 uncommitted",
+      "b": "SPAN",
+      "textB": "merge: side work"
+    },
+    {
+      "where": "commit-table",
+      "a": "stack gm-commit-subject",
+      "textA": "merge: side work+4 uncommitted",
+      "b": "status",
+      "textB": "+4 uncommitted paths — snapsho"
+    },
+    {
+      "where": "commit-table",
+      "a": "cluster gm-parents",
+      "textA": "merge · 2 parents094e9a5dfcabd",
+      "b": "status",
+      "textB": "merge · 2 parents"
+    },
+    {
+      "where": "commit-table",
+      "a": "cluster gm-parents",
+      "textA": "merge · 2 parents094e9a5dfcabd",
+      "b": "git-parent-oid",
+      "textB": "094e9a5dfc"
+    },
+    {
+      "where": "commit-table",
+      "a": "cluster gm-parents",
+      "textA": "merge · 2 parents094e9a5dfcabd",
+      "b": "git-parent-oid",
+      "textB": "abdf53a7fd"
+    },
+    {
+      "where": "commit-table",
+      "a": "gm-commit-times",
+      "textA": "authored 2026-10-19T12:08:57-0",
+      "b": "meta",
+      "textB": "authored 2026-10-19T12:08:57-0"
+    },
+    {
+      "where": "commit-table",
+      "a": "gm-commit-times",
+      "textA": "authored 2026-10-19T12:08:57-0",
+      "b": "meta",
+      "textB": "committed 2026-10-19T12:08:57-"
+    },
+    {
+      "where": "commit-table",
+      "a": "stack gm-commit-subject",
+      "textA": "base",
+      "b": "SPAN",
+      "textB": "base"
+    },
+    {
+      "where": "commit-table",
+      "a": "cluster gm-parents",
+      "textA": "none (root commit)",
+      "b": "meta",
+      "textB": "none (root commit)"
+    },
+    {
+      "where": "commit-table",
+      "a": "gm-commit-times",
+      "textA": "authored 2026-10-19T12:08:57-0",
+      "b": "meta",
+      "textB": "authored 2026-10-19T12:08:57-0"
+    },
+    {
+      "where": "commit-table",
+      "a": "gm-commit-times",
+      "textA": "authored 2026-10-19T12:08:57-0",
+      "b": "meta",
+      "textB": "committed 2026-10-19T12:08:57-"
+    },
+    {
+      "where": "commit-table",
+      "a": "stack gm-commit-subject",
+      "textA": "side work",
+      "b": "SPAN",
+      "textB": "side work"
+    },
+    {
+      "where": "commit-table",
+      "a": "cluster gm-parents",
+      "textA": "094e9a5dfc",
+      "b": "git-parent-oid",
+      "textB": "094e9a5dfc"
+    },
+    {
+      "where": "commit-table",
+      "a": "gm-commit-times",
+      "textA": "authored 2026-10-19T12:08:57-0",
+      "b": "meta",
+      "textB": "authored 2026-10-19T12:08:57-0"
+    },
+    {
+      "where": "commit-table",
+      "a": "gm-commit-times",
+      "textA": "authored 2026-10-19T12:08:57-0",
+      "b": "meta",
+      "textB": "committed 2026-10-19T12:08:57-"
+    }
+  ],
+  "barWidths": [
+    {
+      "metric": "metric:time:elapsed",
+      "style": "inline-size: 100%",
+      "renderedPx": 506.2,
+      "state": "reported"
+    },
+    {
+      "metric": "metric:time:wall",
+      "style": "inline-size: 66.7%",
+      "renderedPx": 337.6,
+      "state": "reported"
+    },
+    {
+      "metric": "metric:time:agent",
+      "style": "inline-size: 83.3%",
+      "renderedPx": 421.6,
+      "state": "reported"
+    },
+    {
+      "metric": "metric:time:peak",
+      "style": "inline-size: 66.7%",
+      "renderedPx": 347.7,
+      "state": "reported"
+    },
+    {
+      "metric": "metric:time:distinct-agents",
+      "style": "inline-size: 100%",
+      "renderedPx": 521.3,
+      "state": "reported"
+    }
+  ],
+  "tableCellStats": {
+    "numericCells": 15,
+    "tabular": 15
+  },
+  "controls": [
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 65
+    },
+    {
+      "kind": "metric-row",
+      "height": 65
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    },
+    {
+      "kind": "metric-row",
+      "height": 44
+    }
+  ],
+  "offViewport": [],
+  "commitRowCount": 3,
+  "scrollWidth": 1440,
+  "innerWidth": 1440
+}
