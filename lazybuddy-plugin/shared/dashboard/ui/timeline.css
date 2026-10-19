@@ -1,15 +1,19 @@
-/* T16 actual-run timeline — one shared time axis, one lane per observed agent.
-   Interval color follows the shared semantic states (blue executing/verifying,
-   green finished-verified is NOT used here: a finished execution is neutral; amber
-   attention, red failure, purple stale with a dashed open end). */
+/* T16 actual-run timeline — one shared time axis, one swimlane per observed
+   agent. Same-lane overlaps stack into sublane rows (see execution-view.mjs
+   assignSublanes) so overlap stays visible as structure; retries link inline
+   with a dotted line back to the row of the attempt they resume, and blocked
+   fan-in joins render an explicit strip under the lanes. Interval color
+   follows the shared semantic states (blue executing/verifying, neutral
+   finished, amber attention, red failure, purple stale with a dashed open
+   end). */
 
 .execution-timeline-panel { padding: var(--s4); }
 .execution-timeline-panel h3 { margin: 0; }
 .execution-timeline-viewport { overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; }
-.execution-axis { display: block; block-size: var(--s5); inline-size: calc(100% - 14rem); margin-inline-start: 13rem; margin-inline-end: var(--s4); border-block-end: var(--line) solid var(--border); }
-.execution-axis-tick { fill: var(--muted); font: var(--regular) var(--caption)/1 var(--mono); }
+.execution-axis { display: block; block-size: var(--s5); inline-size: calc(100% - var(--lane-label) - var(--s4)); margin-inline-start: var(--lane-label); margin-inline-end: var(--s4); border-block-end: var(--line) solid var(--border); }
+.execution-axis-tick { fill: var(--muted); font: var(--regular) var(--caption)/1 var(--mono); font-variant-numeric: tabular-nums; }
 .execution-lanes { display: grid; gap: var(--s2); margin: 0; padding: var(--s2) 0; list-style: none; }
-.execution-lane { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: var(--s3); align-items: center; }
+.execution-lane { display: grid; grid-template-columns: var(--lane-label) minmax(0, 1fr); gap: var(--s3); align-items: center; }
 .execution-lane-label { display: flex; min-inline-size: 0; }
 .execution-lane-label .meta { overflow-wrap: anywhere; }
 .execution-track { display: block; inline-size: calc(100% - var(--s4)); min-block-size: var(--s6); margin-inline-end: var(--s4); border: var(--line) dashed var(--border); border-radius: var(--radius-control); }
@@ -24,6 +28,16 @@
 .execution-interval[data-open='true'] .execution-interval-body::after { content: 'open · no terminal record'; font-size: var(--caption); padding-inline-start: var(--s2); white-space: nowrap; }
 .execution-interval-label { font-size: var(--caption); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .execution-interval:focus-visible .execution-interval-body { outline: var(--focus-width) solid var(--focus); outline-offset: calc(-1 * var(--focus-width)); }
+/* Retry history inline: a dotted link on the lane from the resuming attempt's
+   start back to the row of the attempt it resumes. Decorative reinforcement —
+   the bar labels and the notes carry the same fact as text. */
+.execution-retry-link { stroke: var(--stale-ink); stroke-width: 1.5; stroke-dasharray: 2 4; }
+/* Explicit blocked-join affordance at fan-in: plan truth, dashed attention
+   edge, named branches, one Show control per join. */
+.execution-join-strip { display: grid; gap: var(--s2); padding: var(--s3); border: var(--line) dashed var(--attention-ink); border-radius: var(--radius-card); background: var(--surface); }
+.execution-join-strip h4 { margin: 0; font-size: var(--body); }
+.execution-join-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.execution-join-text { overflow-wrap: anywhere; }
 .execution-notes { display: grid; gap: var(--s1); margin: 0; padding: var(--s2) 0 0 var(--s4); list-style: none; }
 
 @container (max-width: 44rem) {

@@ -1,0 +1,22 @@
+{
+  "chrome": "Chrome/155.0.8059.82",
+  "capturedAt": "2026-10-19T16:17:27.304Z",
+  "probes": [
+    {
+      "name": "loading skeleton present",
+      "value": true
+    },
+    {
+      "name": "loading status text",
+      "value": "Loading execution fixture…"
+    },
+    {
+      "name": "error status text",
+      "value": "Loading execution fixture…"
+    },
+    {
+      "name": "error shows no zero metrics",
+      "value": 0
+    }
+  ]
+}

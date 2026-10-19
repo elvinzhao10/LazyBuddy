@@ -26,6 +26,7 @@ const { composeGraphSet } = await import('../../project/plans/dependencies.mjs')
 const { evaluateTaskGate, normalizeDependencyFacts } = await import('../../project/plans/readiness.mjs');
 const { executionDocument, recordExecutionObservations, tasksWithAttempts } = await import('../ui/execution-model.mjs');
 const { createExecutionView } = await import('../ui/execution-view.mjs');
+const { installFocusSystem } = await import('../ui/components.mjs');
 const { liveExecutionProjection } = await import('../ui/live-execution-model.mjs');
 const { intervalGeometry, parseAttemptObservations, timelineModel } = await import('../ui/timeline-model.mjs');
 const { presentationModel } = await import('../ui/project-presentation.mjs');
@@ -463,6 +464,47 @@ test('nested execution and timeline render the two required fixtures from real r
   assert.notEqual(dagPane, timelinePane);
   assert.ok(viewA.element.querySelectorAll('.execution-node').length >= 2);
   assert.equal(viewA.element.querySelectorAll('.execution-lane').length, 3);
+
+  // 11b. T16 redesign — glance state, honest swimlanes, inline retries.
+  const glanceStates = Object.fromEntries([...viewA.element.querySelectorAll('.execution-node')]
+    .map(card => [card.dataset.nodeId, card.dataset.state]));
+  assert.equal(glanceStates['A'], 'verified', 'finished+verified reads verified at a glance');
+  assert.equal(glanceStates['verifier:worker:verifier-1'], 'verified');
+  const executorLane = viewA.element.querySelector('.execution-lane[data-agent-id="worker:executor-a"]');
+  const executorTrack = executorLane.querySelector('.execution-track');
+  assert.equal(executorTrack.dataset.sublanes, '2',
+    'the interrupted open interval and its retry overlap on one agent lane and stack into two rows');
+  assert.equal(executorTrack.getAttribute('height'), '88');
+  const killedBar = executorLane.querySelector('.execution-interval[data-attempt-id="executor:killed"]');
+  const resumedBarInLane = executorLane.querySelector('.execution-interval[data-attempt-id="executor:resumed"]');
+  assert.equal(killedBar.dataset.sublane, '0');
+  assert.equal(resumedBarInLane.dataset.sublane, '1', 'the retry never paints over its interrupted predecessor');
+  assert.match(resumedBarInLane.textContent, /resumes executor:killed/, 'the resuming bar keeps its retry history inline');
+  assert.ok(executorLane.querySelector('.execution-retry-link[data-from="executor:killed"][data-to="executor:resumed"]'),
+    'a dotted retry link connects the two rows on the lane');
+  assert.match(viewA.element.querySelector('.execution-notes').textContent, /stacked: worker:executor-a ran 2 attempts at overlapping times/,
+    'the stacking is explained as overlap truth, not hidden');
+  const segmented = viewA.element.querySelector('.view-switcher[data-native-segmented]');
+  assert.ok(segmented, 'the graph/list switch is a T11 segmented control');
+  assert.deepEqual([...segmented.querySelectorAll('button')].map(control => control.dataset.segment), ['graph', 'list']);
+  assert.equal(segmented.querySelectorAll('button[aria-pressed="true"]')[0].dataset.segment, 'graph');
+
+  // Graph/List equivalence: two presentations over one node set, with
+  // selection and collapsed state shared across the switch.
+  viewA.select('A');
+  viewA.setMode('list');
+  assert.equal(viewA.getStats().mode, 'list');
+  assert.equal(viewA.element.querySelector('.execution-list').hidden, false);
+  assert.equal(viewA.element.querySelector('.execution-graph-wrap').hidden, true);
+  const listIds = [...viewA.element.querySelectorAll('.execution-row-control')].map(control => control.dataset.nodeId).sort();
+  viewA.setMode('graph');
+  const graphIds = [...viewA.element.querySelectorAll('.execution-node')].map(card => card.dataset.nodeId).sort();
+  assert.deepEqual(listIds, graphIds, 'graph and list render the same node set');
+  assert.equal(viewA.getStats().selectedId, 'A', 'selection survives the mode switch');
+  assert.equal(viewA.element.querySelector('.execution-node[aria-pressed="true"]')?.dataset.nodeId, 'A');
+  assert.deepEqual([...segmented.querySelectorAll('button[aria-pressed="true"]')].map(control => control.dataset.segment), ['graph'],
+    'the segmented control reflects the programmatic mode change');
+
   const liveDocument = { ...structuredClone(documents.aBatch),
     graphLabel: 'Run task dependency graph',
     graphDescription: 'Recorded task dependencies for this bound native run.',
@@ -558,17 +600,95 @@ test('nested execution and timeline render the two required fixtures from real r
   const attemptCard = viewTask.element.querySelector('.execution-node[data-node-id="attempt:executor:killed"]');
   assert.equal(attemptCard.querySelectorAll('.status')[0].dataset.state, 'stale',
     'the interrupted attempt renders stale, never running');
+  assert.equal(attemptCard.dataset.state, 'stale', 'and its glance state is stale');
+
+  // Attempt drill-down opens in the dock; verifier/attempt steps expand there;
+  // Escape closes the dock and returns focus to the invoking control.
+  const dockInvoker = viewTask.element.querySelector('[data-testid="execution-dock-open"]');
+  assert.ok(dockInvoker, 'an attempt offers dock drill-down instead of a fabricated deeper level');
+  const detachFocus = installFocusSystem({ root: dom.document });
+  try {
+    dom.document.body.append(viewTask.element);
+    dockInvoker.focus();
+    dockInvoker.click();
+    const dock = viewTask.element.querySelector('[data-testid="dock-panel"]');
+    assert.equal(dock.hidden, false, 'the dock opens');
+    assert.equal(viewTask.getStats().dockOpen, true);
+    assert.equal(viewTask.getStats().dockNodeId, 'attempt:executor:resumed');
+    assert.ok(dock.textContent.includes('executor:resumed'), 'the dock carries the attempt identity');
+    assert.ok(dock.textContent.includes('worker:executor-a'), 'the recorded interval reaches the dock');
+    const dockStep = dock.querySelector('[data-testid="execution-dock-step"]');
+    assert.ok(dockStep, 'the attempt step renders in the dock');
+    assert.equal(dockStep.getAttribute('aria-expanded'), 'false');
+    dockStep.click();
+    const refreshedStep = viewTask.element.querySelector(`[data-testid="execution-dock-step"][data-step-id="${dockStep.dataset.stepId}"]`);
+    assert.equal(refreshedStep.getAttribute('aria-expanded'), 'true', 'verifier/attempt steps expand inline in the dock');
+    assert.equal(viewTask.element.querySelector('.execution-dock-detail').hidden, false);
+    assert.ok(dock.textContent.includes('Evidence'), 'evidence keeps its separate identity in the dock');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(viewTask.element.querySelector('[data-testid="dock-panel"]').hidden, true,
+      'Escape closes the dock through the T11 overlay stack');
+    assert.equal(dom.document.activeElement, dockInvoker, 'focus returns to the invoking control');
+    assert.equal(viewTask.getStats().dockOpen, false);
+    viewTask.element.remove();
+
+    // The verifier drills through the same dock: its steps are the ones that
+    // expand, read from the verifier's own children rather than DAG edges.
+    dom.document.body.append(viewA.element);
+    viewA.select('verifier:worker:verifier-1');
+    const verifierInvoker = viewA.element.querySelector('[data-testid="execution-dock-open"]');
+    assert.equal(verifierInvoker.textContent, 'Open verifier detail in dock');
+    verifierInvoker.focus();
+    verifierInvoker.click();
+    assert.equal(viewA.getStats().dockNodeId, 'verifier:worker:verifier-1');
+    const verifierDock = viewA.element.querySelector('[data-testid="dock-panel"]');
+    const verifierStep = verifierDock.querySelector('[data-testid="execution-dock-step"][data-step-id="vstep:verifier:distinct"]');
+    assert.ok(verifierStep, 'the verifier step renders in the dock');
+    verifierStep.click();
+    assert.equal(viewA.element.querySelector('[data-testid="execution-dock-step"][data-step-id="vstep:verifier:distinct"]')
+      .getAttribute('aria-expanded'), 'true', 'verifier steps expand inline in the dock');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(viewA.element.querySelector('[data-testid="dock-panel"]').hidden, true);
+    assert.equal(dom.document.activeElement, verifierInvoker, 'focus returns to the verifier dock invoker');
+    viewA.element.remove();
+  } finally {
+    detachFocus.detach();
+  }
+  // A raw timeline attempt id selects the matching attempt node, not nothing.
+  viewTask.select('executor:killed');
+  assert.equal(viewTask.getStats().selectedId, 'attempt:executor:killed');
 
   // 12. Fixture B DOM: blocked join visible expanded; collapsed gate reveals the pending check.
   const viewB = createExecutionView({ document: documents.bBatch, timeline: model });
   const joinCard = viewB.element.querySelector('.execution-node[data-node-id="join:plan:execution-b:J"]');
   assert.ok(joinCard.textContent.includes('Blocked'));
+  assert.equal(joinCard.dataset.state, 'attention', 'the blocked fan-in reads attention at a glance');
+  const joinStrip = viewB.element.querySelector('[data-testid="execution-joins"]');
+  assert.ok(joinStrip, 'the timeline pane renders an explicit blocked-join affordance at fan-in');
+  const joinRow = joinStrip.querySelector('.execution-join-row[data-join-id="join:plan:execution-b:J"]');
+  assert.ok(joinRow);
+  assert.match(joinRow.textContent, /waits on B \(pending\)/, 'the strip names the branch it waits on');
+  assert.equal(joinRow.querySelectorAll('.status')[0].dataset.state, 'attention');
+  joinRow.querySelector('[data-action="show-join"]').click();
+  assert.equal(viewB.getStats().selectedId, 'join:plan:execution-b:J', 'Show join selects the join node');
+  assert.equal(viewB.element.querySelector('.execution-node[data-node-id="join:plan:execution-b:J"]').getAttribute('aria-pressed'), 'true');
   const viewBPlan = createExecutionView({ document: documents.bPlan, timeline: model });
   const gateCard = viewBPlan.element.querySelector('.execution-node[data-node-id="gate:plan:execution-b"]');
   assert.match(gateCard.textContent, /collapsed: 2 checks, 1 pending/);
+  const gateBadges = gateCard.querySelector('.execution-badges');
+  assert.ok(gateBadges, 'the collapsed gate retains its pending check as a badge');
+  assert.match(gateBadges.textContent, /1 pending/);
+  assert.equal(gateBadges.querySelectorAll('.status')[0].dataset.state, 'attention');
+  const viewAPlan = createExecutionView({ document: documents.aPlan, timeline: model });
+  const confirmedBadges = viewAPlan.element.querySelector('.execution-node[data-node-id="gate:plan:execution-a"] .execution-badges');
+  assert.ok(confirmedBadges, 'the all-confirmed collapsed gate shows its confirmation state');
+  assert.match(confirmedBadges.textContent, /1 confirmed/);
+  assert.equal(confirmedBadges.querySelectorAll('.status')[0].dataset.state, 'verified');
   viewBPlan.toggleGroup('gate:plan:execution-b');
   assert.ok(viewBPlan.element.querySelector('.execution-node[data-node-id="check:plan:execution-b:B:c1"]'));
   assert.match(viewBPlan.element.querySelector('.execution-node[data-node-id="check:plan:execution-b:B:c1"]').textContent, /Pending/);
+  assert.equal(viewBPlan.element.querySelector('.execution-node[data-node-id="gate:plan:execution-b"] .execution-badges'), null,
+    'an expanded group carries no collapsed badges; its checks render instead');
 
   // 13. The exact consumed fixture is exported for the browser proof (same data path).
   mkdirSync(evidenceDirectory, { recursive: true });
@@ -656,6 +776,73 @@ test('adversarial: an invalid cycle cannot enter the rendered DAG through the ex
     error => error.code === 'INVALID_CYCLE');
   assert.throws(() => executionDocument({ state: minimalPlanState(), set: { graphFor: () => null },
     planId: 'plan:none', observations: [], level: 'plan' }), error => error.code === 'UNKNOWN_PLAN');
+});
+
+// Adversarial stale_state: a polling update lands while the user holds a
+// selection. The update may flip the selected attempt's recorded state to a
+// stale open interval, or remove the selected identity entirely. Neither may
+// fabricate liveness, crash the view, or silently keep a dangling selection.
+test('adversarial: polling update mid-selection flips state honestly and never keeps a dangling selection', () => {
+  const chip = (state, label) => ({ state, label });
+  const base = t0 => ({
+    viewId: 'p:b', docId: 'p', level: 'task', focusId: 'A', title: 'Execution — p', subtitle: 's',
+    nodes: [
+      { id: 'attempt:run:1', kind: 'attempt', title: 'Attempt 1 (worker) — executing', summary: 'Agent w1',
+        execution: chip('active', 'Running · run:1'), verification: chip('neutral', 'Unverified'), meta: 'Attempt · role worker' },
+      { id: 'step:run:1:0', kind: 'step', title: 'Step — command #1', summary: 'argv digest 0'.repeat(3),
+        execution: chip('active', 'Running'), verification: chip('neutral', 'Step receipt only'), meta: 'Attempt step' },
+    ],
+    edges: [{ from: 'attempt:run:1', to: 'step:run:1:0', kind: 'dependency', label: 'attempt runs step' }],
+    breadcrumbs: [{ level: 'plan', label: 'p' }],
+    statusSentence: { text: '1 attempt recorded.', clauses: [{ text: 'attempt run:1 executing', ref: 'attempt:run:1' }] },
+  });
+  const intervals = (state, open, t0) => [
+    { attemptId: 'run:1', agentId: 'w1', lane: 0, role: 'worker', taskId: 'A', state,
+      startMs: t0, endMs: open ? null : t0 + 1000, open, renderedEndMs: open ? t0 + 1000 : t0 + 1000, resumesAttemptId: null },
+  ];
+  const timelineOf = (state, open, t0) => ({ asOfMs: t0 + 1000, extent: { startMs: t0, endMs: t0 + 1000 }, peakConcurrency: 1,
+    lanes: [{ agentId: 'w1', role: 'worker', lane: 0, attemptIds: ['run:1'] }],
+    intervals: intervals(state, open, t0), overlaps: [], retryChains: [] });
+  const t0 = Date.parse('2026-10-18T10:00:00Z');
+  const view = createExecutionView({ document: base(t0), timeline: timelineOf('executing', true, t0) });
+  view.select('attempt:run:1');
+  assert.equal(view.getStats().selectedId, 'attempt:run:1');
+  assert.equal(view.element.querySelector('.execution-node[data-node-id="attempt:run:1"]').dataset.state, 'active');
+
+  // Mid-selection update: the producer never delivered a terminal record, so
+  // the attempt is stale-open — never running, and the selection survives.
+  const staleDocument = structuredClone(base(t0));
+  staleDocument.nodes[0].title = 'Attempt 1 (worker) — stale';
+  staleDocument.nodes[0].execution = chip('stale', 'Interrupted · no terminal record');
+  const update = view.applyUpdate(staleDocument, timelineOf('stale', true, t0));
+  assert.equal(update.selectedPreserved, true, 'the selection survives the stale flip');
+  const staleCard = view.element.querySelector('.execution-node[data-node-id="attempt:run:1"]');
+  assert.equal(staleCard.dataset.state, 'stale', 'the glance state flips to stale');
+  const bar = view.element.querySelector('.execution-interval[data-attempt-id="run:1"]');
+  assert.equal(bar.dataset.state, 'stale');
+  assert.equal(bar.dataset.open, 'true', 'no terminal record keeps the interval open');
+  assert.ok(!view.element.textContent.includes('Running · run:1'), 'the stale attempt never renders as running');
+
+  // Mid-selection update that removes the selected identity: the selection is
+  // cleared (reported, not dangling) and the view keeps rendering.
+  const emptied = structuredClone(base(t0));
+  emptied.nodes = emptied.nodes.filter(node => node.id !== 'attempt:run:1');
+  emptied.edges = [];
+  emptied.statusSentence = { text: 'No attempts recorded for this task.', clauses: [] };
+  const removed = view.applyUpdate(emptied, timelineOf('stale', true, t0));
+  assert.equal(removed.selectedPreserved, false, 'a removed identity is reported as not preserved');
+  assert.equal(view.getStats().selectedId, null, 'no dangling selection survives the removal');
+  assert.ok(view.element.querySelector('[data-testid="execution-dag"]'), 'the view still renders its panes');
+
+  // An empty timeline renders the honest empty state, never a zero-as-value lane list.
+  const emptyTimeline = { asOfMs: t0 + 1000, extent: { startMs: t0 + 1000, endMs: t0 + 1000 }, peakConcurrency: 0,
+    lanes: [], intervals: [], overlaps: [], retryChains: [] };
+  const emptyView = createExecutionView({ document: emptied, timeline: emptyTimeline });
+  const pane = emptyView.element.querySelector('[data-testid="execution-timeline"]');
+  assert.ok(pane.textContent.includes('No recorded attempts'), 'the empty timeline states what will fill it');
+  assert.equal(emptyView.element.querySelectorAll('.execution-interval').length, 0);
+  assert.equal(emptyView.element.querySelector('[data-testid="execution-joins"]'), null,
+    'no blocked-join affordance renders without join nodes');
 });
 
 // Minimal plan registry for compose grounding in the pure adversarial test:

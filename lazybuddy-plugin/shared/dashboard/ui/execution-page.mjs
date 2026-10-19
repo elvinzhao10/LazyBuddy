@@ -6,7 +6,7 @@
 // Serves both required spec fixtures, drill-down, theme switching and a simulated
 // polling tick used by the browser evidence harness.
 import { createExecutionView } from './execution-view.mjs';
-import { installNativeExperience } from './components.mjs';
+import { installNativeExperience, skeleton } from './components.mjs';
 
 installNativeExperience(); // T11: keyboard/focus/density layer, idempotent
 
@@ -22,6 +22,9 @@ themeControl.disabled = false;
 const root = document.querySelector('#execution-root');
 const levelNav = document.querySelector('nav[aria-label="Fixture levels"]');
 const loadStatus = document.querySelector('#load-status');
+// ST-1: a bounded skeleton while the recorded fixture loads — never a
+// zero metric or a healthy-looking empty graph.
+root.append(skeleton({ lines: 4, testid: 'execution-skeleton', label: 'Loading execution fixture' }));
 let view = null;
 let activeKey = 'fixture-a-plan';
 let fixture = null;
@@ -55,7 +58,7 @@ function mount(key) {
       },
     },
   });
-  root.append(view.element);
+  root.replaceChildren(view.element);
   for (const control of levelNav.querySelectorAll('button')) control.setAttribute('aria-pressed', String(control.dataset.level === key));
 }
 
@@ -66,6 +69,10 @@ window.__executionTick = function tick() {
 };
 
 window.__executionStats = () => view?.getStats() ?? null;
+
+// Evidence-harness hooks: select a node/attempt and open the drill-down dock.
+window.__executionSelect = nodeId => { view?.select(nodeId); return view?.getStats().selectedId ?? null; };
+window.__executionDock = nodeId => view?.openDock(nodeId) ?? false;
 
 (async function load() {
   const response = await fetch('./execution-fixture.json', { cache: 'no-store' });

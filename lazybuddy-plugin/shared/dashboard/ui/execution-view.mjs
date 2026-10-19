@@ -3,7 +3,13 @@
 // sharing identity (attempt/task ids), never as one picture. Layout comes from the
 // existing engine via the T03 presentation model. Polling updates (applyUpdate)
 // re-render while preserving breadcrumbs, selection, collapsed groups and viewport.
-import { button, element, statusChip } from './components.mjs';
+// T16 redesign: node cards carry a glance state (running/blocked/verified/stale
+// read from border and elevation before any text), the timeline is an
+// overlap-honest swimlane (same-lane overlaps stack into sublanes, retries link
+// inline, blocked fan-in joins get an explicit affordance), attempt and verifier
+// drill-down opens in the dock with expandable steps, and the graph/list switch
+// is a T11 segmented control over one equivalent node set.
+import { assignSublanes, button, createDockPanel, element, emptyState, segmentedControl, statusChip } from './components.mjs';
 import { createGraphViewportController } from './graph-viewport.mjs';
 import { listModel, measureNodeCard, presentationModel, layoutProjectGraph, SpikePresentationError } from './project-presentation.mjs';
 import { intervalGeometry, timelineAxis } from './timeline-model.mjs';
@@ -43,12 +49,44 @@ function levelName(document_, level) {
   return typeof custom === 'string' && custom.trim() ? custom.trim() : LEVEL_NAMES[level] ?? level;
 }
 
-function intervalChipState(state) {
-  if (state === 'finished') return 'neutral';
-  if (state === 'failed' || state === 'cancelled') return 'failed';
-  if (state === 'stale') return 'stale';
-  if (state === 'blocked') return 'attention';
-  return 'active';
+// Glance state: one library status role per node card, derived from the
+// execution/verification chips with a fixed precedence — running first, then
+// blocked, failure, staleness, verification, absence. The card's border and
+// elevation follow it (the T12 graph-node state treatments), so running,
+// blocked, verified and stale are distinct before any text is read.
+export function nodeGlanceState(node) {
+  const execution = node?.execution?.state;
+  const verification = node?.verification?.state;
+  if (execution === 'active') return 'active';
+  if (execution === 'attention') return 'attention';
+  if (execution === 'failed') return 'failed';
+  if (execution === 'stale' || verification === 'stale') return 'stale';
+  if (verification === 'attention') return 'attention';
+  if (verification === 'verified') return 'verified';
+  if (execution === 'unavailable') return 'unavailable';
+  return 'neutral';
+}
+
+// A collapsed group keeps its gate truth at a glance: pending and stale checks
+// render as badges on the collapsed card instead of disappearing inside it.
+export function collapsedGateBadges(children) {
+  if (!children?.length) return [];
+  const pending = children.filter(child => ['attention', 'active', 'unavailable'].includes(child.verification?.state)).length;
+  const stale = children.filter(child => child.verification?.state === 'stale').length;
+  const confirmed = children.filter(child => child.verification?.state === 'verified').length;
+  const badges = [];
+  if (pending) badges.push(statusChip({ state: 'attention', label: `${pending} pending` }));
+  if (stale) badges.push(statusChip({ state: 'stale', label: `${stale} stale` }));
+  if (!pending && !stale) badges.push(statusChip({ state: confirmed ? 'verified' : 'neutral', label: `${confirmed || children.length} confirmed` }));
+  return badges;
+}
+
+function appendBadges(host, children) {
+  const badges = collapsedGateBadges(children);
+  if (!badges.length) return;
+  const wrap = element('span', 'execution-badges');
+  for (const badge of badges) wrap.append(badge);
+  host.append(wrap);
 }
 
 function nodeCard(node, state) {
@@ -56,17 +94,19 @@ function nodeCard(node, state) {
   const card = element('div', `execution-node kind-${node.kind}`);
   card.dataset.nodeId = node.id;
   card.dataset.kind = node.kind;
+  card.dataset.state = nodeGlanceState(node);
   card.setAttribute('role', 'button');
   card.tabIndex = 0;
   card.setAttribute('aria-pressed', String(state.selectedId === node.id));
   card.setAttribute('aria-label', `${node.kind} ${node.id}: ${measure.fullTitle}`);
-  card.title = measure.truncated ? measure.fullTitle : '';
+  card.title = measure.fullTitle; // the full label stays reachable when the title truncates
   card.addEventListener('click', event => {
     if (event.target !== card && event.target.tagName === 'BUTTON') return;
     state.onSelect(node.id);
   });
   const identity = element('span', 'execution-identity');
   identity.append(element('code', '', node.id));
+  if (node.collapsedGroup) appendBadges(identity, state.childrenOf?.(node.id) ?? []);
   card.append(identity);
   const title = element('span', 'execution-title', measure.titleLines.join(' '));
   if (measure.truncated) title.dataset.truncated = 'true';
@@ -94,6 +134,7 @@ function nodeCard(node, state) {
 function listRow(row, state) {
   const item = element('li', `execution-row kind-${row.kind}`);
   item.dataset.nodeId = row.id;
+  item.dataset.state = nodeGlanceState(row);
   item.setAttribute('aria-level', String(row.depth + 1));
   const control = button(row.fullLabel, () => state.onSelect(row.id));
   control.dataset.nodeId = row.id;
@@ -102,6 +143,7 @@ function listRow(row, state) {
   control.setAttribute('aria-pressed', String(state.selectedId === row.id));
   const chips = element('span', 'cluster');
   chips.append(statusChip(row.execution), statusChip(row.verification));
+  if (row.collapsedGroup) appendBadges(chips, state.childrenOf?.(row.id) ?? []);
   item.append(control, chips, element('span', 'meta execution-summary', `${row.summary} · ${row.meta ?? ''}`));
   if (row.expandable) {
     const toggle = button(row.collapsedGroup ? 'Expand group' : 'Collapse group', () => state.onToggle(row.id));
@@ -117,13 +159,66 @@ function edgePath(edge) {
   return `M ${edge.x1} ${edge.y1} C ${edge.x1 + bend} ${edge.y1}, ${edge.x2 - bend} ${edge.y2}, ${edge.x2} ${edge.y2}`;
 }
 
-function renderTimeline(model, state, presentation) {
+// Swimlane row geometry: one bar height, one 8-pt pitch between stacked rows,
+// one bar-height inset top and bottom so tracks never clip a focus ring.
+const TRACK = Object.freeze({ inset: 8, bar: 32, pitch: 40 });
+const trackHeight = rows => TRACK.inset + (rows - 1) * TRACK.pitch + TRACK.bar + TRACK.inset;
+const trackCenter = row => TRACK.inset + row * TRACK.pitch + TRACK.bar / 2;
+
+// Overlap-honest stacking (the T12 assignSublanes primitive): intervals of one
+// agent lane that overlap in real wall-clock time occupy separate sublane rows,
+// so no bar ever paints over another — the overlap stays visible as structure.
+function sublanesFor(laneIntervals) {
+  const laid = assignSublanes(laneIntervals.map(interval => ({
+    start: interval.startMs, end: interval.renderedEndMs, label: interval.attemptId, state: interval.state,
+  })));
+  return { byAttempt: new Map(laid.intervals.map(item => [item.label, item.lane])), rows: laid.lanes };
+}
+
+// Explicit blocked-join affordance at fan-in: the join gates of the planned DAG
+// that are still blocked render as their own strip under the lanes, naming the
+// branches they wait on. Plan truth, clearly separated from recorded time.
+function renderJoinStrip(document_, state) {
+  const joins = document_.nodes.filter(node => node.kind === 'join' && node.execution?.state === 'attention');
+  if (!joins.length) return null;
+  const strip = element('div', 'execution-join-strip stack');
+  strip.dataset.testid = 'execution-joins';
+  strip.append(element('h4', '', 'Fan-in gates'));
+  strip.append(element('p', 'meta',
+    'Blocked joins from the planned dependency DAG, not from recorded time. A blocked join is still waiting on branch verification.'));
+  for (const join of joins) {
+    const branches = document_.edges.filter(edge => edge.to === join.id).map(edge => ({
+      from: edge.from,
+      status: /: confirmed$/.test(edge.label) ? 'confirmed' : /: stale$/.test(edge.label) ? 'stale' : 'pending',
+    }));
+    const waiting = branches.filter(branch => branch.status !== 'confirmed');
+    const row = element('div', 'execution-join-row');
+    row.dataset.joinId = join.id;
+    row.append(statusChip({ state: 'attention', label: 'Blocked join' }));
+    row.append(element('span', 'meta execution-join-text', waiting.length
+      ? `${join.id} waits on ${waiting.map(branch => `${branch.from} (${branch.status})`).join(' · ')}`
+      : `${join.id} is blocked; no branch is confirmed yet`));
+    const show = button('Show join', () => { state.onSelect(join.id); state.focus?.(join.id); });
+    show.dataset.action = 'show-join';
+    show.setAttribute('aria-label', `Show join ${join.id} in the dependency DAG`);
+    row.append(show);
+    strip.append(row);
+  }
+  return strip;
+}
+
+function renderTimeline(model, state, presentation, document_) {
   const pane = element('section', 'panel execution-timeline-panel stack');
   pane.dataset.testid = 'execution-timeline';
   const head = element('header', 'stack');
   head.append(element('h3', 'execution-timeline-heading', presentation.timelineLabel));
   head.append(element('p', 'meta', presentation.timelineDescription));
   pane.append(head);
+  if (!model.intervals.length) {
+    pane.append(emptyState({ icon: 'list', title: 'No recorded attempts',
+      detail: 'Attempts appear on this shared time axis once producer activity observations are recorded for this run.' }));
+    return pane;
+  }
   const viewport = element('div', 'execution-timeline-viewport');
   viewport.tabIndex = 0;
   viewport.setAttribute('role', 'region');
@@ -146,6 +241,7 @@ function renderTimeline(model, state, presentation) {
   });
   viewport.append(axisRow);
   const laneList = element('ol', 'execution-lanes');
+  const stackedLanes = [];
   for (const lane of model.lanes) {
     const item = element('li', 'execution-lane');
     item.dataset.agentId = lane.agentId;
@@ -155,10 +251,14 @@ function renderTimeline(model, state, presentation) {
     const track = document.createElementNS(axisRow.namespaceURI, 'svg');
     track.classList.add('execution-track');
     track.setAttribute('width', '100%');
-    track.setAttribute('height', '48');
-    for (const interval of model.intervals.filter(entry => entry.lane === lane.lane)) {
-      if (!INTERVAL_STATES.has(interval.state)) continue;
+    const laneIntervals = model.intervals.filter(entry => entry.lane === lane.lane && INTERVAL_STATES.has(entry.state));
+    const { byAttempt, rows } = sublanesFor(laneIntervals);
+    if (rows > 1) stackedLanes.push({ agentId: lane.agentId, rows });
+    track.dataset.sublanes = String(rows);
+    track.setAttribute('height', String(trackHeight(rows)));
+    for (const interval of laneIntervals) {
       const position = geometry.get(interval.attemptId);
+      const row = byAttempt.get(interval.attemptId) ?? 0;
       const bar = document.createElementNS(track.namespaceURI, 'foreignObject');
       bar.classList.add('execution-interval', `state-${interval.state}`);
       bar.dataset.attemptId = interval.attemptId;
@@ -167,14 +267,15 @@ function renderTimeline(model, state, presentation) {
       bar.dataset.taskId = interval.taskId ?? '';
       bar.dataset.state = interval.state;
       bar.dataset.lane = String(interval.lane);
+      bar.dataset.sublane = String(row);
       bar.dataset.startMs = String(interval.startMs);
       bar.dataset.endMs = interval.open ? '' : String(interval.endMs);
       if (interval.open) bar.dataset.open = 'true';
       if (interval.resumesAttemptId) bar.dataset.resumes = interval.resumesAttemptId;
       bar.setAttribute('x', `${position.leftPercent.toFixed(3)}%`);
-      bar.setAttribute('y', '8');
+      bar.setAttribute('y', String(TRACK.inset + row * TRACK.pitch));
       bar.setAttribute('width', `${position.widthPercent.toFixed(3)}%`);
-      bar.setAttribute('height', '32');
+      bar.setAttribute('height', String(TRACK.bar));
       bar.setAttribute('role', 'button');
       bar.setAttribute('focusable', 'true');
       bar.setAttribute('aria-label', `${interval.attemptId} · ${interval.state}${interval.open ? ' · open interval, no terminal record' : ''}`);
@@ -184,18 +285,43 @@ function renderTimeline(model, state, presentation) {
       title.textContent = `${interval.attemptId} · ${interval.state}${interval.open ? ' · open interval, no terminal record' : ''}`;
       const body = element('div', 'execution-interval-body');
       body.append(element('span', 'execution-interval-label',
-        `${interval.attemptId} · ${interval.state}${interval.resumesAttemptId ? ` · resumes ${interval.resumesAttemptId}` : ''}`));
+        `${interval.resumesAttemptId ? 'retry ↻ ' : ''}${interval.attemptId} · ${interval.state}${interval.resumesAttemptId ? ` · resumes ${interval.resumesAttemptId}` : ''}`));
       bar.append(title, body);
       track.append(bar);
+    }
+    // Retry history stays inline on the lane: a dotted link from the start of
+    // the resuming attempt back to the row of the attempt it resumes, so the
+    // previous failure stays visible as part of the same story.
+    for (const chain of model.retryChains.filter(entry => entry.lane === lane.lane)) {
+      const rowTo = byAttempt.get(chain.to);
+      const rowFrom = byAttempt.get(chain.from);
+      if (rowTo === undefined || rowFrom === undefined || rowTo === rowFrom) continue;
+      const position = geometry.get(chain.to);
+      const link = document.createElementNS(track.namespaceURI, 'line');
+      link.classList.add('execution-retry-link');
+      link.setAttribute('x1', `${position.leftPercent.toFixed(3)}%`);
+      link.setAttribute('x2', `${position.leftPercent.toFixed(3)}%`);
+      link.setAttribute('y1', String(trackCenter(rowTo)));
+      link.setAttribute('y2', String(trackCenter(rowFrom)));
+      link.setAttribute('aria-hidden', 'true');
+      link.dataset.from = chain.from;
+      link.dataset.to = chain.to;
+      track.append(link);
     }
     item.append(label, track);
     laneList.append(item);
   }
   viewport.append(laneList);
   pane.append(viewport);
+  const joinStrip = renderJoinStrip(document_ ?? { nodes: [], edges: [] }, state);
+  if (joinStrip) pane.append(joinStrip);
   const notes = element('ul', 'execution-notes');
   notes.append(element('li', 'meta',
     `${model.lanes.length} ${presentation.laneLabel ?? 'agent'} lane${model.lanes.length === 1 ? '' : 's'} · ${model.peakConcurrency} concurrent attempt${model.peakConcurrency === 1 ? '' : 's'} at peak · durations are ${presentation.durationLabel}`));
+  for (const stacked of stackedLanes) {
+    notes.append(element('li', 'meta',
+      `stacked: ${stacked.agentId} ran ${stacked.rows} attempts at overlapping times — the rows stack instead of painting over each other`));
+  }
   for (const overlap of model.overlaps) {
     notes.append(element('li', 'meta',
       `concurrent: ${overlap.a} and ${overlap.b} overlapped ${Math.round(overlap.ms)}ms ${overlap.laneA === overlap.laneB ? 'on the same reported worker lane' : 'on different reported worker lanes'}`));
@@ -241,6 +367,7 @@ function renderGraph(document_, state, viewport, presentation) {
   const cardState = {
     selectedId: state.selectedId,
     measures: new Map(layout.measures.map(measure => [measure.id, measure])),
+    childrenOf: state.childrenOf,
     onToggle: state.onToggle, onSelect: state.onSelect,
   };
   for (const placed of layout.nodes) {
@@ -273,9 +400,10 @@ export function createExecutionView({ document: initialDocument, timeline: initi
   root.dataset.level = currentDocument.level;
   root.dataset.docId = currentDocument.docId;
 
+  // The status line is a plain counter, deliberately NOT a second live region:
+  // announcements ride the single T11 polite announcer (IK-7).
   const status = element('p', 'meta execution-status', 'Execution view ready.');
   status.dataset.testid = 'execution-status';
-  status.setAttribute('role', 'status');
 
   const inspector = element('aside', 'panel execution-inspector stack');
   inspector.dataset.testid = 'execution-inspector';
@@ -289,10 +417,18 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     onChange: event => callbacks.onViewportChange?.(event),
   });
   let timelineScroll = { scrollLeft: 0, scrollTop: 0 };
+  let modeControl = null;
+  let dockPanel = null;
+  let dockNodeId = null;
+  const dockExpanded = new Set();
 
   function nodeById(id) {
     if (currentDocument.nodes.some(node => node.id === id)) return currentDocument.nodes.find(node => node.id === id);
     return currentDocument.nodes.flatMap(node => node.children ?? []).find(child => child.id === id) ?? null;
+  }
+
+  function childrenOf(id) {
+    return nodeById(id)?.children ?? [];
   }
 
   function renderShell() {
@@ -326,17 +462,15 @@ export function createExecutionView({ document: initialDocument, timeline: initi
       head.append(sentence);
     }
     const toolbar = element('div', 'cluster execution-toolbar');
-    const modeSwitcher = element('div', 'view-switcher cluster');
-    modeSwitcher.dataset.nativeSegmented = 'true';
-    modeSwitcher.setAttribute('role', 'group');
-    modeSwitcher.setAttribute('aria-label', 'Presentation mode');
-    for (const value of ['graph', 'list']) {
-      const control = button(value === 'graph' ? 'Graph' : 'List', () => setMode(value));
-      control.dataset.mode = value;
-      control.setAttribute('aria-pressed', String(currentMode === value));
-      modeSwitcher.append(control);
-    }
-    toolbar.append(modeSwitcher);
+    // Graph/List equivalence rides the T11 segmented control: one node set,
+    // two presentations, selection and collapsed state shared between them.
+    modeControl = segmentedControl({
+      label: 'Presentation mode',
+      options: [{ value: 'graph', label: 'Graph' }, { value: 'list', label: 'List' }],
+      current: currentMode,
+      onChange: next => setMode(next),
+    });
+    toolbar.append(modeControl.element);
     const legend = element('ul', 'cluster execution-legend');
     legend.setAttribute('aria-label', 'Edge kinds');
     for (const [kind, label] of EDGE_LEGEND) {
@@ -352,6 +486,7 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     const body = element('div', 'execution-body stack');
     body.dataset.testid = 'execution-body';
     root.replaceChildren(head, status, body, inspector);
+    if (dockPanel) root.append(dockPanel.element); // the dock survives re-shells
   }
 
   function renderBody() {
@@ -363,7 +498,7 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     if (previousTimeline) timelineScroll = { scrollLeft: previousTimeline.scrollLeft ?? timelineScroll.scrollLeft,
       scrollTop: previousTimeline.scrollTop ?? timelineScroll.scrollTop };
     body.replaceChildren();
-    const state = { selectedId, collapsed, onToggle: toggleGroup, onSelect: select };
+    const state = { selectedId, collapsed, childrenOf, focus: focusNode, onToggle: toggleGroup, onSelect: select };
     const presentation = presentationOf(currentDocument);
     const { wrap, region } = renderGraph(currentDocument, state, graphViewport, presentation);
     wrap.hidden = currentMode === 'list';
@@ -373,7 +508,7 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     for (const row of listModel(currentDocument, { collapsed }).rows) list.append(listRow(row, state));
     list.hidden = currentMode !== 'list';
     body.append(list);
-    body.append(renderTimeline(currentTimeline, state, presentation));
+    body.append(renderTimeline(currentTimeline, state, presentation, currentDocument));
     const currentViewport = graphViewport.getState();
     root.dataset.viewport = `${currentViewport.scrollLeft},${currentViewport.scrollTop},${currentViewport.scale}`;
     const nextTimelineViewport = body.querySelector('.execution-timeline-viewport');
@@ -391,6 +526,9 @@ export function createExecutionView({ document: initialDocument, timeline: initi
   }
 
   function select(nodeId) {
+    // Timeline bars carry the raw attempt id while task-level nodes prefix it;
+    // selecting a bar selects the attempt node when that identity exists.
+    if (nodeById(nodeId) == null && nodeById(`attempt:${nodeId}`) != null) nodeId = `attempt:${nodeId}`;
     selectedId = nodeId;
     for (const node of root.querySelectorAll('.execution-node, .execution-row-control')) {
       node.setAttribute('aria-pressed', String(node.dataset.nodeId === nodeId));
@@ -446,6 +584,13 @@ export function createExecutionView({ document: initialDocument, timeline: initi
       const drill = button(`Drill into ${node.drill}`, () => callbacks.onDrill?.({ nodeId: node.id, level: nextLevelDown(), focusId: node.drill }));
       drill.dataset.testid = 'execution-drill';
       inspector.append(drill);
+    } else if (node.kind === 'attempt' || node.kind === 'verifier') {
+      // Attempt/verifier drill-down opens in the dock (T12b frame): the steps
+      // expand inline there, with no fabricated deeper level in the DAG.
+      const dockOpen = button(node.kind === 'verifier' ? 'Open verifier detail in dock' : 'Open attempt detail in dock',
+        event => openDock(node.id, event.currentTarget));
+      dockOpen.dataset.testid = 'execution-dock-open';
+      inspector.append(dockOpen);
     } else {
       const wrap = element('div', 'stack');
       const control = button('Drill into this object', null, { disabled: true });
@@ -458,6 +603,120 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     }
   }
 
+  /* -- Attempt drill-down dock ------------------------------------------
+     The dock (createDockPanel, T12 addendum) is the elevated right surface:
+     Escape closes it and returns focus to the invoker through the T11
+     overlay stack. Its content is rebuilt from recorded state only — steps
+     expand on demand and unreported steps stay unknown. */
+
+  function dockStepTargets(node) {
+    const steps = [];
+    const evidence = [];
+    if (node.kind === 'verifier') {
+      for (const child of childrenOf(node.id)) (child.kind === 'evidence' ? evidence : steps).push(child);
+      return { steps, evidence };
+    }
+    for (const edge of currentDocument.edges.filter(edge => edge.from === node.id)) {
+      const target = nodeById(edge.to);
+      if (!target) continue;
+      (target.kind === 'evidence' ? evidence : steps).push(target);
+    }
+    return { steps, evidence };
+  }
+
+  function dockBody(node) {
+    const content = element('div', 'stack execution-dock');
+    const chips = element('div', 'cluster');
+    chips.append(statusChip(node.execution), statusChip(node.verification));
+    content.append(chips, element('code', 'execution-dock-id', node.id), element('p', 'meta', node.title));
+    const attemptId = node.id.startsWith('attempt:') ? node.id.slice('attempt:'.length) : null;
+    const interval = attemptId ? currentTimeline.intervals.find(entry => entry.attemptId === attemptId) : null;
+    const intervalSection = element('section', 'stack');
+    intervalSection.append(element('h4', '', 'Recorded interval'));
+    intervalSection.append(element('p', 'meta', interval
+      ? `${interval.agentId} · role ${interval.role} · lane ${interval.lane} · ${new Date(interval.startMs).toISOString()} → ${interval.endMs == null ? 'open (no terminal record)' : new Date(interval.endMs).toISOString()} · state ${interval.state}`
+      : 'No recorded interval matches this identity; nothing is inferred.'));
+    content.append(intervalSection);
+    const { steps, evidence } = dockStepTargets(node);
+    const stepsSection = element('section', 'stack');
+    stepsSection.append(element('h4', '', 'Steps'));
+    if (!steps.length) stepsSection.append(element('p', 'meta', 'No step records reported; unreported steps stay unknown.'));
+    for (const step of steps) {
+      const expanded = dockExpanded.has(step.id);
+      const row = element('div', 'execution-dock-step stack');
+      const toggle = button(step.title, () => {
+        if (dockExpanded.has(step.id)) dockExpanded.delete(step.id); else dockExpanded.add(step.id);
+        renderDockBody();
+      });
+      toggle.dataset.testid = 'execution-dock-step';
+      toggle.dataset.stepId = step.id;
+      toggle.className = 'execution-dock-step-toggle';
+      toggle.setAttribute('aria-expanded', String(dockExpanded.has(step.id)));
+      const detail = element('div', 'execution-dock-detail stack');
+      detail.hidden = !expanded;
+      const detailChips = element('div', 'cluster');
+      detailChips.append(statusChip(step.execution), statusChip(step.verification));
+      detail.append(element('p', 'meta', step.summary ?? 'No step detail recorded.'), detailChips);
+      row.append(toggle, detail);
+      stepsSection.append(row);
+    }
+    content.append(stepsSection);
+    const evidenceSection = element('section', 'stack');
+    evidenceSection.append(element('h4', '', 'Evidence'));
+    if (!evidence.length) evidenceSection.append(element('p', 'meta', 'No evidence node is recorded for this identity.'));
+    for (const item of evidence) {
+      const row = element('div', 'cluster');
+      row.append(statusChip(item.verification), element('span', 'meta', item.title));
+      evidenceSection.append(row);
+    }
+    content.append(evidenceSection);
+    const retry = currentDocument.edges.find(edge => edge.kind === 'history' && (edge.to === node.id || edge.from === node.id));
+    if (retry) {
+      const retrySection = element('section', 'stack');
+      retrySection.append(element('h4', '', 'Retry history'));
+      retrySection.append(element('p', 'meta', `${retry.from} → ${retry.to} · ${retry.label}`));
+      content.append(retrySection);
+    }
+    return content;
+  }
+
+  function renderDockBody() {
+    if (!dockPanel || !dockNodeId) return;
+    const node = nodeById(dockNodeId);
+    if (!node) return;
+    dockPanel.element.querySelector('.lb-dock-body')?.replaceChildren(dockBody(node));
+  }
+
+  function openDock(nodeId, invoker) {
+    const node = nodeById(nodeId);
+    if (!node || !['attempt', 'verifier'].includes(node.kind)) return false;
+    if (dockPanel) {
+      if (dockPanel.isOpen()) dockPanel.close('replace');
+      dockPanel.element.remove();
+    }
+    dockNodeId = nodeId;
+    dockPanel = createDockPanel({
+      title: `${node.kind === 'verifier' ? 'Verifier' : 'Attempt'} — ${node.id.replace(/^(verifier:|attempt:)/, '')}`,
+      content: dockBody(node),
+      footer: element('p', 'meta', 'Recorded observations only · opening this detail dispatches nothing and verifies nothing.'),
+      onClose: reason => { if (reason !== 'replace') callbacks.onDockClose?.({ nodeId: dockNodeId, reason }); },
+    });
+    root.append(dockPanel.element);
+    dockPanel.open(invoker);
+    callbacks.onDockOpen?.({ nodeId });
+    return true;
+  }
+
+  function refreshDockOnUpdate() {
+    if (!dockPanel || !dockPanel.isOpen()) return;
+    if (!dockNodeId || !nodeById(dockNodeId)) {
+      dockPanel.close('update-removed-node');
+      dockNodeId = null;
+      return;
+    }
+    renderDockBody();
+  }
+
   function nextLevelDown() {
     return currentDocument.level === 'plan' ? 'batch' : currentDocument.level === 'batch' ? 'task' : null;
   }
@@ -465,12 +724,13 @@ export function createExecutionView({ document: initialDocument, timeline: initi
   function setMode(nextMode) {
     currentMode = nextMode === 'list' ? 'list' : 'graph';
     renderBody();
-    for (const control of root.querySelectorAll('[data-mode]')) control.setAttribute('aria-pressed', String(control.dataset.mode === currentMode));
+    modeControl?.setCurrent(currentMode);
     callbacks.onModeChange?.({ mode: currentMode });
   }
 
   /** Simulated polling tick: re-render from the next document/timeline while
-   *  preserving breadcrumbs, selection, collapsed groups and viewport. */
+   *  preserving breadcrumbs, selection, collapsed groups, viewport and an
+   *  open dock (its detail rebuilds from the fresh state). */
   function applyUpdate(nextDocument, nextTimeline) {
     graphViewport.capture();
     const liveTimeline = root.querySelector('.execution-timeline-viewport');
@@ -490,6 +750,7 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     renderShell();
     renderBody();
     renderInspector();
+    refreshDockOnUpdate();
     lastUpdate = { ...preserved, selectedPreserved: preserved.selectedId == null || preserved.selectedId === selectedId,
       viewRevision, nodeCount: currentDocument.nodes.length };
     callbacks.onUpdate?.(structuredClone(lastUpdate));
@@ -595,6 +856,7 @@ export function createExecutionView({ document: initialDocument, timeline: initi
     toggleGroup,
     setMode,
     applyUpdate,
+    openDock,
     setViewport: (viewport, reason) => graphViewport.setViewport(viewport, reason),
     fitViewport: () => graphViewport.fit(),
     getStats() {
@@ -604,6 +866,8 @@ export function createExecutionView({ document: initialDocument, timeline: initi
         docId: currentDocument.docId, viewId: currentDocument.viewId,
         nodeCount: currentDocument.nodes.length, edgeCount: currentDocument.edges.length,
         lastUpdate, viewport: graphViewport.getState(), timelineViewport: root.dataset.timelineViewport ?? null,
+        dockOpen: dockPanel?.isOpen() ?? false,
+        dockNodeId: dockPanel?.isOpen() ? dockNodeId : null,
       };
     },
     getDocument() { return structuredClone(currentDocument); },
