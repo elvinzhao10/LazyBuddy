@@ -22,13 +22,19 @@ is the vendoring source that distributes and drift-guards it.
   Ports consume the same vendored runtime through their own adapters, which
   remain port-authored and distinct.
 - Honest scope of those views: the project dashboard views ship as committed
-  page modules plus the standalone project shell entry; the production served
-  dashboard does not yet expose project destinations (its asset-manifest routes
-  stay run-scoped only), and the §14 comprehension targets were measured on the
-  shell entry, not the production service (see the G2 verdict — deferral R-2:
-  typed project read route, post-init-only destination swap, bounded
-  asset-manifest allowlist, single navigation surface, dedicated verifier and a
-  comprehension re-measure remain future work).
+  page modules, and the production served dashboard does expose them after an
+  explicit project init — the served `index.mjs` mounts the project shell once
+  the authenticated project read succeeds, the bounded asset-manifest allowlist
+  serves the project view modules (live probe: every manifest route, including
+  the project destinations, answered 200, while the unmanifested standalone
+  `project-shell.html` page answered 404), and the typed project read routes
+  `/api/project`, `/api/project/architecture`, `/api/project/git` and
+  `/api/project/evidence` answered 200 behind the session, with unauthenticated
+  reads rejected 401 and the git route invoking the vendored local collector
+  (`unavailable` on the probe's non-repository fixture). The §14 comprehension
+  targets, however, were measured on the standalone shell entry, not the
+  production service (see the G2 verdict — deferral R-2: a dedicated verifier
+  and a comprehension re-measure on the served surface remain future work).
 - Boundaries stay honest: host embedding, chat handoff, and host wake remain
   unobserved on every surface; conflict assessment is deterministic only (no
   language-level semantic analysis); an immutable archive of older Markdown
