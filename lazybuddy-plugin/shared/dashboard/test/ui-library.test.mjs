@@ -351,6 +351,35 @@ test('sidebarNav renders destinations, aria-current and the icon rail collapse',
   assert.equal(rail.isCollapsed(), false);
 });
 
+test('T20-RF sidebarNav badges render projection counts honestly; the collapse control draws chevrons', () => {
+  const rail = sidebarNav({
+    product: 'LazySeries', runtime: 'LazyBuddy',
+    destinations: [
+      { id: 'overview', label: 'Overview', count: 3 },
+      { id: 'plans', label: 'Plans', count: 0 },
+      { id: 'git', label: 'Git' },
+      { id: 'evidence', label: 'Evidence', count: 'not-a-number' },
+    ],
+  });
+  const row = id => rail.element.querySelector(`.lb-sidebar-destination[data-destination="${id}"]`);
+  const badge = id => row(id).querySelector('.lb-sidebar-badge');
+  assert.equal(badge('overview')?.textContent, '3', 'a positive whole count renders its badge');
+  assert.equal(row('overview').getAttribute('aria-label'), 'Overview (3)', 'the count rides the accessible name');
+  assert.equal(badge('plans'), null, 'zero renders no badge — never fake');
+  assert.equal(row('plans').getAttribute('aria-label'), 'Plans', 'a zero count keeps the plain accessible name');
+  assert.equal(badge('git'), null, 'an absent count renders no badge');
+  assert.equal(badge('evidence'), null, 'a malformed count renders no badge');
+  assert.ok(rail.element.querySelector('.lb-sidebar-collapse svg'), 'the collapse control draws its chevron glyph');
+  assert.equal(rail.setCount('plans', 7), '7', 'setCount paints from a projection refresh');
+  assert.equal(badge('plans')?.textContent, '7');
+  assert.equal(row('plans').getAttribute('aria-label'), 'Plans (7)');
+  assert.equal(rail.setCount('plans', 0), null, 'a refreshed zero removes the badge');
+  assert.equal(badge('plans'), null);
+  assert.equal(rail.setCount('git', 2), '2', 'setCount paints onto an uncalled row too');
+  rail.toggle(); // collapsed: the badge hides with the label, the title carries the count
+  assert.equal(row('git').getAttribute('title'), 'Git (2)', 'the collapsed rail tooltip stays in step with the count');
+});
+
 test('createTabs: add, select, close and pin, with panels wired through aria', () => {
   const events = [];
   const workspace = createTabs({

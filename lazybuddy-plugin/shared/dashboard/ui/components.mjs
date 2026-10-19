@@ -847,16 +847,27 @@ export function metricTile({ value, label, coverage = null, unavailable = false,
 
 /* -- App shell (T12 addendum): sidebar rail, tabbed workspace, dock ------- */
 
-// Destination glyphs (Lucide geometry, ISC) for the icon rail.
+// Destination glyphs (Lucide geometry, ISC) for the icon rail — the T20-RF
+// reference set: grid, box, list-checks, git-branch-activity, git-branch,
+// file-check, flask.
 const destinationGlyphs = {
-  overview: [['rect', { x: 3, y: 3, width: 7, height: 7, rx: 1 }], ['rect', { x: 14, y: 3, width: 7, height: 7, rx: 1 }], ['rect', { x: 3, y: 14, width: 7, height: 7, rx: 1 }], ['rect', { x: 14, y: 14, width: 7, height: 7, rx: 1 }]],
-  project: [['path', { d: 'M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z' }]],
+  overview: [['rect', { x: 3, y: 3, width: 7, height: 7, rx: 1.5 }], ['rect', { x: 14, y: 3, width: 7, height: 7, rx: 1.5 }], ['rect', { x: 3, y: 14, width: 7, height: 7, rx: 1.5 }], ['rect', { x: 14, y: 14, width: 7, height: 7, rx: 1.5 }]],
+  project: [['path', { d: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z' }], ['path', { d: 'M3.3 7 12 12l8.7-5 M12 22V12' }]],
   plans: [['path', { d: 'M3 5h12 M3 12h12 M3 19h9 M17 15l2 2 4-4' }]],
-  execution: [['path', { d: 'm6 4 14 8-14 8z' }]],
+  execution: [['circle', { cx: 5, cy: 4, r: 2.4 }], ['circle', { cx: 5, cy: 20, r: 2.4 }], ['path', { d: 'M5 6.4v2.6' }], ['path', { d: 'M5 9l2.5 2.5L10 6l3 9 3-7 2 4.5h3' }], ['path', { d: 'M5 15v2.6' }]],
   git: [['circle', { cx: 6, cy: 6, r: 3 }], ['circle', { cx: 6, cy: 18, r: 3 }], ['circle', { cx: 18, cy: 12, r: 3 }], ['path', { d: 'M6 9v6 M9 18h3a3 3 0 0 0 3-3V9' }]],
   evidence: [['path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' }], ['path', { d: 'M14 2v6h6 M9 15l2 2 4-4' }]],
-  research: [['circle', { cx: 11, cy: 11, r: 8 }], ['path', { d: 'm21 21-4.3-4.3' }]],
+  research: [['path', { d: 'M10 2v7.31 M14 9.3V2' }], ['path', { d: 'M8.5 2h7' }], ['path', { d: 'M14 9.3l4.7 8.66A2 2 0 0 1 17 21H7a2 2 0 0 1-1.7-3.04L10 9.3' }], ['path', { d: 'M6.9 15h10.2' }]],
 };
+
+// Common action glyphs (Lucide chevrons, ISC): the rail collapse control
+// swaps between these instead of text arrows.
+const actionGlyphs = {
+  'collapse-left': [['path', { d: 'm15 18-6-6 6-6' }]],
+  'collapse-right': [['path', { d: 'm9 18 6-6-6-6' }]],
+};
+
+export const SIDEBAR_ACTION_ICONS = Object.freeze(Object.keys(actionGlyphs));
 
 export const SIDEBAR_DESTINATION_ICONS = Object.freeze(Object.keys(destinationGlyphs));
 
@@ -866,6 +877,10 @@ export const SIDEBAR_DESTINATION_ICONS = Object.freeze(Object.keys(destinationGl
 //                     rows, inside the single j/k-traversable list
 //   identityPosition  'footer' moves the product identity block into the
 //                     footer region (the shell's identity footer)
+//   destination.count T20-RF count badge: a finite whole number > 0 renders
+//                     a pill badge after the label (fed by the caller's
+//                     projection); 0, absent or malformed never renders a
+//                     badge — counts are never fabricated.
 // Collapsing to the icon rail also gives every destination a native title
 // tooltip, following the T11 clipped-note contract (visible label when
 // expanded, title + aria-label when the label is hidden).
@@ -876,23 +891,40 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
   collapseControl.className = 'lb-sidebar-collapse';
   collapseControl.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
   collapseControl.setAttribute('aria-expanded', String(!collapsed));
-  collapseControl.textContent = collapsed ? '»' : '«';
+  collapseControl.append(svgIcon(actionGlyphs[collapsed ? 'collapse-right' : 'collapse-left']));
   const identity = element(identityPosition === 'footer' ? 'div' : 'header', 'lb-sidebar-identity');
   const badge = element('span', 'lb-sidebar-product', product);
   badge.dataset.product = runtime; // the per-product accent wash, identity only
   identity.append(badge, element('span', 'lb-sidebar-runtime meta', runtime));
   const list = element('ul', 'lb-sidebar-destinations');
   list.dataset.nativeList = 'true'; // j/k traversal through the T11 focus layer
+  // T20-RF badge honesty: only a finite whole number > 0 paints a badge, and
+  // the accessible name carries the count so it is never color-only.
+  const paintCount = (control, count) => {
+    const whole = Number.isFinite(count) && Number.isInteger(count) && count > 0 ? count : 0;
+    const label = control.querySelector('.lb-sidebar-destination-label')?.textContent ?? control.dataset.destination;
+    control.querySelector('.lb-sidebar-badge')?.remove();
+    if (whole > 0) {
+      const countBadge = element('span', 'lb-sidebar-badge', String(whole));
+      countBadge.dataset.count = String(whole);
+      control.append(countBadge);
+    }
+    if (whole > 0) control.setAttribute('aria-label', `${label} (${whole})`);
+    else control.setAttribute('aria-label', label);
+    // the collapsed rail leans on the native title: keep it in step
+    if (control.getAttribute('title') && rail.dataset.collapsed === 'true') control.setAttribute('title', control.getAttribute('aria-label'));
+  };
   const destinationItem = destination => {
     const item = element('li', '');
     const control = button('', () => { api.navigate(destination.id); onNavigate?.(destination.id); });
     control.className = 'lb-sidebar-destination';
     control.dataset.destination = destination.id;
-    control.setAttribute('aria-label', destination.label ?? destination.id);
     const icon = destinationGlyphs[destination.icon ?? destination.id] ?? destinationGlyphs.overview;
     control.append(svgIcon(icon));
     control.append(element('span', 'lb-sidebar-destination-label', destination.label ?? destination.id));
     if (destination.id === current) control.setAttribute('aria-current', 'page');
+    if (destination.count != null) paintCount(control, Number(destination.count));
+    else control.setAttribute('aria-label', destination.label ?? destination.id);
     item.append(control);
     return item;
   };
@@ -930,12 +962,19 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
         else control.removeAttribute('aria-current');
       }
     },
+    // T20-RF: the projection refreshes a destination's count in place; 0 or
+    // a non-number removes the badge (never fake, never stale).
+    setCount(id, count) {
+      const control = list.querySelector(`.lb-sidebar-destination[data-destination="${escapeSelector(id)}"]`);
+      if (control) paintCount(control, Number(count));
+      return control ? (control.querySelector('.lb-sidebar-badge')?.dataset.count ?? null) : undefined;
+    },
     setCollapsed(next, { notify = true } = {}) {
       const value = Boolean(next);
       rail.dataset.collapsed = String(value);
       collapseControl.setAttribute('aria-expanded', String(!value));
       collapseControl.setAttribute('aria-label', value ? 'Expand sidebar' : 'Collapse sidebar');
-      collapseControl.textContent = value ? '»' : '«';
+      collapseControl.replaceChildren(svgIcon(actionGlyphs[value ? 'collapse-right' : 'collapse-left']));
       for (const control of list.querySelectorAll('.lb-sidebar-destination')) {
         // T20a rail tooltips: the visible label disappears with the rail, so
         // the collapsed rows carry their label as a native title (the T11

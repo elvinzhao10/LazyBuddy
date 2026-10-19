@@ -354,6 +354,17 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     if (recordsNode) dockRecordsRegion.replaceChildren(recordsNode);
   }
 
+  // T20-RF sidebar count badges: the projection feeds the attention queue
+  // length onto Overview and the declared plan count onto Plans. Missing or
+  // zero counts render NO badge (setCount removes it) — never fabricated.
+  function syncSidebarCounts() {
+    if (!sidebar) return;
+    const attention = overview?.getFixture?.()?.attentionQueue;
+    sidebar.setCount?.('overview', Array.isArray(attention) ? attention.length : 0);
+    const plans = Number(bundle?.snapshot?.summary?.plan_count);
+    sidebar.setCount?.('plans', Number.isFinite(plans) ? plans : 0);
+  }
+
   // The page's theme control moves into the sidebar's identity footer while
   // the frame exists and returns home when the record is lost, so theme and
   // density always have exactly one home.
@@ -438,6 +449,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     root.dataset.initialized = 'true';
     adoptDockRegions(overview);
     adoptThemeControl();
+    syncSidebarCounts();
     restoreNav();
     globalThis.document?.addEventListener?.('keydown', handleDestinationShortcut);
     callbacks.onStateChange?.({ initialized: true, destinations: PROJECT_DESTINATIONS.map(destination => destination.id) });
@@ -461,6 +473,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     if (location?.destination === 'overview' && !location.item) contentRegion.replaceChildren(next.element);
     overview = next;
     renderPageHead(); // the context line carries the fresh projection identity
+    syncSidebarCounts(); // count badges follow the fresh projection, never stale
     if (previous?.map?.mode) overview.setMode(previous.map.mode);
     if (previous?.selectedNodeId) overview.select(previous.selectedNodeId);
   }

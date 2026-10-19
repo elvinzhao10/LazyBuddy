@@ -134,16 +134,21 @@ function assertAA(foreground, background, label, minimum = 4.5) {
   return ratio;
 }
 
-/* ---------- 1. frozen v1 aliases: current views render unchanged ---------- */
+/* ---------- 1. frozen v1 alias SET: the T20-RF palette in both themes ----
+   T20-RF refreshed the palette values (tinted canvas, stepped dark surfaces,
+   hairline edges, soft elevation) in lockstep with ui/tokens.css. The frozen
+   contract is the ALIAS SET — every v1 name still resolves to exactly one
+   agreed value per theme, so shipped views restyle wholesale from tokens
+   without drifting per-view colors. */
 
 const frozenLight = {
-  '--canvas': '#f5f6f8', '--surface': '#ffffff', '--raised': '#ffffff', '--hover': '#f0f1f4',
-  '--selected': '#e5e7ec', '--text': '#20242b', '--muted': '#59616e', '--border': '#c7cbd3',
+  '--canvas': '#eef1f6', '--surface': '#ffffff', '--raised': '#ffffff', '--hover': '#f2f4f9',
+  '--selected': '#e2e8f4', '--text': '#1e2430', '--muted': '#59637a', '--border': '#c6cdda',
   '--focus': '#225bb5', '--control-edge': '#59616e', '--primary-hover': '#424852', '--pressed-opacity': '.75',
-  '--neutral-ink': '#424852', '--neutral-fill': '#eef0f3', '--active-ink': '#184a96', '--active-fill': '#e9f0ff',
+  '--neutral-ink': '#424852', '--neutral-fill': '#eceff5', '--active-ink': '#184a96', '--active-fill': '#e9f0ff',
   '--verified-ink': '#16613b', '--verified-fill': '#e4f4e9', '--attention-ink': '#795000', '--attention-fill': '#fff2cf',
   '--failed-ink': '#a02a35', '--failed-fill': '#ffecef', '--stale-ink': '#68409b', '--stale-fill': '#f3eaff',
-  '--shadow': '0 12px 40px #10131a33', '--backdrop': '#10131a66',
+  '--shadow': '0 16px 48px #10131a29, 0 4px 12px #10131a14', '--backdrop': '#10131a66',
   '--sans': "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   '--mono': "ui-monospace, 'SFMono-Regular', monospace",
   '--caption': '.8125rem', '--body': '.9375rem', '--title': '1.25rem', '--heading': '1.75rem',
@@ -152,21 +157,21 @@ const frozenLight = {
   '--s5': '1.5rem', '--s6': '2rem', '--s7': '3rem', '--s8': '4rem',
   '--control': '2.75rem', '--icon': '1rem', '--line': '1px',
   '--focus-width': '3px', '--focus-offset': '2px',
-  '--radius-control': '6px', '--radius-card': '8px', '--radius-pill': '999px',
+  '--radius-control': '6px', '--radius-card': '10px', '--radius-pill': '999px',
   '--content': '76rem', '--measure': '65ch', '--card-min': '17rem', '--inspector': '30rem',
   '--fast': '120ms', '--ease': 'ease-out',
 };
 const frozenDark = {
-  '--canvas': '#14161a', '--surface': '#1c1f25', '--raised': '#242831', '--hover': '#2c3039',
-  '--selected': '#353b46', '--text': '#f1f3f7', '--muted': '#b0b7c4', '--border': '#515966',
-  '--focus': '#adcaff', '--control-edge': '#919baa', '--primary-hover': '#d4d8df',
-  '--neutral-ink': '#d4d8df', '--neutral-fill': '#282c34', '--active-ink': '#adcaff', '--active-fill': '#202f49',
-  '--verified-ink': '#a4e2bd', '--verified-fill': '#203a2b', '--attention-ink': '#f5d58b', '--attention-fill': '#3d321e',
-  '--failed-ink': '#ffb9c0', '--failed-fill': '#45272e', '--stale-ink': '#d7bbff', '--stale-fill': '#352943',
-  '--shadow': '0 12px 40px #00000066',
+  '--canvas': '#0f1115', '--surface': '#171b22', '--raised': '#1e242e', '--hover': '#212734',
+  '--selected': '#2a3240', '--text': '#f2f4f9', '--muted': '#a7b0bf', '--border': '#363e4c',
+  '--focus': '#8ea8ff', '--control-edge': '#8f9aa9', '--primary-hover': '#d6dbe4',
+  '--neutral-ink': '#d6dbe4', '--neutral-fill': '#212631', '--active-ink': '#9fb9ff', '--active-fill': '#1f2c46',
+  '--verified-ink': '#9fe0b8', '--verified-fill': '#1d3629', '--attention-ink': '#f2d28a', '--attention-fill': '#3a301c',
+  '--failed-ink': '#ffb3bc', '--failed-fill': '#432530', '--stale-ink': '#d5b8ff', '--stale-fill': '#33284a',
+  '--shadow': '0 16px 48px #000000cc, 0 4px 12px #000000a3',
 };
 
-test('frozen v1 aliases keep every shipped view rendering unchanged in both themes', () => {
+test('the frozen v1 alias set resolves to the agreed T20-RF palette in both themes', () => {
   const light = resolved('light');
   const dark = resolved('dark');
   for (const [table, context, label] of [[frozenLight, light, 'light'], [frozenDark, dark, 'dark']]) {
@@ -174,6 +179,16 @@ test('frozen v1 aliases keep every shipped view rendering unchanged in both them
       assert.ok(context.has(name), `${label}: v1 alias ${name} disappeared from tokens.css`);
       assert.equal(context.get(name), expected, `${label}: v1 alias ${name} drifted`);
     }
+  }
+});
+
+test('T20-RF depth tokens resolve in both themes (nav icon, badge floor, header veil)', () => {
+  for (const theme of ['light', 'dark']) {
+    const context = resolved(theme);
+    assert.equal(context.get('--icon-nav'), '1.125rem', `${theme}: the 18px nav icon metric`);
+    assert.ok(context.get('--badge-min').includes('var(') || context.get('--badge-min').length > 0, `${theme}: the badge pill floor exists`);
+    assert.match(context.get('--veil'), /^#[0-9a-fA-F]{8}$/, `${theme}: the header veil is a translucent hex wash`);
+    assert.match(context.get('--veil-blur'), /^\d+px$/, `${theme}: the header blur metric exists`);
   }
 });
 

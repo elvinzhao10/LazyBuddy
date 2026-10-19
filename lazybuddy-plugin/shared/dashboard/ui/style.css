@@ -38,7 +38,7 @@ section > header { display: grid; gap: var(--space-1); margin-block-end: var(--s
 .cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .spread { justify-content: space-between; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(var(--card-min),100%),1fr)); gap: var(--space-2); }
-.panel { background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); min-inline-size: 0; }
+.panel { background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); min-inline-size: 0; box-shadow: var(--elevation-1); }
 .status { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-half) var(--space-1); border-radius: var(--radius-full); font-size: var(--type-sm-size); font-weight: var(--weight-strong); color: var(--neutral-ink); background: var(--neutral-fill); max-inline-size: 100%; }
 .status svg,.selection svg { inline-size: var(--icon); block-size: var(--icon); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 [data-state='active'] { --state-ink: var(--info); --state-fill: var(--info-bg); }
@@ -133,10 +133,11 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 :root { --lb-card-pad: var(--density-regular); --lb-table-pad-block: var(--space-2); }
 :root[data-density='compact'] { --lb-card-pad: var(--density-compact); --lb-table-pad-block: var(--space-1); }
 
-/* Cards: one padding from the density grid, border carries the resting
-   edge, data-elevation='raised' adds the first ladder step. */
-.lb-card { display: grid; gap: var(--space-2); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); min-inline-size: 0; transition: box-shadow var(--motion-instant) var(--motion-ease); }
-.lb-card[data-elevation='raised'] { box-shadow: var(--elevation-1); }
+/* Cards: one padding from the density grid; T20-RF resting cards lift on
+   the first elevation step (hairline border + soft shadow), raised cards
+   lift one step further. */
+.lb-card { display: grid; gap: var(--space-2); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); min-inline-size: 0; box-shadow: var(--elevation-1); transition: box-shadow var(--motion-instant) var(--motion-ease); }
+.lb-card[data-elevation='raised'] { box-shadow: var(--elevation-2); }
 .lb-card-head { display: grid; gap: var(--space-half); }
 .lb-card-title { margin: 0; font-size: var(--type-md-size); line-height: var(--type-md-lh); font-weight: var(--weight-strong); }
 .lb-card-meta { margin: 0; }
@@ -145,7 +146,7 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 
 /* Data tables: sticky header on the elevated surface, hairline row rules,
    no zebra striping, tabular numerals on numeric columns. */
-.lb-table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); overscroll-behavior: contain; }
+.lb-table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); overscroll-behavior: contain; }
 .lb-table { inline-size: 100%; border-collapse: collapse; }
 .lb-table caption { text-align: start; padding: var(--lb-table-pad-block) var(--space-2); }
 .lb-table th,.lb-table td { padding: var(--lb-table-pad-block) var(--space-2); border-block-end: var(--line) solid var(--hairline); text-align: start; vertical-align: top; }
@@ -225,7 +226,7 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 
 /* Metric tiles: tabular value, caption label, coverage chip; the
    unavailable variant is hollow, never a zero or fabricated value. */
-.lb-metric { display: grid; justify-items: start; gap: var(--space-half); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); min-inline-size: 0; }
+.lb-metric { display: grid; justify-items: start; gap: var(--space-half); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-1); min-inline-size: 0; }
 .lb-metric-value { font-size: var(--type-lg-size); line-height: var(--type-lg-lh); font-weight: var(--weight-strong); font-variant-numeric: var(--numeric); }
 .lb-metric-label { max-inline-size: 100%; }
 .lb-metric[data-unavailable='true'] { border-style: dashed; }
@@ -247,13 +248,20 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 .lb-sidebar-product { padding: var(--space-half) var(--space-1); border-radius: var(--radius-xs); background: var(--product-accent-soft); color: var(--product-accent); font-size: var(--type-sm-size); font-weight: var(--weight-strong); }
 .lb-sidebar-runtime { max-inline-size: 100%; overflow-wrap: anywhere; }
 .lb-sidebar-destinations { display: grid; gap: var(--space-half); margin: 0; padding: 0; list-style: none; }
-.lb-sidebar-destination { display: flex; align-items: center; gap: var(--space-1); inline-size: 100%; min-block-size: var(--density-control); text-align: start; padding: var(--space-half) var(--space-1); background: transparent; border-color: transparent; border-radius: var(--radius-sm); transition: background-color var(--motion-instant) var(--motion-ease); }
-.lb-sidebar-destination svg { inline-size: var(--icon); block-size: var(--icon); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* T20-RF nav rows: full pill radius, 18px destination glyphs, an ellipsized
+   label and an optional projection-fed count badge on the trailing edge. */
+.lb-sidebar-destination { display: flex; align-items: center; gap: var(--space-1); inline-size: 100%; min-block-size: var(--density-control); text-align: start; padding: var(--space-half) var(--space-1); background: transparent; border-color: transparent; border-radius: var(--radius-full); transition: background-color var(--motion-instant) var(--motion-ease); }
+.lb-sidebar-destination svg { inline-size: var(--icon-nav); block-size: var(--icon-nav); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.lb-sidebar-destination-label { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-sidebar-badge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-inline-size: var(--badge-min); padding-inline: var(--space-half); border-radius: var(--radius-full); background: var(--neutral-fill); color: var(--neutral-ink); font-size: var(--type-xs-size); line-height: var(--type-xs-lh); font-weight: var(--weight-strong); font-variant-numeric: var(--numeric); }
 .lb-sidebar-destination:hover:enabled { background: var(--hover); }
-.lb-sidebar-destination[aria-current='page'] { background: var(--selected); font-weight: var(--weight-strong); }
+.lb-sidebar-destination[aria-current='page'] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 2px 0 0 0 var(--accent); font-weight: var(--weight-strong); }
+.lb-sidebar-destination[aria-current='page'] .lb-sidebar-badge { background: var(--accent); color: var(--accent-contrast); }
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-destination { justify-content: center; padding-inline: 0; }
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-destination-label,
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-badge,
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
+.lb-sidebar-collapse svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .lb-sidebar-tree { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
 .lb-sidebar-footer { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
 

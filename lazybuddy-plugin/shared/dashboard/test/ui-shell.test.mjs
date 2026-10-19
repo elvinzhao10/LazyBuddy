@@ -112,6 +112,14 @@ test('the frame mounts after init: grouped static sidebar, one content surface, 
     [3, 4], 'Workspace carries overview/project/plans; Observation carries the four observation rows');
   assert.equal(destinationButton(shell, 'overview').getAttribute('aria-current'), 'page', 'the sidebar marks the current destination');
   assert.ok(destinationButton(shell, 'overview').querySelector('svg'), 'rows are icon+label');
+  // T20-RF count badges: the projection feeds the plans count; the empty
+  // attention queue renders NO badge (never fake, never stale).
+  assert.equal(destinationButton(shell, 'plans').querySelector('.lb-sidebar-badge')?.textContent, '1',
+    'the projection plan count badges the Plans row');
+  assert.equal(destinationButton(shell, 'overview').querySelector('.lb-sidebar-badge'), null,
+    'an empty attention queue renders no badge');
+  assert.equal(destinationButton(shell, 'plans').getAttribute('aria-label'), 'Plans (1)',
+    'the count rides the accessible name too');
   assert.equal(root.querySelector('[role="tablist"], .lb-tabs, .lb-tab'), null, 'the tab strip is gone: no tablist anywhere');
   assert.ok(root.querySelector('[data-testid="shell-page-head"]'), 'the single page header renders');
   assert.equal(root.querySelector('[data-testid="shell-page-title"]').textContent, 'Overview', 'the page header names the destination');

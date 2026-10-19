@@ -25,13 +25,14 @@
 .project-shell[data-initialized='true'] .lb-shell { block-size: 100%; min-block-size: 0; align-items: stretch; background: var(--bg); }
 body:has(.project-shell[data-initialized='true']) { block-size: 100dvh; overflow: hidden; }
 body:has(.project-shell[data-initialized='true']) > main { display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; max-inline-size: none; padding: 0; }
-body:has(.project-shell[data-initialized='true']) > main > header { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-end: var(--line) solid var(--border); }
+body:has(.project-shell[data-initialized='true']) > main > header { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-end: var(--line) solid var(--border); background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); }
 body:has(.project-shell[data-initialized='true']) > main > #shell-root { flex: 1 1 auto; min-block-size: 0; display: grid; }
 body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-start: var(--line) solid var(--border); }
 
 /* The rail: a static column of the frame grid — never position:fixed, never
-   an overlay. Destinations scroll inside it; the identity footer pins. */
-.project-shell .lb-sidebar { position: static; block-size: 100%; display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; border: none; border-inline-end: var(--line) solid var(--border); border-radius: 0; }
+   an overlay. Destinations scroll inside it; the identity footer pins. The
+   rail sits on the card surface over the tinted app canvas (T20-RF). */
+.project-shell .lb-sidebar { position: static; block-size: 100%; display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; border: none; border-inline-end: var(--line) solid var(--border); border-radius: 0; box-shadow: var(--elevation-2); }
 .project-shell .lb-sidebar .lb-sidebar-collapse { align-self: flex-end; }
 .project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-collapse { align-self: center; }
 .project-shell .lb-sidebar .lb-sidebar-destinations { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; margin-block-start: var(--s2); }
@@ -46,22 +47,27 @@ body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 au
 .project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
 
 /* Grouped destinations: small uppercase section headers over icon+label
-   rows; the active row carries an accent bar over the soft accent wash. */
+   rows; the active row is the accent-tinted pill with its left bar, and a
+   projection-fed count badge rides the trailing edge (T20-RF). */
 .project-shell .lb-sidebar-group + .lb-sidebar-group { margin-block-start: var(--s3); }
 .project-shell .lb-sidebar-group-label { display: block; padding-inline: var(--s2); font-size: var(--caption); font-weight: var(--strong); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .project-shell .lb-sidebar-group-items { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.project-shell .lb-sidebar-destination { border-radius: var(--radius-pill); }
 .project-shell .lb-sidebar-destination[aria-current='page'] { background: var(--product-accent-soft); color: var(--product-accent); box-shadow: inset 2px 0 0 0 var(--product-accent); }
+.project-shell .lb-sidebar-destination[aria-current='page'] .lb-sidebar-badge { background: var(--product-accent); color: var(--product-accent-contrast); }
 
-/* The main side: one page header, one scrolling content surface. */
-.project-shell .lb-shell-main { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; padding: 0; min-block-size: 0; overflow: hidden; }
-.project-shell .shell-page-head { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); border-block-end: var(--line) solid var(--border); background: var(--bg); }
+/* The main side is ONE scroll container: the page header sticks to its top
+   edge as a frosted bar (translucent veil + backdrop blur) with the content
+   scrolling beneath it — the reference dashboard's sticky header. */
+.project-shell .lb-shell-main { display: block; padding: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+.project-shell .shell-page-head { position: sticky; inset-block-start: 0; z-index: 4; display: grid; gap: var(--s2); padding: var(--s3) var(--s4); border-block-end: var(--line) solid var(--border); background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); box-shadow: var(--elevation-1); }
 .project-shell .shell-page-bar { gap: var(--s3); }
 .project-shell .shell-page-lead { gap: var(--s3); min-inline-size: 0; }
 .project-shell .shell-page-titles { gap: var(--s1); min-inline-size: 0; }
 .project-shell .shell-page-kicker { margin: 0; text-transform: uppercase; letter-spacing: .08em; }
-.project-shell .shell-page-title { margin: 0; font-size: var(--heading); overflow-wrap: anywhere; }
+.project-shell .shell-page-title { margin: 0; font-size: var(--heading); font-weight: var(--strong); letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .project-shell .shell-page-meta { margin: 0; }
-.project-shell .shell-content { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--s4); align-content: start; gap: var(--s4); }
+.project-shell .shell-content { min-block-size: 0; padding: var(--s4); align-content: start; gap: var(--s4); }
 .project-shell[data-live='true'] .shell-content { gap: var(--s3); padding: var(--s3) var(--s4); }
 
 /* The docked regions lose their floating-card chrome inside the dock. */

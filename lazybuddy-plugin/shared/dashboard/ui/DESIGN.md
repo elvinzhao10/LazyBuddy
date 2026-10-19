@@ -18,29 +18,31 @@ One design language across the whole LazySeries family. Every product — LazyBu
 
 ## 2. Color roles
 
-Light and dark are both first-class. `data-theme="light|dark"` on the root records the resolved theme; the showcase resolves appearance before first paint and follows system changes.
+Light and dark are both first-class. `data-theme="light|dark"` on the root records the resolved theme; the showcase resolves appearance before first paint and follows system changes. Since T20-RF the dashboard is dark-first: with no stored preference `ui/theme-init.js` resolves dark before first paint, a stored choice (`light` / `dark` / `system`, persisted under `lazyseries-theme`) always wins, and the `#theme` control keeps all three options.
 
 | Role | Light | Dark | Meaning |
 | --- | --- | --- | --- |
-| `--bg` | #f5f6f8 | #14161a | app canvas |
-| `--surface` | #ffffff | #1c1f25 | cards, panels, controls |
-| `--elevated` | #ffffff | #242831 | dialogs, popovers, sticky rails |
-| `--inset` | #eef0f3 | #16181d | recessed wells, code, quiet fills |
-| `--border` | #c7cbd3 | #515966 | quiet structural outlines |
-| `--hairline` | #e3e5ea | #2e323b | internal dividers, table rules |
-| `--text` | #20242b | #f1f3f7 | primary ink |
-| `--subtle` | #59616e | #b0b7c4 | captions, meta, secondary ink |
+| `--bg` | #eef1f6 | #0f1115 | app canvas |
+| `--surface` | #ffffff | #171b22 | cards, panels, controls |
+| `--elevated` | #ffffff | #1e242e | dialogs, popovers, sticky rails |
+| `--inset` | #eceff5 | #12151c | recessed wells, code, quiet fills |
+| `--border` | #c6cdda | #363e4c | quiet structural outlines |
+| `--hairline` | #e1e5ee | #262c37 | internal dividers, table rules |
+| `--text` | #1e2430 | #f2f4f9 | primary ink |
+| `--subtle` | #59637a | #a7b0bf | captions, meta, secondary ink |
 | `--accent` | #2b54d9 | #8ea8ff | family accent (LazyBuddy cobalt) |
 | `--accent-contrast` | #ffffff | #0d1220 | ink on an accent fill |
-| `--accent-soft` | #e8edfc | #2b3050 | accent wash for identity chips |
-| `--success` / `--success-bg` | #16613b / #e4f4e9 | #a4e2bd / #203a2b | verified evidence |
-| `--warn` / `--warn-bg` | #795000 / #fff2cf | #f5d58b / #3d321e | attention |
-| `--danger` / `--danger-bg` | #a02a35 / #ffecef | #ffb9c0 / #45272e | failed |
-| `--info` / `--info-bg` | #184a96 / #e9f0ff | #adcaff / #202f49 | active/verifying |
+| `--accent-soft` | #e8edfc | #252d4d | accent wash for identity chips |
+| `--success` / `--success-bg` | #16613b / #e4f4e9 | #9fe0b8 / #1d3629 | verified evidence |
+| `--warn` / `--warn-bg` | #795000 / #fff2cf | #f2d28a / #3a301c | attention |
+| `--danger` / `--danger-bg` | #a02a35 / #ffecef | #ffb3bc / #432530 | failed |
+| `--info` / `--info-bg` | #184a96 / #e9f0ff | #9fb9ff / #1f2c46 | active/verifying |
 
-Status chips additionally pair `--stale-ink/--stale-fill` (#68409b / #f3eaff light; #d7bbff / #352943 dark) and the neutral pair `--neutral-ink/--neutral-fill`. Control boundaries use `--control-edge` (#59616e light, #919baa dark), distinct from quiet `--border`; interactive edges keep >=3:1 against surface, canvas, raised and selected backgrounds through the `.75` press fade.
+Status chips additionally pair `--stale-ink/--stale-fill` (#68409b / #f3eaff light; #d5b8ff / #33284a dark) and the neutral pair `--neutral-ink/--neutral-fill`. Control boundaries use `--control-edge` (#59616e light, #8f9aa9 dark), distinct from quiet `--border`; interactive edges keep >=3:1 against surface, canvas, raised and selected backgrounds through the `.75` press fade.
 
-Measured contrast (WCAG 2.x, computed in `test/design-tokens.test.mjs`): text on surface/canvas/inset 13.6-15.7:1; subtle ink 5.7-8.2:1; every status ink on its surface >=4.5:1; every accent pairing in section 6 >=4.5:1. Keyboard focus alone carries the focus color (`--focus` #225bb5 light, #adcaff dark; `--focus-ring` is the box-shadow form).
+**T20-RF depth system (additive).** The reference-fidelity pass reworked the palette into a tinted-canvas + stepped-surface structure — dark canvas #0f1115 under card surface #171b22 and elevated #1e242e (light: tinted #eef1f6 canvas under white cards) — with soft layered `--elevation-*` shadows (resting cards lift on step 1, raised on step 2) and hairline edges carrying the resting outline. App-frame additions: `--icon-nav` (18px sidebar destination glyphs), `--badge-min` (the count-badge pill floor; sidebarNav renders projection-fed `count` badges — zero/absent never paints one), and `--veil` + `--veil-blur` (the frosted sticky page header pinned over the single scrolling content surface). The `#theme` control's accessible behaviour is unchanged; only the default and persistence are new.
+
+Measured contrast (WCAG 2.x, computed in `test/design-tokens.test.mjs`): text on surface/canvas/inset >=13:1; subtle ink >=5.3:1; every status ink on its surface >=4.5:1; every accent pairing in section 6 >=4.5:1. Keyboard focus alone carries the focus color (`--focus` #225bb5 light, #8ea8ff dark; `--focus-ring` is the box-shadow form).
 
 ## 3. Type
 
@@ -60,7 +62,7 @@ Every metric, count, timestamp and clock uses `font-variant-numeric: var(--numer
 
 **8-pt grid.** `--space-1` 8px, `--space-2` 16, `--space-3` 24, `--space-4` 32, `--space-5` 40, `--space-6` 48, `--space-7` 64. `--space-half` (4px) is the only sub-grid step, for icon-to-label nudges. Layout aligns to the grid; component internals may use the half-step.
 
-**Radii.** `--radius-xs` 4px, `--radius-sm` 6px (controls), `--radius-md` 8px (cards), `--radius-lg` 12px (dialogs), `--radius-full` 999px (pills). Restrained corners stay: never mix radii on nested boxes more than one step apart.
+**Radii.** `--radius-xs` 4px, `--radius-sm` 6px (controls), `--radius-md` 10px (cards), `--radius-lg` 14px (dialogs), `--radius-full` 999px (pills, nav rows). Restrained corners stay: never mix radii on nested boxes more than one step apart.
 
 **Density.** `--density-regular` 16px default gutters; `--density-compact` 8px for dense tables and lists. Control targets: `--density-control` 44px (HIG minimum), `--density-control-compact` 32px for secondary in-table controls.
 
@@ -114,7 +116,7 @@ Hues are deliberately spaced (cobalt 224°, teal 192°, violet 268°, burnt oran
 
 ## 8. Compatibility and enforcement
 
-The v1 token set (canvas/surface/raised/hover/selected/text/muted/border/focus, the status ink/fill pairs, `--s1`..`--s8`, the four legacy type sizes, `--radius-control/card/pill`, `--control`, `--content/--measure/--card-min/--inspector`, `--fast/--ease`) is frozen: every value matches the pre-v2 file byte-for-byte in both themes, so shipped views render unchanged while later tasks migrate them to the v2 names. `node --test lazybuddy-plugin/shared/dashboard/test/design-tokens.test.mjs` fails when a frozen alias drifts, the spacing grid breaks, the type scale stops being monotonic, any role or accent pair falls below WCAG AA on its intended surfaces, or reduced-motion stops collapsing durations. Views add no color literals: a new hardcoded hex in view CSS is a defect.
+The v1 token set (canvas/surface/raised/hover/selected/text/muted/border/focus, the status ink/fill pairs, `--s1`..`--s8`, the four legacy type sizes, `--radius-control/card/pill`, `--control`, `--content/--measure/--card-min/--inspector`, `--fast/--ease`) is frozen as a SET: since T20-RF every alias resolves to the agreed reference-fidelity palette values in `test/design-tokens.test.mjs` (names and structure unchanged), so shipped views restyle wholesale from the tokens while later tasks migrate them to the v2 names. `node --test lazybuddy-plugin/shared/dashboard/test/design-tokens.test.mjs` fails when a frozen alias drifts, the spacing grid breaks, the type scale stops being monotonic, any role or accent pair falls below WCAG AA on its intended surfaces, or reduced-motion stops collapsing durations. Views add no color literals: a new hardcoded hex in view CSS is a defect.
 
 The component contract from the original component system (statusChip/notice/taskCard/field/button/inspector constructors, textContent-only dynamic strings, no fetch or authority in components, one polite status region, bounded inspector scroll ownership) and the shell authority rules (destinations render only after initialization; missing native data renders an actionable hollow state, never a zero metric or fabricated observation) remain binding on every family member.
 
