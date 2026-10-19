@@ -1,24 +1,41 @@
 // T15 project and plan editors — DOM view over registered original documents.
-// Rendered / structured / source / baseline parity per spec §4.2 through the
-// shared command route of §6.1: every mutation is a typed command composed here
-// and executed by the caller-provided sendCommand (source.edit.preview,
+// Rendered / structured / source surfaces per spec §4.2 through the shared
+// command route of §6.1: every mutation is a typed command composed here and
+// executed by the caller-provided sendCommand (source.edit.preview,
 // source.edit, amend_baseline, plan.transition). The view never writes files,
 // never grants verification and never composes execution operations.
-import { button, element, statusChip } from './components.mjs';
-import { renderMarkdown } from './markdown.mjs';
+//
+// Shell integration (T12b/T15 redesign): the surface switch is a T11
+// segmented control in the editor toolbar; baseline comparison and amendment
+// impact open as T12 dock panels from toolbar actions; unsaved drafts mark
+// the hosting shell tab with a dirty dot and guard its close behind a native
+// confirm dialog. None of this adds authority: the tab chrome is presentation
+// over the same command route, and the guard only ever clears local drafts.
+import {
+  button, element, statusChip, segmentedControl, card, dataTable, rowList,
+  formField, createDockPanel, emptyState, announce,
+} from './components.mjs';
+import { createDocumentView } from './document-view.mjs';
 
-export const EDITOR_MODES = Object.freeze(['rendered', 'structured', 'source', 'baseline']);
+export const EDITOR_MODES = Object.freeze(['rendered', 'structured', 'source']);
 // Candidate lifecycle targets for the legality display. The values mirror
 // PLAN_LIFECYCLES in project/contract.mjs; legality itself is always decided by
 // the injected assessTransition (the real assessPlanTransition), never here.
 const LIFECYCLES = Object.freeze(['draft', 'planned', 'active', 'paused', 'completed', 'superseded', 'abandoned']);
-const MODE_LABELS = Object.freeze({ rendered: 'Rendered', structured: 'Structured', source: 'Source', baseline: 'Baseline' });
+// Retiring targets consume the plan record; their transition buttons carry the
+// danger treatment and an explicit confirm (audit FO-3). Undoing a retirement
+// through the route is not generally legal, so confirm — not a fake undo — is
+// the honest destructive affordance here.
+const RETIRING_LIFECYCLES = Object.freeze(['completed', 'superseded', 'abandoned']);
+const MODE_LABELS = Object.freeze({ rendered: 'Rendered', structured: 'Structured', source: 'Source' });
 
 const FENCE_MARKER = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const HEADING_MARKER = /^ {0,3}(#{1,6})(?:[ \t]+(.*?)|[ \t]*)$/;
 const TASK_MARKER = /^([ \t]*)([-*+]|\d+[.])([ \t]+)\[( |x|X)\]([ \t]*)(.*)$/;
+const HUNK_MARKER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 let commandSequence = 0;
+let fieldNoteSequence = 0;
 const nextCommandId = () => `dashboard-editor-${Date.now().toString(36)}-${commandSequence += 1}`;
 
 // Same line grammar as project/source-edit/markdown.mjs so the rendered view,
@@ -111,19 +128,129 @@ export function commandResultState(outcome) {
   return 'unknown';
 }
 
+// ---- unified-patch presentation (display only; the route stays the author) --
+
+/** Parse the route's unified patch into ordered add/remove/context rows (with hunk ids). */
+export function parseUnifiedPatch(patchText) {
+  const lines = String(patchText ?? '').split('\n');
+  const rows = [];
+  let hunk = 0;
+  let originalLine = 0; let editedLine = 0; let inHunk = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const header = HUNK_MARKER.exec(line);
+    if (header) {
+      hunk += 1; inHunk = true;
+      originalLine = Number(header[1]); editedLine = Number(header[3]);
+      continue;
+    }
+    if (!inHunk) continue;
+    // A trailing empty line from split('\n') is not a context row.
+    if (line === '' && index === lines.length - 1) continue;
+    if (line.startsWith('\\')) { rows.push({ kind: 'note', text: line, hunk, originalLine: null, editedLine: null }); continue; }
+    if (line.startsWith('+')) { rows.push({ kind: 'add', text: line.slice(1), hunk, originalLine: null, editedLine }); editedLine += 1; continue; }
+    if (line.startsWith('-')) { rows.push({ kind: 'remove', text: line.slice(1), hunk, originalLine, editedLine: null }); originalLine += 1; continue; }
+    rows.push({ kind: 'context', text: line.slice(1), hunk, originalLine, editedLine });
+    originalLine += 1; editedLine += 1;
+  }
+  return rows;
+}
+
+/** Reconstruct the edited document by applying the route's own patch. Pure presentation: on any unmappable hunk it returns null rather than guessing. */
+export function applyUnifiedPatch(original, patchText) {
+  try {
+    const source = String(original).replace(/\r\n?/g, '\n').split('\n');
+    const rows = parseUnifiedPatch(patchText);
+    const out = [];
+    let cursor = 0; // next unconsumed line of the original
+    let currentHunk = 0; let hunkStart = null; let hunkRows = [];
+    const flush = () => {
+      if (!hunkRows.length) return;
+      const kept = hunkRows.filter(row => row.kind !== 'add').length;
+      const produced = hunkRows.filter(row => row.kind !== 'remove').map(row => row.text);
+      const start = hunkStart ?? source.length + 1; // add-only hunk: append at the end
+      if (start - 1 < cursor) throw new Error('overlapping hunks');
+      if (start - 1 > source.length) throw new Error('unmapped hunk');
+      out.push(...source.slice(cursor, start - 1));
+      out.push(...produced);
+      cursor = start - 1 + kept;
+      hunkRows = []; hunkStart = null;
+    };
+    for (const row of rows) {
+      if (row.kind === 'note') continue;
+      if (row.hunk !== currentHunk) { flush(); currentHunk = row.hunk; }
+      if (hunkStart == null && row.originalLine != null) hunkStart = row.originalLine;
+      hunkRows.push(row);
+    }
+    flush();
+    out.push(...source.slice(cursor));
+    return out.join('\n');
+  } catch { return null; }
+}
+
+/** Pair removes/adds of one change into aligned original-vs-edited diff rows. */
+export function diffRows(patchText) {
+  const rows = [];
+  let removes = []; let adds = [];
+  const flush = () => {
+    const count = Math.max(removes.length, adds.length);
+    for (let index = 0; index < count; index += 1) {
+      rows.push({ original: removes[index] ?? null, edited: adds[index] ?? null,
+        change: removes[index] != null && adds[index] != null ? 'changed' : removes[index] != null ? 'removed' : 'added' });
+    }
+    removes = []; adds = [];
+  };
+  for (const row of parseUnifiedPatch(patchText)) {
+    if (row.kind === 'remove') removes.push(row.text);
+    else if (row.kind === 'add') adds.push(row.text);
+    else if (row.kind === 'context') { flush(); rows.push({ original: row.text, edited: row.text, change: 'context' }); }
+  }
+  flush();
+  return rows;
+}
+
+// ---- DOM helpers -----------------------------------------------------------
+
 function option(value, label) {
   const node = element('option');
   node.value = value;
   node.textContent = label;
   return node;
 }
-function field(label, control, fieldId) {
-  const wrapper = element('label', 'editor-field stack');
-  wrapper.append(element('span', 'meta', label), control);
+function input(type = 'text') { const control = element('input'); control.type = type; return control; }
+function fieldRow(labelText, control, fieldId, { help = '', required = false } = {}) {
+  const wrapper = formField({ label: labelText, name: fieldId ?? '', control, help, required });
+  wrapper.classList.add('editor-field');
   if (fieldId) wrapper.dataset.field = fieldId;
   return wrapper;
 }
-function input(type = 'text') { const control = element('input'); control.type = type; return control; }
+// Adds, updates or clears the inline error slot of a formField wrapper with
+// the aria-invalid / aria-describedby wiring the audit (FO-2) requires.
+function setFieldError(wrapper, message) {
+  if (!wrapper) return;
+  const control = wrapper.querySelector('input, select, textarea');
+  const help = wrapper.querySelector('.lb-field-help');
+  let errorNode = wrapper.querySelector('.lb-field-error');
+  if (!message) {
+    errorNode?.remove();
+    wrapper.removeAttribute('data-invalid');
+    control?.removeAttribute('aria-invalid');
+    if (help?.id) control?.setAttribute('aria-describedby', help.id);
+    else control?.removeAttribute('aria-describedby');
+    return;
+  }
+  if (!errorNode) {
+    errorNode = element('span', 'lb-field-error');
+    errorNode.dataset.testid = 'field-error';
+    errorNode.id = `editor-field-error-${++fieldNoteSequence}`;
+    wrapper.append(errorNode);
+  }
+  errorNode.textContent = message;
+  const described = [help?.id, errorNode.id].filter(Boolean).join(' ');
+  if (described) control?.setAttribute('aria-describedby', described);
+  wrapper.dataset.invalid = 'true';
+  control?.setAttribute('aria-invalid', 'true');
+}
 function factsTable(entries) {
   const facts = element('dl', 'editor-facts stack');
   for (const [term, value] of entries) {
@@ -132,6 +259,69 @@ function factsTable(entries) {
     facts.append(row);
   }
   return facts;
+}
+// Walk up from a node (mini-DOM safe: no Element.closest dependency).
+function closestNode(node, predicate) {
+  let current = node;
+  while (current) {
+    if (current.nodeType === 1 && predicate(current)) return current;
+    current = current.parentNode;
+  }
+  return null;
+}
+function reportStatus(message) {
+  try { announce(String(message)); } catch { /* detached or exotic host: the visible line still carries the text */ }
+}
+
+// Native <dialog> confirm (audit FO-4: platform dialogs, not custom chrome).
+// Works on real dialogs and degrades to a hidden-toggle on minimal hosts.
+function createConfirmDialog({ testid, cancelLabel = 'Cancel' }) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'editor-dialog';
+  dialog.dataset.testid = testid;
+  dialog.hidden = true;
+  const heading = element('h2', '');
+  const headingId = `editor-dialog-${++fieldNoteSequence}`;
+  heading.id = headingId;
+  dialog.setAttribute('aria-labelledby', headingId);
+  const detail = element('p', 'meta', '');
+  const cancelControl = button(cancelLabel, () => api.close());
+  cancelControl.dataset.testid = `${testid}-cancel`;
+  const confirmControl = button('', () => { const action = onConfirm; onConfirm = null; api.close(); action?.(); });
+  confirmControl.dataset.testid = `${testid}-confirm`;
+  confirmControl.classList.add('lb-destructive');
+  const actions = element('div', 'cluster editor-dialog-actions');
+  actions.append(cancelControl, confirmControl);
+  dialog.append(heading, detail, actions);
+  let invoker = null;
+  let onConfirm = null;
+  const api = {
+    element: dialog,
+    ask({ title, detail: text, confirmLabel, trigger = null, onConfirm: action }) {
+      heading.textContent = title; detail.textContent = text; confirmControl.textContent = confirmLabel;
+      invoker = trigger; onConfirm = action;
+      if (api.isOpen()) return dialog;
+      dialog.hidden = false;
+      if (typeof dialog.showModal === 'function') {
+        try { dialog.showModal(); } catch { /* already open or unsupported: the hidden toggle carries it */ }
+      }
+      cancelControl.focus(); // the safe answer is the focused one
+      return dialog;
+    },
+    close() {
+      if (!api.isOpen()) return false;
+      if (typeof dialog.close === 'function') dialog.close();
+      dialog.hidden = true;
+      const target = invoker; invoker = null; onConfirm = null;
+      target?.focus?.();
+      return true;
+    },
+    isOpen: () => (typeof dialog.open === 'boolean' ? dialog.open : !dialog.hidden),
+  };
+  dialog.addEventListener('close', () => { dialog.hidden = true; const target = invoker; invoker = null; onConfirm = null; target?.focus?.(); });
+  dialog.addEventListener('cancel', event => { event.preventDefault?.(); api.close(); });
+  dialog.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault?.(); api.close(); } });
+  return api;
 }
 
 export function createProjectEditor({ snapshot, sendCommand, captureSource, assessTransition, initial = {} }) {
@@ -165,19 +355,17 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
 
   const root = element('section', 'editor-root stack');
   root.dataset.testid = 'project-editor';
+  // One visible status line; the polite announcement rides the single T11
+  // announcer (audit IK-7: no duplicate live regions).
   const status = element('p', 'meta editor-status', statusText);
   status.dataset.testid = 'editor-status';
   status.dataset.state = statusState;
-  status.setAttribute('role', 'status');
 
   const sourceSelect = element('select');
   sourceSelect.dataset.testid = 'source-select';
-  sourceSelect.setAttribute('aria-label', 'Registered source');
   const sourceMeta = element('p', 'meta', '');
   sourceMeta.dataset.testid = 'source-meta';
-  const modeBar = element('div', 'cluster editor-modes');
-  modeBar.setAttribute('role', 'tablist');
-  modeBar.setAttribute('aria-label', 'Editor surface');
+
   const panes = {};
   for (const mode of EDITOR_MODES) {
     const pane = element('section', 'editor-pane stack');
@@ -193,6 +381,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     statusText = text;
     status.dataset.state = state;
     status.textContent = text;
+    reportStatus(text);
   }
   async function send(command) {
     try {
@@ -207,17 +396,126 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     }
   }
 
+  // ---- dirty state + shell-tab chrome (dot + close guard) ------------------
+  const tabChrome = { tab: null, installed: false, suppressed: false };
+  const closeGuard = createConfirmDialog({ testid: 'editor-close-guard', cancelLabel: 'Keep editing' });
+  closeGuard.element.querySelector('[data-testid="editor-close-guard-confirm"]').classList.remove('lb-destructive');
+  closeGuard.element.querySelector('[data-testid="editor-close-guard-confirm"]').textContent = 'Discard changes and close';
+  let closeIntent = null;
+
+  function computeDirty() {
+    return Boolean(drafts.text.trim() || drafts.title.trim() || drafts.authority.trim()
+      || drafts.amendText.trim() || drafts.amendAuthority.trim() || drafts.reason.trim()
+      || drafts.successor || drafts.carry.size > 0 || previews.edit || previews.amend);
+  }
+  function clearDrafts() {
+    drafts.text = ''; drafts.title = ''; drafts.authority = '';
+    drafts.amendText = ''; drafts.amendAuthority = ''; drafts.reason = ''; drafts.successor = '';
+    drafts.carry.clear();
+    textInput.value = ''; titleInput.value = ''; authorityInput.value = '';
+    amendText.value = ''; amendAuthority.value = ''; transitionReason.value = '';
+    transitionSuccessor.value = '';
+    previews.edit = null; previews.amend = null;
+    setFieldError(authorityField, '');
+    setFieldError(taskIndexField, '');
+    setFieldError(amendAuthorityField, '');
+    updateDirty();
+    renderPreview('empty');
+    renderAmendPreview('empty');
+  }
+  function dirtySummary() {
+    const parts = [];
+    if (drafts.text.trim() || drafts.title.trim()) parts.push('a composed source edit');
+    if (drafts.authority.trim()) parts.push('an unsent authority reference');
+    if (previews.edit) parts.push('a pending edit preview');
+    if (drafts.amendText.trim() || drafts.amendAuthority.trim() || previews.amend) parts.push('a baseline amendment in progress');
+    if (drafts.reason.trim() || drafts.successor || drafts.carry.size) parts.push('transition choices');
+    return parts.length ? parts.join(', ') : 'unsaved changes';
+  }
+  function proceedWithClose() {
+    clearDrafts();
+    tabChrome.suppressed = true;
+    try {
+      const intent = closeIntent;
+      if (!intent) return;
+      if (intent.type === 'click') intent.target.click?.();
+      else intent.target.dispatchEvent?.({ type: 'keydown', key: intent.key, bubbles: true, cancelable: true });
+    } finally { tabChrome.suppressed = false; }
+  }
+  function guardIntercept(event) {
+    if (tabChrome.suppressed || !computeDirty()) return false;
+    if (closeGuard.isOpen()) { event.preventDefault?.(); event.stopPropagation?.(); return true; }
+    const stop = event.stopPropagation?.bind(event);
+    event.preventDefault?.();
+    stop?.();
+    // Real hosts also honor capture: block remaining same-node listeners.
+    event.stopImmediatePropagation?.();
+    closeIntent = { type: event.type === 'click' ? 'click' : 'keydown', target: event.target, key: event.key };
+    closeGuard.ask({
+      title: 'Close with unsaved changes?',
+      detail: `This editor tab holds ${dirtySummary()}. Closing discards them; nothing has been sent through the command route yet.`,
+      confirmLabel: 'Discard changes and close',
+      trigger: event.target,
+      onConfirm: proceedWithClose,
+    });
+    return true;
+  }
+  function installTabGuard(tab) {
+    const tablist = tab.parentNode;
+    if (!tablist?.addEventListener) return;
+    const touchesOwnTab = target => Boolean(target) && (target === tab || closestNode(target, node => node === tab));
+    tablist.addEventListener('click', event => {
+      if (!touchesOwnTab(event.target)) return;
+      guardIntercept(event);
+    }, true);
+    tablist.addEventListener('keydown', event => {
+      if (!['Delete', 'Backspace'].includes(event.key)) return;
+      if (!touchesOwnTab(event.target)) return;
+      guardIntercept(event);
+    }, true);
+  }
+  function syncTabChrome() {
+    if (!tabChrome.installed) {
+      const panel = closestNode(root, node => node.matches?.('[role="tabpanel"]'));
+      const tabId = panel?.getAttribute('aria-labelledby') ?? '';
+      const tab = panel && tabId
+        ? (document.getElementById?.(tabId) ?? document.querySelector(`[id="${tabId}"]`) ?? null)
+        : null;
+      if (!tab) return;
+      tabChrome.tab = tab;
+      tabChrome.installed = true;
+      installTabGuard(tab);
+      const label = tab.querySelector('.lb-tab-label');
+      if (label) {
+        const dot = element('span', 'lb-tab-dirty');
+        dot.dataset.testid = 'tab-dirty';
+        dot.setAttribute('role', 'img');
+        dot.setAttribute('aria-label', 'Unsaved changes');
+        label.append(dot);
+        tabChrome.dot = dot;
+      }
+    }
+    if (!tabChrome.tab) return;
+    const dirty = computeDirty();
+    tabChrome.tab.dataset.dirty = String(dirty);
+    if (tabChrome.dot) tabChrome.dot.hidden = !dirty;
+  }
+  function updateDirty() {
+    root.dataset.dirty = String(computeDirty());
+    syncTabChrome();
+  }
+
   // ---- structured surface: plan records + transition legality ----
   const planSelect = element('select');
   planSelect.dataset.testid = 'plan-select';
-  planSelect.setAttribute('aria-label', 'Plan record');
-  const planDetail = element('section', 'panel stack');
-  planDetail.dataset.testid = 'plan-detail';
+  const planDetailHost = element('div', 'stack');
+  planDetailHost.dataset.testid = 'plan-detail';
   const transitionBody = element('div', 'stack');
   const transitionReason = input();
   transitionReason.dataset.testid = 'transition-reason';
   const transitionSuccessor = element('select');
   transitionSuccessor.dataset.testid = 'transition-successor';
+  const retireGuard = createConfirmDialog({ testid: 'transition-confirm', cancelLabel: 'Keep the lifecycle' });
 
   async function refreshAssessments() {
     const plan = selectedPlan();
@@ -239,24 +537,46 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     transitionBody.append(element('p', 'meta', 'Read-only legality assessment through the shared lifecycle rules; the transition itself is a command through the route.'));
     for (const to of LIFECYCLES.filter(value => value !== plan.declared_lifecycle)) {
       const assessment = assessments.get(to);
-      const row = element('div', 'editor-transition stack');
-      row.dataset.testid = 'transition-option';
-      row.dataset.to = to;
-      const action = button(`Move to ${to}`, () => applyTransition(to), { disabled: !assessment?.allowed });
+      const retiring = RETIRING_LIFECYCLES.includes(to);
+      const body = element('div', 'stack');
+      const action = button(`Move to ${to}`, () => {
+        if (retiring) {
+          retireGuard.ask({
+            title: `Retire ${plan.id} to ${to}?`,
+            detail: `Moving to ${to} closes this plan record through plan.transition under the shared lifecycle rules.`
+              + (to === 'superseded' ? ' The successor link is part of the command.' : ' Retirement is not automatically reversible; a new plan record replaces retired work.'),
+            confirmLabel: `Retire to ${to}`,
+            trigger: action,
+            onConfirm: () => applyTransition(to),
+          });
+          return;
+        }
+        applyTransition(to);
+      }, { disabled: !assessment?.allowed });
+      if (retiring) action.classList.add('lb-destructive');
       const reasons = element('ul', 'editor-reasons stack');
       reasons.id = `transition-reasons-${to}`;
       action.setAttribute('aria-describedby', reasons.id);
+      if (!assessment?.allowed) action.title = retiring
+        ? `Retiring to ${to} needs legality (reasons listed) and an explicit confirmation.`
+        : `Moving to ${to} is currently illegal; the reasons are listed.`;
+      else action.removeAttribute('title');
       for (const reason of assessment?.reasons ?? []) {
         const item = element('li', 'meta', `${reason.code} — ${reason.detail}`);
         item.dataset.code = reason.code;
         reasons.append(item);
       }
       if (!assessment) reasons.append(element('li', 'meta', 'ASSESSMENT_PENDING — legality is being assessed'));
-      row.append(action, reasons);
+      body.append(action, reasons);
+      const row = card({ body });
+      row.dataset.testid = 'transition-option';
+      row.dataset.to = to;
       transitionBody.append(row);
     }
-    transitionBody.append(field('Retirement reason', transitionReason, 'transition-reason'),
-      field('Successor plan', transitionSuccessor, 'transition-successor'));
+    transitionBody.append(fieldRow('Retirement reason', transitionReason, 'transition-reason',
+        { help: 'Required for superseded and abandoned; recorded with the command.' }),
+      fieldRow('Successor plan', transitionSuccessor, 'transition-successor',
+        { help: 'Required for superseded; the plan that takes over the scope.' }));
   }
 
   async function applyTransition(to) {
@@ -278,6 +598,8 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
         if (commandResultState(outcome) === 'saved') {
           setStatus('saved', `saved · plan.transition · ${plan.id} → ${to} · revision ${outcome.receipt.revision}`);
           drafts.reason = ''; transitionReason.value = '';
+          drafts.successor = ''; transitionSuccessor.value = '';
+          updateDirty();
           await refresh();
         } else {
           setStatus('conflict', `conflict · ${outcome.receipt.reason ?? 'REVISION_CONFLICT'} · nothing changed`);
@@ -288,10 +610,9 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     });
   }
 
-  // ---- source surface: anchor addressing + preview/apply ----
+  // ---- source surface: anchor addressing + staged preview/apply -----------
   const anchorSelect = element('select');
   anchorSelect.dataset.testid = 'anchor-select';
-  anchorSelect.setAttribute('aria-label', 'Document anchor');
   const anchorMeta = element('p', 'meta', '');
   anchorMeta.dataset.testid = 'anchor-meta';
   const anchorTasks = element('ul', 'editor-tasklist stack');
@@ -317,13 +638,39 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
   authorityInput.setAttribute('autocomplete', 'off');
   const expectedLine = element('p', 'meta', '');
   expectedLine.dataset.testid = 'edit-expected';
-  const previewPane = element('section', 'panel stack');
-  previewPane.dataset.testid = 'edit-preview';
+  const applyNote = element('span', 'native-note');
+  applyNote.id = `editor-apply-note-${++fieldNoteSequence}`;
+  applyNote.textContent = 'Apply needs a current valid preview composed against the same revisions.';
   const previewButton = button('Preview edit · real patch', () => previewEdit());
   previewButton.dataset.testid = 'edit-preview-button';
   const applyButton = button('Apply edit through the route', () => applyEdit(), { disabled: true });
   applyButton.dataset.testid = 'edit-apply-button';
   applyButton.classList.add('primary');
+  applyButton.setAttribute('aria-describedby', applyNote.id);
+
+  // Form wrappers (label + control + help + inline-error slots, audit FO-1/2).
+  const anchorField = fieldRow('Anchor', anchorSelect, 'anchor', { help: 'The heading section of the registered original this edit addresses.' });
+  const taskIndexField = fieldRow('Checklist item', taskIndex, 'edit-task-index', { help: 'Zero-based position of the checklist item inside the anchor section.' });
+  const kindField = fieldRow('Edit kind', kindSelect, 'edit-kind', { help: 'Syntax-aware edit kinds the route validates.' });
+  const stateField = fieldRow('State', stateSelect, 'edit-state', { help: 'checked or unchecked — the checklist state to set.' });
+  const textField = fieldRow('New text', textInput, 'edit-text', { help: 'Applied verbatim to the addressed checklist line.' });
+  const titleField = fieldRow('New heading title', titleInput, 'edit-title', { help: 'The renamed heading keeps its anchor identity through the route.' });
+  const beforeField = fieldRow('Move before', beforeSelect, 'edit-before', { help: 'The section this one moves ahead of; end of document by default.' });
+  const authorityField = fieldRow('Authority reference', authorityInput, 'edit-authority',
+    { help: 'Required. Names the authority the edit is sent through; recorded in the journal.', required: true });
+
+  // Split view hosts: registered original vs staged edit + the route diff.
+  const splitOriginal = element('figure', 'editor-split-card');
+  splitOriginal.dataset.testid = 'edit-split-original';
+  const splitEdited = element('figure', 'editor-split-card');
+  splitEdited.dataset.testid = 'edit-split-edited';
+  const previewCard = card({ title: 'Preview through source.edit.preview',
+    meta: 'Nothing is applied until the explicit apply command.', body: element('div', 'stack') });
+  previewCard.dataset.testid = 'edit-preview';
+  previewCard.dataset.state = 'empty';
+  const diffHost = element('div', 'stack');
+  const diffTableHost = element('div', '');
+  diffTableHost.dataset.testid = 'edit-diff';
 
   const currentAnchor = () => mapped.anchors.find(anchor => anchor.anchor_id === anchorSelect.value) ?? null;
   function buildEdit() {
@@ -338,9 +685,22 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
       expected_sha256: record.accepted_sha256, expected_source_revision: record.revision, edits: [buildEdit()] };
   }
   async function previewEdit() {
+    setFieldError(authorityField, '');
+    setFieldError(taskIndexField, '');
+    // Validate every field first: the composer shows all inline problems at
+    // once (FO-2) instead of leaking them one refusal at a time.
+    const problems = [];
+    if (!/^\d+$/.test(drafts.taskIndex.trim())) {
+      setFieldError(taskIndexField, 'Checklist item must be a whole number (0 for the first item).');
+      problems.push('INVALID_ITEM_INDEX');
+    }
     if (!drafts.authority.trim()) {
+      setFieldError(authorityField, 'Authority reference is required — name the authority this edit is sent through.');
+      problems.push('AUTHORITY_REQUIRED');
+    }
+    if (problems.length) {
+      setStatus('refused', `refused · ${problems.join(' + ')} · nothing was sent`);
       previews.edit = null;
-      setStatus('refused', 'refused · AUTHORITY_REQUIRED · an edit preview names its authority; nothing was sent');
       renderPreview('refused');
       return;
     }
@@ -357,6 +717,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
         setStatus('refused', `refused · ${error.typedCode} · nothing changed`);
       }
       renderPreview(statusState);
+      updateDirty();
     });
   }
   async function applyEdit() {
@@ -373,6 +734,9 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
           setStatus('saved', `saved · source.edit · revision ${outcome.receipt.revision} · changed ${outcome.receipt.changed_ids.join(', ') || 'nothing'}`);
           previews.edit = null;
           drafts.text = ''; textInput.value = '';
+          drafts.authority = ''; authorityInput.value = '';
+          setFieldError(authorityField, '');
+          updateDirty();
           await refresh();
         } else {
           previews.edit = { result: previews.edit.result, stale: true };
@@ -385,19 +749,31 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     });
   }
   function renderPreview(state) {
-    previewPane.dataset.state = state ?? 'empty';
-    previewPane.replaceChildren();
+    previewCard.dataset.state = state ?? 'empty';
+    const body = previewCard.querySelector('.lb-card-body') ?? previewCard;
+    body.replaceChildren(diffHost, applyNote);
+    diffHost.replaceChildren();
     if (!previews.edit) {
-      previewPane.append(element('p', 'meta', 'No preview yet. A preview shows the actual unified patch before anything is applied.'));
+      diffHost.append(element('p', 'meta', 'No preview yet. A preview shows the actual unified patch before anything is applied.'));
       applyButton.disabled = true;
+      applyButton.title = 'A current valid preview is required before apply.';
+      renderSplit();
       return;
     }
     const { result, stale } = previews.edit;
-    previewPane.append(element('h4', '', stale ? 'Preview (stale after a conflict)' : 'Preview'));
-    previewPane.append(element('p', 'meta', `authority ${result.authority} · ${result.current_sha256?.slice(0, 12)}… → ${result.next_sha256?.slice(0, 12)}…`));
+    diffHost.append(element('p', 'meta', stale
+      ? `stale · the preview was composed against older revisions · authority ${result.authority}`
+      : `authority ${result.authority} · ${result.current_sha256?.slice(0, 12)}… → ${result.next_sha256?.slice(0, 12)}…`));
+    const table = dataTable({
+      columns: [{ key: 'original', label: 'Registered original' }, { key: 'edited', label: 'Staged edit' }],
+      rows: diffRows(result.patch_text ?? '').map(row => [
+        diffCell(row.original, row.change === 'removed' || row.change === 'changed' ? 'removed' : 'context'),
+        diffCell(row.edited, row.change === 'added' || row.change === 'changed' ? 'added' : 'context'),
+      ]),
+    });
+    diffTableHost.replaceChildren(table);
     const patch = element('pre', 'editor-patch', result.patch_text ?? '');
     patch.dataset.testid = 'edit-patch';
-    previewPane.append(patch);
     const affected = element('div', 'stack');
     affected.dataset.testid = 'edit-affected';
     affected.append(factsTable([
@@ -408,16 +784,50 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
         ...(result.affected?.evidence?.artifact_ids ?? []).map(id => `artifact ${id}`)].join(', ') || 'none'],
       ['Changed identities', result.changed_ids.join(', ') || 'none'],
       ['Anchors', `${result.anchors?.before?.length ?? 0} before → ${result.anchors?.after?.length ?? 0} after`]]));
-    previewPane.append(affected);
+    diffHost.append(diffTableHost, patch, affected);
     applyButton.disabled = !(result.status === 'valid' && !stale);
+    if (applyButton.disabled) applyButton.title = 'A current valid preview is required before apply.';
+    else applyButton.removeAttribute('title');
+    renderSplit();
+  }
+  function diffCell(text, change) {
+    const cell = element('span', 'editor-diff-line', text ?? '');
+    cell.dataset.change = change;
+    if (text == null) cell.dataset.empty = 'true';
+    return cell;
+  }
+  function renderSplit() {
+    splitOriginal.replaceChildren(element('figcaption', 'meta', 'Registered original'));
+    splitEdited.replaceChildren(element('figcaption', 'meta', 'Staged edit — reconstructed from the route patch'));
+    if (!capture.content) {
+      splitOriginal.append(element('p', 'meta', 'The registered original has not been captured yet.'));
+      splitEdited.append(emptyState({ icon: 'list', title: 'No staged edit', detail: 'Capture a registered source, compose an edit and preview it through the route.' }));
+      return;
+    }
+    const originalPre = element('pre', 'editor-source-pre');
+    originalPre.textContent = capture.content;
+    splitOriginal.append(originalPre);
+    const preview = previews.edit?.result;
+    if (preview?.patch_text) {
+      const edited = applyUnifiedPatch(capture.content, preview.patch_text);
+      if (edited != null) {
+        const editedPre = element('pre', 'editor-source-pre');
+        editedPre.textContent = edited;
+        splitEdited.append(editedPre);
+        return;
+      }
+    }
+    splitEdited.append(emptyState({ icon: 'list', title: 'No staged edit yet',
+      detail: 'A valid preview shows the edited document here, reconstructed from the route patch — never guessed locally.' }));
   }
 
-  // ---- baseline surface: amendment comparison + acceptance through authority ----
+  // ---- baseline surface: comparison + amendment impact as dock panels -----
   const itemSelect = element('select');
   itemSelect.dataset.testid = 'item-select';
-  itemSelect.setAttribute('aria-label', 'Baseline item');
   const itemMeta = element('p', 'meta', '');
   itemMeta.dataset.testid = 'item-meta';
+  const comparisonHost = element('div', 'stack');
+  comparisonHost.dataset.testid = 'baseline-comparison';
   const amendTaskIndex = input('number');
   amendTaskIndex.min = '0'; amendTaskIndex.step = '1'; amendTaskIndex.value = drafts.amendTaskIndex;
   amendTaskIndex.dataset.testid = 'amend-task-index';
@@ -428,13 +838,63 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
   amendAuthority.setAttribute('autocomplete', 'off');
   const amendCarry = element('div', 'stack');
   amendCarry.dataset.testid = 'amend-carry';
-  const amendPreviewPane = element('section', 'panel stack');
-  amendPreviewPane.dataset.testid = 'amend-preview';
+  const amendNote = element('span', 'native-note');
+  amendNote.id = `editor-amend-note-${++fieldNoteSequence}`;
+  amendNote.textContent = 'Acceptance needs a current valid amendment preview and a named authority.';
   const amendPreviewButton = button('Preview amendment · exact patch and invalidations', () => previewAmendment());
   amendPreviewButton.dataset.testid = 'amend-preview-button';
   const amendAcceptButton = button('Accept amendment through authority', () => acceptAmendment(), { disabled: true });
   amendAcceptButton.dataset.testid = 'amend-accept-button';
   amendAcceptButton.classList.add('primary');
+  amendAcceptButton.setAttribute('aria-describedby', amendNote.id);
+  const amendTaskIndexField = fieldRow('Checklist item', amendTaskIndex, 'amend-task-index', { help: 'Zero-based position inside the item’s anchored section.' });
+  const amendTextField = fieldRow('New behavioral text', amendText, 'amend-text', { help: 'The amended requirement text carried into the baseline revision.' });
+  const amendAuthorityField = fieldRow('Acceptance authority', amendAuthority, 'amend-authority',
+    { help: 'Required. The authority recorded with the amend_baseline acceptance.', required: true });
+  const amendPreviewCard = card({ title: 'Amendment preview',
+    meta: 'Acceptance shows the exact patch and its consequences before authority is used.', body: element('div', 'stack') });
+  amendPreviewCard.dataset.testid = 'amend-preview';
+  amendPreviewCard.dataset.state = 'empty';
+
+  const baselineDock = createDockPanel({
+    title: 'Baseline comparison',
+    content: (() => {
+      const body = element('div', 'stack');
+      body.append(fieldRow('Baseline item', itemSelect, 'item-select', { help: 'The baseline record compared against the registered original.' }),
+        itemMeta, comparisonHost, amendCarry,
+        element('p', 'meta', 'Comparison is a read: the record and the original stay exactly as registered.'));
+      return body;
+    })(),
+    footer: element('p', 'meta', 'Escape collapses the dock; focus returns to the invoking control.'),
+    onClose: () => syncDockTriggers(),
+  });
+  const impactDock = createDockPanel({
+    title: 'Amendment impact',
+    content: (() => {
+      const body = element('div', 'stack');
+      const amendGrid = element('div', 'editor-form-grid');
+      amendGrid.append(amendTaskIndexField, amendTextField, amendAuthorityField);
+      const amendActions = element('div', 'cluster');
+      amendActions.append(amendPreviewButton, amendAcceptButton);
+      body.append(amendGrid, amendActions, amendPreviewCard, amendNote,
+        element('p', 'meta', 'Acceptance updates the source and linked records through amend authority; it never launches, queues or verifies a plan.'));
+      return body;
+    })(),
+    footer: element('p', 'meta', 'Predicted invalidations are preview facts; the accepted receipt replaces them.'),
+    onClose: () => syncDockTriggers(),
+  });
+
+  function setDockOpen(dock, trigger, open) {
+    if (open) dock.open(trigger);
+    else dock.close('trigger');
+    syncDockTriggers();
+  }
+  function syncDockTriggers() {
+    if (baselineDockTrigger) baselineDockTrigger.setAttribute('aria-pressed', String(baselineDock.isOpen()));
+    if (impactDockTrigger) impactDockTrigger.setAttribute('aria-pressed', String(impactDock.isOpen()));
+  }
+  baselineDock.element.dataset.testid = 'baseline-dock';
+  impactDock.element.dataset.testid = 'impact-dock';
 
   const itemAnchorFor = item => mapped.anchors.find(anchor => (anchor.linked_item_ids ?? []).includes(item.id)) ?? null;
   function amendEdits() {
@@ -443,9 +903,11 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
       item: Number(drafts.amendTaskIndex), text: drafts.amendText }];
   }
   async function previewAmendment() {
+    setFieldError(amendAuthorityField, '');
     const item = selectedItem();
     if (!item) { setStatus('refused', 'refused · ITEM_REQUIRED · select the baseline item being amended'); return; }
     if (!drafts.amendAuthority.trim()) {
+      setFieldError(amendAuthorityField, 'Acceptance authority is required — name the authority behind this amendment.');
       setStatus('refused', 'refused · AUTHORITY_REQUIRED · acceptance names its authority; nothing was sent');
       renderAmendPreview('refused');
       return;
@@ -467,12 +929,14 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
         setStatus('refused', `refused · ${error.typedCode} · nothing changed`);
       }
       renderAmendPreview(statusState);
+      updateDirty();
     });
   }
   async function acceptAmendment() {
     const item = selectedItem();
     if (!previews.amend) { setStatus('refused', 'refused · PREVIEW_REQUIRED · acceptance needs a current valid preview'); return; }
     if (!drafts.amendAuthority.trim()) {
+      setFieldError(amendAuthorityField, 'Acceptance authority is required — name the authority behind this amendment.');
       setStatus('refused', 'refused · AUTHORITY_REQUIRED · acceptance names its authority; nothing was sent');
       return;
     }
@@ -499,6 +963,9 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
           setStatus('saved', `saved · amend_baseline · baseline revision ${outcome.receipt.baseline_revision} · no plan was run`);
           previews.amend = null;
           drafts.amendText = ''; amendText.value = '';
+          drafts.amendAuthority = ''; amendAuthority.value = '';
+          setFieldError(amendAuthorityField, '');
+          updateDirty();
           await refresh();
         } else {
           setStatus('conflict', `conflict · ${outcome.receipt.reason ?? 'REVISION_CONFLICT'} · nothing changed`);
@@ -529,24 +996,26 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     return list;
   }
   function renderAmendPreview(state) {
-    amendPreviewPane.dataset.state = state ?? 'empty';
-    amendPreviewPane.replaceChildren();
+    amendPreviewCard.dataset.state = state ?? 'empty';
+    const body = amendPreviewCard.querySelector('.lb-card-body') ?? amendPreviewCard;
+    body.replaceChildren();
     if (!previews.amend) {
-      amendPreviewPane.append(element('p', 'meta', 'No amendment preview yet. Acceptance shows the exact patch and its consequences before authority is used.'));
+      body.append(element('p', 'meta', 'No amendment preview yet. Acceptance shows the exact patch and its consequences before authority is used.'));
     } else {
       const result = previews.amend.result;
-      amendPreviewPane.append(element('h4', '', 'Amendment comparison'));
-      amendPreviewPane.append(element('p', 'meta', `${result.current_sha256?.slice(0, 12)}… → ${result.next_sha256?.slice(0, 12)}… · authority ${result.authority}`));
+      body.append(element('p', 'meta', `${result.current_sha256?.slice(0, 12)}… → ${result.next_sha256?.slice(0, 12)}… · authority ${result.authority}`));
       const patch = element('pre', 'editor-patch', result.patch_text ?? '');
       patch.dataset.testid = 'amend-patch';
-      amendPreviewPane.append(patch, element('h4', '', 'Predicted invalidations'));
-      amendPreviewPane.append(invalidationRows(predictedInvalidations(current.snapshot, selectedItem()?.id, (selectedItem()?.revision ?? 0) + 1), false));
+      body.append(patch, element('h4', '', 'Predicted invalidations'));
+      body.append(invalidationRows(predictedInvalidations(current.snapshot, selectedItem()?.id, (selectedItem()?.revision ?? 0) + 1), false));
     }
     if (previews.receiptInvalidations?.length) {
-      amendPreviewPane.append(element('h4', '', 'Invalidations from the accepted receipt'));
-      amendPreviewPane.append(invalidationRows(previews.receiptInvalidations, true));
+      body.append(element('h4', '', 'Invalidations from the accepted receipt'));
+      body.append(invalidationRows(previews.receiptInvalidations, true));
     }
     amendAcceptButton.disabled = !(previews.amend && drafts.amendAuthority.trim().length > 0);
+    if (amendAcceptButton.disabled) amendAcceptButton.title = 'Acceptance needs a current valid preview and a named authority.';
+    else amendAcceptButton.removeAttribute('title');
   }
 
   // ---- rendering ----
@@ -566,12 +1035,15 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
   function renderRendered() {
     const pane = panes.rendered;
     pane.replaceChildren();
-    if (!capture.content) { pane.append(element('p', 'meta', 'The registered original has not been captured yet.')); return; }
-    pane.append(element('h3', '', 'Rendered original'));
+    if (!capture.content) {
+      pane.append(emptyState({ icon: 'list', title: 'The registered original has not been captured yet',
+        detail: 'Select a registered source; the capture loads through the native source authority.' }));
+      return;
+    }
     pane.append(element('p', 'meta', `${capture.path} · ${capture.sha256?.slice(0, 12)}… · fenced examples render as authored content`));
-    const rendered = renderMarkdown(capture.content);
-    rendered.element.classList.add('editor-document');
-    pane.append(rendered.element);
+    const reading = createDocumentView({ markdown: capture.content, title: capture.path ?? 'Registered original', chrome: false });
+    reading.element.classList.add('editor-document');
+    pane.append(reading.element);
   }
   function renderAnchorSurface() {
     const anchorOptions = mapped.anchors.map(anchor => option(anchor.anchor_id ?? 'unassigned',
@@ -608,6 +1080,12 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
       ? `project revision ${current.snapshot.revision} · source revision ${record.revision} · expected sha ${record.accepted_sha256.slice(0, 12)}…`
       : 'no source';
   }
+  function renderKindFields() {
+    stateField.hidden = drafts.kind !== 'set_task_state';
+    textField.hidden = drafts.kind !== 'set_task_text';
+    titleField.hidden = drafts.kind !== 'rename_heading';
+    beforeField.hidden = drafts.kind !== 'move_section';
+  }
   function renderStructured() {
     const plans = plansOfSource();
     const previous = selection.planId;
@@ -615,28 +1093,30 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     if (plans.some(plan => plan.id === previous)) { planSelect.value = previous; }
     else { selection.planId = plans[0]?.id ?? null; planSelect.value = selection.planId ?? ''; }
     const plan = selectedPlan();
-    if (!plan) { planDetail.replaceChildren(element('p', 'meta', 'No plan record is bound to this source.')); return; }
-    planDetail.replaceChildren();
-    planDetail.append(element('h4', '', plan.title), element('code', '', plan.id));
-    planDetail.append(factsTable([
-      ['Declared lifecycle', plan.declared_lifecycle],
-      ['Plan revision', `r${plan.revision}`],
-      ['Baseline references', plan.baseline_refs.map(ref => `${ref.item_id}@r${ref.item_revision}`).join(', ') || 'unassessed'],
-      ['Native runs', plan.native_runs.length ? plan.native_runs.map(run => run.run_id).join(', ') : 'none linked'],
-      ['Original anchor', plan.source.anchor_id]]));
-    const planTasks = element('ul', 'editor-tasklist stack');
+    if (!plan) { planDetailHost.replaceChildren(element('p', 'meta', 'No plan record is bound to this source.')); return; }
     const anchorTitleOfPlan = plan.source.anchor_id === 'document' ? null : plan.source.anchor_id.replace(/^heading:/, '');
     const tasks = sectionTasks(capture.content, anchorTitleOfPlan);
-    tasks.forEach((task, index) => {
-      const row = element('li', 'cluster');
-      row.dataset.checked = String(task.checked);
-      row.dataset.index = String(index);
-      row.append(statusChip({ state: task.checked ? 'verified' : 'neutral', label: task.checked ? 'done' : 'open' }),
-        element('span', '', task.text));
-      planTasks.append(row);
-    });
-    if (!tasks.length) planTasks.append(element('li', 'meta', 'The original carries no checklist under this plan.'));
-    planDetail.append(element('h4', '', 'Original checklist'), planTasks);
+    planDetailHost.replaceChildren(card({
+      title: plan.title,
+      meta: plan.id,
+      body: (() => {
+        const body = element('div', 'stack');
+        body.append(factsTable([
+          ['Declared lifecycle', plan.declared_lifecycle],
+          ['Plan revision', `r${plan.revision}`],
+          ['Baseline references', plan.baseline_refs.map(ref => `${ref.item_id}@r${ref.item_revision}`).join(', ') || 'unassessed'],
+          ['Native runs', plan.native_runs.length ? plan.native_runs.map(run => run.run_id).join(', ') : 'none linked'],
+          ['Original anchor', plan.source.anchor_id]]));
+        body.append(element('h4', '', 'Original checklist'));
+        if (tasks.length) {
+          body.append(rowList({
+            items: tasks.map(task => ({ title: task.text,
+              trailing: { state: task.checked ? 'verified' : 'neutral', label: task.checked ? 'done' : 'open' } })),
+          }));
+        } else body.append(element('p', 'meta', 'The original carries no checklist under this plan.'));
+        return body;
+      })(),
+    }));
     transitionSuccessor.replaceChildren(option('', 'none'),
       ...(current.snapshot.plans ?? []).filter(candidate => candidate.id !== plan.id)
         .map(candidate => option(candidate.id, candidate.id)));
@@ -650,21 +1130,42 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     if (items.some(item => item.id === previous)) { itemSelect.value = previous; }
     else { selection.itemId = items[0]?.id ?? null; itemSelect.value = selection.itemId ?? ''; }
     const item = selectedItem();
-    if (!item) { itemMeta.textContent = 'No baseline item is bound to this source.'; amendCarry.replaceChildren(); return; }
+    if (!item) { itemMeta.textContent = 'No baseline item is bound to this source.'; amendCarry.replaceChildren(); comparisonHost.replaceChildren(); return; }
     const anchor = itemAnchorFor(item);
     const linkedPlans = (current.snapshot.plans ?? []).filter(plan => plan.baseline_refs.some(ref => ref.item_id === item.id));
     itemMeta.textContent = `${item.kind} · ${item.state} · r${item.revision} · ${item.source.anchor_id}`
       + (anchor ? ` · section anchor ${anchor.anchor_id}` : ' · no unique section anchor')
       + (linkedPlans.length ? ` · linked plans: ${linkedPlans.map(plan => plan.id).join(', ')}` : ' · no linked plans');
+    const anchorTitle = anchor?.title ?? null;
+    const originalTask = sectionTasks(capture.content, anchorTitle)[Number(drafts.amendTaskIndex)] ?? null;
+    comparisonHost.replaceChildren(card({
+      title: 'Record versus registered original',
+      meta: `baseline revision r${item.revision}`,
+      body: (() => {
+        const body = element('div', 'stack');
+        body.append(dataTable({
+          caption: 'The baseline record as accepted, next to the original text it was accepted from.',
+          columns: [{ key: 'side', label: 'Source' }, { key: 'text', label: 'Requirement text' }, { key: 'state', label: 'State' }],
+          rows: [
+            ['Recorded in the baseline', item.text ?? item.title ?? '', `${item.kind} · ${item.state} · r${item.revision}`],
+            [originalTask ? 'In the registered original now' : 'Original anchor', originalTask ? originalTask.text : 'not addressed by the current anchor',
+              originalTask ? (originalTask.checked ? 'done' : 'open') : 'unavailable'],
+          ],
+        }));
+        return body;
+      })(),
+    }));
     amendCarry.replaceChildren(element('span', 'meta', 'Carry linked plan references forward inside this acceptance; unchecked plans stay pending reconciliation'));
     for (const plan of linkedPlans) {
       const historical = ['completed', 'superseded', 'abandoned'].includes(plan.declared_lifecycle);
       const toggle = button(`${plan.id}${historical ? ' · historical (immutable)' : ''}`, historical ? null : () => {
         if (drafts.carry.has(plan.id)) drafts.carry.delete(plan.id); else drafts.carry.add(plan.id);
         renderCarry();
+        updateDirty();
       }, { disabled: historical });
       toggle.dataset.planId = plan.id;
       toggle.setAttribute('aria-pressed', String(drafts.carry.has(plan.id)));
+      if (historical) toggle.title = 'Historical plans keep the revisions they considered; they cannot carry forward.';
       amendCarry.append(toggle);
     }
   }
@@ -699,7 +1200,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
           if (plan.id !== selection.planId) continue;
           for (const item of itemsOfSource()) {
             push(item.id, `${item.title} — ${item.text.replace(/\s+/g, ' ').trim().slice(0, 120)}`, 'item', 2,
-              () => { chooseItem(item.id); setMode('baseline'); }, `${item.kind} · r${item.revision}`);
+              () => { chooseItem(item.id); setDockOpen(baselineDock, null, true); }, `${item.kind} · r${item.revision}`);
           }
         }
       }
@@ -709,10 +1210,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
   function renderModes() {
     for (const mode of EDITOR_MODES) panes[mode].hidden = mode !== selection.mode;
     narrowList.hidden = !selection.narrow;
-    for (const node of modeBar.querySelectorAll('[data-mode]')) {
-      node.setAttribute('aria-pressed', String(node.dataset.mode === selection.mode));
-      node.setAttribute('aria-selected', String(node.dataset.mode === selection.mode));
-    }
+    modeSwitcher.setCurrent(selection.mode);
     root.dataset.narrow = String(selection.narrow);
   }
   function renderAll() {
@@ -720,6 +1218,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     renderSourceMeta();
     renderRendered();
     renderAnchorSurface();
+    renderKindFields();
     renderStructured();
     renderBaseline();
     renderTransitions();
@@ -727,6 +1226,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     renderAmendPreview(previews.amend ? statusState : 'empty');
     renderNarrow();
     renderModes();
+    updateDirty();
   }
 
   async function loadSource(sourceId, { keepStatus = false } = {}) {
@@ -792,33 +1292,36 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
 
   // ---- events ----
   sourceSelect.addEventListener('change', () => selectSource(sourceSelect.value));
-  for (const mode of EDITOR_MODES) {
-    const control = button(MODE_LABELS[mode], () => setMode(mode));
-    control.dataset.mode = mode;
-    control.setAttribute('role', 'tab');
-    modeBar.append(control);
-  }
   planSelect.addEventListener('change', () => choosePlan(planSelect.value));
   itemSelect.addEventListener('change', () => chooseItem(itemSelect.value));
   anchorSelect.addEventListener('change', () => renderAnchorSurface());
   for (const [control, key] of [[taskIndex, 'taskIndex'], [textInput, 'text'], [titleInput, 'title'], [authorityInput, 'authority']]) {
-    control.addEventListener('input', () => { drafts[key] = control.value; });
+    control.addEventListener('input', () => {
+      drafts[key] = control.value;
+      if (key === 'taskIndex') setFieldError(taskIndexField, '');
+      if (key === 'authority') setFieldError(authorityField, '');
+      updateDirty();
+    });
   }
-  kindSelect.addEventListener('change', () => { drafts.kind = kindSelect.value; });
+  kindSelect.addEventListener('change', () => { drafts.kind = kindSelect.value; renderKindFields(); });
   stateSelect.addEventListener('change', () => { drafts.stateValue = stateSelect.value; });
   beforeSelect.addEventListener('change', () => { drafts.before = beforeSelect.value; });
-  amendTaskIndex.addEventListener('input', () => { drafts.amendTaskIndex = amendTaskIndex.value; });
-  amendText.addEventListener('input', () => { drafts.amendText = amendText.value; });
+  amendTaskIndex.addEventListener('input', () => { drafts.amendTaskIndex = amendTaskIndex.value; renderBaseline(); });
+  amendText.addEventListener('input', () => { drafts.amendText = amendText.value; updateDirty(); });
   amendAuthority.addEventListener('input', () => {
     drafts.amendAuthority = amendAuthority.value;
+    setFieldError(amendAuthorityField, '');
     amendAcceptButton.disabled = !(previews.amend && drafts.amendAuthority.trim().length > 0);
+    updateDirty();
   });
   transitionReason.addEventListener('input', () => {
     drafts.reason = transitionReason.value;
+    updateDirty();
     track(async () => { await refreshAssessments(); renderTransitions(); });
   });
   transitionSuccessor.addEventListener('change', () => {
     drafts.successor = transitionSuccessor.value;
+    updateDirty();
     track(async () => { await refreshAssessments(); renderTransitions(); });
   });
   textInput.addEventListener('keydown', event => {
@@ -828,7 +1331,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     const target = event.target;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
     if (target.dataset?.view !== 'narrow') {
-      const index = ['1', '2', '3', '4'].indexOf(event.key);
+      const index = ['1', '2', '3'].indexOf(event.key);
       if (index >= 0) { event.preventDefault(); setMode(EDITOR_MODES[index]); }
       return;
     }
@@ -852,46 +1355,86 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     onKeydown(event);
   });
 
+  // ---- toolbar (segmented surface switch + dock actions) ----
+  const modeSwitcher = segmentedControl({
+    label: 'Editor surface',
+    options: EDITOR_MODES.map(mode => ({ value: mode, label: MODE_LABELS[mode] })),
+    current: selection.mode,
+    onChange: next => setMode(next),
+  });
+  modeSwitcher.element.dataset.testid = 'editor-modes';
+  for (const control of modeSwitcher.element.querySelectorAll('button')) control.dataset.editorMode = control.dataset.segment;
+  const baselineDockTrigger = button('Baseline comparison', () => setDockOpen(baselineDock, baselineDockTrigger, !baselineDock.isOpen()));
+  baselineDockTrigger.dataset.testid = 'baseline-dock-trigger';
+  baselineDockTrigger.setAttribute('aria-pressed', 'false');
+  baselineDockTrigger.setAttribute('aria-label', 'Open the baseline comparison dock');
+  const impactDockTrigger = button('Amendment impact', () => setDockOpen(impactDock, impactDockTrigger, !impactDock.isOpen()));
+  impactDockTrigger.dataset.testid = 'impact-dock-trigger';
+  impactDockTrigger.setAttribute('aria-pressed', 'false');
+  impactDockTrigger.setAttribute('aria-label', 'Open the amendment impact preview dock');
+
   // ---- shell ----
   (function buildShell() {
     const head = element('header', 'stack');
     const titleRow = element('div', 'cluster spread');
     titleRow.append(element('h2', '', 'Project and plan editors'),
       element('span', 'meta', 'Edits land on the registered original through the shared command route; nothing here runs a plan.'));
-    head.append(titleRow, field('Registered source', sourceSelect), sourceMeta);
-    root.append(head, modeBar, status);
-    panes.structured.append(element('h3', '', 'Structured plan record'), field('Plan record', planSelect), planDetail,
-      element('h4', '', 'Lifecycle transitions'), transitionBody);
-    const editGrid = element('div', 'cluster editor-grid');
-    editGrid.append(field('Anchor', anchorSelect), field('Checklist item', taskIndex), field('Edit kind', kindSelect));
-    const valueGrid = element('div', 'cluster editor-grid');
-    valueGrid.append(field('State', stateSelect), field('New text', textInput), field('New heading title', titleInput), field('Move before', beforeSelect));
-    const actionRow = element('div', 'cluster');
-    actionRow.append(previewButton, applyButton);
-    panes.source.append(element('h3', '', 'Source text over the registered original'), anchorMeta, editGrid, valueGrid,
-      field('Authority reference (required)', authorityInput), expectedLine, anchorTasks, actionRow, previewPane);
-    const amendGrid = element('div', 'cluster editor-grid');
-    amendGrid.append(field('Baseline item', itemSelect), field('Checklist item', amendTaskIndex), field('New behavioral text', amendText));
-    const amendActions = element('div', 'cluster');
-    amendActions.append(amendPreviewButton, amendAcceptButton);
-    panes.baseline.append(element('h3', '', 'Baseline comparison and amendment'), itemMeta, amendGrid,
-      field('Acceptance authority (required)', amendAuthority), amendCarry, amendActions, amendPreviewPane,
-      element('p', 'meta', 'Acceptance updates the source and linked records through amend authority; it never launches, queues or verifies a plan.'));
+    head.append(titleRow, fieldRow('Registered source', sourceSelect, 'source-select',
+      { help: 'The registered original every surface below reads and edits.' }), sourceMeta);
+    const toolbar = element('div', 'editor-toolbar cluster spread');
+    toolbar.dataset.testid = 'editor-toolbar';
+    const dockActions = element('div', 'cluster');
+    dockActions.append(baselineDockTrigger, impactDockTrigger);
+    toolbar.append(modeSwitcher.element, dockActions);
+    root.append(head, toolbar, status);
+
+    panes.structured.append(element('h3', '', 'Structured plan record'), fieldRow('Plan record', planSelect, 'plan-select',
+      { help: 'The native plan record registered against this source.' }), planDetailHost,
+      element('h3', '', 'Lifecycle transitions'), transitionBody);
+
+    const composeCard = card({
+      title: 'Compose the staged edit',
+      meta: 'Syntax-aware: the edit addresses an anchor and a checklist item; the route validates the grammar.',
+      body: (() => {
+        const body = element('div', 'stack');
+        const addressGrid = element('div', 'editor-form-grid');
+        addressGrid.append(anchorField, taskIndexField, kindField);
+        const valueGrid = element('div', 'editor-form-grid');
+        valueGrid.append(stateField, textField, titleField, beforeField);
+        const checklistHost = element('div', 'stack');
+        checklistHost.append(element('h4', '', 'Addressed checklist'), anchorTasks);
+        body.append(addressGrid, valueGrid, authorityField, checklistHost);
+        return body;
+      })(),
+      footer: (() => {
+        const foot = element('div', 'cluster');
+        foot.append(previewButton, applyButton, expectedLine);
+        return foot;
+      })(),
+    });
+    const split = element('div', 'editor-split');
+    split.append(splitOriginal, splitEdited);
+    panes.source.append(element('h3', '', 'Staged source edit'), anchorMeta, composeCard,
+      element('h3', '', 'Original versus staged edit'), split, previewCard);
+
     for (const mode of EDITOR_MODES) root.append(panes[mode]);
     root.append(narrowList);
+    root.append(baselineDock.element, impactDock.element, closeGuard.element, retireGuard.element);
   })();
 
-  const ready = selectSource(selection.sourceId);
+  const ready = selectSource(selection.sourceId).then(() => { syncTabChrome(); });
 
   return {
     element: root,
     ready,
-    settled: () => pending.then(() => {}),
+    settled: () => pending.then(() => { syncTabChrome(); }),
     setMode,
     setNarrow(narrow) { selection.narrow = Boolean(narrow); renderNarrow(); renderModes(); },
     selectSource: id => selectSource(id),
     selectPlan: id => choosePlan(id),
     selectItem: id => chooseItem(id),
+    openBaselineComparison(trigger) { setDockOpen(baselineDock, trigger ?? baselineDockTrigger, true); },
+    openImpactPreview(trigger) { setDockOpen(impactDock, trigger ?? impactDockTrigger, true); },
     update(nextSnapshot, options = {}) {
       if (!nextSnapshot || nextSnapshot.project_id !== current.snapshot.project_id) return;
       current.snapshot = nextSnapshot;
@@ -902,12 +1445,13 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
       renderBaseline();
       renderTransitions();
       renderNarrow();
+      updateDirty();
       if (options.refetch) track(refresh);
     },
     getState() {
       return { sourceId: selection.sourceId, planId: selection.planId, itemId: selection.itemId,
         mode: selection.mode, narrow: selection.narrow, status: { state: statusState, text: statusText },
-        drafts: { ...drafts, carry: [...drafts.carry] } };
+        dirty: computeDirty(), drafts: { ...drafts, carry: [...drafts.carry] } };
     },
   };
 }

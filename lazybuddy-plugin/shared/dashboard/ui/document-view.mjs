@@ -1,4 +1,4 @@
-import { button, element } from './components.mjs';
+import { element, segmentedControl } from './components.mjs';
 import { renderMarkdown, safeMarkdownHref } from './markdown.mjs';
 
 const MODES = Object.freeze(['rendered', 'source']);
@@ -6,36 +6,43 @@ const MODES = Object.freeze(['rendered', 'source']);
 /**
  * Read-only long-form document surface for shell, plan, and evidence lanes.
  * Checklists describe source content only; this module exposes no mutation API.
+ *
+ * chrome: false renders the bare reading surface (outline + article or source
+ * pre) for embedding inside a host that already owns the mode chrome — the
+ * T15 editors embed it as their rendered pane.
  */
 export function createDocumentView({ markdown, title = 'Document', mode = 'rendered',
-  mermaidRenderer = null, onModeChange = null } = {}) {
+  mermaidRenderer = null, onModeChange = null, chrome = true } = {}) {
   if (!MODES.includes(mode)) throw new TypeError('Document mode must be rendered or source');
   let source = String(markdown ?? '');
   let currentMode = mode;
 
   const root = element('section', 'document-view');
   root.dataset.testid = 'document-view';
-  const header = element('header', 'document-view-header');
-  const identity = element('div', 'document-view-identity');
-  identity.append(element('h2', '', title), element('p', 'meta', 'Read-only document · checklist state comes from the source'));
-  const switcher = element('div', 'document-view-switcher');
-  switcher.setAttribute('role', 'group');
-  switcher.setAttribute('aria-label', 'Document presentation');
-  for (const candidate of MODES) {
-    const control = button(candidate === 'rendered' ? 'Rendered' : 'Source', () => setMode(candidate));
-    control.dataset.documentMode = candidate;
-    switcher.append(control);
-  }
-  switcher.addEventListener('keydown', event => {
-    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    const controls = [...switcher.querySelectorAll('button')];
-    const selected = controls.findIndex(control => control.getAttribute('aria-pressed') === 'true');
-    event.preventDefault();
-    controls[(selected + (event.key === 'ArrowRight' ? 1 : controls.length - 1)) % controls.length]?.focus();
-  });
-  header.append(identity, switcher);
   const body = element('div', 'document-view-body');
-  root.append(header, body);
+
+  // T11 segmented control (data-native-segmented): ArrowLeft/Right/Home/End
+  // activation comes from the native focus layer, not a local handler.
+  const switcher = segmentedControl({
+    label: 'Document presentation',
+    options: [{ value: 'rendered', label: 'Rendered' }, { value: 'source', label: 'Source' }],
+    current: currentMode,
+    onChange: next => setMode(next),
+  });
+  for (const control of switcher.element.querySelectorAll('button')) {
+    control.dataset.documentMode = control.dataset.segment; // legacy selector continuity
+  }
+
+  if (chrome) {
+    const header = element('header', 'document-view-header');
+    const identity = element('div', 'document-view-identity');
+    identity.append(element('h2', '', title), element('p', 'meta', 'Read-only document · checklist state comes from the source'));
+    header.append(identity, switcher.element);
+    root.append(header, body);
+  } else {
+    root.setAttribute('aria-label', title);
+    root.append(body);
+  }
 
   function outlineNode(outline) {
     const listNode = () => {
@@ -67,9 +74,7 @@ export function createDocumentView({ markdown, title = 'Document', mode = 'rende
   function render() {
     body.replaceChildren();
     root.dataset.mode = currentMode;
-    for (const control of switcher.querySelectorAll('button')) {
-      control.setAttribute('aria-pressed', String(control.dataset.documentMode === currentMode));
-    }
+    switcher.setCurrent(currentMode);
     if (currentMode === 'source') {
       const pre = element('pre', 'document-source');
       const code = element('code', '', source);
@@ -98,5 +103,5 @@ export function createDocumentView({ markdown, title = 'Document', mode = 'rende
   }
 
   render();
-  return { element: root, setMarkdown, setMode, getMode: () => currentMode, getMarkdown: () => source };
+  return { element: root, setMarkdown, setMode, getMode: () => currentMode, getMarkdown: () => source, switcher };
 }

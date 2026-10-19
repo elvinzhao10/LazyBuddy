@@ -66,7 +66,8 @@ const BEHAVIORAL_TEXT = 'Work without a network and queue syncs for reconnect';
 const dom = createMiniDom();
 globalThis.document = dom.document;
 
-const { createProjectEditor, parseMarkdownView, predictedInvalidations, sectionTasks, commandResultState, EDITOR_MODES } = await import('../ui/editor-views.mjs');
+const { createProjectEditor, parseMarkdownView, predictedInvalidations, sectionTasks, commandResultState,
+  EDITOR_MODES, applyUnifiedPatch, diffRows, parseUnifiedPatch } = await import('../ui/editor-views.mjs');
 
 function invoke(root, action, payload) {
   const arguments_ = [CLI, action, '--project-root', root, '--project-id', PROJECT_ID, '--actor', ACTOR];
@@ -146,6 +147,8 @@ async function mountEditor(root) {
 }
 
 const byTestid = (view, id) => view.element.querySelector(`[data-testid="${id}"]`);
+// mini-DOM hosts expose no Element.closest: walk manually.
+const closestField = control => { let node = control; while (node && !(node.classList?.contains?.('lb-field'))) node = node.parentNode; return node; };
 const allTestid = (view, id) => view.element.querySelectorAll(`[data-testid="${id}"]`);
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 async function settled(view) { await view.settled(); await settle(); }
@@ -318,7 +321,21 @@ test('a legal plan transition through the route is saved and the lifecycle displ
   setSelect(editor, 'plan-select', 'plan:delivery');
   setInput(editor, 'transition-reason', 'Roadmap changed');
   await settled(editor);
-  editor.element.querySelector('[data-testid="transition-option"][data-to="abandoned"] button').click();
+  const retire = editor.element.querySelector('[data-testid="transition-option"][data-to="abandoned"] button');
+  assert.equal(retire.classList.contains('lb-destructive'), true, 'retiring carries the danger treatment (FO-3)');
+  retire.click();
+  await settle();
+  const guard = byTestid(editor, 'transition-confirm');
+  assert.equal(guard.hidden, false, 'a retiring transition asks for an explicit confirm first');
+  assert.equal(guard.textContent.includes('plan:delivery'), true, 'the confirm names the plan it retires');
+  // Cancel first: nothing is sent, nothing changes.
+  byTestid(editor, 'transition-confirm-cancel').click();
+  await settle();
+  assert.equal(guard.hidden, true);
+  assert.equal(sentCommands.some(command => command.operation === 'plan.transition'), false, 'a cancelled confirm sends nothing');
+  retire.click();
+  await settle();
+  byTestid(editor, 'transition-confirm-confirm').click();
   await settled(editor);
   assert.equal(byTestid(editor, 'editor-status').dataset.state, 'saved');
   const transition = sentCommands.find(command => command.operation === 'plan.transition');
@@ -336,12 +353,14 @@ test('supersession legality requires the successor link and the route refuses il
   const superseded = editor.element.querySelector('[data-testid="transition-option"][data-to="superseded"]');
   assert.equal(superseded.querySelector('button').disabled, true, 'superseding without a successor stays illegal');
   assert.equal(superseded.querySelector('[data-code]').dataset.code, 'MISSING_FIELD');
-  setSelect(editor, 'transition-successor', 'plan:history');
-  await settled(editor);
-  const reQueried = editor.element.querySelector('[data-testid="transition-option"][data-to="superseded"]');
-  assert.equal(reQueried.querySelector('button').disabled, false);
-  reQueried.querySelector('button').click();
-  await settled(editor);
+    setSelect(editor, 'transition-successor', 'plan:history');
+    await settled(editor);
+    const reQueried = editor.element.querySelector('[data-testid="transition-option"][data-to="superseded"]');
+    assert.equal(reQueried.querySelector('button').disabled, false);
+    reQueried.querySelector('button').click();
+    await settle();
+    byTestid(editor, 'transition-confirm-confirm').click();
+    await settled(editor);
   assert.equal(byTestid(editor, 'editor-status').dataset.state, 'saved');
   const stored = stateOf(project.root);
   assert.equal(stored.plans.find(plan => plan.id === 'plan:delivery').supersession.successor_plan_id, 'plan:history');
@@ -545,7 +564,281 @@ test('command results map onto the typed state vocabulary', () => {
   assert.equal(commandResultState({ result: { status: 'ok' } }), 'valid');
   assert.equal(commandResultState({ result: { status: 'invalid', reason: 'SOURCE_CHANGED' } }), 'invalid');
   assert.equal(commandResultState({ result: { status: 'conflict' } }), 'conflict');
-  assert.deepEqual([...EDITOR_MODES], ['rendered', 'structured', 'source', 'baseline']);
+  assert.deepEqual([...EDITOR_MODES], ['rendered', 'structured', 'source']);
+});
+
+// ---- T15 redesign: native chrome, docks, dirty state, close guard, validation ----
+
+test('the surface switch is a T11 segmented control in the toolbar and digits 1-3 switch surfaces', async () => {
+  const project = setupProject('segmented-modes');
+  const { editor } = await mountEditor(project.root);
+  const toolbar = byTestid(editor, 'editor-toolbar');
+  const group = toolbar.querySelector('[data-native-segmented]');
+  assert.ok(group, 'the mode switch renders as a segmented control (NF-1)');
+  assert.equal(group.getAttribute('role'), 'group');
+  assert.equal(group.getAttribute('aria-label'), 'Editor surface');
+  const segments = [...group.querySelectorAll('button')];
+  assert.deepEqual(segments.map(control => control.dataset.segment), ['rendered', 'structured', 'source']);
+  assert.equal(segments[0].getAttribute('aria-pressed'), 'true');
+  segments[2].click();
+  assert.equal(editor.getState().mode, 'source');
+  assert.equal(byTestid(editor, 'editor-source').hidden, false);
+  assert.equal(segments[2].getAttribute('aria-pressed'), 'true', 'the segmented control reflects the current surface');
+  editor.element.dispatchEvent({ type: 'keydown', key: '1', bubbles: true, cancelable: true });
+  assert.equal(editor.getState().mode, 'rendered', 'keyboard digit shortcuts still switch surfaces');
+});
+
+test('the rendered surface reads through the document reading layout with one h1 and ordered headings', async () => {
+  const project = setupProject('reading-hierarchy');
+  const { editor } = await mountEditor(project.root);
+  const rendered = byTestid(editor, 'editor-rendered');
+  assert.ok(rendered.querySelector('.document-outline-desktop'), 'the reading outline is present');
+  const headings = [...rendered.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+  assert.equal(rendered.querySelectorAll('h1').length, 1, 'exactly one h1: the document title (TY-1)');
+  let previous = null;
+  for (const heading of headings) {
+    const level = Number(heading.tagName.slice(1));
+    if (previous != null) assert.ok(level - previous <= 1, `headings never skip a level (TY-2): ${heading.tagName} after h${previous}`);
+    previous = level;
+  }
+  assert.equal(rendered.querySelector('.markdown-document').textContent.includes('Delivery plan'), true);
+});
+
+test('the staged edit renders a split view and a paired diff table from the route patch', async () => {
+  const project = setupProject('split-diff');
+  const { editor } = await mountEditor(project.root);
+  editor.setMode('source');
+  await settled(editor);
+  assert.equal(byTestid(editor, 'edit-split-original').textContent.includes('Work without a network'), true,
+    'the registered original shows verbatim');
+  assert.equal(byTestid(editor, 'edit-split-edited').textContent.includes(BEHAVIORAL_TEXT), false,
+    'before a preview the staged side never guesses content');
+  await draftCriterionEdit(editor);
+  byTestid(editor, 'edit-preview-button').click();
+  await settled(editor);
+  const edited = byTestid(editor, 'edit-split-edited');
+  assert.equal(edited.textContent.includes(BEHAVIORAL_TEXT), true, 'the staged side shows the edited text');
+  assert.equal(edited.textContent.includes('- [ ] Work without a network\n'), false, 'the addressed line was replaced');
+  const originalSide = byTestid(editor, 'edit-split-original');
+  assert.equal(originalSide.textContent.includes('Work without a network'), true, 'the original side stays the capture');
+  const diff = byTestid(editor, 'edit-diff');
+  assert.equal(diff.querySelectorAll('th').length >= 2, true, 'the diff table carries the two column headers');
+  const removed = diff.querySelector('.editor-diff-line[data-change="removed"]');
+  const added = diff.querySelector('.editor-diff-line[data-change="added"]');
+  // Diff rows carry the whole document line — checklist syntax included, never
+  // a stripped guess of what the route changed.
+  assert.equal(removed?.textContent, '- [ ] Work without a network');
+  assert.equal(added?.textContent, `- [ ] ${BEHAVIORAL_TEXT}`);
+  const fenced = 'fake checklist item inside the fence';
+  assert.equal(originalSide.textContent.includes(fenced), true);
+  assert.equal(edited.textContent.includes(fenced), true, 'fenced bytes stay identical through the reconstruction');
+});
+
+test('unified patch parsing, reconstruction and diff pairing are pure', () => {
+  const original = '# Title\n\n- [ ] old text\n\nclosing\n';
+  const patch = '--- a/plan.md\n+++ b/plan.md\n@@ -1,5 +1,5 @@\n # Title\n \n-- [ ] old text\n+- [ ] new text\n \n closing\n';
+  assert.deepEqual(parseUnifiedPatch(patch).map(row => row.kind),
+    ['context', 'context', 'remove', 'add', 'context', 'context']);
+  assert.equal(applyUnifiedPatch(original, patch), '# Title\n\n- [ ] new text\n\nclosing\n');
+  assert.deepEqual(diffRows(patch).map(row => row.change), ['context', 'context', 'changed', 'context', 'context']);
+  assert.deepEqual(diffRows(patch)[2], { original: '- [ ] old text', edited: '- [ ] new text', change: 'changed' });
+  assert.equal(applyUnifiedPatch(original, '@@ -99,2 +1,2 @@\n-nonsense\n+text\n'), null,
+    'an unmappable hunk reconstructs nothing rather than guessing');
+});
+
+test('drafts mark the editor and its hosting tab dirty; applying clears the dot', async () => {
+  const project = setupProject('dirty-tab');
+  const { editor } = await mountEditor(project.root);
+  const { createTabs } = await import('../ui/components.mjs');
+  const workspace = createTabs({ tabs: [{ id: 'overview', title: 'Overview', pinned: true, content: document.createElement('div') }] });
+  document.body.append(workspace.element);
+  workspace.openTab({ id: 'editor', title: 'Editors', content: editor.element });
+  await settled(editor);
+  const tab = workspace.tablist.querySelector('.lb-tab[data-tab-id="editor"]');
+  const dot = tab.querySelector('[data-testid="tab-dirty"]');
+  assert.ok(dot, 'the hosting tab carries the dirty dot node');
+  assert.equal(dot.hidden, true, 'a clean editor shows no dot');
+  assert.equal(editor.getState().dirty, false);
+  setInput(editor, 'edit-text', 'a drafted edit');
+  await settle();
+  assert.equal(editor.getState().dirty, true);
+  assert.equal(dot.hidden, false, 'drafting text lights the tab dot');
+  assert.equal(tab.dataset.dirty, 'true');
+  await draftCriterionEdit(editor);
+  byTestid(editor, 'edit-preview-button').click();
+  await settled(editor);
+  assert.equal(editor.getState().dirty, true, 'a pending preview keeps the tab dirty');
+  byTestid(editor, 'edit-apply-button').click();
+  await settled(editor);
+  assert.equal(editor.getState().dirty, false, 'a saved apply spends the drafts');
+  assert.equal(dot.hidden, true);
+  workspace.element.remove();
+});
+
+test('closing the dirty tab opens the native guard; keep editing cancels, discard clears and proceeds', async () => {
+  const project = setupProject('close-guard');
+  const { editor } = await mountEditor(project.root);
+  // A minimal shell-tab host: panel labelled by its tab, tab inside a tablist.
+  const tablist = document.createElement('div');
+  tablist.setAttribute('role', 'tablist');
+  const tab = document.createElement('div');
+  tab.className = 'lb-tab';
+  tab.id = 'guard-tab';
+  tab.setAttribute('role', 'tab');
+  const label = document.createElement('span');
+  label.className = 'lb-tab-label';
+  label.textContent = 'Editors';
+  const close = document.createElement('button');
+  close.className = 'lb-tab-close';
+  close.setAttribute('aria-label', 'Close Editors');
+  close.textContent = '×';
+  tab.append(label, close);
+  tablist.append(tab);
+  const panel = document.createElement('section');
+  panel.setAttribute('role', 'tabpanel');
+  panel.setAttribute('aria-labelledby', 'guard-tab');
+  panel.append(editor.element);
+  document.body.append(tablist, panel);
+  await settled(editor);
+  setInput(editor, 'edit-text', 'unsaved work in progress');
+  await settle();
+  assert.equal(editor.getState().dirty, true);
+  // Delete-path intent while dirty: intercepted, dialog open, tab intact.
+  tab.dispatchEvent({ type: 'keydown', key: 'Delete', bubbles: true, cancelable: true });
+  const guard = byTestid(editor, 'editor-close-guard');
+  assert.equal(guard.hidden, false, 'the close guard dialog opens');
+  assert.equal(guard.textContent.includes('a composed source edit'), true, 'the guard names the pending change class');
+  byTestid(editor, 'editor-close-guard-cancel').click();
+  await settle();
+  assert.equal(guard.hidden, true, 'keep editing closes the guard');
+  assert.equal(editor.getState().dirty, true, 'cancel keeps the drafts (cancel_resume)');
+  assert.equal(byTestid(editor, 'edit-text').value, 'unsaved work in progress');
+  // Click-path intent while dirty: also intercepted.
+  tab.dispatchEvent({ type: 'click', bubbles: true, cancelable: true });
+  assert.equal(guard.hidden, false, 'the close click is guarded too');
+  byTestid(editor, 'editor-close-guard-confirm').click();
+  await settle();
+  assert.equal(guard.hidden, true);
+  assert.equal(editor.getState().dirty, false, 'discard spends the drafts locally');
+  assert.equal(byTestid(editor, 'edit-text').value, '');
+  // After discard the same close intent passes through un-guarded.
+  let reached = false;
+  close.addEventListener('click', () => { reached = true; });
+  close.dispatchEvent({ type: 'click', bubbles: true, cancelable: true });
+  assert.equal(reached, true, 'a clean editor never blocks tab close');
+  tablist.remove(); panel.remove();
+});
+
+test('baseline comparison and amendment impact open as dock panels from toolbar actions and Escape closes them', async () => {
+  const project = setupProject('docks');
+  const detach = (await import('../ui/components.mjs')).installFocusSystem({ root: document });
+  try {
+    const { editor } = await mountEditor(project.root);
+    const baselineDock = byTestid(editor, 'baseline-dock');
+    const impactDock = byTestid(editor, 'impact-dock');
+    assert.equal(baselineDock.hidden, true, 'docks start closed');
+    const baselineTrigger = byTestid(editor, 'baseline-dock-trigger');
+    baselineTrigger.click();
+    assert.equal(baselineDock.hidden, false, 'the toolbar action opens the comparison dock');
+    assert.equal(baselineTrigger.getAttribute('aria-pressed'), 'true');
+    assert.equal(byTestid(editor, 'baseline-comparison').textContent.includes('Recorded in the baseline'), true,
+      'the comparison table opposes the record and the original');
+    byTestid(editor, 'impact-dock-trigger').click();
+    assert.equal(impactDock.hidden, false, 'the impact dock opens independently');
+    assert.equal(impactDock.contains(byTestid(editor, 'amend-text')), true, 'the amendment composer lives in the impact dock');
+    assert.equal(baselineDock.contains(byTestid(editor, 'item-select')), true, 'the comparison owns the item selector');
+    document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(impactDock.hidden, true, 'Escape closes the topmost dock through the T11 overlay stack');
+    assert.equal(byTestid(editor, 'impact-dock-trigger').getAttribute('aria-pressed'), 'false');
+    document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(baselineDock.hidden, true);
+  } finally {
+    detach.detach();
+  }
+});
+
+test('validation errors render inline next to their field with the required wiring', async () => {
+  const project = setupProject('inline-validation');
+  const { editor, sentCommands } = await mountEditor(project.root);
+  setSelect(editor, 'edit-kind', 'set_task_text');
+  setInput(editor, 'edit-task-index', 'x');
+  setInput(editor, 'edit-text', 'an edit without its authority');
+  setInput(editor, 'edit-authority', '');
+  await settled(editor);
+  byTestid(editor, 'edit-preview-button').click();
+  await settled(editor);
+  const authorityField = closestField(byTestid(editor, 'edit-authority'));
+  const authorityError = authorityField.querySelector('[data-testid="field-error"]');
+  assert.ok(authorityError, 'the authority field carries an inline error (FO-2)');
+  assert.equal(authorityError.textContent.includes('Authority reference is required'), true);
+  assert.equal(authorityField.getAttribute('data-invalid'), 'true');
+  assert.equal(byTestid(editor, 'edit-authority').getAttribute('aria-invalid'), 'true');
+  assert.ok(byTestid(editor, 'edit-authority').getAttribute('aria-describedby').includes(authorityError.id));
+  const indexField = closestField(byTestid(editor, 'edit-task-index'));
+  assert.equal(indexField.querySelector('[data-testid="field-error"]').textContent.includes('whole number'), true,
+    'the index error names the field problem');
+  assert.equal(sentCommands.filter(command => command.operation !== 'source.map').length, 0, 'nothing was sent');
+  // Typing clears the stale error; a valid preview composes.
+  setInput(editor, 'edit-task-index', '0');
+  await settle();
+  assert.equal(indexField.querySelector('[data-testid="field-error"]'), null, 'the error clears on input');
+});
+
+test('polling update keeps the tab dirty marker alive with the drafts (stale_state)', async () => {
+  const project = setupProject('polling-dirty');
+  const { editor } = await mountEditor(project.root);
+  setInput(editor, 'edit-text', 'draft surviving a poll');
+  setInput(editor, 'edit-authority', 'user:ui-instruction');
+  await settle();
+  assert.equal(editor.getState().dirty, true);
+  run(project.root, 'cmd:poll-dirty', 'artifact.register',
+    { id: 'artifact:poll-dirty', type: 'design_note', producer: 'external', path: '.omo/plans/delivery.md', sha256: sha256(PLAN) });
+  editor.update(invoke(project.root, 'read').json);
+  await settled(editor);
+  const state = editor.getState();
+  assert.equal(state.dirty, true, 'the dirty flag survives the poll with the drafts');
+  assert.equal(byTestid(editor, 'edit-text').value, 'draft surviving a poll');
+  assert.equal(byTestid(editor, 'edit-authority').value, 'user:ui-instruction');
+  assert.equal(editor.element.dataset.dirty, 'true');
+});
+
+test('the compose form labels every field programmatically and hides irrelevant value fields per kind', async () => {
+  const project = setupProject('form-labels');
+  const { editor } = await mountEditor(project.root);
+  const fields = [...editor.element.querySelectorAll('.editor-pane[data-mode="source"] .lb-field')];
+  assert.ok(fields.length >= 8, 'the compose form renders its fields through formField');
+  for (const field of fields) {
+    const control = field.querySelector('input, select, textarea');
+    assert.ok(control, 'every field wraps a platform control (FO-4)');
+    assert.ok(field.querySelector('.lb-field-label'), `the field for ${control.dataset.testid ?? control.name} carries a label (FO-1)`);
+  }
+  assert.equal(byTestid(editor, 'edit-authority').required, true, 'authority is marked required');
+  setSelect(editor, 'edit-kind', 'rename_heading');
+  await settle();
+  assert.equal(closestField(byTestid(editor, 'edit-text')).hidden, true, 'irrelevant value fields recede');
+  assert.equal(closestField(byTestid(editor, 'edit-title')).hidden, false);
+});
+
+test('editor CSS holds the token discipline: type, spacing, radius, color, motion, numerals', () => {
+  const css = fs.readFileSync(new URL('../ui/editor.css', import.meta.url), 'utf8');
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '').split('}').map(rule => rule.slice(rule.indexOf('{') + 1)).join('\n');
+  // TY-3 / TY-7: every font-size and font-weight resolves to a type/weight token.
+  for (const match of rules.matchAll(/font-size:\s*([^;]+);/g)) assert.match(match[1], /^var\(--type-/, `font-size ${match[1]}`);
+  for (const match of rules.matchAll(/font-weight:\s*([^;]+);/g)) assert.match(match[1], /^var\(--weight-/, `font-weight ${match[1]}`);
+  // SP-1: no raw spacing literals survive except the zero resets.
+  for (const match of rules.matchAll(/(?:^|;)\s*(?:padding|margin|gap|row-gap|column-gap)[^:]*:\s*([^;]+);/g)) {
+    assert.match(match[1], /^(0|calc\(|min\(|var\(--(?:space|density|control|measure|inspector|card-min|icon|lb-card-pad))/, `spacing ${match[1]}`);
+  }
+  // SP-4 / CL-1 / NF-4: radii and colors resolve to tokens; the only font stack is --mono.
+  for (const match of rules.matchAll(/border-radius:\s*([^;]+);/g)) assert.match(match[1], /^var\(--radius-/, `radius ${match[1]}`);
+  assert.equal(/#[0-9a-fA-F]{3,8}\b|rgb\(|hsl\(/.test(rules), false, 'no color literals (CL-1)');
+  for (const match of rules.matchAll(/font-family:\s*([^;]+);/g)) assert.equal(match[1].trim(), 'var(--mono)', 'mono for identifiers/code only (NF-4)');
+  assert.equal(css.includes('--product-accent'), false, 'the editors chrome consumes no product accent (CL-5)');
+  // TY-4: revisions, counts and digest fragments render with the numeric variant.
+  assert.match(css, /\.editor-facts dd, \.editor-patch, \.editor-diff-line[^}]*font-variant-numeric:\s*var\(--numeric\)/s);
+  // MO-1..3: no animation of its own; motion collapses under reduced motion.
+  assert.equal(/@keyframes|animation:|infinite/.test(rules), false, 'no decorative or looping motion (MO-2)');
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[^@]*transition: none/s);
 });
 
 test('markdown parsing and invalidation prediction are pure and match the editing grammar', () => {
