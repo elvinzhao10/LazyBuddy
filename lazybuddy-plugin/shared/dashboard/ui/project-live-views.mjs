@@ -119,14 +119,9 @@ function createPlansView(project, { adapter, onOpenRun }) {
     const retainedDocument = documentView?.element ?? null;
     detail.replaceChildren();
     if (!plan) { detail.append(emptyState('Plan unavailable', 'The selected plan is no longer present in the latest project revision.')); return; }
-    const breadcrumb = element('div', 'cluster plan-breadcrumb');
-    const back = button('Back to plans', () => {
-      sidebar.scrollIntoView?.({ block: 'start' }); sidebar.querySelector(`[data-plan-id="${CSS.escape(plan.id)}"]`)?.focus();
-    });
-    back.dataset.action = 'back-to-plans';
-    breadcrumb.append(back, element('span', 'meta', `Plans / ${plan.id}`));
+    // The tab strip carries the location now (T12b); no in-view breadcrumb.
     const head = element('header', 'stack');
-    head.append(breadcrumb, element('h2', '', plan.title ?? plan.id), element('p', 'meta',
+    head.append(element('h2', '', plan.title ?? plan.id), element('p', 'meta',
       `${plan.declared_lifecycle} · source ${plan.source_freshness} · plan revision ${plan.revision}`));
     const runBar = element('div', 'cluster');
     for (const run of plan.native_runs ?? []) {
@@ -221,13 +216,14 @@ function createExecutionDestination(project, { runElement, runId, runSnapshot: i
     root.replaceChildren();
     const head = element('header', 'stack');
     if (selection) {
-      const breadcrumb = element('div', 'cluster plan-breadcrumb');
+      // The tab strip carries the location; the back control performs the
+      // navigation back to the plan's own tab.
       const back = button('Back to plan', () => onBackPlan?.(selection.planId)); back.dataset.action = 'back-to-plan';
-      breadcrumb.append(back, element('span', 'meta', `Plans / ${selection.planId} / run ${selection.runId}`));
-      head.append(breadcrumb);
+      head.append(back);
     }
     head.append(element('h2', '', 'Execution'), element('p', 'meta', selection
-      ? `Native run ${selection.runId}` : `Authenticated run dashboard · ${runId ?? 'no run binding'}`));
+      ? `Native run ${selection.runId}`
+      : `Authenticated run dashboard · ${runId ?? 'no run binding'}`));
     let controls = null;
     if (runElement && runId && (!selection || selection.runId === runId)) {
       controls = element('details', 'panel stack execution-run-controls');
@@ -388,11 +384,17 @@ function createResearchView(project, { adapter, onOpenEvidence }) {
 }
 
 export function createLiveProjectViews({ project, adapter, runElement = null, runId = null, runSnapshot = null,
-  onDestinationRequest = null }) {
+  onDestinationRequest = null, onOpenItem = null, onOpenPlan = null }) {
   const projectView = createProjectView(project, { adapter });
   let plans;
-  const execution = createExecutionDestination(project, { runElement, runId, runSnapshot, onBackPlan(planId) {
+  // A plan opens as its own closable tab when the shell provides the item
+  // route; without one (unit composition) the plans destination selects.
+  const openPlanTab = planId => {
+    if (onOpenPlan) { onOpenPlan(planId); return; }
     plans?.open(planId); onDestinationRequest?.('plans');
+  };
+  const execution = createExecutionDestination(project, { runElement, runId, runSnapshot, onBackPlan(planId) {
+    openPlanTab(planId);
   } });
   plans = createPlansView(project, { adapter, onOpenRun(selection) {
     execution.openRun(selection); onDestinationRequest?.('execution');
@@ -403,15 +405,27 @@ export function createLiveProjectViews({ project, adapter, runElement = null, ru
     loadPage: scopePage, loadPreview: entry => adapter.previewArtifact(entry.id) }) });
   git.update(project); evidence.update(project);
   const research = createResearchView(project, { adapter, async onOpenEvidence(path) {
+    // Opening a retained artifact from research opens a closable evidence
+    // tab focused on that artifact when the shell routes items; the
+    // destination-level fallback keeps the pre-tab behavior.
+    if (onOpenItem) {
+      onOpenItem({ tabId: `evidence:${path}`, title: `Evidence · ${path}`, content: evidence.element,
+        enter: async () => {
+          const view = await evidence.activate();
+          const entry = view?.getFixture().entries.find(candidate => candidate.path === path);
+          if (entry) { await view.select(entry.id); view.focusRow(entry.id); }
+        } });
+      return;
+    }
     onDestinationRequest?.('evidence');
     const view = await evidence.activate();
     const entry = view?.getFixture().entries.find(candidate => candidate.path === path);
     if (entry) { await view.select(entry.id); view.focusRow(entry.id); }
   } });
   const views = { project: projectView, plans, execution, git, evidence, research };
-  return { views, openPlan(planId) { plans.open(planId); onDestinationRequest?.('plans'); }, updateRun(next) {
+  return { views, openPlan(planId) { openPlanTab(planId); }, updateRun(next) {
     execution.updateRun(next);
   }, update(next) {
-    for (const view of Object.values(views)) view.update?.(next);
+    for (const view of Object.values(views)) view?.update?.(next);
   } };
 }

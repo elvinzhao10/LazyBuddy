@@ -63,7 +63,9 @@ test('live shell enables every layer, renders the registered long document, and 
     detail: async () => { throw new Error('not loaded in this scenario'); } };
   let shell;
   const live = createLiveProjectViews({ project, adapter, runElement, runId: 'run-live', runSnapshot,
-    onDestinationRequest: destination => shell.selectDestination(destination) });
+    onDestinationRequest: destination => shell.selectDestination(destination),
+    onOpenItem: item => shell.openItem(item),
+    onOpenPlan: planId => shell.openPlan(planId) });
   shell = createProjectShell({ projectionProvider: () => overviewBundle(project), views: live.views });
   await tick();
   const destinations = [...shell.element.querySelectorAll('[data-destination]')];
@@ -75,7 +77,7 @@ test('live shell enables every layer, renders the registered long document, and 
   shell.selectDestination('plans'); await tick();
   assert.ok(shell.element.querySelector('[data-testid="document-view"]'));
   assert.ok(shell.element.textContent.includes('Keep the authored checklist read-only'));
-  assert.ok(shell.element.querySelector('[data-action="back-to-plans"]'), 'narrow layout retains a visible way back');
+  assert.ok(shell.getStats().tabs.includes('plans'), 'the plans destination owns a tab; the strip is the way back (no in-view breadcrumb)');
   assert.ok(shell.element.querySelector('[data-action="jump-to-plan-section"]'), 'the source anchor exposes an exact section jump');
   const documentElement = shell.element.querySelector('[data-testid="document-view"]');
   documentElement.querySelector('[data-document-mode="source"]').click();
@@ -103,7 +105,7 @@ test('live shell enables every layer, renders the registered long document, and 
   assert.equal(shell.element.querySelector('[data-testid="execution-view"]').dataset.level, 'batch');
   const back = shell.element.querySelector('[data-action="back-to-plan"]'); assert.ok(back); back.click(); await tick();
   assert.equal(shell.getStats().activeDestination, 'plans');
-  assert.ok(shell.element.textContent.includes('Plans / plan:live'), 'the execution breadcrumb returns to the same selected plan');
+  assert.ok(shell.getStats().tabs.includes('plan:plan:live'), 'returning from a run reopens the plan as its own closable tab');
 
   shell.selectDestination('research');
   assert.ok(shell.element.textContent.includes('The registered source remains readable from its native identity.'));
@@ -119,6 +121,8 @@ test('live shell enables every layer, renders the registered long document, and 
   assert.ok(shell.element.querySelector('[data-evidence-path="research/live.md"]'), 'retained source links to the Evidence destination');
 
   destinations[0].focus();
-  document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowRight', bubbles: true, cancelable: true });
-  assert.equal(document.activeElement.dataset.destination, 'project', 'keyboard traversal follows the layered navigation');
+  document.dispatchEvent({ type: 'keydown', key: '2', code: 'Digit2', metaKey: true, cancelable: true });
+  assert.equal(shell.getStats().activeDestination, 'project', 'Cmd/Ctrl+2 reaches the second destination from anywhere in the shell');
+  assert.equal(shell.element.querySelector('.lb-sidebar-destination[aria-current="page"]').dataset.destination, 'project',
+    'the sidebar current state follows the shortcut navigation');
 });

@@ -68,12 +68,14 @@ async function refreshProject({ force = false } = {}) {
       if (project) {
         projectViews = createLiveProjectViews({ project, adapter: projectAdapter, runElement: runDashboard,
           runId: envelope?.snapshot?.run_id ?? null, runSnapshot: envelope?.snapshot ?? null,
-          onDestinationRequest: destination => projectShell?.selectDestination(destination) });
+          onDestinationRequest: destination => projectShell?.selectDestination(destination),
+          onOpenItem: item => projectShell?.openItem(item),
+          onOpenPlan: planId => projectShell?.openPlan(planId) });
       }
       projectShell = createProjectShell({ projectionProvider: () => projectAdapter.bundle(), product: { name: project?.runtime ?? 'LazySeries' },
         views: projectViews?.views ?? {}, callbacks: { onPlanDrill({ nodeId, drill }) {
           const planId = project?.plans.some(plan => plan.id === nodeId) ? nodeId : drill;
-          if (planId) projectViews?.openPlan(planId);
+          if (planId) projectShell.openPlan(planId);
         } } });
       projectRoot.replaceChildren(projectShell.element);
     } else if (project) {

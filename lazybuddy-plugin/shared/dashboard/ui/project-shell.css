@@ -1,8 +1,10 @@
 @import './overview.css';
 
-/* T14 project shell — the project name leads, the selected product is a compact
-   identity badge, destinations render only after initialization (IO-2). Tokens
-   only; no animation, shared var(--fast) transitions only. */
+/* T12b project shell — the sidebar + tab app frame over the T12 component
+   library. The project name leads the shell header, the product is a compact
+   identity badge, destinations render only after initialization (IO-2), and
+   the inspector/contributing-records live in the right dock. Tokens only; no
+   animation, shared var(--fast) transitions only. */
 
 .project-shell { display: grid; gap: var(--s4); }
 .project-shell[data-live='true'] { gap: var(--s2); margin-block-start: 0; }
@@ -14,18 +16,24 @@
 .shell-product-badge [data-identity='product'] { color: var(--neutral-ink); background: color-mix(in srgb,var(--verified-fill) 55%,var(--surface)); }
 .shell-context { flex-wrap: wrap; margin: 0; }
 
-.shell-destinations { flex-wrap: wrap; gap: var(--s2); }
-.shell-destinations [data-destination] { border-radius: var(--radius-pill); }
-.shell-destinations [data-destination][data-state='live'][aria-pressed='true'] { background: var(--selected); }
-.shell-destination-reason { font-size: var(--caption); align-self: center; }
+/* App frame: the sidebar rail sticks while the tabbed workspace scrolls. */
+.project-shell .lb-shell { align-items: start; }
+.project-shell .lb-sidebar { position: sticky; inset-block-start: 0; align-self: stretch; max-block-size: 100dvh; }
+.project-shell .lb-shell-main { block-size: 100%; }
+.project-shell .lb-shell-main > .shell-head { margin-block-end: 0; }
+.project-shell .lb-tabpanels { display: grid; gap: var(--s4); align-content: start; margin-block-start: var(--s4); }
 
-.shell-content { display: grid; gap: var(--s4); }
+/* The docked regions lose their floating-card chrome inside the dock. */
+.project-shell .lb-dock .spike-inspector,
+.project-shell .lb-dock .overview-records { border: none; padding: 0; background: transparent; box-shadow: none; }
+.shell-dock-section + .shell-dock-section { border-block-start: var(--line) solid var(--border); padding-block-start: var(--s3); }
+.shell-dock-section:empty { display: none; }
+
 .plan-browser { display: grid; grid-template-columns: minmax(min(18rem, 100%), .7fr) minmax(0, 2fr); gap: var(--s4); align-items: start; }
 .plan-index { position: sticky; inset-block-start: var(--s4); max-block-size: calc(100dvh - var(--s8)); overflow: auto; }
 .plan-index button { display: grid; inline-size: 100%; text-align: start; gap: var(--s1); }
 .plan-index button[aria-pressed='true'] { background: var(--selected); }
 .plan-detail { min-inline-size: 0; }
-.plan-breadcrumb { border-block-end: var(--line) solid var(--border); padding-block-end: var(--s3); }
 .project-record-list { margin: 0; padding: 0; list-style: none; }
 .project-record-list li + li { border-block-start: var(--line) solid var(--border); }
 .project-record { padding-block: var(--s3); min-inline-size: 0; }
@@ -33,14 +41,11 @@
 .project-records > section { margin: 0; align-content: start; }
 .project-collection > .notice { margin-block-start: var(--s3); }
 .execution-live > header { margin-block-end: 0; }
-.project-shell[data-live='true'] .spike-inspector { display: none; }
 .project-shell[data-live='true'] .spike-sentence > .meta:last-child { display: none; }
-.project-shell[data-live='true'] .overview-view { grid-template-columns: minmax(0,1fr) minmax(18rem,22rem); align-items: start; }
 .project-shell[data-live='true'] .overview-view { gap: var(--s2); }
 .project-shell[data-live='true'] .overview-view section { margin-block-start: 0; }
 .project-shell[data-live='true'] .overview-head,.project-shell[data-live='true'] .overview-metrics,
 .project-shell[data-live='true'] .project-spike,.project-shell[data-live='true'] .overview-context { grid-column: 1; }
-.project-shell[data-live='true'] .overview-records { grid-column: 2; grid-row: 1 / span 3; position: sticky; inset-block-start: var(--s3); max-inline-size: none; box-shadow: var(--shadow); }
 .project-shell[data-live='true'] .overview-head { gap: var(--s2); }
 .project-shell[data-live='true'] .overview-sentence { gap: var(--s1); }
 .project-shell[data-live='true'] .overview-sentence h3,.project-shell[data-live='true'] .overview-metrics h3 { font-size: var(--body); }
@@ -64,9 +69,14 @@
 .project-source-details > summary { cursor: pointer; font-weight: var(--strong); }
 .project-source-details[open] > summary { margin-block-end: var(--s4); }
 
-@media (max-width: 64rem) {
-  .project-shell[data-live='true'] .overview-view { grid-template-columns: minmax(0,1fr); }
-  .project-shell[data-live='true'] .overview-records { grid-column: 1; grid-row: auto; position: static; }
+/* Narrow: the rail collapses to its icon column and the workspace stacks. */
+@media (max-width: 48rem) {
+  .project-shell .lb-shell { grid-template-columns: auto minmax(0, 1fr); }
+  .project-shell .lb-sidebar { inline-size: var(--lb-rail-icon); padding-inline: var(--s1); }
+  .project-shell .lb-sidebar .lb-sidebar-destination { justify-content: center; padding-inline: 0; }
+  .project-shell .lb-sidebar .lb-sidebar-destination-label,
+  .project-shell .lb-sidebar .lb-sidebar-identity,
+  .project-shell .lb-sidebar .lb-sidebar-footer { display: none; }
 }
 
 @media (max-width: 44rem) {
@@ -75,8 +85,6 @@
 
 @media (max-width: 44rem) {
   .project-shell[data-live='true'] .shell-head { grid-template-columns: minmax(0,1fr); }
-  .shell-destinations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .shell-destination-reason { grid-column: 1 / -1; }
   .plan-browser { grid-template-columns: minmax(0, 1fr); }
   .plan-index { position: static; max-block-size: none; overflow: visible; }
 }

@@ -349,15 +349,17 @@ test('project destinations are absent pre-init and present post-init (IO-2)', as
   assert.equal(flipping.element.querySelectorAll('[data-destination]').length, 7);
 });
 
-test('shell destination bar supports keyboard roving and preserves the selection through updates', async () => {
+test('shell destinations stay selectable (T12b) and preserve the selection through updates', async () => {
   const shell = createProjectShell({ projectionProvider: () => bundle, product: { name: 'LazyBuddy' } });
   shell.update();
   await settle();
-  const enabled = [...shell.element.querySelectorAll('[data-destination]')].filter(control => !control.disabled);
-  assert.equal(enabled.length, 1, 'only Overview is a live destination in T14');
+  const enabled = [...shell.element.querySelectorAll('[data-destination]')];
+  assert.equal(enabled.length, 7, 'all seven sidebar destinations render');
+  assert.equal(enabled.every(control => !control.disabled), true, 'no destination is disabled; missing data renders an unavailable view instead');
   enabled[0].focus();
   document.activeElement.dispatchEvent({ type: 'keydown', key: 'Enter' });
   assert.equal(shell.getStats().activeDestination, 'overview');
+  assert.ok(shell.element.querySelector('[data-testid="overview-view"]'));
   shell.update();
   await settle();
   assert.equal(shell.getStats().activeDestination, 'overview', 'polling-style update preserves the selected destination');
