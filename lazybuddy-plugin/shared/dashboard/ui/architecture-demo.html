@@ -18,14 +18,14 @@
 <body>
   <main>
     <header class="stack">
-      <div class="cluster spread"><span class="meta">LazySeries / T17 architecture lenses</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
-      <h1>Architecture — product and engineering lenses</h1>
-      <p>Current, Planned and Change views over one component identity set. Switching lens or view preserves the selected component and never changes a status.</p>
+      <div class="cluster spread"><span class="meta">LazySeries / T17 architecture lenses</span><span class="cluster" id="shell-controls"><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></span></div>
+      <h1>Architecture — Current, Planned and Change lenses</h1>
+      <p>One segmented lens control over one component identity set, inside the sidebar + tab shell; component detail opens in the dock. Switching lens, perspective or mode preserves the selected component and never changes a status.</p>
       <p class="fixture-label">Recorded projection fixture · No live run, no scheduler authority, no commands</p>
       <p id="load-status" role="status">Loading architecture fixture…</p>
     </header>
     <div id="architecture-root" class="stack"></div>
-    <footer>T17 architecture view. Intent, observation and verification stay separate; nothing here edits the project record.</footer>
+    <footer>T17 architecture view. Intent, observation and verification stay separate; authored and inferred relationships stay distinct; nothing here edits the project record.</footer>
   </main>
 </body>
 </html>
