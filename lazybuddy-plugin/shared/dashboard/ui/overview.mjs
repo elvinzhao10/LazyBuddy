@@ -86,6 +86,14 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     onViewportChange: event => callbacks.onMapViewportChange?.(event),
   } });
 
+  // T22 perf budget: the clipped notes this view appends to the body are
+  // tracked so the view can take them with it — a polling refresh that swaps
+  // the overview must not leave the previous render's notes behind (they
+  // would otherwise accumulate on every tick for the life of the page).
+  const ownedNotes = [];
+  let recordsNote = null;
+  const ownNote = (subject, text) => { const created = explain(subject, text); if (created) ownedNotes.push(created); return created; };
+
   const root = element('section', 'overview-view stack');
   root.dataset.testid = 'overview-view';
   root.dataset.docId = fixture.docId;
@@ -126,7 +134,10 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     recordsPanel.append(heading);
     // The read-only caveat and the caller note are methodology meta — they
     // supplement through a tooltip, never as a wall of text under the list.
-    explain(heading, `${title ?? id} · read-only projection; the records below are the sources of this value.${note ? ` ${note}` : ''}`);
+    // Repeated opens reuse ONE note (the previous one is retired), so a long
+    // session of record browsing cannot accumulate body nodes either.
+    recordsNote?.remove();
+    recordsNote = ownNote(heading, `${title ?? id} · read-only projection; the records below are the sources of this value.${note ? ` ${note}` : ''}`);
     const list = element('ul', 'overview-record-list');
     if (!records.length) {
       const empty = element('li', 'overview-record overview-record-empty');
@@ -146,12 +157,12 @@ export function createOverviewView({ bundle, callbacks = {} }) {
         control.dataset.route = route.label;
         control.setAttribute('aria-label', `${route.label} — ${record}`);
         control.append(element('code', 'overview-record-id', record), element('span', 'meta overview-record-route', route.label));
-        explain(control, route.note);
+        ownNote(control, route.note);
         item.append(control);
       } else {
         const code = element('code', 'overview-record-id', record);
         const unavailable = statusChip({ state: 'unavailable', label: 'No open route' });
-        explain(unavailable, 'No source anchor or report tab is projected for this record id in this bundle; it stays listed for traceability only.');
+        ownNote(unavailable, 'No source anchor or report tab is projected for this record id in this bundle; it stays listed for traceability only.');
         item.append(code, unavailable);
       }
       list.append(item);
@@ -173,7 +184,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
       note.dataset.clauseId = clause.id;
       note.dataset.unavailable = 'true';
       note.append(statusChip({ state: 'unavailable', label: clause.text }));
-      explain(note, 'This input is not projected in the current bundle; the clause stays explicit rather than reading as a healthy zero.');
+      ownNote(note, 'This input is not projected in the current bundle; the clause stays explicit rather than reading as a healthy zero.');
       return note;
     }
     const control = button('', () => openClause(clause));
@@ -193,7 +204,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     const title = element('h2', 'lb-card-title overview-hero-title', fixture.title);
     // The project statement is a summary, not a primary statement — the
     // status sentence owns the second look, the statement rides its tooltip.
-    explain(title, [fixture.statement.text, fixture.statement.coverage].filter(Boolean).join(' '));
+    ownNote(title, [fixture.statement.text, fixture.statement.coverage].filter(Boolean).join(' '));
     head.append(title);
     const identity = element('p', 'meta cluster overview-hero-identity');
     identity.dataset.testid = 'overview-identity';
@@ -206,7 +217,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
 
     const statusSection = element('section', 'overview-hero-status stack');
     const statusHeading = element('h3', '', 'Status');
-    explain(statusHeading, 'Coverage and freshness qualify the summary; absence of a finding does not prove project health.');
+    ownNote(statusHeading, 'Coverage and freshness qualify the summary; absence of a finding does not prove project health.');
     const line = element('p', 'overview-sentence-line');
     line.dataset.testid = 'overview-status-sentence';
     line.setAttribute('aria-label', fixture.statusSentence.text);
@@ -221,7 +232,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     const attention = element('section', 'overview-attention stack');
     attention.dataset.testid = 'overview-queue';
     const heading = element('h2', '', 'Attention');
-    explain(heading, 'Pending proposals, open reconciliations, stale baseline references and blocked readiness gate execution; items resolve only through the shared authority, never in this view.');
+    ownNote(heading, 'Pending proposals, open reconciliations, stale baseline references and blocked readiness gate execution; items resolve only through the shared authority, never in this view.');
     attention.append(heading);
     if (!fixture.attentionQueue.length) {
       attention.append(emptyState({ icon: 'inbox', title: 'Nothing needs attention',
@@ -256,7 +267,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     const metrics = element('section', 'overview-metrics stack');
     metrics.dataset.testid = 'overview-metrics';
     const heading = element('h2', '', 'Metrics');
-    explain(heading, 'Every total opens its contributing records in the dock; unprojected inputs read as unavailable, never as zero.');
+    ownNote(heading, 'Every total opens its contributing records in the dock; unprojected inputs read as unavailable, never as zero.');
     metrics.append(heading);
     const row = element('div', 'overview-tiles');
     row.setAttribute('role', 'toolbar');
@@ -271,7 +282,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
         tile = element('div', 'lb-metric overview-tile');
         tile.dataset.unavailable = 'true';
         const unavailableChip = statusChip({ state: 'unavailable', label: 'not projected' });
-        explain(unavailableChip, metric.coverage ?? 'This input is not projected in the current bundle; it never reads as zero.');
+        ownNote(unavailableChip, metric.coverage ?? 'This input is not projected in the current bundle; it never reads as zero.');
         tile.append(figure, unavailableChip);
       } else {
         tile = button('', () => openRecords({ id: metric.id, title: metric.label, note: metric.coverage, records: metric.records }));
@@ -303,14 +314,14 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     const mapSection = element('section', 'overview-map stack');
     mapSection.dataset.testid = 'overview-map';
     const heading = element('h2', '', 'Macro map');
-    explain(heading, 'Durable feature areas, plans, inter-plan dependencies and attention. Graph cards render at their default zoom; the list equivalent carries the same content.');
+    ownNote(heading, 'Durable feature areas, plans, inter-plan dependencies and attention. Graph cards render at their default zoom; the list equivalent carries the same content.');
     mapSection.append(heading, spike.element);
     root.append(mapSection);
   })();
 
   recordsPanel.append(element('h3', '', 'Contributing records'));
   const hint = element('p', 'meta overview-records-hint', 'Select a metric, clause or attention item to list the records behind it.');
-  explain(hint, 'Record ids that resolve to a plan or a gate check open it; ids without a route in this bundle list the honest unavailable action.');
+  ownNote(hint, 'Record ids that resolve to a plan or a gate check open it; ids without a route in this bundle list the honest unavailable action.');
   recordsPanel.append(hint);
   root.append(recordsPanel);
 
@@ -324,6 +335,10 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     fitViewport: () => spike.fitViewport(),
     applyMapUpdate: nextMapFixture => spike.applyUpdate(nextMapFixture),
     openRecords,
+    // T22: retires this render's clipped notes when the view is dropped (the
+    // shell calls it on every polling swap); additive — callers that ignore
+    // it keep the previous behavior minus the leak.
+    dispose() { for (const note of ownedNotes) note.remove?.(); ownedNotes.length = 0; recordsNote = null; },
     getStats() {
       return {
         docId: fixture.docId,

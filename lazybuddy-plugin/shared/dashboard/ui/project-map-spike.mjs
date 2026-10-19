@@ -3,7 +3,7 @@
 // Layout replies are tagged with a view revision; stale replies are discarded, never displayed.
 import { button, element, statusChip } from './components.mjs';
 import { createGraphViewportController } from './graph-viewport.mjs';
-import { listModel, measureNodeCard, presentationModel, layoutProjectGraph, SpikePresentationError } from './project-presentation.mjs';
+import { CARD, listModel, measureNodeCard, presentationModel, layoutProjectGraph, SpikePresentationError } from './project-presentation.mjs';
 
 const defaultScheduler = model => layoutProjectGraph(model);
 const LEVEL_NAMES = { project: 'Project', plan: 'Plan', batch: 'Batch', attempt: 'Attempt' };
@@ -314,8 +314,65 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     const node = nodeById(nodeId);
     if (!node) return;
     node.title = title.trim();
-    requestLayout();
+    // T22 perf budget: a title edit changes only this node's measured card
+    // extent — layering (dependency edges) and the node set are untouched —
+    // so the rename applies incrementally over the applied layout instead of
+    // scheduling a full engine re-layout. Any state without a clean applied
+    // layout to build on (pending reply, layout error, collapsed group
+    // hiding the node) falls back to the full relayout path.
+    if (!applyRenameIncrementally(nodeId)) requestLayout();
     callbacks.onRename?.({ nodeId, title: node.title });
+  }
+
+  // Incremental title edit: remeasure ONE card, re-place the columns (heights
+  // cascade), rebuild the edge endpoints and the canvas extent. Deterministic
+  // twin of layoutProjectGraph's placement pass over the same model — the
+  // result must equal a full relayout of the edited fixture byte for byte.
+  function applyRenameIncrementally(nodeId) {
+    if (!appliedLayout || !appliedModel || layoutError || pendingCount > 0) return false;
+    const modelNode = appliedModel.byId.get(nodeId);
+    if (!modelNode) return false;
+    const source = nodeById(nodeId);
+    modelNode.title = source.title;
+    const started = performance.now();
+    const measures = new Map(appliedLayout.measures.map(measure => [measure.id, measure]));
+    const remeasured = measureNodeCard(modelNode);
+    measures.set(nodeId, { id: nodeId, ...remeasured });
+    const columns = [];
+    for (const placed of appliedLayout.nodes) {
+      if (!columns[placed.layer]) columns[placed.layer] = [];
+      columns[placed.layer].push(placed.id);
+    }
+    const placed = new Map();
+    let x = CARD.canvasPadding;
+    for (const column of columns) {
+      let y = CARD.canvasPadding;
+      for (const id of column) {
+        const measure = measures.get(id);
+        const previous = appliedLayout.nodes.find(node => node.id === id);
+        placed.set(id, { id, x, y, width: measure.width, height: measure.height, layer: previous.layer });
+        y += measure.height + CARD.gap.row;
+      }
+      x += CARD.width + CARD.gap.column;
+    }
+    for (const edge of appliedLayout.edges) {
+      const from = placed.get(edge.from);
+      const to = placed.get(edge.to);
+      edge.x1 = from.x + from.width; edge.y1 = from.y + from.height / 2;
+      edge.x2 = to.x; edge.y2 = to.y + to.height / 2;
+    }
+    appliedLayout.nodes = [...placed.values()].sort((left, right) => left.id.localeCompare(right.id));
+    appliedLayout.measures = [...measures.entries()].map(([id, measure]) => ({ ...measure }));
+    appliedLayout.width = Math.max(480, ...[...placed.values()].map(node => node.x + node.width + CARD.canvasPadding));
+    appliedLayout.height = Math.max(260, ...[...placed.values()].map(node => node.y + node.height + CARD.canvasPadding));
+    viewRevision += 1; // any in-flight full reply is now stale and discards
+    appliedRevision = viewRevision;
+    lastApplyMs = performance.now() - started;
+    renderGraph();
+    renderList();
+    updateStatus();
+    callbacks.onLayoutApplied?.({ revision: appliedRevision, nodeCount: appliedLayout.nodes.length, ms: lastApplyMs });
+    return true;
   }
 
   function setMode(nextMode) {

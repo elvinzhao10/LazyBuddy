@@ -504,10 +504,12 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     // new projection arrives; only the data changes, never the user's place —
     // and never the location, the back stack or the dock.
     const previous = overview?.getStats() ?? null;
+    const superseded = overview;
     const next = createOverview(bundle);
     adoptDockRegions(next);
     if (location?.destination === 'overview' && !location.item) contentRegion.replaceChildren(next.element);
     overview = next;
+    superseded?.dispose?.(); // T22: the swapped-out render takes its clipped notes with it
     renderPageHead(); // the context line carries the fresh projection identity
     syncSidebarCounts(); // count badges follow the fresh projection, never stale
     if (previous?.map?.mode) overview.setMode(previous.map.mode);
@@ -518,6 +520,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     const next = projectionProvider();
     if (next == null) {
       bundle = null;
+      overview?.dispose?.(); // T22: the dropped overview retires its clipped notes
       overview = null;
       teardownFrame();
       renderUninitialized();
