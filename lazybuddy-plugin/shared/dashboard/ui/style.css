@@ -16,7 +16,7 @@ button:active:enabled { opacity: var(--pressed-opacity); }
 button:disabled { cursor: not-allowed; color: var(--muted); background: var(--neutral-fill); }
 button.primary { background: var(--text); color: var(--surface); }
 button.primary:hover:enabled { background: var(--primary-hover); }
-:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 input,textarea { inline-size: 100%; min-inline-size: 0; }
 select { min-inline-size: 0; }
 textarea { resize: vertical; }
@@ -70,4 +70,40 @@ footer { margin-block: var(--s7); color: var(--muted); }
   main { padding: var(--s4); }
   .panel { padding: var(--s4); }
   dialog { margin: 0; inline-size: 100%; max-inline-size: 100%; block-size: 100dvh; max-block-size: 100dvh; border-radius: 0; padding: max(var(--s4),env(safe-area-inset-top)) var(--s4) max(var(--s4),env(safe-area-inset-bottom)); }
+}
+
+/* ======================================================================
+   T11 native platform experience layer (see components.mjs header).
+   Every value below comes from tokens.css v2 — no literals. Hit areas
+   use the density control tokens (44px regular / 32px compact-table);
+   motion durations reference --motion-* so prefers-reduced-motion
+   collapses them, and the trailing media block disables the remaining
+   non-essential transitions outright. */
+
+:root { --density-gutter: var(--density-regular); }
+:root[data-density='compact'] { --density-gutter: var(--density-compact); }
+
+/* Segmented controls: inset track, one raised current segment (the v1
+   .view-switcher rules in views.css keep the current fill). Segments are
+   primary controls: 44px block and inline hit areas via tokens. */
+.view-switcher { display: inline-flex; align-items: stretch; gap: var(--space-half); padding: var(--space-half); background: var(--inset); border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); }
+.view-switcher button { min-block-size: var(--density-control); min-inline-size: var(--density-control); padding-inline: var(--space-2); background: transparent; border-color: transparent; transition: background-color var(--motion-instant) var(--motion-ease), box-shadow var(--motion-instant) var(--motion-ease); }
+.view-switcher button[aria-pressed='true'] { background: var(--surface); border-color: var(--border); box-shadow: var(--elevation-1); }
+/* the focused current segment keeps BOTH its raised state and the keyboard ring */
+.view-switcher button[aria-pressed='true']:focus-visible { box-shadow: var(--elevation-1), var(--focus-ring); }
+
+/* Overlay panels: elevated transient surfaces (elevation ladder), eased
+   entrance through the motion tokens. */
+.native-overlay { position: fixed; inset-block-end: var(--space-4); inset-inline-end: var(--space-4); z-index: 60; display: grid; gap: var(--density-gutter); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-6))); max-block-size: calc(100dvh - var(--space-6)); overflow-y: auto; overscroll-behavior: contain; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-3); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+.native-overlay[hidden] { display: none; }
+
+/* Clipped description notes (aria-describedby targets) and the dedicated
+   polite announcer for layer messages. Never visually rendered. */
+.native-note, .native-announcer { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Reduced motion: the token layer already collapses every --motion-*
+   duration this section consumes; this block also switches off the
+   non-essential transitions wholesale so nothing animates. */
+@media (prefers-reduced-motion: reduce) {
+  button, .view-switcher button, .native-overlay { transition: none; }
 }

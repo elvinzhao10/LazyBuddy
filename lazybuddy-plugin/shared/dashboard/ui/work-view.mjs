@@ -82,6 +82,9 @@ export function createWorkView({ snapshot, callbacks = {}, context = {} }) {
     const bodyHeader = element('header', 'cluster spread');
     bodyHeader.append(element('h2', '', 'Work'));
     const switcher = element('div', 'view-switcher cluster');
+    switcher.dataset.nativeSegmented = 'true';
+    switcher.setAttribute('role', 'group');
+    switcher.setAttribute('aria-label', 'Work presentation');
     for (const value of ['graph', 'list']) {
       const control = button(titleCase(value), () => { mode = value; callbacks.onModeChange?.({ mode }); render(); });
       control.setAttribute('aria-pressed', String(mode === value)); control.dataset.mode = value; switcher.append(control);

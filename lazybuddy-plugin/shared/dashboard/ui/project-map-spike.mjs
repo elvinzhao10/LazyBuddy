@@ -475,6 +475,9 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
 
     const toolbar = element('div', 'cluster spike-toolbar');
     const modeSwitcher = element('div', 'view-switcher cluster');
+    modeSwitcher.dataset.nativeSegmented = 'true';
+    modeSwitcher.setAttribute('role', 'group');
+    modeSwitcher.setAttribute('aria-label', 'Presentation mode');
     for (const value of ['graph', 'list']) {
       const control = button(value === 'graph' ? 'Graph' : 'List', () => setMode(value));
       control.dataset.mode = value;

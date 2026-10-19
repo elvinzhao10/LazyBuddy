@@ -162,6 +162,9 @@ class MiniDocument extends MiniElement {
     this.activeElement = this.body;
     this._focusLog = [];
   }
+  // The document node doubles as the root element for attribute-level
+  // assertions (data-theme/data-density live on <html> in the browser).
+  get documentElement() { return this; }
   createElement(tag) { return new MiniElement(tag); }
   createElementNS(namespace, tag) { return new MiniElement(tag, namespace); }
   createTextNode(data) { return new MiniText(data); }

@@ -11,6 +11,9 @@
 .queue-edit-list { display: grid; gap: var(--s3); padding-inline-start: var(--s5); }
 .evidence-preview pre { max-block-size: 50dvh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .live-shell > #project-root:empty { display: none; }
+/* T11 experience layer: the density segmented control mounts beside the
+   theme select in the header cluster; keep header controls on one row. */
+.live-header .cluster .view-switcher { flex: 0 0 auto; }
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header h1 { display: none; }
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header { margin-block-end: var(--s2); gap: var(--s2); }
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header { display: flex; align-items: center; justify-content: space-between; }
