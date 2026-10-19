@@ -7,6 +7,15 @@
   <title>Dashboard component showcase</title>
   <script>
     document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    try {
+      // Deterministic capture hooks: ?theme=light|dark and ?density=compact|regular
+      // resolve before first paint (same pre-paint contract as theme-init.js).
+      const params = new URLSearchParams(location.search);
+      const theme = params.get('theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+      const density = params.get('density');
+      if (density === 'compact' || density === 'regular') document.documentElement.dataset.density = density;
+    } catch (error) { /* capture hooks are best-effort only */ }
     function showLoadFailure() {
       document.querySelector('#load-status').textContent = 'Component examples could not load. Reload this page to try again. No live run is connected.';
     }
@@ -18,19 +27,27 @@
 <body>
   <main>
     <header class="stack">
-      <div class="cluster spread"><span class="meta">LazySeries / Component library</span><label>Theme<select id="theme" disabled><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <div class="cluster spread"><span class="meta">LazySeries / Component library on tokens v2</span></div>
       <h1>Work, with evidence</h1>
-      <p>A shared vocabulary for what is happening, what needs attention, and what proves completion.</p>
+      <p>The shared component vocabulary every view composes from: what is happening, what needs attention, and what proves completion. Every section below is the acceptance gallery — switch theme and density in the app-shell sidebar and every state restyles from the same tokens.</p>
       <p class="fixture-label">Showcase examples · No live run connected</p>
       <p id="load-status" role="status">Loading component examples…</p>
       <div class="cluster"><label>Surface state<select id="surface-state" disabled><option value="ready">Ready example</option><option value="empty">Empty</option><option value="loading">Loading</option><option value="disconnected">Disconnected</option><option value="pending">Pending edit</option><option value="conflict">Conflicting edit</option><option value="unavailable">Unavailable observation</option><option value="stale">Stale evidence</option></select></label><button id="long-content" type="button" aria-pressed="false" disabled>Long content: Off</button></div>
       <div id="surface-notice" data-testid="connection-status"></div>
     </header>
     <div id="component-content" hidden>
-    <section id="statuses"><header><h2>Status vocabulary</h2><p class="meta">Text and glyphs carry meaning when color is unavailable.</p></header><div class="cluster" id="status-inventory"></div></section>
-    <section id="tasks"><header><h2>Task cards & dependencies</h2><p class="meta">Fixture branch structure shows prerequisites. Only the explicit running labels represent example activity.</p></header><div id="task-inventory" class="graph" data-testid="work-view"></div></section>
+    <section id="app-shell"><header><h2>App shell</h2><p class="meta">Sidebar rail (240px, collapsing to the 56px icon rail), open-item tabs with a pinned Home (arrow keys, Home/End, ⌘/Ctrl+1..9), and the elevation-2 inspector dock. Theme and density live in the rail footer; j/k walks destinations.</p></header><div id="shell-inventory"></div></section>
+    <section id="statuses"><header><h2>Status vocabulary</h2><p class="meta">Glyph + label + fill, and a distinct border treatment per kind — meaning survives when color does not. The unavailable chip is hollow and dashed.</p></header><div class="cluster" id="status-inventory"></div></section>
+    <section id="library-cards"><header><h2>Cards</h2><p class="meta">One density-driven padding, an optional header and footer slot, resting borders or the raised elevation step.</p></header><div class="grid" id="card-inventory"></div></section>
+    <section id="library-table"><header><h2>Data table &amp; rows</h2><p class="meta">Sticky header, hairline rules without zebra striping, tabular numerals on every count. Scroll to hold the header.</p></header><div id="table-inventory" class="stack"></div></section>
+    <section id="library-forms"><header><h2>Form controls</h2><p class="meta">Label, help and inline error slots; required fields are named; destructive actions commit with a bounded undo affordance.</p></header><div class="grid" id="form-inventory"></div></section>
+    <section id="library-nodes"><header><h2>Graph node cards</h2><p class="meta">State-driven size and border; the selected node carries the product accent as selection intent; long titles ellipsize but keep the full text in their tooltip.</p></header><div class="grid" id="node-inventory"></div></section>
+    <section id="library-timeline"><header><h2>Timeline &amp; swimlanes</h2><p class="meta">One shared axis; overlapping intervals stack into sublanes instead of painting over each other.</p></header><div id="timeline-inventory" class="panel stack"></div></section>
+    <section id="library-loading"><header><h2>Loading, empty &amp; metrics</h2><p class="meta">Static skeletons (no shimmer loop), designed empty states with an action, and metric tiles with coverage chips — unavailable renders hollow, never zero.</p></header><div class="grid" id="loading-inventory"></div></section>
+    <section id="library-overlays"><header><h2>Overlays &amp; inspector</h2><p class="meta">The side inspector panel is an elevation-2 overlay with header, content and footer; Escape closes it and focus returns here.</p></header><div class="grid" id="overlay-inventory"></div></section>
+    <section id="tasks"><header><h2>Task cards &amp; dependencies</h2><p class="meta">Fixture branch structure shows prerequisites. Only the explicit running labels represent example activity.</p></header><div id="task-inventory" class="graph" data-testid="work-view"></div></section>
     <section id="editing"><header><h2>Structured edits</h2><p class="meta">Drafts and saved examples do not dispatch work. The running attempt keeps its original revision.</p></header><div class="grid"><div id="criterion-example" class="panel stack"></div><div id="dependency-example" class="panel stack"></div></div></section>
-    <section id="planning"><header><h2>Queue & decisions</h2><p class="meta">Priority changes eligibility order, never authorization to execute.</p></header><div class="grid"><div id="queue-example" class="panel stack"></div><div id="decision-example" class="panel stack"></div></div></section>
+    <section id="planning"><header><h2>Queue &amp; decisions</h2><p class="meta">Priority changes eligibility order, never authorization to execute.</p></header><div class="grid"><div id="queue-example" class="panel stack"></div><div id="decision-example" class="panel stack"></div></div></section>
     <section id="all-states"><header><h2>Complete state inventory</h2><p class="meta">These examples remain visible together for component review.</p></header><div class="grid" id="notice-inventory"></div></section>
     <footer>Component showcase only. Native-host readiness and live execution are unobserved.</footer>
     </div>

@@ -122,6 +122,12 @@
   --product-accent: var(--accent);
   --product-accent-soft: var(--accent-soft);
   --product-accent-contrast: var(--accent-contrast);
+
+  /* -- 4c. T12 component layout aliases (ADDITIVE) ----------------------
+     Layout constants the shared component library needs and no earlier
+     token covers. Values are theme-independent; nothing above changes. */
+  --table-min-inline: 54rem;  /* wide verification/data table scroll floor */
+  --lane-label: 13rem;        /* timeline swimlane label column            */
 }
 
 /* -- 5. Dark theme ------------------------------------------------------ */
