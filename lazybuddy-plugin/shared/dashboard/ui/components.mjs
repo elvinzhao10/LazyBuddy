@@ -860,7 +860,16 @@ const destinationGlyphs = {
 
 export const SIDEBAR_DESTINATION_ICONS = Object.freeze(Object.keys(destinationGlyphs));
 
-export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', destinations = [], tree = null, footer = null, current = null, collapsed = false, onNavigate = null, onCollapse = null, testid } = {}) {
+// T20a additive extensions (the flat `destinations` contract is unchanged):
+//   groups            [{ label, destinations: [...] }] renders small section
+//                     headers (uppercase via CSS) over the same destination
+//                     rows, inside the single j/k-traversable list
+//   identityPosition  'footer' moves the product identity block into the
+//                     footer region (the shell's identity footer)
+// Collapsing to the icon rail also gives every destination a native title
+// tooltip, following the T11 clipped-note contract (visible label when
+// expanded, title + aria-label when the label is hidden).
+export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', destinations = [], groups = null, identityPosition = 'header', tree = null, footer = null, current = null, collapsed = false, onNavigate = null, onCollapse = null, testid } = {}) {
   const rail = element('aside', 'lb-sidebar');
   rail.dataset.testid = testid ?? 'sidebar-nav';
   const collapseControl = button('', null);
@@ -868,26 +877,41 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
   collapseControl.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
   collapseControl.setAttribute('aria-expanded', String(!collapsed));
   collapseControl.textContent = collapsed ? '»' : '«';
-  const identity = element('header', 'lb-sidebar-identity');
+  const identity = element(identityPosition === 'footer' ? 'div' : 'header', 'lb-sidebar-identity');
   const badge = element('span', 'lb-sidebar-product', product);
   badge.dataset.product = runtime; // the per-product accent wash, identity only
   identity.append(badge, element('span', 'lb-sidebar-runtime meta', runtime));
   const list = element('ul', 'lb-sidebar-destinations');
   list.dataset.nativeList = 'true'; // j/k traversal through the T11 focus layer
-  for (const destination of destinations) {
+  const destinationItem = destination => {
     const item = element('li', '');
     const control = button('', () => { api.navigate(destination.id); onNavigate?.(destination.id); });
     control.className = 'lb-sidebar-destination';
-        control.dataset.destination = destination.id;
+    control.dataset.destination = destination.id;
     control.setAttribute('aria-label', destination.label ?? destination.id);
     const icon = destinationGlyphs[destination.icon ?? destination.id] ?? destinationGlyphs.overview;
     control.append(svgIcon(icon));
     control.append(element('span', 'lb-sidebar-destination-label', destination.label ?? destination.id));
     if (destination.id === current) control.setAttribute('aria-current', 'page');
     item.append(control);
-    list.append(item);
+    return item;
+  };
+  if (Array.isArray(groups) && groups.length > 0) {
+    for (const group of groups) {
+      const section = element('li', 'lb-sidebar-group');
+      section.append(element('span', 'lb-sidebar-group-label', group.label ?? ''));
+      const members = element('ul', 'lb-sidebar-group-items');
+      members.setAttribute('role', 'group');
+      if (group.label) members.setAttribute('aria-label', group.label);
+      for (const destination of group.destinations ?? []) members.append(destinationItem(destination));
+      section.append(members);
+      list.append(section);
+    }
+  } else {
+    for (const destination of destinations) list.append(destinationItem(destination));
   }
-  rail.append(collapseControl, identity, list);
+  if (identityPosition === 'footer') rail.append(collapseControl, list);
+  else rail.append(collapseControl, identity, list);
   if (tree != null) {
     const treeRegion = element('nav', 'lb-sidebar-tree');
     treeRegion.setAttribute('aria-label', 'Context objects');
@@ -895,6 +919,7 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
     rail.append(treeRegion);
   }
   const footerRegion = element('footer', 'lb-sidebar-footer cluster');
+  if (identityPosition === 'footer') footerRegion.append(identity);
   if (footer != null) (Array.isArray(footer) ? footer : [footer]).forEach(node => footerRegion.append(node));
   rail.append(footerRegion);
   const api = {
@@ -911,6 +936,13 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
       collapseControl.setAttribute('aria-expanded', String(!value));
       collapseControl.setAttribute('aria-label', value ? 'Expand sidebar' : 'Collapse sidebar');
       collapseControl.textContent = value ? '»' : '«';
+      for (const control of list.querySelectorAll('.lb-sidebar-destination')) {
+        // T20a rail tooltips: the visible label disappears with the rail, so
+        // the collapsed rows carry their label as a native title (the T11
+        // describe pass never strips an existing title).
+        if (value) { if (!control.getAttribute('title')) control.setAttribute('title', control.getAttribute('aria-label')); }
+        else control.removeAttribute('title');
+      }
       if (notify) onCollapse?.(value);
       return value;
     },

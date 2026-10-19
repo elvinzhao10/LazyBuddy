@@ -77,7 +77,8 @@ test('live shell enables every layer, renders the registered long document, and 
   shell.selectDestination('plans'); await tick();
   assert.ok(shell.element.querySelector('[data-testid="document-view"]'));
   assert.ok(shell.element.textContent.includes('Keep the authored checklist read-only'));
-  assert.ok(shell.getStats().tabs.includes('plans'), 'the plans destination owns a tab; the strip is the way back (no in-view breadcrumb)');
+  assert.equal(shell.element.querySelector('.lb-tabs, [role="tablist"]'), null, 'no tab strip: the plans destination replaced the content in place');
+  assert.deepEqual(shell.getStats().location, { destination: 'plans', item: null }, 'the location names the plans destination');
   assert.ok(shell.element.querySelector('[data-action="jump-to-plan-section"]'), 'the source anchor exposes an exact section jump');
   const documentElement = shell.element.querySelector('[data-testid="document-view"]');
   documentElement.querySelector('[data-document-mode="source"]').click();
@@ -103,9 +104,10 @@ test('live shell enables every layer, renders the registered long document, and 
   assert.equal(shell.element.querySelector('.execution-run-controls').open, true, 'polling retains the original controls disclosure');
   taskExecution.querySelector('[data-crumb-level="batch"]').click();
   assert.equal(shell.element.querySelector('[data-testid="execution-view"]').dataset.level, 'batch');
-  const back = shell.element.querySelector('[data-action="back-to-plan"]'); assert.ok(back); back.click(); await tick();
-  assert.equal(shell.getStats().activeDestination, 'plans');
-  assert.ok(shell.getStats().tabs.includes('plan:plan:live'), 'returning from a run reopens the plan as its own closable tab');
+  const back = shell.element.querySelector('[data-testid="shell-back"]'); assert.ok(back); back.click(); await tick();
+  assert.equal(shell.getStats().activeDestination, 'plans', 'the page-header back affordance returns from the run to the plans location');
+  shell.openPlan('plan:live'); await tick();
+  assert.deepEqual(shell.getStats().location, { destination: 'plans', item: 'plan:plan:live' }, 'returning from a run reopens the plan as an in-place item');
 
   shell.selectDestination('research');
   assert.ok(shell.element.textContent.includes('The registered source remains readable from its native identity.'));

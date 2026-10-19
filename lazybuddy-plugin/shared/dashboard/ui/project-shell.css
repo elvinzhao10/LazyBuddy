@@ -1,27 +1,68 @@
 @import './overview.css';
 
-/* T12b project shell — the sidebar + tab app frame over the T12 component
-   library. The project name leads the shell header, the product is a compact
-   identity badge, destinations render only after initialization (IO-2), and
-   the inspector/contributing-records live in the right dock. Tokens only; no
-   animation, shared var(--fast) transitions only. */
+/* T20a project shell — the static retractable sidebar + one cohesive
+   content surface. No tab strip: the sidebar is a fixed column that never
+   overlays content (it retracts to the 56px icon rail), the content region
+   scrolls independently, and one page-header pattern (back affordance +
+   destination/item title + context meta + dock trigger) leads every
+   destination. Tokens only; no animation, shared var(--fast) transitions
+   only. */
 
 .project-shell { display: grid; gap: var(--s4); }
 .project-shell[data-live='true'] { gap: var(--s2); margin-block-start: 0; }
 .project-shell section { margin-block-start: 0; }
 .project-shell section > header { margin-block-end: var(--s2); }
-.shell-head h1 { margin: 0; font-size: var(--heading); }
 .shell-title { overflow-wrap: anywhere; }
-.shell-product-badge .status { min-block-size: auto; }
-.shell-product-badge [data-identity='product'] { color: var(--neutral-ink); background: color-mix(in srgb,var(--verified-fill) 55%,var(--surface)); }
 .shell-context { flex-wrap: wrap; margin: 0; }
+.shell-context [data-testid='shell-title'] { font-weight: var(--strong); }
 
-/* App frame: the sidebar rail sticks while the tabbed workspace scrolls. */
-.project-shell .lb-shell { align-items: start; }
-.project-shell .lb-sidebar { position: sticky; inset-block-start: 0; align-self: stretch; max-block-size: 100dvh; }
-.project-shell .lb-shell-main { block-size: 100%; }
-.project-shell .lb-shell-main > .shell-head { margin-block-end: 0; }
-.project-shell .lb-tabpanels { display: grid; gap: var(--s4); align-content: start; margin-block-start: var(--s4); }
+/* -- App frame: sidebar static column, content scrolls on its own -------- */
+
+/* The initialized frame fills its host edge to edge (the hosts opt in via
+   :has in this file and live.css); the pre-init state keeps the padded
+   page flow. */
+.project-shell[data-initialized='true'] { gap: 0; min-block-size: 0; }
+.project-shell[data-initialized='true'] .lb-shell { block-size: 100%; min-block-size: 0; align-items: stretch; background: var(--bg); }
+body:has(.project-shell[data-initialized='true']) { block-size: 100dvh; overflow: hidden; }
+body:has(.project-shell[data-initialized='true']) > main { display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; max-inline-size: none; padding: 0; }
+body:has(.project-shell[data-initialized='true']) > main > header { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-end: var(--line) solid var(--border); }
+body:has(.project-shell[data-initialized='true']) > main > #shell-root { flex: 1 1 auto; min-block-size: 0; display: grid; }
+body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-start: var(--line) solid var(--border); }
+
+/* The rail: a static column of the frame grid — never position:fixed, never
+   an overlay. Destinations scroll inside it; the identity footer pins. */
+.project-shell .lb-sidebar { position: static; block-size: 100%; display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; border: none; border-inline-end: var(--line) solid var(--border); border-radius: 0; }
+.project-shell .lb-sidebar .lb-sidebar-collapse { align-self: flex-end; }
+.project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-collapse { align-self: center; }
+.project-shell .lb-sidebar .lb-sidebar-destinations { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; margin-block-start: var(--s2); }
+.project-shell .lb-sidebar .lb-sidebar-footer { flex: 0 0 auto; display: grid; gap: var(--s2); border-block-start: var(--line) solid var(--border); padding-block-start: var(--s2); }
+.project-shell .lb-sidebar .lb-sidebar-identity { display: grid; gap: var(--s1); justify-items: start; }
+.project-shell .shell-footer-controls:empty { display: none; }
+.project-shell .shell-footer-controls label { display: flex; align-items: center; gap: var(--s1); }
+.project-shell .shell-footer-controls select { min-inline-size: 0; }
+.project-shell .shell-footer-note { margin: 0; }
+.project-shell .lb-sidebar[data-collapsed='true'] .shell-footer-controls,
+.project-shell .lb-sidebar[data-collapsed='true'] .shell-footer-note,
+.project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
+
+/* Grouped destinations: small uppercase section headers over icon+label
+   rows; the active row carries an accent bar over the soft accent wash. */
+.project-shell .lb-sidebar-group + .lb-sidebar-group { margin-block-start: var(--s3); }
+.project-shell .lb-sidebar-group-label { display: block; padding-inline: var(--s2); font-size: var(--caption); font-weight: var(--strong); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.project-shell .lb-sidebar-group-items { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.project-shell .lb-sidebar-destination[aria-current='page'] { background: var(--product-accent-soft); color: var(--product-accent); box-shadow: inset 2px 0 0 0 var(--product-accent); }
+
+/* The main side: one page header, one scrolling content surface. */
+.project-shell .lb-shell-main { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; padding: 0; min-block-size: 0; overflow: hidden; }
+.project-shell .shell-page-head { display: grid; gap: var(--s2); padding: var(--s3) var(--s4); border-block-end: var(--line) solid var(--border); background: var(--bg); }
+.project-shell .shell-page-bar { gap: var(--s3); }
+.project-shell .shell-page-lead { gap: var(--s3); min-inline-size: 0; }
+.project-shell .shell-page-titles { gap: var(--s1); min-inline-size: 0; }
+.project-shell .shell-page-kicker { margin: 0; text-transform: uppercase; letter-spacing: .08em; }
+.project-shell .shell-page-title { margin: 0; font-size: var(--heading); overflow-wrap: anywhere; }
+.project-shell .shell-page-meta { margin: 0; }
+.project-shell .shell-content { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--s4); align-content: start; gap: var(--s4); }
+.project-shell[data-live='true'] .shell-content { gap: var(--s3); padding: var(--s3) var(--s4); }
 
 /* The docked regions lose their floating-card chrome inside the dock. */
 .project-shell .lb-dock .spike-inspector,
@@ -59,8 +100,6 @@
 .project-shell[data-live='true'] .spike-legend-details[open] { flex-basis: 100%; }
 .project-shell[data-live='true'] .spike-toolbar { min-block-size: var(--control); }
 .project-shell[data-live='true'] .spike-toolbar .spike-status { min-block-size: auto; }
-.project-shell[data-live='true'] .shell-head { grid-template-columns: minmax(14rem,auto) minmax(0,1fr); align-items: center; gap: var(--s3); }
-.project-shell[data-live='true'] > .shell-head { margin-block-end: 0; }
 .project-shell[data-live='true'] .spike-graph-wrap { position: relative; }
 .project-shell[data-live='true'] .spike-graph-wrap > .graph-viewport-controls { position: absolute; z-index: 1; inset-block-start: var(--s2); inset-inline-end: var(--s2); padding: var(--s1); border-radius: var(--radius-control); background: var(--raised); box-shadow: var(--shadow); }
 .project-detail-loader > .architecture-view,.project-detail-loader > .git-metrics-view,.project-detail-loader > .evidence-view { margin-block-start: var(--s3); }
@@ -69,22 +108,20 @@
 .project-source-details > summary { cursor: pointer; font-weight: var(--strong); }
 .project-source-details[open] > summary { margin-block-end: var(--s4); }
 
-/* Narrow: the rail collapses to its icon column and the workspace stacks. */
+/* Narrow: the rail retracts to its icon column and the surface stacks. */
 @media (max-width: 48rem) {
   .project-shell .lb-shell { grid-template-columns: auto minmax(0, 1fr); }
   .project-shell .lb-sidebar { inline-size: var(--lb-rail-icon); padding-inline: var(--s1); }
   .project-shell .lb-sidebar .lb-sidebar-destination { justify-content: center; padding-inline: 0; }
   .project-shell .lb-sidebar .lb-sidebar-destination-label,
-  .project-shell .lb-sidebar .lb-sidebar-identity,
-  .project-shell .lb-sidebar .lb-sidebar-footer { display: none; }
+  .project-shell .lb-sidebar .lb-sidebar-group-label { display: none; }
+  .project-shell .lb-sidebar .lb-sidebar-group + .lb-sidebar-group { margin-block-start: var(--s2); }
+  .project-shell .shell-content { padding: var(--s3); }
+  .plan-browser { grid-template-columns: minmax(0, 1fr); }
+  .plan-index { position: static; max-block-size: none; overflow: visible; }
 }
 
 @media (max-width: 44rem) {
   .project-shell[data-live='true'] .overview-metric-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
-}
-
-@media (max-width: 44rem) {
-  .project-shell[data-live='true'] .shell-head { grid-template-columns: minmax(0,1fr); }
-  .plan-browser { grid-template-columns: minmax(0, 1fr); }
-  .plan-index { position: static; max-block-size: none; overflow: visible; }
+  .project-shell .shell-page-bar { flex-wrap: wrap; }
 }

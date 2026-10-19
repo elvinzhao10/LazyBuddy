@@ -2,14 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
 
-/* T12b app-shell proof: the sidebar + tab + dock frame mounted on the real
-   pages. Covers the tab open/select/close/pin lifecycle, the sidebar current
-   state, the dock migration of the inspector and contributing-records regions
-   (open on selection, Escape with focus return), the explicit unavailable
-   state for destinations without data, the unchanged pre-init composition
-   (IO-2), the extended keyboard map (Cmd/Ctrl+1..7 destinations, tab
-   arrows/Home/End, Delete, j/k), tab persistence across a reload-shaped
-   remount, and polling refreshes that never reset the user's place. */
+/* T20a app-shell proof: the static retractable sidebar + single content
+   surface frame mounted on the real pages. Covers the tab-less composition
+   (no tablist anywhere; a destination switch replaces the content in
+   place), item navigation with the in-place capped back stack, the grouped
+   sidebar with aria-current and the persisted icon-rail retraction
+   (collapse control + Cmd/Ctrl+B), the dock migration of the inspector and
+   contributing-records regions (open on selection, Escape with focus
+   return), the explicit unavailable state for destinations without data,
+   the unchanged pre-init composition (IO-2), the extended keyboard map
+   (Cmd/Ctrl+1..7 destinations, j/k), navigation persistence across a
+   reload-shaped remount, and polling refreshes that never reset the user's
+   place. */
 
 const dom = createMiniDom();
 globalThis.document = dom.document;
@@ -18,8 +22,9 @@ const { createProjectShell, PROJECT_DESTINATIONS } = await import('../ui/project
 const { installFocusSystem } = await import('../ui/components.mjs');
 const { overviewBundle } = await import('../ui/live-project-adapter.mjs');
 
-// In-memory sessionStorage stand-in: the shell persists its tab state under
-// 'lazybuddy-shell-tabs' and must degrade silently when storage is absent.
+// In-memory sessionStorage stand-in: the shell persists its navigation
+// state under 'lazybuddy-shell-nav' and must degrade silently when storage
+// is absent.
 const storage = new Map();
 globalThis.sessionStorage = {
   getItem: key => (storage.has(key) ? storage.get(key) : null),
@@ -48,8 +53,8 @@ const project = {
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const shellRoot = shell => shell.element;
 const destinationButton = (shell, id) => shellRoot(shell).querySelector(`.lb-sidebar-destination[data-destination="${id}"]`);
-const tabNode = (shell, id) => shellRoot(shell).querySelector(`.lb-tabs .lb-tab[data-tab-id="${id}"]`);
 const press = (target, key, extra = {}) => target.dispatchEvent({ type: 'keydown', key, bubbles: true, cancelable: true, ...extra });
+const stored = () => { const raw = storage.get('lazybuddy-shell-nav'); return raw ? JSON.parse(raw) : null; };
 
 // One document per process: every prior shell must tear its frame down
 // before the next mounts, exactly like one shell per real page.
@@ -79,7 +84,8 @@ test('pre-init stays the IO-2 baseline: no frame, the same self-explaining notic
   assert.equal(root.dataset.initialized, 'false');
   assert.equal(root.querySelectorAll('[data-destination]').length, 0, 'no destinations before init');
   assert.equal(root.querySelector('.lb-sidebar'), null, 'no sidebar rail before init');
-  assert.equal(root.querySelector('.lb-tabs'), null, 'no tab strip before init');
+  assert.equal(root.querySelector('[role="tablist"], .lb-tabs, .lb-tab'), null, 'no tab strip before init');
+  assert.equal(root.querySelector('[data-testid="shell-page-head"]'), null, 'no page header before init');
   assert.equal(root.querySelector('[data-testid="dock-panel"]'), null, 'no dock before init');
   const notice = root.querySelector('[data-testid="shell-uninitialized"]');
   assert.ok(notice, 'the pre-init notice renders');
@@ -90,7 +96,7 @@ test('pre-init stays the IO-2 baseline: no frame, the same self-explaining notic
     'the pre-init explanation stays byte-identical to the baseline');
 });
 
-test('the frame mounts after init: sidebar with every destination selectable, pinned Overview tab, hidden dock', async () => {
+test('the frame mounts after init: grouped static sidebar, one content surface, no tab strip, hidden dock', async () => {
   storage.clear();
   const { shell } = mountShell();
   await settle();
@@ -100,15 +106,21 @@ test('the frame mounts after init: sidebar with every destination selectable, pi
   assert.equal(destinations.length, PROJECT_DESTINATIONS.length, 'all seven sidebar destinations render');
   assert.ok(destinations.every(control => !control.disabled), 'every destination is selectable; missing data never disables a control');
   assert.deepEqual(destinations.map(control => control.dataset.destination), PROJECT_DESTINATIONS.map(entry => entry.id));
+  const groups = [...root.querySelectorAll('.lb-sidebar-group-label')];
+  assert.deepEqual(groups.map(node => node.textContent), ['Workspace', 'Observation'], 'destinations group under section headers');
+  assert.deepEqual([...root.querySelectorAll('.lb-sidebar-group')].map(node => node.querySelectorAll('[data-destination]').length),
+    [3, 4], 'Workspace carries overview/project/plans; Observation carries the four observation rows');
   assert.equal(destinationButton(shell, 'overview').getAttribute('aria-current'), 'page', 'the sidebar marks the current destination');
-  assert.equal(root.querySelector('[data-testid="shell-title"]').textContent, 'project:shell', 'the project name leads the header');
+  assert.ok(destinationButton(shell, 'overview').querySelector('svg'), 'rows are icon+label');
+  assert.equal(root.querySelector('[role="tablist"], .lb-tabs, .lb-tab'), null, 'the tab strip is gone: no tablist anywhere');
+  assert.ok(root.querySelector('[data-testid="shell-page-head"]'), 'the single page header renders');
+  assert.equal(root.querySelector('[data-testid="shell-page-title"]').textContent, 'Overview', 'the page header names the destination');
+  assert.equal(root.querySelector('[data-testid="shell-back"]'), null, 'no back affordance at the base of the stack');
+  assert.equal(root.querySelector('[data-testid="shell-title"]').textContent, 'project:shell', 'the project name leads the context meta');
   assert.match(root.querySelector('[data-testid="shell-context"]').textContent, /branch main @ b{12}/, 'worktree context in the header');
-  const tabs = [...root.querySelectorAll('.lb-tabs .lb-tab')];
-  assert.equal(tabs.length, 1, 'a single pinned tab at init');
-  assert.equal(tabs[0].dataset.tabId, 'overview');
-  assert.equal(tabs[0].dataset.pinned, 'true');
-  assert.equal(tabs[0].querySelector('.lb-tab-close'), null, 'the pinned Overview renders no close control');
-  assert.ok(root.querySelector('[data-testid="overview-view"]'), 'the overview destination renders in the active panel');
+  assert.ok(root.querySelector('[data-testid="shell-content"] [data-testid="overview-view"]'), 'the overview renders inside the single content region');
+  assert.equal(root.querySelector('[data-testid="shell-content"]').children.length, 1, 'exactly one mounted surface');
+  assert.equal(root.querySelectorAll('h1').length, 1, 'exactly one h1 (the page title)');
   const dock = root.querySelector('[data-testid="dock-panel"]');
   assert.ok(dock, 'the dock renders as part of the frame');
   assert.equal(dock.hidden, true, 'the dock starts closed');
@@ -116,55 +128,106 @@ test('the frame mounts after init: sidebar with every destination selectable, pi
   assert.ok(root.querySelector('[data-testid="dock-records-region"]'), 'the contributing-records region lives in the dock');
   const records = root.querySelector('[data-testid="overview-records"]');
   assert.ok(records, 'the overview records panel exists');
-  assert.ok(records.matches('.lb-dock .overview-records, .lb-dock [data-testid="overview-records"]') || root.querySelector('[data-testid="dock-panel"] [data-testid="overview-records"]') === records,
+  assert.equal(root.querySelector('[data-testid="dock-panel"] [data-testid="overview-records"]'), records,
     'the records region migrated into the dock, not inline');
   assert.equal(root.querySelector('[data-testid="overview-view"] [data-testid="overview-records"]'), null,
     'no inline contributing-records region remains in the overview');
+  assert.ok(root.querySelector('[data-testid="shell-footer-controls"]'), 'the identity footer reserves the theme/density slot');
+  assert.ok(root.querySelector('.lb-sidebar-footer .lb-sidebar-product'), 'the product badge lives in the identity footer');
 });
 
-test('a destination without data renders an explicit unavailable state and still closes like any tab', async () => {
+test('a destination switch replaces the content in place (unmount the previous surface)', async () => {
   storage.clear();
   const { shell } = mountShell();
   await settle();
-  assert.equal(shell.selectDestination('plans'), true, 'the destination is selectable without live views');
+  assert.ok(shellRoot(shell).querySelector('[data-testid="overview-view"]'), 'the overview mounts first');
+
+  assert.equal(shell.selectDestination('project'), true, 'the destination is selectable without live views');
   const unavailable = shellRoot(shell).querySelector('[data-testid="shell-destination-unavailable"]');
   assert.ok(unavailable, 'the unavailable state renders');
-  assert.equal(unavailable.dataset.destination, 'plans');
+  assert.equal(unavailable.dataset.destination, 'project');
   assert.equal(unavailable.querySelectorAll('.status')[0].dataset.state, 'unavailable');
   assert.match(unavailable.textContent, /static projection bundle/, 'the explanation names the actual reason');
-  assert.ok(tabNode(shell, 'plans'), 'the destination owns a tab');
-  assert.equal(shell.getStats().activeTab, 'plans');
-  assert.equal(destinationButton(shell, 'plans').getAttribute('aria-current'), 'page', 'the sidebar current state follows the selection');
-  const close = tabNode(shell, 'plans').querySelector('.lb-tab-close');
-  assert.ok(close, 'destination tabs are closable');
-  close.click();
-  assert.equal(shell.getStats().tabs.includes('plans'), false, 'closing removes the destination tab');
-  assert.equal(shell.getStats().activeDestination, 'overview', 'closing falls back to the pinned neighbor');
-  shell.selectDestination('plans');
-  assert.ok(shellRoot(shell).querySelector('[data-testid="shell-destination-unavailable"]'), 're-opening re-renders the unavailable state');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="overview-view"]'), null, 'the overview surface unmounted');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-content"]').contains(unavailable), true, 'the replacement renders in the content region');
+  assert.equal(shell.getStats().activeDestination, 'project');
+  assert.equal(destinationButton(shell, 'project').getAttribute('aria-current'), 'page', 'the sidebar current state follows the selection');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-page-title"]').textContent, 'Project', 'the page header follows the destination');
+
+  shell.selectDestination('overview');
+  assert.ok(shellRoot(shell).querySelector('[data-testid="overview-view"]'), 'switching back remounts the overview');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-destination-unavailable"]'), null, 'the unavailable panel unmounted');
+  const back = shellRoot(shell).querySelector('[data-testid="shell-back"]');
+  assert.ok(back, 'a navigation history exists');
+  assert.equal(back.getAttribute('aria-label'), 'Back to Project');
+  back.click();
+  assert.equal(shell.getStats().activeDestination, 'project', 'back returns to the previous destination');
+  assert.ok(shellRoot(shell).querySelector('[data-testid="shell-destination-unavailable"]'), 're-entering re-renders the unavailable state');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-back"]').getAttribute('aria-label'), 'Back to Overview', 'one entry remains on the stack');
+  shellRoot(shell).querySelector('[data-testid="shell-back"]').click();
+  assert.equal(shell.getStats().activeDestination, 'overview');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-back"]'), null, 'the stack emptied: no back affordance');
 });
 
-test('plan items open closable tabs that reuse the plans surface and re-enter on selection', async () => {
+test('item navigation opens in place with a back affordance over the capped history stack', async () => {
   storage.clear();
   const { opened, views } = stubViews();
   const { shell } = mountShell({ views });
   await settle();
+  shell.selectDestination('plans');
   shell.openPlan('plan:shell');
   assert.deepEqual(opened, ['plan:shell'], 'opening focuses the plan in the plans surface');
-  const tab = tabNode(shell, 'plan:plan:shell');
-  assert.ok(tab, 'the plan item opens its own tab');
-  assert.equal(tab.getAttribute('aria-label'), 'Plan · Shell frame plan', 'the tab title carries the plan title');
-  assert.ok(tab.querySelector('.lb-tab-close'), 'item tabs are closable');
-  assert.equal(shell.getStats().activeTab, 'plan:plan:shell');
-  assert.equal(shell.getStats().activeDestination, 'plans', 'an open plan tab keeps the destination truthful');
+  assert.equal(shell.getStats().location.destination, 'plans');
+  assert.equal(shell.getStats().location.item, 'plan:plan:shell', 'the location names the open item');
+  assert.equal(shell.getStats().activeDestination, 'plans', 'an open item keeps the destination truthful');
   assert.equal(destinationButton(shell, 'plans').getAttribute('aria-current'), 'page');
-  assert.ok(views.plans.element.parentNode, 'the plans surface element is mounted in the item panel');
+  assert.ok(views.plans.element.parentNode, 'the plans surface is mounted in the content region');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-page-title"]').textContent, 'Plan · Shell frame plan', 'the page header carries the item title');
+  assert.equal(shellRoot(shell).querySelector('.shell-page-kicker').textContent, 'Plans', 'the destination stays visible as the kicker');
+  assert.match(shellRoot(shell).querySelector('[data-testid="shell-page-meta"]').textContent, /active · source current · plan revision 1/);
+  const back = shellRoot(shell).querySelector('[data-testid="shell-back"]');
+  assert.ok(back, 'the item context exposes the back affordance');
+  assert.equal(back.getAttribute('aria-label'), 'Back to Plans');
+
   shell.selectDestination('overview');
-  assert.equal(views.plans.element.parentNode.dataset.tabId, 'plan:plan:shell',
-    'the surface stays parked in its tab panel, hidden but never destroyed');
-  tabNode(shell, 'plan:plan:shell').dispatchEvent({ type: 'click', bubbles: true });
-  assert.deepEqual(opened, ['plan:shell', 'plan:shell'], 're-selecting the plan tab re-enters the plan');
-  assert.equal(shell.getStats().tabs.filter(id => id === 'plan:plan:shell').length, 1, 're-opening never duplicates a tab');
+  assert.equal(views.plans.element.parentNode, null, 'the plans surface unmounts when another destination replaces the content');
+  shell.openPlan('plan:shell');
+  assert.deepEqual(opened, ['plan:shell', 'plan:shell'], 're-opening the item re-enters the plan');
+  shell.openPlan('plan:shell');
+  assert.deepEqual(opened, ['plan:shell', 'plan:shell', 'plan:shell'], 're-navigating to the open location only re-enters it');
+  assert.equal(shell.getStats().historyDepth, 4, 'the stack holds overview -> plans -> item -> overview; the repeat added nothing');
+  shell.goBack();
+  assert.deepEqual(shell.getStats().location, { destination: 'overview', item: null }, 'back returns to the previous location');
+  shell.goBack();
+  assert.equal(shell.getStats().location.item, 'plan:plan:shell', 'back walks to the plan item');
+  shell.goBack();
+  assert.equal(shell.getStats().location.item, null, 'back walks to the bare plans destination');
+  shell.goBack();
+  assert.equal(shell.getStats().activeDestination, 'overview', 'back walks to the overview');
+  assert.equal(dom.document.activeElement, destinationButton(shell, 'overview'), 'focus lands on the destination row when no back remains');
+
+  // The stack is small and capped, never a tab set.
+  for (let index = 0; index < 40; index += 1) shell.openItem({ id: `plan:p${index}`, title: `P ${index}`, destination: 'plans', content: views.plans.element, enter: () => views.plans.open(`p${index}`) });
+  assert.equal(shell.getStats().historyDepth, 24, 'the history depth caps at 24');
+  let guard = 100;
+  while (shell.getStats().historyDepth > 0 && guard > 0) { shell.goBack(); guard -= 1; }
+  assert.equal(shell.getStats().historyDepth, 0);
+  assert.ok(views.plans.element.parentNode, 'walking the whole stack lands on a mounted surface');
+});
+
+test('evidence items navigate in place and restore their surface on reload', async () => {
+  storage.clear();
+  const { opened, views } = stubViews();
+  const { shell } = mountShell({ views });
+  await settle();
+  shell.openItem({ id: 'evidence:research/live.md', title: 'Evidence · research/live.md', destination: 'evidence',
+    content: views.evidence.element, enter: () => views.evidence.activate() });
+  assert.deepEqual(opened, ['evidence:activate'], 'the item enter activates the evidence surface');
+  assert.equal(shell.getStats().location.destination, 'evidence');
+  assert.equal(destinationButton(shell, 'evidence').getAttribute('aria-current'), 'page');
+  const persisted = stored();
+  assert.deepEqual(persisted.location, { destination: 'evidence', item: { id: 'evidence:research/live.md', title: 'Evidence · research/live.md', meta: '' } },
+    'the navigation state persists destination + item');
 });
 
 test('the dock opens on selection, Escape closes it, focus returns to the invoking control', async () => {
@@ -177,7 +240,7 @@ test('the dock opens on selection, Escape closes it, focus returns to the invoki
     const dock = shellRoot(shell).querySelector('[data-testid="dock-panel"]');
     assert.equal(dockToggle.getAttribute('aria-pressed'), 'false');
     dockToggle.click();
-    assert.equal(dock.hidden, false, 'the header trigger opens the dock');
+    assert.equal(dock.hidden, false, 'the page header trigger opens the dock');
     assert.equal(dockToggle.getAttribute('aria-pressed'), 'true');
     assert.ok(shell.getStats().dockOpen);
     dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
@@ -197,7 +260,7 @@ test('the dock opens on selection, Escape closes it, focus returns to the invoki
   }
 });
 
-test('keyboard map: Cmd/Ctrl+1..7 destinations, tab arrows/Home/End, Delete close, j/k sidebar traversal', async () => {
+test('keyboard map: Cmd/Ctrl+1..7 destinations, Cmd/Ctrl+B retracts the rail, j/k sidebar traversal', async () => {
   storage.clear();
   const detach = installFocusSystem({ root: dom.document });
   try {
@@ -212,30 +275,17 @@ test('keyboard map: Cmd/Ctrl+1..7 destinations, tab arrows/Home/End, Delete clos
     dom.document.dispatchEvent({ type: 'keydown', key: '8', code: 'Digit8', ctrlKey: true, bubbles: true, cancelable: true });
     assert.equal(shell.getStats().activeDestination, 'git', 'a digit past the destinations is ignored');
 
-    // Focus inside the tab strip keeps the T12 component contract: digits
-    // address the nth TAB, and the destination shortcut defers. Strip order
-    // here: overview, plan:plan:shell, git (the Cmd+5 destination appended).
-    const tablist = shellRoot(shell).querySelector('.lb-tabs');
-    const overviewTab = tabNode(shell, 'overview');
-    const planTab = tabNode(shell, 'plan:plan:shell');
-    const gitTab = tabNode(shell, 'git');
-    planTab.dispatchEvent({ type: 'click', bubbles: true });
-    assert.equal(shell.getStats().activeTab, 'plan:plan:shell');
-    press(tablist, 'ArrowRight');
-    assert.equal(shell.getStats().activeTab, 'git', 'ArrowRight activates the next tab');
-    press(gitTab, 'ArrowLeft');
-    assert.equal(shell.getStats().activeTab, 'plan:plan:shell', 'ArrowLeft activates the previous tab');
-    press(overviewTab, 'End');
-    assert.equal(shell.getStats().activeTab, 'git', 'End reaches the last tab');
-    press(gitTab, 'Home');
-    assert.equal(shell.getStats().activeTab, 'overview', 'Home reaches the first tab');
-    press(gitTab, '2', { code: 'Digit2', metaKey: true });
-    assert.equal(shell.getStats().activeTab, 'plan:plan:shell', 'Cmd/Ctrl+digit inside the strip selects the nth tab');
-    assert.equal(shell.getStats().activeDestination, 'plans', 'and the destination shortcut did not also fire');
-    press(overviewTab, 'Delete');
-    assert.ok(shell.getStats().tabs.includes('overview'), 'the pinned tab survives Delete');
-    press(planTab, 'Delete');
-    assert.equal(shell.getStats().tabs.includes('plan:plan:shell'), false, 'Delete closes the focused closable tab');
+    const rail = shellRoot(shell).querySelector('.lb-sidebar');
+    assert.equal(rail.dataset.collapsed, 'false');
+    assert.equal(destinationButton(shell, 'git').hasAttribute('title'), false, 'expanded rows show the visible label, no tooltip');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
+    assert.equal(rail.dataset.collapsed, 'true', 'Cmd/Ctrl+B retracts the sidebar to the icon rail');
+    assert.equal(destinationButton(shell, 'git').getAttribute('title'), 'Git', 'rail rows carry their label as a tooltip while collapsed');
+    assert.equal(stored().collapsed, true, 'the retraction persists with the navigation state');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
+    assert.equal(rail.dataset.collapsed, 'false', 'Cmd/Ctrl+B expands it again');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', bubbles: true, cancelable: true });
+    assert.equal(rail.dataset.collapsed, 'false', 'plain B never toggles the rail');
 
     const first = destinationButton(shell, 'overview');
     first.focus();
@@ -248,16 +298,17 @@ test('keyboard map: Cmd/Ctrl+1..7 destinations, tab arrows/Home/End, Delete clos
   }
 });
 
-test('tab state survives a reload-shaped remount through session storage', async () => {
+test('navigation state survives a reload-shaped remount through session storage (stale_state)', async () => {
   storage.clear();
   const { views } = stubViews();
   const { shell: first, state: firstState } = mountShell({ views });
   await settle();
   first.selectDestination('plans');
   first.openPlan('plan:shell');
-  first.update();
+  dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
   const before = first.getStats();
-  assert.deepEqual(before.tabs, ['overview', 'plans', 'plan:plan:shell']);
+  assert.deepEqual(before.location, { destination: 'plans', item: 'plan:plan:shell' });
+  assert.equal(before.historyDepth, 2);
 
   // A reload keeps the same origin storage; the shell remounts cold. The
   // prior instance tears down first — one shell per document.
@@ -266,34 +317,40 @@ test('tab state survives a reload-shaped remount through session storage', async
   dom.document.body.append(reloaded.element); mounted[0] = { state: { bundle: overviewBundle(project) }, shell: reloaded };
   await settle();
   const after = reloaded.getStats();
-  assert.deepEqual(after.tabs, before.tabs, 'open tabs restore after the reload');
-  assert.equal(after.activeTab, before.activeTab, 'the selected tab restores after the reload');
+  assert.deepEqual(after.location, before.location, 'destination and item restore after the reload');
   assert.equal(after.activeDestination, 'plans', 'the sidebar current state restores with it');
+  assert.equal(reloaded.element.querySelector('.lb-sidebar').dataset.collapsed, 'true', 'the rail retraction restores');
+  assert.ok(views.plans.element.parentNode, 'the plans surface is mounted again');
+  assert.equal(reloaded.element.querySelector('[data-testid="shell-page-title"]').textContent, 'Plan · Shell frame plan');
+  assert.equal(reloaded.element.querySelector('[data-testid="shell-content"]').children.length, 1, 'one surface, no residue');
 });
 
-test('polling refresh swaps the overview in place and never resets tabs, selection or the dock', async () => {
+test('polling refresh swaps the overview in place and never resets the location, the stack or the dock', async () => {
   storage.clear();
   const { views } = stubViews();
   const { shell, state } = mountShell({ views });
   await settle();
-  shell.openPlan('plan:shell');
   const overviewBefore = shellRoot(shell).querySelector('[data-testid="overview-view"]');
+  shell.openPlan('plan:shell');
 
   state.bundle = overviewBundle({ ...project, revision: 9 });
   shell.update();
   await settle();
-  assert.equal(shell.getStats().tabs.join(), 'overview,plan:plan:shell', 'a new bundle object keeps every open tab');
-  assert.equal(shell.getStats().activeTab, 'plan:plan:shell', 'the selected tab survives the refresh');
-  assert.equal(destinationButton(shell, 'plans').getAttribute('aria-current'), 'page', 'the sidebar current state survives the refresh');
-  const overviewAfter = shellRoot(shell).querySelector('[data-testid="overview-view"]');
-  assert.notEqual(overviewAfter, overviewBefore, 'the overview view itself is the fresh projection');
+  assert.equal(shell.getStats().location.item, 'plan:plan:shell', 'the open item survives the refresh');
+  assert.equal(shell.getStats().activeDestination, 'plans', 'the destination survives the refresh');
+  assert.ok(views.plans.element.parentNode, 'the plans surface remains the mounted content');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="overview-view"]'), null, 'the fresh overview stays parked until the destination is visited again');
   assert.match(shellRoot(shell).querySelector('[data-testid="shell-context"]').textContent, /revision 9/, 'the header context reflects the new revision');
   assert.ok(shellRoot(shell).querySelector('[data-testid="dock-panel"] [data-testid="overview-records"]'),
     'the docked records region re-adopts the fresh overview');
-  assert.notEqual(shellRoot(shell).querySelector('[data-testid="dock-panel"] [data-testid="overview-records"]'), null);
+  shell.selectDestination('overview');
+  const overviewAfter = shellRoot(shell).querySelector('[data-testid="overview-view"]');
+  assert.ok(overviewAfter, 'visiting the destination mounts the fresh projection');
+  assert.notEqual(overviewAfter, overviewBefore, 'the overview view itself is the fresh projection');
+  shell.openPlan('plan:shell'); // the persisted location for the rebuild below
 
   // Losing the record tears the frame down; regaining it rebuilds with the
-  // persisted tabs (the stale_state adversarial: reload preserves tabs).
+  // persisted location (the stale_state adversarial: reload preserves it).
   state.bundle = null;
   shell.update();
   assert.equal(shell.getStats().initialized, false);
@@ -301,21 +358,26 @@ test('polling refresh swaps the overview in place and never resets tabs, selecti
   shell.update();
   await settle();
   assert.equal(shell.getStats().initialized, true);
-  assert.deepEqual(shell.getStats().tabs, ['overview', 'plan:plan:shell'], 'the frame rebuild restores the persisted tabs');
+  assert.deepEqual(shell.getStats().location, { destination: 'plans', item: 'plan:plan:shell' }, 'the frame rebuild restores the persisted location');
+  assert.equal(shell.getStats().historyDepth, 0, 'a cold rebuild starts a fresh back stack');
 });
 
-test('rapid tab open/close loops stay consistent (cancel_resume)', async () => {
+test('rapid navigation loops stay consistent: one surface, bounded stack (cancel_resume)', async () => {
   storage.clear();
   const { views } = stubViews();
   const { shell } = mountShell({ views });
   await settle();
+  const content = () => shellRoot(shell).querySelector('[data-testid="shell-content"]');
   for (let index = 0; index < 25; index += 1) {
-    shell.openItem({ tabId: `plan:rapid-${index}`, title: `Rapid ${index}`, content: views.plans.element, enter: () => views.plans.open(`rapid-${index}`) });
-    const close = tabNode(shell, `plan:rapid-${index}`).querySelector('.lb-tab-close');
-    close.click();
+    shell.openItem({ id: `plan:rapid-${index}`, title: `Rapid ${index}`, destination: 'plans', content: views.plans.element, enter: () => views.plans.open(`rapid-${index}`) });
+    assert.equal(content().children.length, 1, 'exactly one mounted surface at every step');
+    shell.goBack();
+    shell.selectDestination(index % 2 ? 'git' : 'evidence');
+    shell.selectDestination('overview');
+    assert.ok(shell.getStats().historyDepth <= 24, 'the stack stays capped through the loop');
   }
-  assert.deepEqual(shell.getStats().tabs, ['overview'], 'every rapid tab closed back to the pinned base');
-  assert.equal(shell.getStats().activeTab, 'overview');
+  assert.deepEqual(shell.getStats().location, { destination: 'overview', item: null }, 'the loop lands on the overview base');
+  assert.ok(content().querySelector('[data-testid="overview-view"]'), 'the overview surface is mounted');
   shell.openPlan('plan:shell');
-  assert.deepEqual(shell.getStats().tabs, ['overview', 'plan:plan:shell'], 'open tabs after the loop are exact — no residue, no duplicates');
+  assert.deepEqual(shell.getStats().location, { destination: 'plans', item: 'plan:plan:shell' }, 'navigation after the loop is exact — no residue, no duplicates');
 });

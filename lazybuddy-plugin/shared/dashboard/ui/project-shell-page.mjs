@@ -7,7 +7,7 @@ import { installNativeExperience } from './components.mjs';
 
 // T11 native experience layer: focus system (Tab ring, j/k, /, Escape),
 // density control, tooltips, announcer. Idempotent — safe on every page.
-installNativeExperience();
+const native = installNativeExperience();
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 const themeControl = document.querySelector('#theme');
@@ -33,8 +33,18 @@ try {
   loadStatus.textContent = `The projection bundle could not load (${error.message}). No live run is connected.`;
 }
 
-const shell = createProjectShell({ projectionProvider: () => bundle, product: { name: 'LazyBuddy' } });
+const shell = createProjectShell({ projectionProvider: () => bundle, product: { name: 'LazyBuddy' }, callbacks: {
+  // Drilling a plan node in the macro map navigates in place; without a live
+  // plans surface the plans destination states its unavailable case honestly.
+  onPlanDrill({ nodeId }) {
+    if ((bundle?.snapshot?.plans ?? []).some(plan => plan.id === nodeId)) shell.openPlan(nodeId);
+  },
+} });
 root.append(shell.element);
+// The T11 density control re-homes into the shell's identity footer (T20a):
+// one theme control and one density control, both in the rail.
+const footerHost = shell.element.querySelector('[data-testid="shell-footer-controls"]');
+if (footerHost && !footerHost.contains(native.control.element)) footerHost.append(native.control.element);
 loadStatus.textContent = uninitialized
   ? 'Shell composed without an initialized project record (pre-init state).'
   : 'Shell ready — projection bundle loaded.';

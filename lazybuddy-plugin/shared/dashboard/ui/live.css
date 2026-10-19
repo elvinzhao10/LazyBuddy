@@ -19,11 +19,13 @@
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header { display: flex; align-items: center; justify-content: space-between; }
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header > .cluster { flex: 1 1 auto; }
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header > .cluster > .meta { display: none; }
-/* T12b app frame: once the shell initializes, the dashboard host goes
-   edge-to-edge so the sidebar rail and the tabbed workspace own the layout.
-   The pre-init state (no initialized record) keeps the padded baseline. */
-.live-shell:has(.project-shell[data-initialized='true']) { max-inline-size: none; padding: 0; }
+/* T20a app frame: once the shell initializes, the dashboard host becomes a
+   full-height column so the static sidebar and the single scrolling content
+   surface own the layout. The pre-init state (no initialized record) keeps
+   the padded page-flow baseline. */
+.live-shell:has(.project-shell[data-initialized='true']) { max-inline-size: none; padding: 0; display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; overflow: hidden; }
 .live-shell:has(.project-shell[data-initialized='true']) > .live-header { padding: var(--s2) var(--s4); border-block-end: var(--line) solid var(--border); margin-block-end: 0; }
+.live-shell:has(.project-shell[data-initialized='true']) > #project-root { flex: 1 1 auto; min-block-size: 0; display: grid; }
 .live-shell:has(.project-shell[data-initialized='true']) > #run-dashboard { padding: var(--s4); }
 #run-dashboard { margin-block-start: 0; }
 @media (max-width: 44rem) { .live-shell { padding: var(--s4); } .live-header nav button { flex: 1 1 8rem; }
