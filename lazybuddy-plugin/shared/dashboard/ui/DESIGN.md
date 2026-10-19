@@ -1,102 +1,119 @@
-# Dashboard component system
+# LazySeries family design language
 
-## 0. Research Log
+One design language across the whole LazySeries family. Every product — LazyBuddy, LazyTrae, LazyQoder, LazyZCode, LazyKimi, LazyDeepSeek — renders the same dashboard core with its own accent. The dashboard should feel like a native macOS tool that a thoughtful engineer would trust: quiet surfaces, deliberate hierarchy, honest status. It must look designed, not generated.
 
-This B5 component showcase implements the written reference `research/1.4-dashboard-design.md`, especially sections 3, 9 and 10, and P4 of `research/1.4.0-implementation-plan.md`. It is a component acceptance surface, not a live dashboard or execution observation. The reference supplies structure and semantics, not a pixel target.
+`tokens.css` is the single source for every color, size, spacing, radius, shadow, motion and density value in the family. Views consume custom properties; they never copy literals. `test/design-tokens.test.mjs` enforces the invariants below.
 
-Bundled references shortlisted: Linear (precise neutral layering), Notion (document hierarchy), Vercel (monochrome controls). Linear was selected for neutral luminance steps, restrained 6/8px corners and compact grouped controls; system typography and the project's semantic colors override its branding. The operational taste guidance applies only where compatible with this dependency-free component brief. Layout guidance contributes wrapping clusters, intrinsic grids and a bounded inspector scroll owner. The external StyleGallery catalog and beui drawer source were attempted on 2026-10-04; both failed DNS (`curl` exit 6). No external screen was observed. No generated visual concept is treated as a reference: this task establishes the specified component/state system before C1 composition. Lazyweb research cannot be observed while its endpoint is unreachable; no screen-derived claims are made.
+## 1. Principles
 
-## 1. Direction and information budget
+**Content-first hierarchy.** The screen answers three questions in order — what is happening, what needs attention, what proves completion. One primary statement per view; supporting records collapse behind disclosure. Never present a wall of metadata with equal visual weight: the page heading owns the eye, the status sentence owns the second look, everything else recedes.
 
-A calm operational canvas: near-neutral surfaces, crisp type, quiet borders and a raised contextual inspector. The memorable distinction is that finishing execution does not paint a task green. Green belongs exclusively to applicable verified evidence. Showcase examples always carry a visible fixture notice. C1 owns live composition, transport, authority and revision consumption.
+**No walls of meta text.** Meta (captions, timestamps, ids, provenance) is `--subtle` ink at caption size, at most one line per fact cluster, wrapped not truncated where content is authoritative. If an explanation needs a paragraph, it goes in the inspector, not the card. Long identifiers wrap (`overflow-wrap: anywhere`) rather than break layout.
 
-## 2. Color tokens
+**Status is shape + icon + text.** Color is the third channel, never the only one. Every status renders a distinct SVG glyph, a text label, and a fill; the unavailable state is a hollow dashed chip, not a gray one. Finishing execution never paints a task green — green belongs exclusively to applicable verified evidence, and absence/loading never resembles a pass.
 
-`tokens.css` is the source for all CSS values; consumers use custom properties, not copied literals. `data-theme="light|dark"` on the root records resolved theme. The showcase defaults to System, resolves appearance before stylesheet paint, follows system changes, and offers explicit Light/Dark overrides. The following foreground/fill pairs are deliberately paired and require contrast >=4.5:1.
+**Native macOS-first feel.** System font stack (`-apple-system`, `SF` via system, Segoe UI fallback), system monospace for identifiers only, native buttons/inputs/dialogs/selects, keyboard focus that is always visible while keyboard-traversed, Escape closes the inspector and returns focus. 44px minimum targets. No custom scrollbars, no custom chrome, no web-app framework texture. Depth comes from a restrained elevation ladder, not borders-with-shadows stacked on shadows.
 
-| Role | Light foreground / fill | Dark foreground / fill |
-| --- | --- | --- |
-| neutral | #424852 / #eef0f3 | #d4d8df / #282c34 |
-| active (executing/verifying) | #184a96 / #e9f0ff | #adcaff / #202f49 |
-| verified | #16613b / #e4f4e9 | #a4e2bd / #203a2b |
-| attention | #795000 / #fff2cf | #f5d58b / #3d321e |
-| failed | #a02a35 / #ffecef | #ffb9c0 / #45272e |
-| stale | #68409b / #f3eaff | #d7bbff / #352943 |
+**Family accent discipline.** The product accent marks identity and wayfinding only: the product badge, the active destination, selection intent. It never encodes execution status, verification, or risk — those belong to the five status roles. One accent per screen at a time.
 
-Light canvas/surface/raised/hover/selected/text/muted/border/focus: #f5f6f8 / #ffffff / #ffffff / #f0f1f4 / #e5e7ec / #20242b / #59616e / #c7cbd3 / #225bb5. Dark equivalents: #14161a / #1c1f25 / #242831 / #2c3039 / #353b46 / #f1f3f7 / #b0b7c4 / #515966 / #adcaff. Unavailable uses neutral hollow treatment. Structural outlines stay neutral; keyboard focus alone uses the focus color.
+## 2. Color roles
 
-## 3. Typography
+Light and dark are both first-class. `data-theme="light|dark"` on the root records the resolved theme; the showcase resolves appearance before first paint and follows system changes.
 
-Control boundaries use `--control-edge` (#59616e light, #919baa dark), distinct from quiet structural `--border`. Control edges require >=3:1 against surface, canvas, raised and selected backgrounds, including the final composited color throughout the .75 press fade. Primary hover uses `--primary-hover` (#424852 light, #d4d8df dark), preserving readable reversed text. Press opacity is `--pressed-opacity: .75`.
+| Role | Light | Dark | Meaning |
+| --- | --- | --- | --- |
+| `--bg` | #f5f6f8 | #14161a | app canvas |
+| `--surface` | #ffffff | #1c1f25 | cards, panels, controls |
+| `--elevated` | #ffffff | #242831 | dialogs, popovers, sticky rails |
+| `--inset` | #eef0f3 | #16181d | recessed wells, code, quiet fills |
+| `--border` | #c7cbd3 | #515966 | quiet structural outlines |
+| `--hairline` | #e3e5ea | #2e323b | internal dividers, table rules |
+| `--text` | #20242b | #f1f3f7 | primary ink |
+| `--subtle` | #59616e | #b0b7c4 | captions, meta, secondary ink |
+| `--accent` | #2b54d9 | #8ea8ff | family accent (LazyBuddy cobalt) |
+| `--accent-contrast` | #ffffff | #0d1220 | ink on an accent fill |
+| `--accent-soft` | #e8edfc | #2b3050 | accent wash for identity chips |
+| `--success` / `--success-bg` | #16613b / #e4f4e9 | #a4e2bd / #203a2b | verified evidence |
+| `--warn` / `--warn-bg` | #795000 / #fff2cf | #f5d58b / #3d321e | attention |
+| `--danger` / `--danger-bg` | #a02a35 / #ffecef | #ffb9c0 / #45272e | failed |
+| `--info` / `--info-bg` | #184a96 / #e9f0ff | #adcaff / #202f49 | active/verifying |
 
-System sans (`-apple-system`, BlinkMacSystemFont, `Segoe UI`, sans-serif); system monospace only for identifiers. Type tokens: caption .8125rem, body .9375rem, title 1.25rem, heading 1.75rem; line heights 1.5 and 1.25; weights 400/600. Narrow container body becomes 1.0625rem and caption .9375rem. Text wraps, including unbroken identifiers. No external fonts or downloaded assets.
+Status chips additionally pair `--stale-ink/--stale-fill` (#68409b / #f3eaff light; #d7bbff / #352943 dark) and the neutral pair `--neutral-ink/--neutral-fill`. Control boundaries use `--control-edge` (#59616e light, #919baa dark), distinct from quiet `--border`; interactive edges keep >=3:1 against surface, canvas, raised and selected backgrounds through the `.75` press fade.
 
-## 4. Spacing and containment
+Measured contrast (WCAG 2.x, computed in `test/design-tokens.test.mjs`): text on surface/canvas/inset 13.6-15.7:1; subtle ink 5.7-8.2:1; every status ink on its surface >=4.5:1; every accent pairing in section 6 >=4.5:1. Keyboard focus alone carries the focus color (`--focus` #225bb5 light, #adcaff dark; `--focus-ring` is the box-shadow form).
 
-Space tokens 1–8: .25/.5/.75/1/1.5/2/3/4rem. Control minimum 2.75rem; icon 1rem; border 1px; focus 3px with 2px offset. Content maximum 76rem; readable copy 65ch; intrinsic card minimum 17rem; inspector width 30rem. Document owns showcase scroll. Dialog alone owns its bounded vertical scroll when open; no permanent third column. A 44rem container threshold switches graph preview to an equivalent ordered list. Forms/navigation wrap without horizontal overflow; the actual graph algorithm/pan/zoom belongs to C1.
+## 3. Type
 
-## 5. Reusable primitives and state inventory
+Five steps, all with paired line-heights; weights 400/600; system stacks only, no external fonts.
 
-ES module `components.mjs` exports DOM constructors; callers provide data and event callbacks. All dynamic strings enter via textContent. It contains no fetch, state persistence, dispatch, arbitrary HTML, or authority decisions.
+| Token | Size | Line-height | Use |
+| --- | --- | --- | --- |
+| `--type-xs` | 12px (.75rem) | 1.5 | micro labels, dense table headers |
+| `--type-sm` | 13px (.8125rem) | 1.5 | captions, chips, meta |
+| `--type-md` | 15px (.9375rem) | 1.55 | body copy |
+| `--type-lg` | 20px (1.25rem) | 1.3 | section titles |
+| `--type-xl` | 28px (1.75rem) | 1.22 | page heading |
 
-| Primitive/API | Required variants / responsibility |
-| --- | --- |
-| `statusChip({state,label})` | neutral, active, verified, attention, failed, stale, unavailable; text plus distinct SVG glyph |
-| `notice({state,title,detail})` | empty, loading, disconnected, pending, conflict, unavailable, stale; semantic notice with next step |
-| `taskCard({id,title,execution,verification,progress,selected,onSelect})` | not started/running/finished/failed/cancelled execution; unverified/verifying/verified/failed/stale/unavailable verification; separate rows; selected neutral wash plus square-check SVG and Selected label controlled by aria-pressed |
-| `field({label,name,value,multiline})` | named input/textarea, required/invalid/disabled via native attributes; help outside field |
-| `button(label,onClick,options)` | default/primary, hover/active/focus-visible/disabled; minimum target |
-| `createInspector({title,content})` | closed/open, modal native dialog, Escape/close, focus trap and return to invoking control |
-| `element(tag,className,text)` | text-only DOM construction utility |
+Every metric, count, timestamp and clock uses `font-variant-numeric: var(--numeric)` (tabular-nums) so live updates never jitter column edges. Line-height tightens as size grows. Narrow-container body steps up to 1.0625rem per the legacy responsive override. Identifiers render in `--mono`.
 
-`showcase.html` and `showcase.mjs` are fixture-only consumers. Inventory: semantic chips; disconnected/empty/loading/pending/conflict/unavailable/stale notices; graph cards and selected task; execution finished but unverified including legacy done; priority; dependency impact/cycle rejection; criterion editor draft/invalid/saved-pending/conflict; scenario; queue draft/ready/held with reorder; unresolved/adopted/superseded decision; inspector and long content. Showcase interactions alter only local examples, explicitly reporting simulated results. C1 must supply authoritative adapters and must never infer applied from a local button.
+## 4. Spacing, radii, density
 
-## 6. Interaction and motion
+**8-pt grid.** `--space-1` 8px, `--space-2` 16, `--space-3` 24, `--space-4` 32, `--space-5` 40, `--space-6` 48, `--space-7` 64. `--space-half` (4px) is the only sub-grid step, for icon-to-label nudges. Layout aligns to the grid; component internals may use the half-step.
 
-Focus is immediate. Controls use a 120ms ease-out opacity transition; pressed controls reduce opacity, never change semantic color. Inspector uses native dialog focus management and closes immediately on Escape; close restores the connected invoking element. No simulated activity animation or looping edges. Reduced motion sets transitions to 0ms. No changes to selection or viewport without user input. Disabled editing includes an adjacent reason. Draft cancel resets only the showcase form; saved edits require a new authoritative amendment in C1.
+**Radii.** `--radius-xs` 4px, `--radius-sm` 6px (controls), `--radius-md` 8px (cards), `--radius-lg` 12px (dialogs), `--radius-full` 999px (pills). Restrained corners stay: never mix radii on nested boxes more than one step apart.
 
-The long-content toggle visibly states “Long content: On/Off” as well as aria-pressed. Hover changes neutral fill on every enabled button, including primary actions; disabled controls do not animate. Selection uses a square-check outline distinct from the circular verified glyph. B5-R1 keeps the existing interaction mechanism; the beui button reference remains unavailable in this environment and no external observation is claimed.
+**Density.** `--density-regular` 16px default gutters; `--density-compact` 8px for dense tables and lists. Control targets: `--density-control` 44px (HIG minimum), `--density-control-compact` 32px for secondary in-table controls.
 
-The static loading shell paints immediately while the module loads. A permanent status line changes from Loading component examples to Component examples ready without moving the shell controls. Controls remain disabled until their handlers exist; below-shell inventories are revealed together after construction. An asset failure or five-second deadline changes the already visible status to a reload instruction. Completed component content is never hidden or removed for performance scoring.
+Legacy `--s1`..`--s8` remain frozen at their v1 values (a 4-pt ladder) until views migrate; do not renumber them.
 
-Inspector scroll ownership: the bounded dialog has an auto header row and minmax(0,1fr) detail row. Only `.inspector-body` scrolls; the close action stays visible above it. The detail region is keyboard focusable, named, and scroll-contained. Native dialog Escape and close still return focus to the invoking card.
+## 5. Elevation and motion
 
-## 7. Depth and shape
+Four elevation steps, neutral shadows only:
 
-6px control radius, 8px card radius, pill status radius. Card borders are neutral. Inspector elevation uses a soft neutral shadow (0 12px 40px #10131a33 in light; #00000066 in dark) and dim backdrop #10131a66. Selected cards use a neutral fill with a visible selection glyph/label. Status fill never becomes an accent border.
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `--elevation-0` | none | none | flat: borders carry the edge |
+| `--elevation-1` | 0 1px 2px rgba(16,19,26,.08) | 0 1px 2px rgba(0,0,0,.6) | resting cards on canvas |
+| `--elevation-2` | 0 4px 16px rgba(16,19,26,.12) | 0 4px 16px rgba(0,0,0,.55) | popovers, sticky rails |
+| `--elevation-3` | 0 12px 40px #10131a33 | 0 12px 40px #00000066 | modal inspector |
 
-## 8. Accessibility, acceptance and handoff
+`--shadow` is the v1 name for step 3. `--edge-highlight` (inset 1px top light) is available for elevated surfaces that want a quiet bevel. Dialog scrim is `--backdrop` #10131a66.
 
-Keyboard and reduced-motion users are primary personas. Native labels, buttons and dialog supply keyboard semantics. Status always has text and a glyph; absence/loading never resembles a pass. Focus ring is persistent while keyboard focused. Long labels and unbroken strings wrap; narrow forms have no horizontal navigation. No live-announcement loop. Fixture state changes announce via one polite status region.
+Motion is feedback, never decoration: `--motion-instant` 80ms hover response, `--motion-fast` 120ms fades, `--motion-base` 200ms panels, `--motion-slow` 320ms large surfaces; `--motion-ease` cubic-bezier(0.2,0,0,1) decelerates entrances. No looping animation, no simulated activity, no edge motion. `@media (prefers-reduced-motion: reduce)` collapses every `--motion-*` duration and the legacy `--fast` to 0ms — the test suite fails if that block disappears.
 
-Browser evidence must cover light/dark at 390, 768 and 1440 CSS pixels, all fixture state selections, inspector Escape/return, repeated interruption, invalid criterion, cycle rejection, queue reorder and long input. Automated contrast checks measure computed foreground/fill pairs; Node18 syntax checks verify shipped module compatibility. Screen-reader speech and native-host readiness are not observed by this component work. Independent review is owned by the root task and remains required before C1's showcase gate is accepted. No accepted product accessibility debt is claimed.
+## 6. Per-product accents
 
-## 9. Live project shell integration
+The shell sets `--product-accent`, `--product-accent-soft` and `--product-accent-contrast` by placing `data-product="<runtime>"` (exact `RUNTIMES` spelling from `shared/project/contract.mjs`) on the root or the shell container. Without the attribute the family accent applies. Accents are ink-and-fill pairs: the accent works as text on its surfaces, as a fill under its contrast ink, and inside its soft wash. Intended surfaces: surface, canvas and the soft wash in light; surface, canvas, elevated and the soft wash in dark.
 
-The authenticated production entry uses the seven destinations Overview, Project, Plans, Execution, Git, Evidence and Research. The project name remains the leading identity; LazyBuddy is a compact product badge. The old run-scoped Work, Verification and Plan edits surfaces live inside Execution and keep their existing native run authority. A repository without an initialized native project record keeps that run dashboard available and renders no project destination bar.
+| Product | Light ink / wash / contrast | Dark ink / wash / contrast | Min ratio (measured) |
+| --- | --- | --- | --- |
+| LazyBuddy | #2b54d9 / #e8edfc / #ffffff | #8ea8ff / #2b3050 / #0d1220 | 5.3:1 |
+| LazyTrae | #0e7490 / #e3f5f9 / #ffffff | #53c6d8 / #24363e / #0d1220 | 4.8:1 |
+| LazyQoder | #6d28d9 / #ede9fc / #ffffff | #a98bff / #302e44 / #0d1220 | 4.9:1 |
+| LazyZCode | #b8470e / #fdefe5 / #ffffff | #ff9c66 / #3c312e / #0d1220 | 4.7:1 |
+| LazyKimi | #b81d5d / #fbe4ee / #ffffff | #ff87b3 / #3c2e39 / #0d1220 | 5.2:1 |
+| LazyDeepSeek | #4338ca / #e7e7fb / #ffffff | #8f95ff / #2c3044 / #0d1220 | 4.9:1 |
 
-Plans uses a source-ordered list/detail composition. At wide widths the plan index is the single bounded secondary scroll owner and the document stays in normal page flow; below 44rem the index precedes the detail in one column and neither becomes a miniature desktop canvas. The detail owns a visible `Plans / <plan>` breadcrumb and Back control. Registered Markdown is rendered through the read-only document primitive with a sticky outline at wide widths, source mode, horizontal overflow only for tables and code, and no checklist mutation semantics.
+Hues are deliberately spaced (cobalt 224°, teal 192°, violet 268°, burnt orange 21°, rose 336°, indigo 245°) and deliberately distinct in saturation and depth from the five status inks, so an accent badge is never readable as a status chip.
 
-The project map measures every visible status row before layout. Its graph controls allow directional pan, explicit Fit, and zoom from 25% through 200% in 25% steps, starting at 100%. Pointer drag pans only from the canvas/edge surface and ignores button, input and link descendants; it never changes layout or dependencies. Polling preserves the selected object, collapsed groups, mode and viewport; drilling a plan opens that plan's registered document. At widths at or below 44rem the equivalent hierarchical list keeps full labels and selection. The current layered DAG implementation remains the package-portable layout mechanism; the proposed ELK worker is deferred because no ELK asset is shipped in this package.
+## 7. Do / don't
 
-## 10. Live states and authority
+**Do** lead with a status sentence a human can read aloud: "3 of 7 criteria verified across 2 runs; 1 attention item." **Don't** open a view with a grid of twelve identical metric cards or a paragraph of methodology.
 
-Every project read, registered-source read and project command uses the same authenticated in-memory browser session and the selected runtime's project authority adapter. A source request carries only a registered source identity; the native adapter resolves its recorded path and performs the descriptor-pinned, one-MiB Markdown capture. The browser has no arbitrary path route. Project commands retain native project binding, expected revision and command idempotency checks. Disconnect marks run editing read-only and retains the last observed project, selection and drafts without painting a write as successful.
+**Do** mark the active destination with the product accent and a text label. **Don't** recolor buttons, links, table headers or status chips with the product accent, and never use the accent to signal success or failure.
 
-Unavailable native data is an actionable hollow state: no linked run explains how to open a run; a linked run outside the service binding names that run; absent worktree, artifact or research records say which native record is missing. The interface never turns missing data into a zero metric, fabricated observation, scheduler claim or verification claim.
+**Do** render status as glyph + label + fill from the status roles, keeping "unavailable" hollow and dashed. **Don't** invent new status colors in view CSS, and never let a finished-but-unverified task show green.
 
-## 11. Accessibility constraints and accepted debt
+**Do** reserve `--elevation-2`+ for transient surfaces and one inspector; keep the resting page at `--elevation-0/1`. **Don't** stack shadows on borders on shadows — if a card needs shouting, fix its hierarchy instead.
 
-Destination buttons and plan rows use native buttons, 44px minimum targets, visible focus, text labels and `aria-pressed`. Left and right arrows move among enabled destinations without crossing into unavailable controls. Source order remains Overview context, destinations, list, detail. Polling does not move focus. The document and page own vertical scroll except for the plan index, inspector, wide tables and code.
+**Do** use `--subtle` for provenance and timestamps, tabular numerals for every metric. **Don't** bold meta text to make it "pop", and don't hide authoritative values behind tooltips.
 
-Accepted debt for this slice: Git shows the worktree identity and HEAD already returned by the native project projection; deeper changed-file, remote PR/CI and usage metrics remain explicitly unavailable until their existing bounded collectors are connected by the owning runtime. The production shell does not bundle a new scheduler or a new Git collector.
+**Do** keep motion under 200ms except large-surface transitions, always with `--motion-ease`. **Don't** animate loops, pulse live indicators, or move focus/selection without user input.
 
-## 12. Bound-run execution composition
+**Do** prefer the 16px density regular for reading surfaces and the 8px compact inside data tables. **Don't** mix densities within one list, and never shrink a primary control below 44px.
 
-Execution projects the authenticated bound-run snapshot into the shared nested execution view. The first pane is the native task dependency graph from `tasks[].depends_on`; it is labeled Run, never Batch, because the run snapshot records no batch topology. Drilling a task changes aggregation to its distinct native attempts. Attempt ordering never creates a retry edge, and missing worker identity, timestamps, step identity, role or agent topology remains unavailable.
+## 8. Compatibility and enforcement
 
-The timeline includes only attempts with a reported worker identity and valid native `started_at`/`finished_at` timestamps. Open running intervals extend to the dashboard read time without inventing a terminal result. Lanes are reported worker identities, peak concurrency counts attempts, and overlap copy distinguishes the same worker lane from different lanes. The service CSP remains strict: timeline geometry uses SVG attributes rather than inline styles.
+The v1 token set (canvas/surface/raised/hover/selected/text/muted/border/focus, the status ink/fill pairs, `--s1`..`--s8`, the four legacy type sizes, `--radius-control/card/pill`, `--control`, `--content/--measure/--card-min/--inspector`, `--fast/--ease`) is frozen: every value matches the pre-v2 file byte-for-byte in both themes, so shipped views render unchanged while later tasks migrate them to the v2 names. `node --test lazybuddy-plugin/shared/dashboard/test/design-tokens.test.mjs` fails when a frozen alias drifts, the spacing grid breaks, the type scale stops being monotonic, any role or accent pair falls below WCAG AA on its intended surfaces, or reduced-motion stops collapsing durations. Views add no color literals: a new hardcoded hex in view CSS is a defect.
 
-PlanRecord → bound run → task → attempt breadcrumbs preserve selection and graph/timeline viewport through polling. A PlanRecord linked to another run shows an explicit binding requirement because this service has no arbitrary alternate-run reader. The original Work, Verification and Plan edits dashboard remains the mutation/evidence authority inside a disclosure; an explicit action opens it from any execution depth, and its open state, selected tab and drafts survive polling because the original DOM instance is retained.
-
-Research similarly retains its selected finding, registered-source document instance and Rendered/Source mode when an unchanged project revision is polled. Evidence navigation resolves the matching artifact through the authenticated opaque-ID preview route rather than a path read.
+The component contract from the original component system (statusChip/notice/taskCard/field/button/inspector constructors, textContent-only dynamic strings, no fetch or authority in components, one polite status region, bounded inspector scroll ownership) and the shell authority rules (destinations render only after initialization; missing native data renders an actionable hollow state, never a zero metric or fabricated observation) remain binding on every family member.
