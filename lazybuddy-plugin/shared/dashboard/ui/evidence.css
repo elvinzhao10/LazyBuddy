@@ -1,74 +1,126 @@
 @import './style.css';
 
-/* T19 evidence and research views — existing design tokens only; no new status
-   colors. Artifact and research content renders as text; the only image
-   element is the screenshot preview whose data URL comes from the artifact
-   package's fixed-mime allowlist. */
+/* T19 evidence and research views — the library redesign on the T12 component
+   library and the v2 tokens. Spacing rides --space-*, type --type-*, radii
+   --radius-*, motion --motion-*; the only v1 aliases still referenced are the
+   interaction fills (--hover --selected) and --line, which have no v2
+   equivalent yet. No color literal lives here and no new status color exists:
+   artifact and research content renders as text, and the only image element is
+   the screenshot preview whose data URL comes from the artifact package's
+   fixed-mime allowlist. */
 
 .evidence-view { container-type: inline-size; }
-.evidence-head .cluster { flex-wrap: wrap; }
-.evidence-subtitle, .evidence-project { margin: 0; }
-.evidence-toolbar { justify-content: space-between; }
-.evidence-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
+.evidence-head { margin-block-end: 0; }
+.evidence-subtitle, .evidence-project { margin: 0; overflow-wrap: anywhere; }
 .evidence-status { min-block-size: var(--control); display: flex; align-items: center; flex-wrap: wrap; }
 
-.evidence-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 24rem); gap: var(--s4); align-items: start; }
-.evidence-scopes { padding: var(--s3); }
-.evidence-scope-list { flex-wrap: wrap; gap: var(--s2); }
-.evidence-scope-list button { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); overflow-wrap: anywhere; }
+.evidence-toolbar { justify-content: space-between; }
+.evidence-legend { flex: 1 1 100%; }
+.evidence-filter-field { flex: 1 1 14rem; max-inline-size: 24rem; }
 
-.evidence-collection { padding: var(--s3); }
-.evidence-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.evidence-nav [data-nav-out] { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); }
-.evidence-pagination { gap: var(--s2); }
-.evidence-page-indicator { min-block-size: var(--control); display: inline-flex; align-items: center; }
-.evidence-totals, .evidence-coverage { margin: 0; overflow-wrap: anywhere; }
+/* Scope chips: secondary navigation controls at the compact target size. */
+.evidence-scopes { padding: var(--space-2); }
+.evidence-scope-list { gap: var(--space-1); }
+.evidence-scope-list button { min-block-size: var(--density-control-compact); padding: var(--space-half) var(--space-2);
+  font-size: var(--type-sm-size); overflow-wrap: anywhere; }
 
-.evidence-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: var(--s3); }
-.evidence-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
-.evidence-row { display: grid; gap: var(--s2); inline-size: 100%; text-align: start; padding: var(--s3);
-  background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); cursor: pointer; }
-.evidence-row:hover { background: var(--hover); }
+/* Library layout: filterable index beside the reading pane. */
+.evidence-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 30rem);
+  gap: var(--space-3); align-items: start; }
+.evidence-main { min-inline-size: 0; }
+.evidence-collection { min-inline-size: 0; }
+.evidence-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.evidence-nav [data-nav-out] { min-block-size: var(--density-control-compact); padding: var(--space-half) var(--space-2);
+  font-size: var(--type-sm-size); }
+.evidence-pagination { gap: var(--space-1); }
+.evidence-page-indicator { min-block-size: var(--control); display: inline-flex; align-items: center;
+  font-variant-numeric: var(--numeric); }
+.evidence-totals, .evidence-coverage, .evidence-filter-coverage { margin: 0; overflow-wrap: anywhere;
+  font-variant-numeric: var(--numeric); }
+
+/* Index rows: the artifact control inside the table cell. Secondary in-table
+   control at the compact target; the full provenance sentence stays in the
+   reading pane (the title attribute only supplements it). */
+.evidence-row { display: grid; gap: var(--space-half); inline-size: 100%; text-align: start;
+  min-block-size: var(--density-control-compact); padding: var(--space-half) var(--space-1);
+  background: transparent; border-color: transparent; border-radius: var(--radius-xs);
+  transition: background-color var(--motion-instant) var(--motion-ease); }
+.evidence-row:hover:enabled { background: var(--hover); }
 .evidence-row[aria-pressed='true'] { background: var(--selected); }
-.evidence-row[data-status='missing'], .evidence-row[data-status='inaccessible'] { border-style: dashed; }
-.evidence-row[data-status='moved'] { border-style: dotted; }
-.evidence-row-list { padding: var(--s2); }
-.evidence-row-head { flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.evidence-row-head code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
-.evidence-row-type { font-size: var(--caption); }
-.evidence-row-path { overflow-wrap: anywhere; }
-.evidence-applies, .evidence-provenance { overflow-wrap: anywhere; font-size: var(--caption); }
+.evidence-row-head { gap: var(--space-1); align-items: center; }
+.evidence-row-id { font-size: var(--type-xs-size); overflow-wrap: anywhere; }
+.evidence-row-type { font-size: var(--type-xs-size); }
+.evidence-row-path { overflow-wrap: anywhere; font-size: var(--type-sm-size); }
+.evidence-digest { font-size: var(--type-xs-size); overflow-wrap: anywhere; font-variant-numeric: var(--numeric); }
 
-.evidence-inspector { align-self: start; }
+/* Applicable-version chips: one pill per recorded applicability clause. The
+   button variants cross-link row -> scope; span variants are inert labels. */
+.evidence-versions { gap: var(--space-half); }
+.evidence-version-chip { display: inline-flex; align-items: center; min-block-size: var(--density-control-compact);
+  padding: var(--space-half) var(--space-2); font-size: var(--type-xs-size);
+  background: var(--inset); border: var(--line) solid var(--hairline); border-radius: var(--radius-full);
+  overflow-wrap: anywhere; }
+button.evidence-version-chip { cursor: pointer;
+  transition: background-color var(--motion-instant) var(--motion-ease); }
+button.evidence-version-chip:hover:enabled { background: var(--hover); }
+
+/* Narrow list mode: the same rows without the table chrome. */
+.evidence-list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.evidence-list .evidence-row { padding: var(--space-1) var(--space-2); border: var(--line) solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface); }
+.evidence-list .evidence-row:hover:enabled { background: var(--hover); }
+
+/* Reading pane. */
+.evidence-inspector { align-self: start; position: sticky; inset-block-start: var(--space-2); }
 .evidence-inspector h3 { margin: 0; }
 .evidence-inspector > code { overflow-wrap: anywhere; }
-.evidence-preview { display: grid; gap: var(--s2); }
-.evidence-preview-markdown { display: grid; gap: var(--s2); }
-.evidence-preview-markdown .evidence-preview-heading { margin: 0; }
-.evidence-preview-markdown .evidence-preview-paragraph { margin: 0; }
-.evidence-preview-quote { margin: 0; padding-inline-start: var(--s4); border-inline-start: var(--line) solid var(--border); }
-.evidence-preview-list { margin: 0; padding-inline-start: var(--s5); display: grid; gap: var(--s1); }
-.evidence-preview-code { margin: 0; padding: var(--s2); overflow: auto; max-block-size: 24rem;
-  border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--canvas); }
-.evidence-preview-code code { overflow-wrap: anywhere; white-space: pre-wrap; }
-.evidence-preview-image { max-inline-size: 100%; block-size: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); }
-.evidence-preview-sanitization, .evidence-preview-unavailable { overflow-wrap: anywhere; }
+.evidence-pane-versions { margin-block-start: calc(-1 * var(--space-half)); }
+.evidence-preview { display: grid; gap: var(--space-2); min-inline-size: 0; }
 
-.evidence-research, .evidence-refusals { padding: var(--s4); }
+/* Safe preview reading typography: sanitized blocks only, prose on the
+   measure, code as data. T12's sanitizer emits heading/paragraph/quote/list/
+   code blocks — markdown tables are not a preview kind, so they degrade to
+   sanitized paragraph text rather than a fabricated grid. */
+.evidence-preview-markdown { display: grid; gap: var(--space-2); max-inline-size: var(--measure); }
+.evidence-preview-heading { margin: 0; font-size: var(--type-md-size); line-height: var(--type-md-lh);
+  font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.evidence-preview-paragraph { margin: 0; font-size: var(--type-md-size); line-height: var(--type-md-lh);
+  max-inline-size: var(--measure); overflow-wrap: anywhere; }
+.evidence-preview-quote { margin: 0; padding: var(--space-half) var(--space-3);
+  border-inline-start: var(--line) solid var(--border); background: var(--inset);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; max-inline-size: var(--measure); overflow-wrap: anywhere; }
+.evidence-preview-list { margin: 0; padding-inline-start: var(--space-4); display: grid; gap: var(--space-half); }
+.evidence-preview-code { margin: 0; padding: var(--space-2); overflow: auto; max-block-size: 24rem;
+  border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); background: var(--inset); }
+.evidence-preview-code code { overflow-wrap: anywhere; white-space: pre-wrap; font-size: var(--type-sm-size); }
+.evidence-preview-image { max-inline-size: 100%; block-size: auto; border: var(--line) solid var(--border);
+  border-radius: var(--radius-sm); }
+.evidence-preview-sanitization, .evidence-preview-unavailable { overflow-wrap: anywhere; font-variant-numeric: var(--numeric); }
+
+/* Research records and registration refusals. */
+.evidence-research, .evidence-refusals { padding: var(--space-3); }
 .evidence-research h3, .evidence-research h4 { margin: 0; }
 .evidence-research-assertion { margin: 0; }
-.evidence-finding { padding: var(--s3); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+.evidence-finding { padding: var(--space-2); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
 .evidence-finding p { margin: 0; }
-.evidence-finding-sources { margin: 0; padding-inline-start: var(--s5); display: grid; gap: var(--s1); }
-.evidence-finding-sources button { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); overflow-wrap: anywhere; }
-.evidence-promotion { gap: var(--s1); padding: var(--s2); border: var(--line) dashed var(--border); border-radius: var(--radius-card); }
-.evidence-promotion [data-proposal-id] { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content; }
+.evidence-finding-sources { margin: 0; padding-inline-start: var(--space-4); display: grid; gap: var(--space-half); }
+.evidence-finding-sources button { min-block-size: var(--density-control-compact); padding: var(--space-half) var(--space-2);
+  font-size: var(--type-sm-size); overflow-wrap: anywhere; }
+.evidence-promotion { gap: var(--space-half); padding: var(--space-2); border: var(--line) dashed var(--border);
+  border-radius: var(--radius-md); }
+.evidence-promotion [data-proposal-id] { min-block-size: var(--density-control-compact);
+  padding: var(--space-half) var(--space-2); font-size: var(--type-sm-size); inline-size: fit-content; }
 .evidence-promotion-assertion { overflow-wrap: anywhere; }
-.evidence-refusal-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s2); }
-.evidence-refusal-list li { display: grid; gap: var(--s1); }
+.evidence-refusal-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }
+.evidence-refusal-list li { display: grid; gap: var(--space-half); }
 .evidence-refusal-list code { overflow-wrap: anywhere; }
 
 @container (max-width: 48rem) {
   .evidence-columns { grid-template-columns: minmax(0, 1fr); }
-  .evidence-cards { grid-template-columns: minmax(0, 1fr); }
+  .evidence-inspector { position: static; }
+  /* The shared .cluster wraps; in column direction a wrapped item lands in a
+     second column to the right and overflows the narrow viewport, so the
+     toolbar stacks strictly in one column here. */
+  .evidence-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
+  .evidence-filter-field { max-inline-size: none; }
 }

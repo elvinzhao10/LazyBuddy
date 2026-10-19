@@ -1,7 +1,10 @@
 // T19 evidence and research composition — a PURE read-only adapter that calls
 // the T12 artifacts package (index/query/research; called, never forked) and
 // adds the presentation fields T12 deliberately leaves out: per-status state
-// sentences with digest provenance, the applicable-version line, the
+// sentences with digest provenance, the structured applicable-version chips
+// (task/gate/plan/feature identity plus criterion/run/project revisions, each
+// naming only recorded fields), the two-way cross-link index (scope -> rows
+// AND row -> scopes, both derived from T12's own query surface), the
 // navigation scope index (task/gate/plan/feature/global), and the inert
 // research display records (T12's researchPromotionView plus the finding's own
 // captured text). Pagination, coverage and scope filtering stay T12's: every
@@ -91,6 +94,43 @@ function appliesTo(entry) {
   return `applies to: ${parts.length ? parts.join(' · ') : 'no recorded applicability'} · ${content}`;
 }
 
+// Applicable-version chips: one chip per recorded applicability clause, in a
+// deterministic order (task, gate, plan, feature, criterion, run, attempt,
+// research, project). Chips whose kind maps to a navigation scope carry that
+// nav so the view can cross-link row -> scope; nothing here infers a version
+// the index never recorded.
+function versionsOf(entry) {
+  const applicability = entry.applicability ?? {};
+  const versions = [];
+  for (const taskId of applicability.task_ids ?? []) {
+    versions.push({ kind: 'task', label: taskId, nav: { scope: 'task', id: taskId } });
+  }
+  for (const gateName of applicability.gate_names ?? []) {
+    versions.push({ kind: 'gate', label: gateName, nav: { scope: 'gate', id: gateName } });
+  }
+  for (const planId of applicability.plan_ids ?? []) {
+    versions.push({ kind: 'plan', label: planId, nav: { scope: 'plan', id: planId } });
+  }
+  for (const featureId of applicability.feature_ids ?? []) {
+    versions.push({ kind: 'feature', label: featureId, nav: { scope: 'feature', id: featureId } });
+  }
+  for (const criterion of applicability.criterion_versions ?? []) {
+    versions.push({ kind: 'criterion', label: `${criterion.id} v${criterion.version}`, version: criterion.version });
+  }
+  if (boundedText(applicability.run_id)) {
+    let label = `run ${applicability.run_id}`;
+    if (Number.isSafeInteger(applicability.run_revision)) label += ` @ r${applicability.run_revision}`;
+    if (Number.isSafeInteger(applicability.plan_revision)) label += ` · plan r${applicability.plan_revision}`;
+    versions.push({ kind: 'run', label });
+  }
+  for (const attemptId of applicability.attempt_ids ?? []) versions.push({ kind: 'attempt', label: attemptId });
+  for (const researchId of applicability.research_ids ?? []) versions.push({ kind: 'research', label: researchId });
+  if (Number.isSafeInteger(applicability.project_revision)) {
+    versions.push({ kind: 'project', label: `project r${applicability.project_revision}`, version: applicability.project_revision });
+  }
+  return versions;
+}
+
 function slimEntry(entry) {
   return {
     id: entry.id, origins: [...(entry.origins ?? [])], type: entry.type, producer: entry.producer,
@@ -118,6 +158,7 @@ function slimEntry(entry) {
     stateSentence: STATE_SENTENCES[entry.status](),
     provenance: provenanceOf(entry),
     appliesTo: appliesTo(entry),
+    versions: versionsOf(entry),
   };
 }
 
@@ -228,8 +269,13 @@ export function evidenceFixture({ index, snapshot, refusals = [] } = {}) {
       accepted_requirement_ids_before_research: [...authority.accepted_requirement_ids] },
     refusals: validateRefusals(refusals),
     scan: { scanned_at: index.scan?.scanned_at ?? null, runs_indexed: index.scan?.runs_indexed ?? null,
+      runs_discovered: index.scan?.runs_discovered ?? null,
       files_seen: index.scan?.files_seen ?? null, native_state_root: index.scan?.native_state_root ?? null,
-      history_status: index.scan?.history_status ?? 'observed', history_reason: index.scan?.history_reason ?? null },
+      history_status: index.scan?.history_status ?? 'observed', history_reason: index.scan?.history_reason ?? null,
+      skipped_count: Array.isArray(index.scan?.skipped) ? index.scan.skipped.length : 0,
+      skipped: (Array.isArray(index.scan?.skipped) ? index.scan.skipped : []).slice(0, 50)
+        .map(item => ({ path: typeof item?.path === 'string' ? item.path.slice(0, 1024) : null,
+          reason: typeof item?.reason === 'string' ? item.reason.slice(0, 128) : null })) },
   };
   fixture.total = fixture.entries.length;
 
@@ -244,11 +290,30 @@ export function evidenceFixture({ index, snapshot, refusals = [] } = {}) {
   }
   fixture.scopes = [{ nav: { scope: 'global', id: null }, key: 'global', label: 'global index',
     total: fixture.total, page_count: Math.max(1, Math.ceil(fixture.total / DEFAULT_PAGE_SIZE)) }];
+  // Two-way cross-links: scope -> rows uses T12's own scoped query results;
+  // row -> scopes uses only the recorded applicability arrays. Both directions
+  // are asserted against each other (and against T12's query surface) by the
+  // model tests, so a drift on either side is a failure, not a rendering
+  // choice.
+  fixture.crossLinks = { by_scope: {}, by_artifact: {} };
+  for (const entry of slimmed) {
+    const keys = new Set();
+    for (const taskId of entry.applicability.task_ids) keys.add(`task:${taskId}`);
+    for (const gateName of entry.applicability.gate_names) keys.add(`gate:${gateName}`);
+    for (const planId of entry.applicability.plan_ids) keys.add(`plan:${planId}`);
+    for (const featureId of entry.applicability.feature_ids) keys.add(`feature:${featureId}`);
+    fixture.crossLinks.by_artifact[entry.id] = [...keys].sort();
+  }
   for (const scope of ['task', 'gate', 'plan', 'feature']) {
     for (const id of sortedIds([...identities[scope]])) {
       const scoped = scopeEntries(fixture, { scope, id });
       fixture.scopes.push({ nav: { scope, id }, key: scoped.key, label: `${scope} ${id}`,
         total: scoped.total, page_count: Math.max(1, Math.ceil(scoped.total / DEFAULT_PAGE_SIZE)) });
+      fixture.crossLinks.by_scope[scoped.key] = Object.freeze({
+        nav: Object.freeze({ scope, id }),
+        total: scoped.total,
+        artifact_ids: scoped.entries.map(entry => entry.id),
+      });
     }
   }
 

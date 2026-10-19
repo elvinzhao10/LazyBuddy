@@ -11,18 +11,20 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
 
-// T19 interface under test: evidence and research views over the real T12
-// artifact index. The fixture is REAL end to end — a disposable root with a
-// native evidence tree (73 indexed artifacts, more than one default page),
-// project records authored through the actual CLI command route (init, sources,
-// feature/requirement baseline items, a registered plan linked to the native
-// run, artifact registrations prepared by T12's prepareArtifactRegistration,
-// a baseline proposal and two research findings), then a real moved file
-// (renamed after registration), a deleted file, an oversized artifact, a
-// symlink refused at registration, and a markdown report carrying THIS lane's
-// own <script>/<img onerror>/javascript: vectors. The T19 model calls T12's
-// query/pagination/preview/research packages (never forked); the DOM view
-// renders previews as inert text nodes only.
+// T19 interface under test: the redesigned evidence and research views over
+// the real T12 artifact index. The fixture is REAL end to end — a disposable
+// root with a native evidence tree (73 indexed artifacts, more than one
+// default page), project records authored through the actual CLI command route
+// (init, sources, feature/requirement baseline items, a registered plan linked
+// to the native run, artifact registrations prepared by T12's
+// prepareArtifactRegistration, a baseline proposal and two research findings),
+// then a real moved file (renamed after registration), a deleted file, an
+// oversized artifact, a symlink refused at registration, and a markdown report
+// carrying THIS lane's own <script>/<img onerror>/javascript: vectors. The
+// T19 model calls T12's query/pagination/preview/research packages (never
+// forked); the DOM view renders the index as the T12 dataTable library list
+// with a reading pane, previews as inert text nodes only, and the filter as a
+// lens over recorded pages.
 const dom = createMiniDom();
 globalThis.document = dom.document;
 
@@ -113,6 +115,7 @@ function reduceCLI(action, state) {
 }
 
 const fixture = { root: null, refusals: [] };
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 test.before(async () => {
   const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 't19-evidence-')));
@@ -258,6 +261,72 @@ async function buildFixture() {
 }
 
 const idsOf = result => result.entries.map(entry => entry.id).sort();
+const rowOf = (view, id) => view.element.querySelector(`.evidence-row[data-artifact-id="${id}"]`);
+const rowsOf = view => [...view.element.querySelectorAll('.evidence-row')];
+const chipOf = (view, navKey) => view.element.querySelector(`.evidence-version-chip[data-nav-key="${navKey}"]`);
+// The state chip lives in the table's State column (or inline on list rows).
+const stateChipOf = row => row.querySelector('.status') ?? row.parentNode?.parentNode?.querySelector('.status');
+
+test('model: cross-links are two-way and stay pinned to the T12 query surface', async () => {
+  const { index, composed } = await buildFixture();
+
+  // by_scope comes from T12's own scoped queries over the composed fixture…
+  assert.deepEqual(composed.crossLinks.by_scope['task:task-impl'].artifact_ids.sort(),
+    idsOf(artifactsForTask(index, 'task-impl')), 'task scope rows equal T12 artifactsForTask');
+  assert.deepEqual(composed.crossLinks.by_scope['gate:gate:tests'].artifact_ids.sort(),
+    idsOf(artifactsForGate(index, 'gate:tests')), 'gate scope rows equal T12 artifactsForGate');
+  assert.deepEqual(composed.crossLinks.by_scope['plan:plan:evidence'].artifact_ids.sort(),
+    idsOf(artifactsForPlan(index, 'plan:evidence')), 'plan scope rows equal T12 artifactsForPlan');
+  assert.deepEqual(composed.crossLinks.by_scope['feature:feature:notes'].artifact_ids.sort(),
+    idsOf(artifactsForFeature(index, 'feature:notes')), 'feature scope rows equal T12 artifactsForFeature');
+
+  // …and both directions agree: every by_scope member lists the key in
+  // by_artifact, and every by_artifact key names a scope that contains it.
+  for (const [key, record] of Object.entries(composed.crossLinks.by_scope)) {
+    assert.ok(record.artifact_ids.length > 0, `${key} carries its rows`);
+    for (const artifactId of record.artifact_ids) {
+      assert.ok(composed.crossLinks.by_artifact[artifactId]?.includes(key),
+        `row -> scope: ${artifactId} names ${key}`);
+    }
+  }
+  const scopeKeys = new Set(Object.keys(composed.crossLinks.by_scope));
+  for (const [artifactId, keys] of Object.entries(composed.crossLinks.by_artifact)) {
+    for (const key of keys) {
+      assert.ok(scopeKeys.has(key), `scope -> row: ${key} exists and contains ${artifactId}`);
+      assert.ok(composed.crossLinks.by_scope[key].artifact_ids.includes(artifactId),
+        `scope -> row: ${key} lists ${artifactId}`);
+    }
+  }
+
+  // Version chips name only recorded applicability clauses.
+  const report = composed.entries.find(entry => entry.id === 'artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
+  const kinds = Object.fromEntries(report.versions.map(version => [version.kind, version]));
+  assert.equal(kinds.plan.nav.scope, 'plan');
+  assert.equal(kinds.plan.nav.id, 'plan:evidence');
+  assert.equal(kinds.feature.label, 'feature:notes');
+  assert.match(kinds.run.label, /run run-alpha/);
+  assert.match(kinds.project.label, /project r\d+/);
+  assert.ok(report.versions.every(version => typeof version.label === 'string' && version.label.length > 0));
+  const log = composed.entries.find(entry => entry.id === 'artifact:.lazybuddy/runs/run-alpha/evidence/run-log.txt');
+  const logKinds = Object.fromEntries(log.versions.map(version => [version.kind, version]));
+  assert.equal(logKinds.task.nav.scope, 'task');
+  assert.equal(logKinds.task.nav.id, 'task-impl');
+  const gateReport = composed.entries.find(entry => entry.id === 'artifact:.lazybuddy/runs/run-alpha/verification/gate-report.md');
+  const gateKinds = Object.fromEntries(gateReport.versions.map(version => [version.kind, version]));
+  assert.equal(gateKinds.gate.nav.scope, 'gate');
+  assert.equal(gateKinds.gate.nav.id, 'gate:tests');
+
+  // Every entry's chips cross-link back into the scope index (two-way closure).
+  for (const entry of composed.entries) {
+    for (const version of entry.versions ?? []) {
+      if (!version.nav) continue;
+      const key = `${version.nav.scope}:${version.nav.id}`;
+      assert.ok(composed.crossLinks.by_scope[key], `${entry.id} chip ${key} resolves to a real scope`);
+      assert.ok(composed.crossLinks.by_scope[key].artifact_ids.includes(entry.id),
+        `${key} lists ${entry.id} back — the cross-link closes both ways`);
+    }
+  }
+});
 
 test('evidence browser paginates honestly, shows distinct states, safe previews and inert research', async () => {
   const { index, composed } = await buildFixture();
@@ -280,80 +349,122 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
     loadPage: (source, nav, page) => evidencePage(source, nav, page),
     loadPreview: entry => renderArtifactPreview(fixture.root, entry),
   });
+  await view.ready;
 
-  // --- 1. Pagination totals are honest and the second page is reachable.
+  // --- 1. The index renders as the T12 dataTable library list with tabular
+  // bytes/digest columns and version chips, and paginates honestly.
   let stats = view.getStats();
   assert.equal(stats.nav.scope, 'global');
   assert.equal(stats.page, 1);
   assert.equal(stats.totals.page_count, 2);
   assert.equal(stats.totals.page_size, DEFAULT_PAGE_SIZE);
-  let rows = [...view.element.querySelectorAll('.evidence-row')];
+  const table = view.element.querySelector('table[data-testid="evidence-index-table"]');
+  assert.ok(table, 'the index is a dataTable');
+  assert.deepEqual([...table.querySelectorAll('thead th')].map(cell => cell.textContent),
+    ['Artifact', 'State', 'Applies to', 'Bytes', 'Digest']);
+  const numericHeads = [...table.querySelectorAll('thead th[data-numeric="true"]')].map(cell => cell.textContent);
+  assert.deepEqual(numericHeads, ['Bytes', 'Digest'], 'digests and sizes are tabular columns');
+  assert.ok(table.querySelectorAll('tbody td[data-numeric="true"]').length >= rowsOf(view).length * 2,
+    'every row carries numeric bytes and digest cells');
+  let rows = rowsOf(view);
   assert.equal(rows.length, DEFAULT_PAGE_SIZE);
+  assert.ok(table.querySelector('.evidence-version-chip'), 'rows carry applicable-version chips');
   assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent,
     new RegExp(`total ${composed.total} · page size ${DEFAULT_PAGE_SIZE} · showing ${DEFAULT_PAGE_SIZE} · truncation none`));
   assert.match(view.element.querySelector('[data-testid="evidence-coverage"]').textContent,
-    /available 68 · missing 1 · moved 1 · redacted 0 · unsupported 2 · inaccessible 1/);
+    /scope coverage: available 68 · missing 1 · moved 1 · redacted 0 · unsupported 2 · inaccessible 1/);
   view.element.querySelector('[data-page-action="next"]').click();
+  await settle();
   stats = view.getStats();
   assert.equal(stats.page, 2, 'the second page is reachable');
-  rows = [...view.element.querySelectorAll('.evidence-row')];
+  rows = rowsOf(view);
   assert.equal(rows.length, composed.total - DEFAULT_PAGE_SIZE);
   assert.equal(view.element.querySelector('[data-page-action="next"]').disabled, true);
   assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent, new RegExp(`total ${composed.total}`));
-  // No artifact is silently truncated: pages 1+2 cover every identity exactly once.
-  const pageOne = evidencePage(composed, { scope: 'global' }, 1).entries.map(entry => entry.id);
-  const pageTwo = evidencePage(composed, { scope: 'global' }, 2).entries.map(entry => entry.id);
-  assert.deepEqual([...pageOne, ...pageTwo].sort(), index.entries.map(entry => entry.id).sort());
+
+  // No artifact is silently truncated: walking every page covers every
+  // identity exactly once — pagination keeps ALL indexed artifacts reachable,
+  // including the non-available ones living past page one.
+  const walked = [];
+  const pages = composed.total > DEFAULT_PAGE_SIZE ? composed.scopePages.global.page_count : 1;
+  for (let page = 1; page <= pages; page += 1) {
+    walked.push(...evidencePage(composed, { scope: 'global' }, page).entries.map(entry => entry.id));
+  }
+  assert.deepEqual(walked.sort(), index.entries.map(entry => entry.id).sort());
+  const nonAvailable = index.entries.filter(entry => entry.status !== 'available').map(entry => entry.id);
+  for (const id of nonAvailable) assert.ok(walked.includes(id), `${id} stays reachable through pagination`);
   // Beyond the last page stays honest through T12's own pagination.
   const beyond = evidencePage(composed, { scope: 'global' }, 999);
   assert.deepEqual(beyond.entries, []);
   assert.equal(beyond.total, composed.total);
   assert.equal(beyond.has_next, false);
+  view.element.querySelector('[data-page-action="prev"]').click();
+  await settle();
+  assert.equal(view.getStats().page, 1);
 
-  // --- 2. Distinct visible states with digest provenance (run-gamma rows live on page 2).
-  const rowFor = predicate => [...view.element.querySelectorAll('.evidence-row')].find(row => predicate(row.dataset.artifactId));
-  const movedRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-gamma/evidence/moved-report.md');
+  // --- 2. Distinct visible states with digest provenance in the reading pane
+  // (run-gamma rows live on page 2).
+  await view.setPage(2);
+  const movedRow = rowOf(view, 'artifact:.lazybuddy/runs/run-gamma/evidence/moved-report.md');
   assert.ok(movedRow, 'the moved artifact renders');
   assert.equal(movedRow.dataset.status, 'moved');
-  assert.match(movedRow.textContent, /moved — registered digest/);
-  assert.match(movedRow.textContent, /now verified at \.lazybuddy\/runs\/run-gamma\/artifacts\/moved-report\.md/);
-  const missingRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-gamma/evidence/gone.md');
+  await view.select('artifact:.lazybuddy/runs/run-gamma/evidence/moved-report.md');
+  let pane = view.element.querySelector('[data-testid="evidence-inspector"]');
+  assert.match(pane.textContent, /moved — registered digest/);
+  assert.match(pane.textContent, /now verified at \.lazybuddy\/runs\/run-gamma\/artifacts\/moved-report\.md/);
+  assert.equal(stateChipOf(movedRow).textContent.startsWith('moved'), true);
+  const missingRow = rowOf(view, 'artifact:.lazybuddy/runs/run-gamma/evidence/gone.md');
   assert.equal(missingRow.dataset.status, 'missing');
-  assert.match(missingRow.textContent, /missing — registered digest/);
-  const unsupportedRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-gamma/evidence/huge.log');
+  await view.select('artifact:.lazybuddy/runs/run-gamma/evidence/gone.md');
+  pane = view.element.querySelector('[data-testid="evidence-inspector"]');
+  assert.match(pane.textContent, /missing — registered digest/);
+  const unsupportedRow = rowOf(view, 'artifact:.lazybuddy/runs/run-gamma/evidence/huge.log');
   assert.equal(unsupportedRow.dataset.status, 'unsupported');
-  assert.match(unsupportedRow.textContent, /digest none/i);
-  const inaccessibleRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-gamma/evidence/link.md');
+  await view.select('artifact:.lazybuddy/runs/run-gamma/evidence/huge.log');
+  assert.match(view.element.querySelector('[data-testid="evidence-inspector"]').textContent, /digest none/i);
+  const inaccessibleRow = rowOf(view, 'artifact:.lazybuddy/runs/run-gamma/evidence/link.md');
   assert.equal(inaccessibleRow.dataset.status, 'inaccessible');
-  assert.match(inaccessibleRow.textContent, /symlink/i);
-  const redactedProbe = [...view.element.querySelectorAll('.evidence-row[data-status="redacted"]')];
-  assert.equal(redactedProbe.length, 0, 'this fixture carries no redacted artifact — the state stays exact zero, not hidden');
-  // Every status renders a label beginning with its own status word, so the six
-  // visible states are pairwise distinct text, and the four exercised
-  // non-available rows each carry their own provenance sentence.
+  await view.select('artifact:.lazybuddy/runs/run-gamma/evidence/link.md');
+  assert.match(view.element.querySelector('[data-testid="evidence-inspector"]').textContent, /read refused|symlink/i);
+  assert.equal(rowsOf(view).filter(row => row.dataset.status === 'redacted').length, 0,
+    'this fixture carries no redacted artifact — the state stays exact zero, not hidden');
+  // Every exercised non-available row carries its own distinct state label.
   const statusWords = ['available', 'missing', 'moved', 'redacted', 'unsupported', 'inaccessible'];
   for (const row of [movedRow, missingRow, unsupportedRow, inaccessibleRow]) {
-    const label = row.querySelector('.status').textContent;
+    const label = stateChipOf(row).textContent;
     assert.ok(statusWords.some(word => label.startsWith(word)), `the state label names its status: ${label}`);
   }
   assert.equal(new Set([movedRow, missingRow, unsupportedRow, inaccessibleRow]
-    .map(row => row.querySelector('.status').textContent)).size, 4,
+    .map(row => stateChipOf(row).textContent)).size, 4,
     'the four exercised non-available states render four distinct labels');
-  view.element.querySelector('[data-page-action="prev"]').click();
-  assert.equal(view.getStats().page, 1);
 
-  // --- 3. Applicable version is visible per artifact row.
-  const reportRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
-  const applies = reportRow.querySelector('.evidence-applies').textContent;
-  assert.match(applies, /plan plan:evidence/);
-  assert.match(applies, /feature feature:notes/);
-  assert.match(applies, /run run-alpha/);
-  assert.match(applies, new RegExp(`project revision ${composed.projectRevision}`));
-  assert.match(applies, /content [a-f0-9]{12}…/);
-  const gateRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-alpha/verification/gate-report.md');
-  assert.match(gateRow.querySelector('.evidence-applies').textContent, /gate gate:tests/);
-  const logRow = rowFor(id => id === 'artifact:.lazybuddy/runs/run-alpha/evidence/run-log.txt');
-  assert.match(logRow.querySelector('.evidence-applies').textContent, /task task-impl/);
+  // --- 3. Applicable versions render as chips and cross-link both ways.
+  view.navigate({ scope: 'global' });
+  await settle();
+  await view.select('artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
+  const reportPane = view.element.querySelector('[data-testid="evidence-inspector"]');
+  assert.match(reportPane.textContent, /plan plan:evidence/);
+  assert.match(reportPane.textContent, /feature feature:notes/);
+  assert.match(reportPane.textContent, /run run-alpha/);
+  assert.match(reportPane.textContent, new RegExp(`project revision ${composed.projectRevision}`));
+  assert.match(reportPane.textContent, /content [a-f0-9]{12}…/);
+  // scope -> rows: the scope button narrows the index to T12's own filtered set.
+  view.element.querySelector('[data-scope-key="task:task-impl"]').click();
+  await settle();
+  assert.equal(view.getStats().nav.scope, 'task');
+  assert.deepEqual(rowsOf(view).map(row => row.dataset.artifactId).sort(),
+    idsOf(artifactsForTask(index, 'task-impl')));
+  // rows -> scope: a version chip navigates back out to its scope.
+  view.navigate({ scope: 'global' });
+  await settle();
+  const taskChip = chipOf(view, 'task:task-impl');
+  assert.ok(taskChip, 'a row exposes the task cross-link chip');
+  taskChip.click();
+  await settle();
+  assert.equal(view.getStats().nav.scope, 'task');
+  assert.equal(view.getStats().nav.id, 'task-impl');
+  assert.deepEqual(rowsOf(view).map(row => row.dataset.artifactId).sort(),
+    idsOf(artifactsForTask(index, 'task-impl')), 'the chip lands on the same T12 filtered set');
 
   // --- 4. Safe previews: this lane's own vectors never reach the DOM as markup.
   await view.select('artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
@@ -380,9 +491,7 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
   assert.match(view.element.querySelector('[data-testid="evidence-preview"]').textContent, /"total":1/);
   await view.select('artifact:.lazybuddy/runs/run-delta/evidence/long.txt');
   assert.match(view.element.querySelector('[data-testid="evidence-preview"]').textContent, /truncated at 65536 of 71680 bytes/);
-  // Unavailable previews state their distinct reasons (T12's preview reasons
-  // for non-available artifacts are the status itself; the row carries the
-  // index-level cause such as symlink_refused).
+  // Unavailable previews state their distinct reasons.
   await view.select('artifact:.lazybuddy/runs/run-gamma/evidence/gone.md');
   assert.match(view.element.querySelector('[data-testid="evidence-preview"]').textContent, /artifact_missing/);
   await view.select('artifact:.lazybuddy/runs/run-gamma/evidence/link.md');
@@ -398,8 +507,17 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
   assert.equal(composed.entries.filter(entry => entry.registered?.id === 'artifact:symlink').length, 0,
     'the refused path registered nothing');
 
-  // --- 6. Research records display inertly; promotion is proposal-only.
-  const researchPanel = view.element.querySelector('[data-testid="evidence-research"]');
+  // --- 6. Research records display inertly; promotion is proposal-only and
+  // the affordance routes through onOpenItem without granting anything.
+  const opened = [];
+  const researchView = createEvidenceView({
+    fixture: composed,
+    loadPage: (source, nav, page) => evidencePage(source, nav, page),
+    loadPreview: async () => null,
+    callbacks: { onOpenItem: payload => opened.push(payload) },
+  });
+  await researchView.ready;
+  const researchPanel = researchView.element.querySelector('[data-testid="evidence-research"]');
   const q1 = researchPanel.querySelector('article[data-research-id="research:q1"]');
   assert.ok(q1);
   for (const text of ['Which local store should the notes use?', 'SQLite is embedded and offline-capable.',
@@ -409,6 +527,11 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
   }
   assert.ok(q1.textContent.includes('research/notes/q1.md') && q1.textContent.includes('https://example.com/lazyseries/t19-spec'),
     'sources render (local path and URL both inert text)');
+  const q1Local = q1.querySelector('[data-source-artifact-id="artifact:research/notes/q1.md"]');
+  assert.ok(q1Local, 'an indexed local source cross-links to its artifact row');
+  q1Local.click();
+  assert.equal(researchView.getStats().selectedArtifactId, 'artifact:research/notes/q1.md',
+    'the research source selects the artifact without leaving the view');
   const promotionQ1 = q1.querySelector('.evidence-promotion');
   assert.equal(promotionQ1.dataset.promotionStatus, 'unlinked');
   assert.equal(promotionQ1.dataset.grantsVerification, 'false');
@@ -417,42 +540,62 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
   const q2 = researchPanel.querySelector('article[data-research-id="research:q2"]');
   const promotionQ2 = q2.querySelector('.evidence-promotion');
   assert.equal(promotionQ2.dataset.promotionStatus, 'linked_proposed');
-  assert.ok(promotionQ2.querySelector('[data-proposal-id="proposal:t19"]'), 'the promotion link names the proposal');
+  const proposalButton = promotionQ2.querySelector('button[data-proposal-id="proposal:t19"]');
+  assert.ok(proposalButton, 'the promotion affordance names the proposal');
+  assert.equal(proposalButton.dataset.opensVia, 'onOpenItem');
+  proposalButton.click();
+  assert.deepEqual(opened, [{ kind: 'proposal', proposalId: 'proposal:t19',
+    researchId: 'research:q2', source: 'evidence', grants: 'nothing' }],
+    'the affordance opens the proposal flow through onOpenItem');
+  assert.match(researchView.element.querySelector('[data-testid="evidence-status"]').textContent, /opening grants nothing/);
   assert.equal(researchPanel.querySelectorAll('.status[data-state="verified"]').length, 0,
     'research never renders a verified treatment');
   assert.match(researchPanel.textContent, /never grants verification/i);
   assert.match(researchPanel.textContent, /never accepts a requirement/i);
 
+  // Without a connected route the same action stays honest instead of failing.
+  const bare = createEvidenceView({
+    fixture: composed,
+    loadPage: (source, nav, page) => evidencePage(source, nav, page),
+    loadPreview: async () => null,
+  });
+  await bare.ready;
+  const bareButton = bare.element.querySelector('[data-testid="evidence-research"] button[data-proposal-id="proposal:t19"]');
+  bareButton.click();
+  assert.match(bare.element.querySelector('[data-testid="evidence-status"]').textContent,
+    /the proposal flow is not connected in this surface — proposal proposal:t19 was NOT opened/);
+
   // --- 7. Navigation input shape: task, plan, feature, gate and global filtered sets.
   const compareScope = (nav, t12result, navLabel) => {
     view.navigate(nav);
-    const rendered = [...view.element.querySelectorAll('.evidence-row')].map(row => row.dataset.artifactId).sort();
-    const t12Ids = idsOf(t12result);
-    // The rendered page is exactly T12's own first page over its own query.
-    const expectedPage = evidencePage(composed, nav, 1).entries.map(entry => entry.id).sort();
-    assert.deepEqual(rendered, expectedPage, `${JSON.stringify(nav)} renders T12's paginate output`);
-    assert.deepEqual(expectedPage, expectedPage.filter(id => t12Ids.includes(id)).sort(),
-      `${JSON.stringify(nav)} page ids all belong to T12's filtered set`);
-    assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent,
-      new RegExp(`total ${t12result.total ?? composed.total}`));
-    assert.ok(view.element.querySelector('[data-testid="evidence-nav"]').textContent.includes(navLabel),
-      `the navigation context reads: ${navLabel}`);
+    return settle().then(() => {
+      const rendered = rowsOf(view).map(row => row.dataset.artifactId).sort();
+      const t12Ids = idsOf(t12result);
+      const expectedPage = evidencePage(composed, nav, 1).entries.map(entry => entry.id).sort();
+      assert.deepEqual(rendered, expectedPage, `${JSON.stringify(nav)} renders T12's paginate output`);
+      assert.deepEqual(expectedPage, expectedPage.filter(id => t12Ids.includes(id)).sort(),
+        `${JSON.stringify(nav)} page ids all belong to T12's filtered set`);
+      assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent,
+        new RegExp(`total ${t12result.total ?? composed.total}`));
+      assert.ok(view.element.querySelector('[data-testid="evidence-nav"]').textContent.includes(navLabel),
+        `the navigation context reads: ${navLabel}`);
+    });
   };
-  compareScope({ scope: 'task', id: 'task-impl' }, artifactsForTask(index, 'task-impl'), 'task task-impl');
-  compareScope({ scope: 'task', id: 'task-check' }, artifactsForTask(index, 'task-check'), 'task task-check');
-  compareScope({ scope: 'plan', id: 'plan:evidence' }, artifactsForPlan(index, 'plan:evidence'), 'plan plan:evidence');
-  compareScope({ scope: 'feature', id: 'feature:notes' }, artifactsForFeature(index, 'feature:notes'), 'feature feature:notes');
-  compareScope({ scope: 'gate', id: 'gate:tests' }, artifactsForGate(index, 'gate:tests'), 'gate gate:tests');
-  compareScope({ scope: 'global' }, { entries: index.entries }, 'global index');
+  await compareScope({ scope: 'task', id: 'task-impl' }, artifactsForTask(index, 'task-impl'), 'task task-impl');
+  await compareScope({ scope: 'task', id: 'task-check' }, artifactsForTask(index, 'task-check'), 'task task-check');
+  await compareScope({ scope: 'plan', id: 'plan:evidence' }, artifactsForPlan(index, 'plan:evidence'), 'plan plan:evidence');
+  await compareScope({ scope: 'feature', id: 'feature:notes' }, artifactsForFeature(index, 'feature:notes'), 'feature feature:notes');
+  await compareScope({ scope: 'gate', id: 'gate:tests' }, artifactsForGate(index, 'gate:tests'), 'gate gate:tests');
+  await compareScope({ scope: 'global' }, { entries: index.entries }, 'global index');
   // An unknown identity inside a valid scope stays an exact zero, never a silent blank.
-  view.navigate({ scope: 'task', id: 'task-unknown' });
-  assert.equal(view.element.querySelectorAll('.evidence-row').length, 0);
+  await view.navigate({ scope: 'task', id: 'task-unknown' });
+  assert.equal(rowsOf(view).length, 0);
   assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent, /total 0 · page size 50 · showing 0 · truncation none/);
   assert.match(view.element.textContent, /exact zero/);
 
-  // --- 8. Narrow equivalent + keyboard operation.
-  view.navigate({ scope: 'global' });
-  view.setPage(2);
+  // --- 8. Narrow list mode + keyboard operation.
+  await view.navigate({ scope: 'global' });
+  await view.setPage(2);
   view.setMode('list');
   const listRows = [...view.element.querySelectorAll('.evidence-list .evidence-row')];
   assert.equal(listRows.length, composed.total - DEFAULT_PAGE_SIZE);
@@ -470,14 +613,17 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
   listRows[1].dispatchEvent(pageDown);
   assert.equal(pageDown.defaultPrevented, true);
 
-  // --- 9. A polling tick preserves navigation, page, selection and mode.
+  // --- 9. A polling tick preserves navigation, page, selection, filter and mode.
   writeFileSync(join(fixture.root, '.lazybuddy/runs/run-delta/evidence/bulk-99.log'), 'bulk line 99\n');
   const rebuilt = await buildFixture();
   const before = view.getStats();
-  const update = view.applyUpdate(rebuilt.composed);
+  const update = await view.applyUpdate(rebuilt.composed);
   const after = view.getStats();
   assert.equal(update.navPreserved, true);
   assert.equal(update.selectedPreserved, true);
+  assert.equal(update.pageApplied, 2, 'the published update record is final, not a pre-load snapshot');
+  assert.equal(update.total, rebuilt.composed.total, 'the update record carries the honest new total');
+  assert.deepEqual(view.getStats().lastUpdate, update, 'getStats().lastUpdate matches the returned record');
   assert.equal(after.nav.scope, before.nav.scope);
   assert.equal(after.page, before.page, 'the page survives the polling tick');
   assert.equal(after.selectedArtifactId, before.selectedArtifactId);
@@ -507,7 +653,92 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
   }, null, 2)}\n`);
 });
 
-test('adversarial: navigation, statuses, research authority and preview injection fail closed', async () => {
+test('the filter lens narrows recorded pages without touching index totals', async () => {
+  const { index, composed } = await buildFixture();
+  const view = createEvidenceView({
+    fixture: composed,
+    loadPage: (source, nav, page) => evidencePage(source, nav, page),
+    loadPreview: async () => null,
+  });
+  await view.ready;
+
+  // The input wiring: typing drives the lens (the T11 filter contract).
+  const input = view.element.querySelector('[data-testid="evidence-filter"]');
+  assert.ok(input, 'the filter input renders');
+  assert.equal(input.getAttribute('type'), 'search');
+  assert.ok(input.hasAttribute('data-native-filter'), 'the T11 /-focus contract attribute is present');
+  assert.ok(view.element.querySelector('label .evidence-filter-input'), 'the filter input has a programmatic label');
+  input.value = 'run-gamma';
+  input.dispatchEvent({ type: 'input' });
+  await settle();
+
+  // run-gamma artifacts live on page 2; the lens surfaces them from page 1
+  // without moving T12's totals: reachability across pages is the point.
+  const gammaIds = index.entries.filter(entry => entry.id.includes('run-gamma')).map(entry => entry.id).sort();
+  assert.ok(gammaIds.length >= 4, 'the fixture carries the run-gamma rows past page one');
+  let stats = view.getStats();
+  assert.equal(stats.filter.active, true);
+  assert.equal(stats.filter.matches, gammaIds.length);
+  assert.deepEqual(rowsOf(view).map(row => row.dataset.artifactId).sort(), gammaIds);
+  assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent,
+    new RegExp(`index total ${composed.total} · filter matches ${gammaIds.length}`));
+  assert.match(view.element.querySelector('[data-testid="evidence-nav"]').textContent,
+    new RegExp(`of ${composed.total} indexed in this scope`));
+  assert.equal(view.element.querySelector('[data-testid="evidence-index"]').dataset.filterActive, 'true');
+
+  // The status filter token selects exactly the missing artifact.
+  await view.setFilter('status:missing');
+  stats = view.getStats();
+  assert.equal(stats.filter.matches, 1);
+  assert.equal(rowsOf(view).length, 1);
+  assert.equal(rowsOf(view)[0].dataset.status, 'missing');
+  assert.match(view.element.querySelector('[data-testid="evidence-filter-coverage"]').textContent,
+    /filter coverage: available 0 · missing 1 · moved 0 · redacted 0 · unsupported 0 · inaccessible 0/);
+
+  // A broad term paginates its matches with the same honest accounting.
+  await view.setFilter('bulk-4');
+  stats = view.getStats();
+  const bulkFour = index.entries.filter(entry => entry.id.includes('bulk-4')).length;
+  assert.ok(bulkFour > 0, 'the fixture carries bulk-4x rows');
+  assert.equal(stats.filter.matches, bulkFour);
+  assert.match(view.element.querySelector('[data-testid="evidence-page-indicator"]').textContent, /Filter page 1 of 1/);
+  await view.setFilter('bulk-');
+  stats = view.getStats();
+  const bulkCount = index.entries.filter(entry => entry.id.includes('bulk-')).length;
+  assert.ok(bulkCount > DEFAULT_PAGE_SIZE, 'the bulk rows exceed one page');
+  assert.equal(stats.filter.matches, bulkCount);
+  assert.equal(Math.ceil(bulkCount / DEFAULT_PAGE_SIZE), 2, 'the lens paginates its own matches');
+  assert.match(view.element.querySelector('[data-testid="evidence-page-indicator"]').textContent, /Filter page 1 of 2/);
+  view.element.querySelector('[data-page-action="next"]').click();
+  await settle();
+  assert.equal(view.getStats().filter.page, 2, 'filter page 2 is reachable');
+  assert.equal(rowsOf(view).length, bulkCount - DEFAULT_PAGE_SIZE);
+  assert.equal(view.element.querySelector('[data-page-action="next"]').disabled, true);
+
+  // An impossible filter is an exact zero for the lens only.
+  await view.setFilter('does-not-exist-anywhere');
+  assert.equal(rowsOf(view).length, 0);
+  assert.match(view.element.querySelector('[data-testid="evidence-collection"]').textContent,
+    new RegExp(`exact zero for the filter; the index total ${composed.total} is unchanged`));
+
+  // Clearing the lens restores T12's own page and totals.
+  await view.setFilter('');
+  stats = view.getStats();
+  assert.equal(stats.filter.active, false);
+  assert.equal(stats.page, 1);
+  assert.equal(rowsOf(view).length, DEFAULT_PAGE_SIZE);
+  assert.match(view.element.querySelector('[data-testid="evidence-totals"]').textContent,
+    new RegExp(`total ${composed.total} · page size ${DEFAULT_PAGE_SIZE} · showing ${DEFAULT_PAGE_SIZE} · truncation none`));
+
+  // The lens follows a scope switch and stays a lens there too.
+  await view.navigate({ scope: 'task', id: 'task-impl' });
+  await view.setFilter('run-log');
+  assert.equal(view.getStats().filter.matches, 1);
+  assert.equal(rowsOf(view).length, 1);
+  await view.setFilter('');
+});
+
+test('adversarial: navigation, statuses, research authority, stale pages and preview injection fail closed', async () => {
   const { composed } = await buildFixture();
 
   // Malformed navigation inputs are typed refusals at the model boundary.
@@ -530,9 +761,9 @@ test('adversarial: navigation, statuses, research authority and preview injectio
     loadPage: (source, nav, page) => evidencePage(source, nav, page),
     loadPreview: async () => { throw new Error('should not load'); },
   });
-  view.navigate({ scope: 'global' });
+  await view.ready;
   const before = view.getStats();
-  view.navigate({ scope: 'workspace', id: 'x' });
+  await view.navigate({ scope: 'workspace', id: 'x' });
   const after = view.getStats();
   assert.equal(after.nav.scope, before.nav.scope, 'an unsupported scope changes nothing');
   assert.match(view.element.querySelector('[data-testid="evidence-status"]').textContent, /unsupported navigation scope/);
@@ -556,6 +787,73 @@ test('adversarial: navigation, statuses, research authority and preview injectio
       || (error instanceof TypeError && /Object\.assign is not a constructor/.test(error.message)),
     'a research authority leak must fail closed');
 
+  // Bad artifact metadata (non-numeric bytes/digest junk) renders honest
+  // placeholders; it never crashes the table or invents a number.
+  const junkMeta = structuredClone(composed);
+  junkMeta.entries[0].bytes = 'huge';
+  junkMeta.entries[1].sha256 = 42;
+  const junkView = createEvidenceView({
+    fixture: junkMeta,
+    loadPage: (source, nav, page) => evidencePage(source, nav, page),
+    loadPreview: async () => null,
+  });
+  await junkView.ready;
+  const junkRows = rowsOf(junkView);
+  assert.ok(junkRows.length > 0, 'the table renders over malformed metadata');
+  assert.ok(junkView.element.querySelector('[data-testid="evidence-index-table"]').textContent.includes('—'),
+    'unusable sizes/digests render an explicit dash, never a fabricated number');
+
+  // Stale state: a page loader that fails mid-session keeps the last honest
+  // page with a typed note, and a malformed page payload is refused the same way.
+  const failing = [];
+  let mode = 'ok';
+  const stale = createEvidenceView({
+    fixture: composed,
+    loadPage: (source, nav, page) => {
+      if (mode === 'throw') { const error = new Error('disk vanished'); error.code = 'ARTIFACT_INACCESSIBLE'; throw error; }
+      if (mode === 'garbage') return { total: 'lots', entries: null };
+      return evidencePage(source, nav, page);
+    },
+    loadPreview: async () => null,
+    callbacks: { onLoadError: payload => failing.push(payload) },
+  });
+  await stale.ready;
+  const goodPage = stale.getStats().page;
+  mode = 'throw';
+  await stale.setPage(2);
+  assert.equal(stale.getStats().page, goodPage, 'a failed page turn keeps the current honest page');
+  assert.match(stale.element.querySelector('[data-testid="evidence-status"]').textContent,
+    /page load failed \(ARTIFACT_INACCESSIBLE\) — showing the last honest page 1/);
+  mode = 'garbage';
+  await stale.setPage(2);
+  assert.equal(stale.getStats().page, goodPage, 'a malformed page payload keeps the honest page');
+  assert.match(stale.element.querySelector('[data-testid="evidence-status"]').textContent, /page load failed/);
+  assert.deepEqual(failing.map(payload => payload.code), ['ARTIFACT_INACCESSIBLE', 'INVALID_PAGE']);
+  mode = 'ok';
+  const recovered = await stale.setPage(2);
+  assert.equal(recovered, 2, 'the loader recovers when the source does');
+  assert.match(stale.element.querySelector('[data-testid="evidence-totals"]').textContent, /truncation none/);
+
+  // A failing filter collection leaves the unfiltered index visible.
+  const filterBroken = createEvidenceView({
+    fixture: composed,
+    loadPage: (source, nav, page) => {
+      if (page > 1) throw new Error('second page unavailable');
+      return evidencePage(source, nav, page);
+    },
+    loadPreview: async () => null,
+  });
+  await filterBroken.ready;
+  await filterBroken.setFilter('run-gamma');
+  assert.equal(filterBroken.getStats().filter.active, false, 'the lens refuses to engage on a broken source');
+  assert.match(filterBroken.element.querySelector('[data-testid="evidence-status"]').textContent,
+    /the filter could not collect this scope's pages/);
+  assert.equal(rowsOf(filterBroken).length, DEFAULT_PAGE_SIZE, 'the unfiltered page stays visible');
+
+  // A huge filter input is clamped and cannot explode the matcher.
+  const flooded = await view.setFilter('x'.repeat(5000));
+  assert.ok(flooded.length <= 256, 'the filter query is clamped to its bound');
+
   // Prompt injection through preview data: markup in block text stays inert text.
   const injected = createEvidenceView({
     fixture: composed,
@@ -567,6 +865,7 @@ test('adversarial: navigation, statuses, research authority and preview injectio
       total_bytes: 42,
     }),
   });
+  await injected.ready;
   await injected.select('artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
   const injectedPanel = injected.element.querySelector('[data-testid="evidence-preview"]');
   assert.equal(injectedPanel.querySelectorAll('script, img, iframe').length, 0);
@@ -574,23 +873,63 @@ test('adversarial: navigation, statuses, research authority and preview injectio
     'injected markup is visible as inert text data, not elements');
 
   // A failing preview loader surfaces a typed unavailable note, never a crash.
-  const failing = createEvidenceView({
+  const failingPreview = createEvidenceView({
     fixture: composed,
     loadPage: (source, nav, page) => evidencePage(source, nav, page),
     loadPreview: async () => { const error = new Error('unreadable'); error.code = 'ARTIFACT_INACCESSIBLE'; throw error; },
   });
-  await failing.select('artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
-  assert.match(failing.element.querySelector('[data-testid="evidence-preview"]').textContent,
+  await failingPreview.ready;
+  await failingPreview.select('artifact:.lazybuddy/runs/run-alpha/evidence/report.md');
+  assert.match(failingPreview.element.querySelector('[data-testid="evidence-preview"]').textContent,
     /preview unavailable: ARTIFACT_INACCESSIBLE/);
 
-  // Misleading success: the exact-zero scope and the beyond-last-page clamp both
-  // stay visible rather than silently resetting.
+  // Misleading success: the beyond-last-page clamp stays visible rather than
+  // silently resetting.
   const honest = createEvidenceView({
     fixture: composed,
     loadPage: (source, nav, page) => evidencePage(source, nav, page),
     loadPreview: async () => null,
   });
-  honest.setPage(999);
+  await honest.ready;
+  await honest.setPage(999);
   assert.equal(honest.getStats().page, honest.getStats().totals.page_count);
   assert.match(honest.element.querySelector('[data-testid="evidence-status"]').textContent, /beyond the last page/);
+});
+
+test('static CSS audit: evidence.css composes only token-resolved values', () => {
+  const css = readFileSync(fileURLToPath(new URL('../ui/evidence.css', import.meta.url)), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ''); // comments carry the rationale, not values
+  // CL-1: no color literals anywhere (the import line is a path, not a color).
+  assert.ok(!/#[0-9a-f]{3,8}\b/i.test(css), 'no hex color literals');
+  assert.ok(!/\b(?:rgb|rgba|hsl|hsla)\(/i.test(css), 'no rgb/hsl color literals');
+  // TY-3: every font-size is a type token.
+  for (const match of css.matchAll(/font-size:\s*([^;]+);/g)) {
+    assert.match(match[1].trim(), /^var\(--type-(xs|sm|md|lg|xl)-size\)$/, `font-size resolves to a type token: ${match[1]}`);
+  }
+  // TY-7: only the two weights, via tokens.
+  for (const match of css.matchAll(/font-weight:\s*([^;]+);/g)) {
+    assert.match(match[1].trim(), /^var\(--weight-(regular|strong)\)$/, `font-weight is a weight token: ${match[1]}`);
+  }
+  // SP-1: every spacing declaration (padding/margin/gap/inset) is a spacing
+  // token, a density token, or a token-derived calc — never a raw length.
+  for (const match of css.matchAll(/(?:padding|margin|gap|inset(?:-[a-z]+)?)[a-z-]*:\s*([^;]+);/g)) {
+    const value = match[1].trim();
+    assert.ok(value.length > 0 && !/\b\d+(?:\.\d+)?(?:px|rem|em|ch|dvh|dvw|vh|vw)\b/.test(value),
+      `spacing resolves to tokens: ${match[0]}`);
+  }
+  // SP-4: every corner radius is a radius token (0 closes an edge).
+  for (const match of css.matchAll(/border-radius:\s*([^;]+);/g)) {
+    const value = match[1].trim();
+    assert.ok(value.split(/\s+/).every(part => part === '0' || /^var\(--radius-(xs|sm|md|lg|full)\)$/.test(part)),
+      `radius resolves to a radius token: ${match[0]}`);
+  }
+  // MO-1/MO-2: every transition rides the motion tokens; no animation exists.
+  for (const match of css.matchAll(/transition:\s*([^;]+);/g)) {
+    assert.match(match[1], /var\(--motion-(instant|fast|base|slow)\)/, `transition uses a motion token: ${match[1]}`);
+    assert.match(match[1], /var\(--motion-ease(?:-in-out)?\)/, `transition uses the motion ease: ${match[1]}`);
+  }
+  assert.ok(!/@keyframes|animation\s*:/.test(css), 'no keyframes or looping animation (MO-2)');
+  assert.ok(!/animation[^:]*:\s*[^;]*infinite/.test(css), 'no infinite iteration');
+  // NF-4: no font is loaded or named here; the system stacks own it.
+  assert.ok(!/@font-face|font-family/.test(css), 'no font declaration or @font-face in the view CSS');
 });
