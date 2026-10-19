@@ -247,6 +247,9 @@ test('readable role pairs meet WCAG AA in light and dark', () => {
       ['--warn', '--surface'], ['--warn', '--bg'],
       ['--danger', '--surface'], ['--danger', '--bg'],
       ['--info', '--surface'], ['--info', '--bg'],
+      // T17 architecture additions: dock/overlay body copy and meta sit on the
+      // elevated surface; the inferred-supersession edge ink reads on surface.
+      ['--text', '--elevated'], ['--stale-ink', '--surface'],
     ],
     dark: [
       ['--text', '--bg'], ['--text', '--surface'], ['--text', '--inset'],
@@ -257,6 +260,8 @@ test('readable role pairs meet WCAG AA in light and dark', () => {
       ['--warn', '--surface'], ['--warn', '--bg'], ['--warn', '--elevated'],
       ['--danger', '--surface'], ['--danger', '--bg'], ['--danger', '--elevated'],
       ['--info', '--surface'], ['--info', '--bg'], ['--info', '--elevated'],
+      // T17 architecture additions (same pairs as light).
+      ['--text', '--elevated'], ['--stale-ink', '--surface'],
     ],
   };
   for (const [theme, pairs] of Object.entries(cases)) {
@@ -269,6 +274,23 @@ test('interactive control edges keep 3:1 against every resting background', () =
   for (const [theme, backgrounds] of [['light', ['--surface', '--bg', '--raised', '--selected']], ['dark', ['--surface', '--bg', '--raised', '--selected']]]) {
     const context = resolved(theme);
     for (const fill of backgrounds) assertAA(context.get('--control-edge'), context.get(fill), `${theme} control edge on ${fill}`, 3);
+  }
+});
+
+test('T16 execution glance-state edges keep 3:1 on resting, hover and selected fills', () => {
+  // The execution node cards paint their glance state as a status-ink border
+  // (running/blocked/failed/stale/verified) over the resting surface, the
+  // hover wash and the selected fill. Edge-level ratio: >= 3:1 (CL-6). The
+  // v1 status inks equal the v2 role values by the frozen alias block.
+  const stateEdges = { '--active-ink': '--info', '--attention-ink': '--warn', '--failed-ink': '--danger', '--verified-ink': '--success', '--stale-ink': null };
+  for (const theme of ['light', 'dark']) {
+    const context = resolved(theme);
+    for (const [ink, equivalent] of Object.entries(stateEdges)) {
+      if (equivalent) assert.equal(context.get(ink), context.get(equivalent), `${theme} ${ink} keeps its frozen v1 value`);
+      for (const fill of ['--surface', '--hover', '--selected']) {
+        assertAA(context.get(ink), context.get(fill), `${theme} ${ink} state edge on ${fill}`, 3);
+      }
+    }
   }
 });
 

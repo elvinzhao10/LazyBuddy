@@ -1,40 +1,90 @@
 @import './project-map-spike.css';
 
-/* T14 Overview — statement, status sentence, metric strip, attention queue and
-   contributing-records inspector over the T03 composition view. Consumes the
-   existing design tokens only; no animation, and the only transitions ride the
-   shared var(--fast) duration so reduced-motion collapses them. */
+/* T14 Overview — a scannable dashboard tab, not a document. Hero status card,
+   native attention list, compact metric tiles and the first-class macro map,
+   entirely on the v2 tokens: type rides --type-*, spacing the 8-pt --space-*
+   grid and the density gutters, radii --radius-*, motion --motion-* with
+   --motion-ease. No color literals; the only frozen v1 aliases consumed are
+   the ones with no v2 equivalent (--line --control-edge --hover --selected
+   --state inks through the shared [data-state] plumbing --card-min
+   --inspector). Motion is feedback only; reduced-motion collapses the token
+   durations the few transitions reference. */
 
-.overview-view { display: grid; gap: var(--s4); }
-.overview-head h2 { margin: 0; }
-.overview-statement p { margin: 0; max-inline-size: var(--measure); }
-.overview-sentence-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: 0; max-inline-size: none; }
-.overview-clause { min-block-size: auto; padding: var(--s1) var(--s2); border-radius: var(--radius-pill);
-  border: var(--line) solid var(--border); background: var(--surface); font-size: var(--caption); }
-.overview-clause[aria-pressed='true'] { background: var(--selected); }
-.overview-clause-unavailable { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--caption); color: var(--muted); }
+.overview-view { display: grid; gap: var(--space-3); }
+/* The grid owns the rhythm; the shared section margins must not double it. */
+.overview-view > section, .overview-view > article, .overview-view > aside,
+.overview-view section > section { margin-block-start: 0; }
 
-.overview-metric-row { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.overview-metric { display: grid; gap: var(--s1); min-inline-size: var(--card-min); max-inline-size: 22rem;
-  padding: var(--s2); border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
-.overview-metric [data-metric-id] { inline-size: 100%; text-align: start; justify-content: space-between; overflow-wrap: anywhere; }
-.overview-metric-unavailable [data-metric-id] { border-style: dashed; }
-.overview-metric .meta { margin: 0; }
+/* -- Hero status card ------------------------------------------------- */
 
-.overview-queue-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; max-inline-size: var(--measure); }
-.overview-queue-item { display: grid; gap: var(--s1); padding: var(--s3); border: var(--line) solid var(--border);
-  border-left: 3px solid var(--attention-ink); border-radius: var(--radius-card); background: var(--surface); }
-.overview-queue-item .cluster { flex-wrap: wrap; gap: var(--s2); }
-.overview-queue-item .meta { margin: 0; }
-.overview-queue-item [data-queue-id] { justify-self: start; min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); }
+.overview-hero { gap: var(--space-2); }
+.overview-hero-title { margin: 0; }
+.overview-hero-identity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-half); margin: 0; max-inline-size: none; }
+.overview-hero-status { gap: var(--space-1); }
+.overview-hero-status h3 { margin: 0; }
+.overview-sentence-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-half); margin: 0; max-inline-size: none; }
+/* Clause chips are primary interactive targets: 44px hit area, chip visuals
+   carried by the statusChip inside, hover as the only extra feedback. */
+.overview-clause { display: inline-flex; align-items: center; min-block-size: var(--density-control);
+  padding: var(--space-half) var(--space-1); border: none; border-radius: var(--radius-full);
+  background: transparent; transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-clause:hover:enabled { background: var(--hover); }
+.overview-clause-note { display: inline-flex; align-items: center; }
 
-.overview-records { align-self: start; position: sticky; top: var(--s2); max-inline-size: var(--inspector); }
+/* -- Attention queue (native list) ------------------------------------ */
+
+.overview-attention { gap: var(--space-2); }
+.overview-attention h2, .overview-metrics h2, .overview-map h2 { margin: 0; }
+.overview-attention-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.overview-attention-control { display: grid; gap: var(--space-half); inline-size: 100%; text-align: start;
+  padding: var(--density-gutter); min-block-size: var(--density-control);
+  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md);
+  /* The leading edge encodes the item state through the shared state inks;
+     it is emphasis, not the interactive boundary (that is the control-edge
+     border on the remaining sides). */
+  border-inline-start: calc(var(--line) * 3) solid var(--state-ink, var(--border));
+  transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-attention-control:hover:enabled { background: var(--hover); }
+.overview-attention-title { font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.overview-attention-detail { margin: 0; max-inline-size: none; }
+
+/* -- Metric tiles ------------------------------------------------------ */
+
+.overview-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(var(--card-min), 100%), 1fr)); gap: var(--space-2); }
+.overview-tile { justify-items: start; transition: background-color var(--motion-instant) var(--motion-ease); }
+button.overview-tile { inline-size: 100%; text-align: start; }
+button.overview-tile:hover:enabled { background: var(--hover); }
+.overview-tile-detail { max-inline-size: 100%; }
+
+/* -- Macro map (first-class) ------------------------------------------- */
+
+.overview-map { gap: var(--space-2); }
+/* The embedding replaces the spike's own breadcrumb head with this section's
+   heading; the selector targets only the direct spike child so the shell's
+   live compaction (which relocates .spike-head into its context disclosure)
+   still shows it there. */
+.overview-map > .project-spike > .spike-head { display: none; }
+
+/* -- Contributing records (adopted into the shell dock) ---------------- */
+
+.overview-records { align-self: start; position: sticky; inset-block-start: var(--space-2); max-inline-size: var(--inspector); gap: var(--space-2); }
 .overview-records h3 { margin: 0; }
 .overview-records .meta { margin: 0; }
-.overview-record-list { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
-.overview-record-list code { overflow-wrap: anywhere; }
+.overview-record-list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.overview-record { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-half); min-inline-size: 0; }
+.overview-record + .overview-record { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-1); }
+/* A routed record id is the button itself: the identifier stays the label,
+   the route name is the trailing affordance. */
+.overview-record-open { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-half);
+  inline-size: 100%; text-align: start; min-block-size: var(--density-control);
+  padding: var(--space-half) var(--space-1); background: transparent; border-color: transparent;
+  border-radius: var(--radius-sm); transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-record-open:hover:enabled { background: var(--hover); }
+.overview-record-id { font-family: var(--mono); font-size: var(--type-sm-size); overflow-wrap: anywhere; text-align: start; }
+.overview-record-route { flex-shrink: 0; }
 
+/* Narrow: the sticky records rail goes static and full-width; tiles and the
+   attention list already stack through their auto-fit/grid tracks. */
 @media (max-width: 44rem) {
   .overview-records { position: static; max-inline-size: none; }
-  .overview-metric { min-inline-size: 100%; }
 }

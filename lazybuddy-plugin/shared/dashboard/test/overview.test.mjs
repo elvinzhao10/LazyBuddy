@@ -9,6 +9,10 @@ import { createMiniDom } from './fixtures/mini-dom.mjs';
 // the offline-notebook fixtures, then composed with the T07 graph/readiness/
 // progress modules, the T10 usage/time accounting and a T11-shaped git fact
 // bundle. The overview itself must never touch files or schedule anything.
+// The view-level cases double as the [D] evidence for the T14 design audit
+// (docs/design/audit-results/overview.md): heading discipline, chip status,
+// tile/token CSS audits, tooltip-borne meta, keyboard reach and the honest
+// unavailable states are asserted here against the real view component.
 
 const dom = createMiniDom();
 globalThis.document = dom.document;
@@ -22,6 +26,7 @@ const { normalizeUsage, accountTime } = await import('../../project/usage-accoun
 const { overviewFixture, OverviewProjectionError } = await import('../ui/overview-fixture.mjs');
 const { createOverviewView } = await import('../ui/overview.mjs');
 const { createProjectShell, PROJECT_DESTINATIONS } = await import('../ui/project-shell.mjs');
+const { installFocusSystem, STATUS_STATES } = await import('../ui/components.mjs');
 
 const CREATED_AT = '2026-10-05T15:00:00.000Z';
 const PROJECT_ID = 'project:offline-notebook';
@@ -159,6 +164,25 @@ function buildRealProjectionBundle() {
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const bundle = buildRealProjectionBundle();
 
+// The mini-dom selector engine cannot parse digit-bearing tags (h1..h6) or
+// ^= attribute operators, so heading audits walk the tree by tagName.
+function walk(node, visit) {
+  for (const child of node.childNodes ?? []) {
+    if (child.nodeType === 1) { visit(child); walk(child, visit); }
+  }
+}
+const headingsIn = root => {
+  const found = [];
+  walk(root, node => { if (/^H[1-6]$/.test(node.tagName)) found.push(node); });
+  return found;
+};
+// The mini-dom has no closest(): the ancestor check walks parentNode.
+const hasAncestor = (node, test) => {
+  let current = node?.parentNode;
+  while (current) { if (test(current)) return true; current = current.parentNode; }
+  return false;
+};
+
 test('the overview adapter composes the verified projection into a presentation fixture', () => {
   const fixture = overviewFixture(bundle);
   assert.equal(fixture.viewId, 'overview');
@@ -171,8 +195,14 @@ test('the overview adapter composes the verified projection into a presentation 
   const edgeKinds = new Set(fixture.edges.map(edge => edge.kind));
   for (const expected of ['group', 'dependency', 'external']) assert.ok(edgeKinds.has(expected), `edge kind ${expected} present`);
   assert.ok(fixture.edges.some(edge => edge.kind === 'dependency' && edge.from === 'plan:export' && edge.to === 'plan:search'), 'inter-plan dependency edge from the T07 graph');
-  assert.ok(fixture.metrics.length >= 6, 'compact metric strip covers plans, progress, baseline, usage, time and git');
+  assert.ok(fixture.metrics.length >= 6, 'compact metric tiles cover plans, progress, baseline, usage, time and git');
+  for (const metric of fixture.metrics) {
+    assert.ok(metric.value != null || metric.unavailable === true, `${metric.id} carries a value or is explicitly unavailable`);
+    if (!metric.unavailable) assert.ok(metric.records.length >= 1, `${metric.id} names its contributing records`);
+  }
   assert.ok(fixture.attentionQueue.length >= 1, 'attention queue present');
+  for (const item of fixture.attentionQueue) assert.ok(STATUS_STATES.includes(item.state) && item.chipLabel, 'queue items carry designed chip vocabulary');
+  for (const clause of fixture.statusSentence.clauses) assert.ok(STATUS_STATES.includes(clause.state), `clause ${clause.id} carries a chip state`);
 });
 
 test('the adapter is deterministic and never mutates its bundle', () => {
@@ -192,73 +222,262 @@ test('the adapter fails closed on dangling projection references', () => {
   assert.throws(() => overviewFixture(danglingFeature), error => error.code === 'UNKNOWN_ITEM');
 });
 
-test('overview renders from the projection fixture with map, sentence, metrics and queue', async () => {
+test('the overview renders as a scannable dashboard: hero card, native attention list, tiles, first-class map', async () => {
   const view = createOverviewView({ bundle });
   await settle();
   const root = view.element;
   assert.equal(root.dataset.testid, 'overview-view');
-  assert.ok(root.querySelector('[data-testid="overview-statement"]'));
+  const hero = root.querySelector('[data-testid="overview-hero"]');
+  assert.ok(hero, 'the hero status card leads the view');
+  assert.equal(hero.querySelector('.overview-hero-title').textContent, 'Offline notebook');
+  const identity = hero.querySelector('[data-testid="overview-identity"]');
+  assert.match(identity.textContent, /LazyBuddy/);
+  assert.match(identity.textContent, /repo:offline-notebook/);
+  assert.match(identity.textContent, /branch main/);
   const map = root.querySelector('[data-testid="project-spike"]');
   assert.ok(map, 'macro map reuses the T03 composition view');
+  assert.ok(hasAncestor(map, node => node.dataset?.testid === 'overview-map'), 'the macro map is a first-class section of the dashboard');
+  assert.equal(view.getStats().map.viewport.scale, 1, 'graph cards stay readable at the default zoom — no auto-shrink');
   assert.ok(root.querySelectorAll('.spike-node').length >= 6, 'feature areas and plans render as cards');
   assert.ok(root.querySelector('.spike-node[data-node-id="feature:notes"]'), 'durable feature area node');
   assert.ok(root.querySelector('.spike-node[data-node-id="plan:search"]'), 'plan node');
-  assert.ok(root.querySelector('.spike-node[data-node-id="boundary:decision:offline-first"], .spike-node[data-node-id^="boundary:"]'), 'external decision terminates at a boundary node');
   assert.ok(root.querySelector('[data-testid="overview-queue"]'));
   assert.ok(root.querySelector('[data-testid="overview-metrics"]'));
+  assert.ok(root.querySelector('[data-testid="overview-records"]'));
+  // S1 hierarchy: the standalone view owns h2 sections (the shell supplies
+  // the single h1); heading ranks never skip.
+  const headings = headingsIn(root);
+  assert.equal(headings.filter(node => node.tagName === 'H1').length, 0, 'the view itself promotes nothing to h1');
+  assert.deepEqual(headings.filter(node => node.tagName === 'H2').map(node => node.textContent), ['Offline notebook', 'Attention', 'Metrics', 'Macro map']);
+  let rank = 1;
+  for (const node of headings) {
+    const next = Number(node.tagName[1]);
+    assert.ok(next <= rank + 1, `no skipped level before ${node.tagName} ${node.textContent.slice(0, 24)}`);
+    rank = next;
+  }
 });
 
-test('status-sentence clauses carry record links into the underlying records', async () => {
+test('status-sentence clauses render as designed chips that trace into records and the map', async () => {
   const view = createOverviewView({ bundle });
   await settle();
   const sentence = view.element.querySelector('[data-testid="overview-status-sentence"]');
   assert.ok(sentence);
-  const clauses = [...sentence.querySelectorAll('[data-clause-id]')];
-  assert.ok(clauses.length >= 3, 'delivery, gate and git clauses composed');
-  for (const clause of clauses) {
-    const records = (clause.dataset.records ?? '').split(',').filter(Boolean);
-    assert.ok(records.length >= 1, `clause ${clause.dataset.clauseId} carries record links`);
+  assert.equal(sentence.getAttribute('aria-label'), view.getFixture().statusSentence.text, 'the chip row carries the readable sentence');
+  const chips = [...sentence.querySelectorAll('[data-clause-id]')];
+  assert.ok(chips.length >= 3, 'delivery, gate and git clauses composed');
+  for (const chip of chips) {
+    const status = chip.querySelector('.status');
+    assert.ok(status, `clause ${chip.dataset.clauseId} renders a designed status chip`);
+    assert.ok(STATUS_STATES.includes(status.dataset.state), `clause ${chip.dataset.clauseId} chip state is a design role`);
+    assert.ok(status.textContent.length > 0, 'the chip carries a text label, not color alone');
+  }
+  const routed = chips.filter(chip => chip.tagName === 'BUTTON');
+  assert.ok(routed.length >= 3, 'available clauses are keyboard-reachable buttons');
+  for (const chip of routed) {
+    const records = (chip.dataset.records ?? '').split(',').filter(Boolean);
+    assert.ok(records.length >= 1, `clause ${chip.dataset.clauseId} carries record links`);
     for (const record of records) assert.ok(!/^(undefined|null)$/.test(record), `record id ${record} is real`);
   }
-  const gateClause = clauses.find(clause => /gate|block/i.test(clause.textContent));
+  const gateClause = chips.find(chip => String(chip.dataset.clauseId).startsWith('clause:gate:'));
   assert.ok(gateClause, 'a verification-gate clause exists');
   gateClause.click();
   const recordsPanel = view.element.querySelector('[data-testid="overview-records"]');
-  assert.ok(recordsPanel.textContent.includes('plan:search') || recordsPanel.textContent.includes('plan:export'), 'gate clause opens its contributing records');
-  const activeClause = clauses.find(clause => /active/i.test(clause.textContent));
+  assert.ok(recordsPanel.textContent.includes('criterion:'), 'gate clause opens its contributing records incl. the criterion id');
+  const activeClause = chips.find(chip => /active/i.test(chip.textContent));
   activeClause.click();
   assert.equal(view.getStats().selectedNodeId, 'plan:search', 'delivery clause selects the active plan in the macro map');
 });
 
-test('every displayed metric total opens its contributing records; unavailable never shows zero', async () => {
+test('contributing-record ids are interactive: routed ids open, unroutable ids stay honestly unavailable', async () => {
+  const drills = [];
+  const view = createOverviewView({ bundle, callbacks: { onNodeDrill: event => drills.push(event) } });
+  await settle();
+  const recordsPanel = view.element.querySelector('[data-testid="overview-records"]');
+
+  // Request ids carry no source-anchor route in this bundle — dead text is
+  // the baseline defect this task fixes: they render the hollow unavailable
+  // action with a note, never a silent zero-interactive code span.
+  view.element.querySelector('[data-metric-id="metric:usage"]').click();
+  let records = [...recordsPanel.querySelectorAll('.overview-record')];
+  assert.ok(records.length >= 2, 'usage tile lists its request records');
+  for (const record of records) {
+    assert.equal(record.querySelector('button'), null, 'an id without a route is not a dead interactive control');
+    const unavailable = record.querySelector('.status[data-state="unavailable"]');
+    assert.ok(unavailable, 'the honest unavailable action renders');
+    assert.ok(unavailable.getAttribute('title'), 'the unavailable action notes why it cannot open');
+  }
+
+  // Plan ids open through the drill route the shell maps to its plan tab.
+  view.element.querySelector('[data-metric-id="metric:plans"]').click();
+  const planRecord = recordsPanel.querySelector('.overview-record button[data-record-id="plan:search"]');
+  assert.ok(planRecord, 'plan record ids are buttons');
+  assert.match(planRecord.getAttribute('aria-label'), /Open plan tab/);
+  planRecord.click();
+  assert.deepEqual(drills.map(event => event.nodeId), ['plan:search'], 'the record drill rides onNodeDrill (the onOpenItem/plan-tab route)');
+  assert.equal(view.getStats().selectedNodeId, 'plan:search', 'the record click also selects the plan in the map');
+
+  // Baseline item ids resolve to map objects.
+  view.element.querySelector('[data-metric-id="metric:baseline"]').click();
+  const featureRecord = recordsPanel.querySelector('.overview-record button[data-record-id="feature:notes"]');
+  assert.ok(featureRecord, 'feature record ids resolve to their map object');
+  featureRecord.click();
+  assert.equal(view.getStats().selectedNodeId, 'feature:notes');
+
+  // Criterion gate-check records expand and focus their check in the map —
+  // the exact baseline finding (criterion:c-queue@1 rendered as dead text).
+  view.element.querySelector('[data-clause-id="clause:gate:plan:search"]').click();
+  const criterionRecord = [...recordsPanel.querySelectorAll('.overview-record button')]
+    .find(control => (control.dataset.recordId ?? '').startsWith('criterion:'));
+  assert.ok(criterionRecord, 'the criterion record id is now an interactive control');
+  criterionRecord.click();
+  await settle();
+  assert.match(view.getStats().selectedNodeId ?? '', /^plan:search#criterion:s2:/, 'the criterion record selects its gate check');
+  assert.ok(view.element.querySelector(`.spike-node[data-node-id="${view.getStats().selectedNodeId}"]`), 'expansion revealed the gate-check node');
+});
+
+test('metric tiles: every available total opens its records; unavailable renders hollow, never zero', async () => {
   const view = createOverviewView({ bundle });
   await settle();
-  const metrics = [...view.element.querySelectorAll('[data-testid="overview-metrics"] [data-metric-id]')];
-  assert.ok(metrics.length >= 6);
-  const usageMetric = metrics.find(metric => metric.dataset.metricId === 'metric:usage');
-  assert.match(usageMetric.textContent, /150/);
-  assert.doesNotMatch(usageMetric.textContent, /210/);
-  const timeMetric = metrics.find(metric => metric.dataset.metricId === 'metric:time');
-  assert.match(timeMetric.textContent, /30/);
-  assert.match(timeMetric.textContent, /25/);
-  const gitMetric = metrics.find(metric => metric.dataset.metricId === 'metric:git');
-  assert.match(gitMetric.textContent, /1 changed path/);
-  for (const metric of metrics) {
-    metric.click();
-    const recordsPanel = view.element.querySelector('[data-testid="overview-records"]');
-    assert.match(recordsPanel.textContent, /contributing records/i, `${metric.dataset.metricId} opens its records`);
-    const records = (metric.dataset.records ?? '').split(',').filter(Boolean);
-    if (metric.dataset.unavailable !== 'true') assert.ok(records.length >= 1, `${metric.dataset.metricId} names its contributing records`);
+  const tiles = [...view.element.querySelectorAll('[data-testid="overview-metrics"] [data-metric-id]')];
+  assert.ok(tiles.length >= 6);
+  const usageTile = tiles.find(tile => tile.dataset.metricId === 'metric:usage');
+  assert.match(usageTile.textContent, /150/);
+  assert.doesNotMatch(usageTile.textContent, /210/);
+  const timeTile = tiles.find(tile => tile.dataset.metricId === 'metric:time');
+  assert.match(timeTile.textContent, /30/);
+  assert.match(timeTile.textContent, /25/);
+  const gitTile = tiles.find(tile => tile.dataset.metricId === 'metric:git');
+  assert.match(gitTile.textContent, /Changed paths/);
+  assert.match(gitTile.textContent, /1 uncommitted/);
+  for (const tile of tiles) {
+    assert.ok(tile.querySelector('.lb-metric-value[data-numeric="true"]'), `${tile.dataset.metricId} renders a tabular figure`);
+    if (tile.dataset.unavailable === 'true') continue;
+    assert.equal(tile.tagName, 'BUTTON', `${tile.dataset.metricId} total is a drill-down control`);
+    tile.click();
+    assert.match(view.element.querySelector('[data-testid="overview-records"]').textContent, /Contributing records/, `${tile.dataset.metricId} opens its records`);
   }
   // An unprojected input must read as unavailable, never zero.
   const partial = { ...bundle, usage: undefined, time: undefined, git: undefined };
   const partialView = createOverviewView({ bundle: partial });
   await settle();
   for (const id of ['metric:usage', 'metric:time', 'metric:git']) {
-    const metric = partialView.element.querySelector(`[data-metric-id="${id}"]`);
-    assert.equal(metric.dataset.unavailable, 'true', `${id} is explicitly unavailable`);
-    assert.match(metric.textContent, /unavailable|not projected/i);
-    assert.doesNotMatch(metric.textContent, /\b0 (tokens|min|changed)/, 'absence of data never renders as a zero total');
+    const tile = partialView.element.querySelector(`[data-metric-id="${id}"]`);
+    assert.equal(tile.dataset.unavailable, 'true', `${id} is explicitly unavailable`);
+    assert.equal(tile.tagName, 'DIV', 'an unavailable tile is not an interactive control');
+    assert.match(tile.textContent, /not projected/);
+    assert.ok(tile.querySelector('.status[data-state="unavailable"]'), 'the hollow dashed unavailable chip renders');
+    assert.doesNotMatch(tile.textContent, /\b0 (tokens|min|changed)/, 'absence of data never renders as a zero total');
+  }
+});
+
+test('the attention queue is a native list whose rows open their contributing records in the dock', async () => {
+  const view = createOverviewView({ bundle });
+  await settle();
+  const list = view.element.querySelector('[data-testid="overview-attention-list"]');
+  assert.ok(list, 'the attention queue renders as a list');
+  assert.equal(list.dataset.nativeList, 'true', 'the list opts into j/k traversal');
+  const rows = [...list.querySelectorAll('.overview-attention-control')];
+  assert.ok(rows.length >= 1, 'attention items render');
+  const readinessRow = rows.find(row => row.dataset.queueId.startsWith('queue:readiness:'));
+  assert.ok(readinessRow, 'blocked-readiness items are listed with their state');
+  for (const row of rows) {
+    const chip = row.querySelector('.status');
+    assert.ok(chip, 'every row carries a status chip');
+    assert.ok(STATUS_STATES.includes(chip.dataset.state));
+    assert.ok((row.dataset.records ?? '').length >= 1, 'every row carries its record links');
+  }
+  rows[0].click();
+  const recordsPanel = view.element.querySelector('[data-testid="overview-records"]');
+  assert.match(recordsPanel.textContent, /Contributing records/);
+  assert.ok(recordsPanel.querySelectorAll('.overview-record').length >= 1, 'the row click lists the item records');
+
+  // Inside the shell the same click opens the dock and adopts the records.
+  const shell = createProjectShell({ projectionProvider: () => bundle, product: { name: 'LazyBuddy' } });
+  shell.update();
+  await settle();
+  const dock = shell.element.querySelector('[data-testid="dock-panel"]');
+  shell.element.querySelector('.overview-attention-control').click();
+  assert.equal(dock.hidden, false, 'the attention row opens the dock');
+  assert.ok(shell.element.querySelector('[data-testid="dock-records-region"] .overview-record-list'), 'the docked records region lists the contributing records');
+});
+
+test('walls of meta text are gone: caveats ride tooltips and one polite announcer', async () => {
+  const view = createOverviewView({ bundle });
+  await settle();
+  dom.document.body.append(view.element);
+  try {
+    const visibleText = view.element.textContent;
+    for (const caveat of ['absence of a finding', 'never as zero', 'not a health score', 'resolve only through the shared authority']) {
+      assert.ok(!visibleText.includes(caveat), `the ${JSON.stringify(caveat.slice(0, 24))}… caveat must not render as body text`);
+    }
+    const tooltips = [...view.element.querySelectorAll('[title]')].map(node => node.getAttribute('title')).join('\n');
+    for (const caveat of ['absence of a finding', 'never as zero']) assert.ok(tooltips.includes(caveat), 'the caveat stays available as a tooltip');
+    // The tooltip notes are the T11 clipped pattern, wired by aria-describedby.
+    const described = [...view.element.querySelectorAll('[aria-describedby]')];
+    assert.ok(described.length >= 4, 'section caveats and record notes are wired through aria-describedby');
+    for (const subject of described) {
+      const note = [...dom.document.body.children].find(node => node.id === subject.getAttribute('aria-describedby'));
+      assert.ok(note?.classList.contains('native-note'), 'every description target is a clipped native-note');
+    }
+    // Exactly one polite announcer (the T11 layer region), bounded messages.
+    view.openRecords({ id: 'x', title: 'Plans', records: ['plan:search'] });
+    view.openRecords({ id: 'y', title: 'Usage', records: ['req:a', 'req:b'] });
+    const announcers = dom.document.body.querySelectorAll('[data-native-announcer]');
+    assert.equal(announcers.length, 1, 'one polite announcer region for the whole layer');
+    assert.equal(announcers[0].getAttribute('aria-live'), 'polite');
+    assert.ok(announcers[0].textContent.length > 0 && announcers[0].textContent.length < 200, 'announcements are bounded single sentences');
+  } finally {
+    view.element.remove();
+  }
+});
+
+test('heading discipline in the shell composition: one h1, ordered h1 to h2 to h3, no skips', async () => {
+  const shell = createProjectShell({ projectionProvider: () => bundle, product: { name: 'LazyBuddy' } });
+  shell.update();
+  await settle();
+  dom.document.body.append(shell.element);
+  try {
+    const headings = headingsIn(shell.element);
+    assert.equal(headings.filter(node => node.tagName === 'H1').length, 1, 'exactly one page heading (the shell title)');
+    let level = 1;
+    for (const heading of headings) {
+      const rank = Number(heading.tagName[1]);
+      assert.ok(rank <= level + 1, `no skipped level before ${heading.textContent.slice(0, 30)}`);
+      level = rank;
+    }
+  } finally {
+    shell.element.remove();
+  }
+});
+
+test('keyboard traversal: graph arrows, tile roving, clause reachability, j/k over the attention list', async () => {
+  const detach = installFocusSystem({ root: dom.document });
+  try {
+    const view = createOverviewView({ bundle });
+    await settle();
+    dom.document.body.append(view.element);
+    try {
+      assert.ok(view.focusNode('plan:foundation'));
+      document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowRight' });
+      assert.ok(['plan:search', 'plan:export', 'plan:collaboration'].includes(document.activeElement.dataset.nodeId), 'ArrowRight crosses the inter-plan dependency layer');
+      const tiles = [...view.element.querySelectorAll('[data-testid="overview-metrics"] button[data-metric-id]')];
+      tiles[0].focus();
+      document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowRight' });
+      assert.equal(document.activeElement, tiles[1], 'ArrowRight roves across the metric tiles');
+      document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowLeft' });
+      assert.equal(document.activeElement, tiles[0], 'ArrowLeft roves back');
+      for (const clause of view.element.querySelectorAll('[data-clause-id][data-records]')) assert.equal(clause.tagName, 'BUTTON', 'link clauses are keyboard-reachable buttons');
+      const rows = [...view.element.querySelectorAll('.overview-attention-control')];
+      rows[0].focus();
+      document.activeElement.dispatchEvent({ type: 'keydown', key: 'j' });
+      assert.equal(document.activeElement, rows[1], 'j walks down the native attention list');
+      document.activeElement.dispatchEvent({ type: 'keydown', key: 'k' });
+      assert.equal(document.activeElement, rows[0], 'k walks back up');
+    } finally {
+      view.element.remove();
+    }
+  } finally {
+    detach.detach();
   }
 });
 
@@ -289,21 +508,6 @@ test('narrow list equivalent keeps full labels and keyboard traversal', async ()
   assert.notEqual(document.activeElement, rows[0], 'ArrowDown moves within the list');
   document.activeElement.dispatchEvent({ type: 'keydown', key: 'Enter' });
   assert.ok(view.getStats().selectedNodeId, 'Enter selects');
-});
-
-test('keyboard traversal: graph arrows, metric strip roving and clause reachability', async () => {
-  const view = createOverviewView({ bundle });
-  await settle();
-  assert.ok(view.focusNode('plan:foundation'));
-  document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowRight' });
-  assert.ok(['plan:search', 'plan:export', 'plan:collaboration'].includes(document.activeElement.dataset.nodeId), 'ArrowRight crosses the inter-plan dependency layer');
-  const metrics = [...view.element.querySelectorAll('[data-testid="overview-metrics"] [data-metric-id]')];
-  metrics[0].focus();
-  document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowRight' });
-  assert.equal(document.activeElement, metrics[1], 'ArrowRight roves across the metric strip');
-  document.activeElement.dispatchEvent({ type: 'keydown', key: 'ArrowLeft' });
-  assert.equal(document.activeElement, metrics[0], 'ArrowLeft roves back');
-  for (const clause of view.element.querySelectorAll('[data-clause-id][data-records]')) assert.equal(clause.tagName, 'BUTTON', 'link clauses are keyboard-reachable buttons');
 });
 
 test('hostile record text renders as text only', async () => {
@@ -364,6 +568,65 @@ test('shell destinations stay selectable (T12b) and preserve the selection throu
   await settle();
   assert.equal(shell.getStats().activeDestination, 'overview', 'polling-style update preserves the selected destination');
   assert.ok(shell.element.querySelector('[data-testid="overview-view"]'));
+});
+
+test('a polling bundle swap keeps the map selection, the mode, the tabs and the dock (stale_state)', async () => {
+  const state = { current: bundle };
+  const shell = createProjectShell({ projectionProvider: () => state.current, product: { name: 'LazyBuddy' } });
+  shell.update();
+  await settle();
+  shell.element.querySelector('.spike-node[data-node-id="plan:search"]').click();
+  shell.element.querySelector('[data-testid="overview-metrics"] button[data-metric-id="metric:plans"]').click();
+  shell.element.querySelector('.lb-tab .lb-tab-close') === null; // only the pinned overview tab exists
+  assert.equal(shell.getStats().overview.selectedNodeId, 'plan:search');
+  assert.equal(shell.getStats().dockOpen, true, 'the dock is open with contributing records');
+  const overviewBefore = shell.element.querySelector('[data-testid="overview-view"]');
+
+  state.current = { ...bundle, project_name: 'Offline notebook (refreshed)' };
+  shell.update();
+  await settle();
+  const stats = shell.getStats();
+  assert.deepEqual(stats.tabs, ['overview'], 'the tab set survives the bundle swap');
+  assert.equal(stats.activeTab, 'overview', 'the selected tab survives');
+  assert.equal(stats.overview.selectedNodeId, 'plan:search', 'the map selection survives');
+  assert.equal(stats.dockOpen, true, 'the dock stays open across the refresh');
+  assert.notEqual(shell.element.querySelector('[data-testid="overview-view"]'), overviewBefore, 'the overview itself is the fresh projection');
+  assert.match(shell.element.querySelector('[data-testid="shell-title"]').textContent, /refreshed/, 'the header reflects the new projection');
+});
+
+test('the empty attention queue renders an actionable empty state', async () => {
+  const quiet = structuredClone(bundle);
+  quiet.snapshot.proposals = [];
+  quiet.snapshot.plans = quiet.snapshot.plans.map(plan => ({ ...plan, stale_item_ids: [] }));
+  quiet.readiness = Object.fromEntries(Object.entries(bundle.readiness).map(([planId, assessment]) => [planId, { ...assessment, blockers: [] }]));
+  const view = createOverviewView({ bundle: quiet });
+  await settle();
+  const empty = view.element.querySelector('[data-testid="overview-queue"] .lb-empty');
+  assert.ok(empty, 'the native empty state renders');
+  assert.ok(empty.querySelector('.lb-empty-title').textContent.length > 0, 'it says what will fill the view');
+  assert.ok(empty.querySelector('.lb-empty-detail').textContent.includes('proposals'), 'and how that happens');
+});
+
+test('view CSS holds the token discipline: type, spacing, radius, motion, no color literals', async () => {
+  const source = readFileSync(new URL('../ui/overview.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const declarations = [...source.matchAll(/([-a-z]+)\s*:\s*([^;{}]+);/g)].map(match => [match[1], match[2].trim()]);
+  assert.equal((source.match(/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b|\brgba?\(|\bhsla?\(/g) ?? []).length, 0, 'zero color literals');
+  for (const [property, value] of declarations) {
+    if (property === 'font-size') assert.match(value, /^var\(--type-/, 'font sizes come from the type tokens');
+    if (property === 'font-family') assert.match(value, /^var\(--(?:mono|sans)\)/, 'identifiers alone render in the system mono stack');
+    if (property === 'border-radius') assert.match(value, /^var\(--radius-/, 'radii come from the radius tokens');
+    if (property === 'transition') {
+      for (const duration of value.match(/(?<![\w-])(?:\d*\.?\d+m?s)(?![\w])/g) ?? []) assert.fail(`raw motion duration ${duration} in ${value}`);
+      assert.match(value, /var\(--motion-(?:instant|fast|base|slow)\)/, 'transitions ride the motion tokens');
+      assert.match(value, /var\(--motion-ease\)/, 'transitions use the family ease');
+    }
+    if (['padding', 'margin', 'gap', 'inset-block-start'].includes(property.split('-')[0]) || property.startsWith('padding-') || property.startsWith('margin-') || property.startsWith('gap') || property.startsWith('border-inline-start') || property.startsWith('border-block-start') || property.startsWith('inset-')) {
+      if (property.startsWith('border-inline-start') || property.startsWith('border-block-start') || property.startsWith('border')) continue; // widths, not spacing
+      for (const part of value.split(/\s+/)) {
+        assert.ok(part === '0' || /^var\(/.test(part) || /^calc\(/.test(part), `spacing value ${part} (${property}) resolves through tokens`);
+      }
+    }
+  }
 });
 
 test('the overview and shell modules add no dependencies and never touch files or scheduling', async () => {

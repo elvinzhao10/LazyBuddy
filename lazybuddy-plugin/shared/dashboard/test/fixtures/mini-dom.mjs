@@ -13,7 +13,8 @@ const KEbab = key => `data-${key.replace(/[A-Z]/g, letter => `-${letter.toLowerC
 const camel = name => name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 
 function parseSimple(selector) {
-  const match = /^([a-z]+)?((?:\.[A-Za-z0-9_-]+)*)((?:\[[^\]]+\])*)$/.exec(selector);
+  // Tag names may carry digits (h1..h6); classes/attrs stay as before.
+  const match = /^([a-z][a-z0-9]*)?((?:\.[A-Za-z0-9_-]+)*)((?:\[[^\]]+\])*)$/.exec(selector);
   if (!match) return null;
   const classes = (match[2]?.match(/\.[A-Za-z0-9_-]+/g) ?? []).map(name => name.slice(1));
   const attrs = (match[3]?.match(/\[[^\]]+\]/g) ?? []).map(part => {

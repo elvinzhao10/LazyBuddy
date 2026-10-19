@@ -221,24 +221,26 @@ export function overviewFixture(bundle) {
   };
 
   const statusSentence = { text: '', clauses: [] };
-  const clause = (id, text, ref, records, unavailable = false) => statusSentence.clauses.push({ id, text, ref, records, unavailable });
-  if (activePlanIds.length) clause('clause:delivery', `declared active plan: ${activePlanIds[0]}`, activePlanIds[0], activePlanIds);
+  // Each clause carries its designed chip state so the hero renders the
+  // sentence as status chips, never as undifferentiated inline prose.
+  const clause = (id, text, ref, records, state = 'neutral', unavailable = false) => statusSentence.clauses.push({ id, text, ref, records, state, unavailable });
+  if (activePlanIds.length) clause('clause:delivery', `declared active plan: ${activePlanIds[0]}`, activePlanIds[0], activePlanIds, 'active');
   for (const planId of activePlanIds.filter(id => readiness[id] == null)) {
-    clause(`clause:readiness:${planId}`, `readiness not projected for ${planId}`, planId, [], true);
+    clause(`clause:readiness:${planId}`, `readiness not projected for ${planId}`, planId, [], 'unavailable', true);
   }
   if (pendingProposals.length) {
-    clause('clause:decisions', `${pendingProposals.length} baseline decision${pendingProposals.length === 1 ? '' : 's'} pending`, pendingProposals[0].id, pendingProposals.map(proposal => proposal.id));
+    clause('clause:decisions', `${pendingProposals.length} baseline decision${pendingProposals.length === 1 ? '' : 's'} pending`, pendingProposals[0].id, pendingProposals.map(proposal => proposal.id), 'attention');
   }
   for (const plan of blockingPlans) {
     const records = unique([...(plan.stale_item_ids ?? []),
       ...(readiness[plan.id]?.criteria?.entries ?? []).filter(entry => !entry.satisfied).map(entry => `criterion:${entry.criterion_id}@${entry.revision}`)]);
-    clause(`clause:gate:${plan.id}`, `verification gate blocking ${plan.id}`, plan.id, records.length ? records : [plan.id]);
+    clause(`clause:gate:${plan.id}`, `verification gate blocking ${plan.id}`, plan.id, records.length ? records : [plan.id], plan.stale_item_ids?.length ? 'stale' : 'attention');
   }
   if (changedPaths != null && changedPaths > 0) {
-    clause('clause:git', `Git changes not yet committed (${changedPaths} changed path${changedPaths === 1 ? '' : 's'})`, null, observedWorktrees.map(worktree => `worktree:${worktree.branch ?? worktree.root}`));
+    clause('clause:git', `Git changes not yet committed (${changedPaths} changed path${changedPaths === 1 ? '' : 's'})`, null, observedWorktrees.map(worktree => `worktree:${worktree.branch ?? worktree.root}`), 'neutral');
   }
   if (bundle.git == null || bundle.git.status !== 'observed') {
-    clause('clause:git', 'Git observation not projected', null, [], true);
+    clause('clause:git', 'Git observation not projected', null, [], 'unavailable', true);
   }
   statusSentence.text = statusSentence.clauses.map(entry => entry.text).join('; ') + '.';
 
@@ -249,50 +251,77 @@ export function overviewFixture(bundle) {
   const totalTokens = inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0);
   const time = bundle.time;
 
+  // Compact metric-tile vocabulary: `value` is the tabular headline, `label`
+  // names it, `detail` is the single meta line under the figure, `coverage`
+  // is the provenance note (a tooltip in the view) and `chip` is an optional
+  // status chip. A null value marks an unprojected input — the tile renders
+  // the hollow unavailable state, never a zero.
+  const baselineTotal = snapshot.summary.accepted_features + snapshot.summary.accepted_requirements
+    + snapshot.summary.accepted_principles + snapshot.summary.accepted_decisions;
   const metrics = [
-    { id: 'metric:plans', label: 'Plans', value: `${plansByGroup.active.length} active · ${plansByGroup.future.length} future · ${plansByGroup.historical.length} historical`,
-      coverage: 'declared plan lifecycle counts', records: snapshot.plans.map(plan => plan.id) },
-    { id: 'metric:active-progress', label: 'Active delivery', value: bundle.progress ? `${bundle.progress.summary.active_satisfied} of ${bundle.progress.summary.active_required} obligations satisfied` : null,
+    { id: 'metric:plans', label: 'Plans', value: `${snapshot.summary.plan_count}`,
+      detail: `${plansByGroup.active.length} active · ${plansByGroup.future.length} future · ${plansByGroup.historical.length} historical`,
+      coverage: 'declared plan lifecycle counts',
+      chip: { state: plansByGroup.active.length ? 'active' : 'neutral', label: plansByGroup.active.length ? `${plansByGroup.active.length} active` : 'no active plan' },
+      records: snapshot.plans.map(plan => plan.id) },
+    { id: 'metric:active-progress', label: 'Active delivery', value: bundle.progress ? `${bundle.progress.summary.active_satisfied} of ${bundle.progress.summary.active_required}` : null,
+      detail: bundle.progress ? 'required obligations satisfied among active plans' : 'progress not projected',
       coverage: bundle.progress ? 'unique required tasks and criteria among active plans' : 'progress not projected',
+      chip: bundle.progress && bundle.progress.summary.active_required > 0 ? { state: bundle.progress.summary.active_satisfied >= bundle.progress.summary.active_required ? 'verified' : 'attention', label: `${bundle.progress.summary.active_satisfied} of ${bundle.progress.summary.active_required} satisfied` } : null,
       records: bundle.progress ? bundle.progress.plans.active : [] },
-    { id: 'metric:baseline', label: 'Accepted baseline', value: `${snapshot.summary.accepted_features} features · ${snapshot.summary.accepted_requirements} requirements · ${snapshot.summary.accepted_principles} principles · ${snapshot.summary.accepted_decisions} decisions`,
-      coverage: `accepted baseline revision ${snapshot.baseline_revision}`, records: acceptedItems.map(item => item.id) },
-    { id: 'metric:unassigned', label: 'Unassigned requirements', value: `${snapshot.summary.unassigned_item_ids.length} accepted requirement${snapshot.summary.unassigned_item_ids.length === 1 ? '' : 's'} without a plan`,
+    { id: 'metric:baseline', label: 'Accepted baseline', value: `${baselineTotal}`,
+      detail: `${snapshot.summary.accepted_features} features · ${snapshot.summary.accepted_requirements} requirements · ${snapshot.summary.accepted_principles} principles · ${snapshot.summary.accepted_decisions} decisions`,
+      coverage: `accepted baseline revision ${snapshot.baseline_revision}`,
+      chip: { state: 'neutral', label: `revision ${snapshot.baseline_revision}` },
+      records: acceptedItems.map(item => item.id) },
+    { id: 'metric:unassigned', label: 'Unassigned requirements', value: `${snapshot.summary.unassigned_item_ids.length}`,
+      detail: snapshot.summary.unassigned_item_ids.length ? 'accepted items with no contributing plan' : 'none unassigned (exact zero)',
       coverage: snapshot.summary.unassigned_item_ids.length ? 'accepted items with no contributing plan' : 'none unassigned (exact zero)',
+      chip: snapshot.summary.unassigned_item_ids.length ? { state: 'attention', label: `${snapshot.summary.unassigned_item_ids.length} unassigned` } : { state: 'neutral', label: 'none unassigned' },
       records: snapshot.summary.unassigned_item_ids },
-    { id: 'metric:usage', label: 'Usage', value: usage ? `${totalTokens} tokens · ${usage.coverage.requests_with_usage} of ${usage.coverage.distinct_request_ids} requests reported` : null,
+    { id: 'metric:usage', label: 'Tokens', value: usage ? `${totalTokens}` : null,
+      detail: usage ? `${usage.coverage.requests_with_usage} of ${usage.coverage.distinct_request_ids} requests reported` : 'usage not projected',
       coverage: usage ? 'declared subsets never add to totals' : 'usage not projected',
       records: usage ? usage.requests.map(request => request.request_id) : [] },
-    { id: 'metric:time', label: 'Time', value: time ? `${formatMinutes(time.elapsed_minutes)} elapsed · ${formatMinutes(time.observed_execution_wall_minutes)} wall · ${formatMinutes(time.recorded_agent_minutes)} agent · peak ${time.peak_concurrency}` : null,
+    { id: 'metric:time', label: 'Elapsed', value: time ? formatMinutes(time.elapsed_minutes) : null,
+      detail: time ? `${formatMinutes(time.observed_execution_wall_minutes)} wall · ${formatMinutes(time.recorded_agent_minutes)} agent · peak ${time.peak_concurrency}` : 'time accounting not projected',
       coverage: time ? (time.source_record_ids?.length ? 'observed intervals per distinct agent' : 'contributing interval records not supplied') : 'time accounting not projected',
       records: time?.source_record_ids ?? [] },
-    { id: 'metric:git', label: 'Git', value: changedPaths != null ? `${changedPaths} changed path${changedPaths === 1 ? '' : 's'} · ${observedWorktrees.length} worktree${observedWorktrees.length === 1 ? '' : 's'}` : null,
+    { id: 'metric:git', label: 'Changed paths', value: changedPaths != null ? `${changedPaths}` : null,
+      detail: changedPaths != null ? `${observedWorktrees.length} worktree${observedWorktrees.length === 1 ? '' : 's'} observed · union across worktrees` : 'git facts not projected',
       coverage: changedPaths != null ? 'local Git facts, union across observed worktrees' : 'git facts not projected',
+      chip: changedPaths > 0 ? { state: 'attention', label: `${changedPaths} uncommitted` } : (changedPaths === 0 ? { state: 'neutral', label: 'clean worktrees' } : null),
       records: observedWorktrees.map(worktree => `worktree:${worktree.branch ?? worktree.root}`) },
   ];
-  for (const metric of metrics) if (metric.value == null) { metric.unavailable = true; metric.value = 'unavailable'; }
+  for (const metric of metrics) if (metric.value == null) { metric.unavailable = true; metric.chip = null; }
 
+  // The attention queue is a native list: each item carries its designed chip
+  // state and a short chip label; the row itself opens its records.
   const attentionQueue = [];
   for (const proposal of pendingProposals) {
-    attentionQueue.push({ id: `queue:proposal:${proposal.id}`, kind: 'proposal', title: `Baseline decision pending — ${proposal.summary}`,
+    attentionQueue.push({ id: `queue:proposal:${proposal.id}`, kind: 'proposal', state: 'attention', chipLabel: 'Decision pending',
+      title: `Baseline decision pending — ${proposal.summary}`,
       detail: proposal.unresolved ?? 'Unresolved decision attached.',
       records: unique([proposal.id, ...(proposal.impact?.plan_ids ?? []), ...(proposal.impact?.item_ids ?? [])]) });
   }
   for (const reconciliation of snapshot.reconciliations ?? []) {
     if (!reconciliation.unresolved_proposal_ids?.length) continue;
-    attentionQueue.push({ id: `queue:reconciliation:${reconciliation.id}`, kind: 'reconciliation', title: `Reconciliation open — ${reconciliation.id}`,
+    attentionQueue.push({ id: `queue:reconciliation:${reconciliation.id}`, kind: 'reconciliation', state: 'attention', chipLabel: 'Reconciliation open',
+      title: `Reconciliation open — ${reconciliation.id}`,
       detail: `${reconciliation.unresolved_proposal_ids.length} unresolved proposal${reconciliation.unresolved_proposal_ids.length === 1 ? '' : 's'}.`,
       records: unique([reconciliation.id, ...reconciliation.unresolved_proposal_ids]) });
   }
   for (const plan of snapshot.plans) {
     if (!plan.stale_item_ids?.length) continue;
-    attentionQueue.push({ id: `queue:stale:${plan.id}`, kind: 'stale-baseline', title: `Stale baseline references — ${plan.id}`,
+    attentionQueue.push({ id: `queue:stale:${plan.id}`, kind: 'stale-baseline', state: 'stale', chipLabel: 'Stale baseline',
+      title: `Stale baseline references — ${plan.id}`,
       detail: `References moved past revisions: ${plan.stale_item_ids.join(', ')}.`,
       records: unique([plan.id, ...plan.stale_item_ids]) });
   }
   for (const [planId, assessment] of Object.entries(readiness)) {
     if (!assessment?.blockers?.length) continue;
-    attentionQueue.push({ id: `queue:readiness:${planId}`, kind: 'blocked-readiness', title: `Readiness blocked — ${planId}`,
+    attentionQueue.push({ id: `queue:readiness:${planId}`, kind: 'blocked-readiness', state: 'attention', chipLabel: 'Readiness blocked',
+      title: `Readiness blocked — ${planId}`,
       detail: assessment.blockers.map(blocker => blocker.code).join(', '),
       records: unique([planId, ...assessment.blockers.map(blocker => blocker.code)]) });
   }

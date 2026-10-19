@@ -119,7 +119,10 @@ test('disabled segments are skipped by arrow traversal but stay reachable for cl
 test('Graph/List switchers are wired to the segmented keyboard layer', async () => {
   for (const file of ['work-view.mjs', 'execution-view.mjs', 'project-map-spike.mjs']) {
     const source = await readFile(new URL(`../ui/${file}`, import.meta.url), 'utf8');
-    assert.match(source, /nativeSegmented\s*=\s*'true'/, `${file} marks its Graph/List switcher`);
+    // T16: execution-view composes the shared segmentedControl() instead of
+    // hand-marking the attribute — either route carries data-native-segmented.
+    assert.ok(/nativeSegmented\s*=\s*'true'/.test(source) || /segmentedControl\(\{/.test(source),
+      `${file} marks its Graph/List switcher through the attribute or the segmentedControl library route`);
   }
   const style = await readFile(new URL('../ui/style.css', import.meta.url), 'utf8');
   assert.match(style, /\.view-switcher\s*\{[^}]*background:\s*var\(--inset\)/, 'switchers render on the segmented track');
