@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Snapshot-driven LazySeries dashboard component demo. Data is illustrative.">
   <title>Snapshot dashboard components</title>
-  <script>document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';</script>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+  <script src="./theme-init.js"></script>
   <link rel="stylesheet" href="./views.css">
   <script type="module" src="./component-demo.mjs"></script>
 </head>

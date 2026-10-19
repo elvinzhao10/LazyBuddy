@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="LazySeries 1.4.0 project shell — the static retractable sidebar, single content surface and dock app frame (T20a). Destinations render only after initialization.">
   <title>Project shell — app frame</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+  <script src="./theme-init.js"></script>
   <script>
-    document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     function showLoadFailure() {
       document.querySelector('#load-status').textContent = 'The project shell could not load. Reload this page to try again. No live run is connected.';
     }

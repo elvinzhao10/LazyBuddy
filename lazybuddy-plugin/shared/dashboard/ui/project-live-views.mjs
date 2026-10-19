@@ -83,7 +83,11 @@ function createProjectView(project, { adapter }) {
   root.append(head, summary, architecture.element, sourceDetails);
   return { element: root, ready: editor.ready, update(next) {
     project = next; editor.update(next); architecture.update(next);
-  }, getState: () => editor.getState() };
+  }, getState: () => editor.getState(),
+  // T20 navigation guard: the shell asks this surface before it replaces the
+  // Project destination while the structured editor holds unsaved drafts.
+  needsLeaveGuard: () => editor.needsLeaveGuard(),
+  confirmLeave: options => editor.confirmLeave(options) };
 }
 
 function createPlansView(project, { adapter, onOpenRun }) {

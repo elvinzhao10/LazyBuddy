@@ -275,6 +275,9 @@ function reportStatus(message) {
 
 // Native <dialog> confirm (audit FO-4: platform dialogs, not custom chrome).
 // Works on real dialogs and degrades to a hidden-toggle on minimal hosts.
+// `onConfirm` runs only on the confirm action; `onCancel` (T20) runs whenever
+// the dialog closes without confirming (cancel button, Escape, native cancel)
+// so guard callers can resolve their "keep editing" branch on every host.
 function createConfirmDialog({ testid, cancelLabel = 'Cancel' }) {
   const dialog = document.createElement('dialog');
   dialog.className = 'editor-dialog';
@@ -287,7 +290,8 @@ function createConfirmDialog({ testid, cancelLabel = 'Cancel' }) {
   const detail = element('p', 'meta', '');
   const cancelControl = button(cancelLabel, () => api.close());
   cancelControl.dataset.testid = `${testid}-cancel`;
-  const confirmControl = button('', () => { const action = onConfirm; onConfirm = null; api.close(); action?.(); });
+  let confirmed = false; // the confirm path marks itself so close-without-confirm runs onCancel
+  const confirmControl = button('', () => { const action = onConfirm; onConfirm = null; confirmed = true; api.close(); action?.(); });
   confirmControl.dataset.testid = `${testid}-confirm`;
   confirmControl.classList.add('lb-destructive');
   const actions = element('div', 'cluster editor-dialog-actions');
@@ -295,11 +299,17 @@ function createConfirmDialog({ testid, cancelLabel = 'Cancel' }) {
   dialog.append(heading, detail, actions);
   let invoker = null;
   let onConfirm = null;
+  let onCancelCallback = null;
+  const settleCancel = () => {
+    const cancelAction = onCancelCallback;
+    onCancelCallback = null;
+    if (!confirmed && cancelAction) cancelAction();
+  };
   const api = {
     element: dialog,
-    ask({ title, detail: text, confirmLabel, trigger = null, onConfirm: action }) {
+    ask({ title, detail: text, confirmLabel, trigger = null, onConfirm: action, onCancel: cancelAction }) {
       heading.textContent = title; detail.textContent = text; confirmControl.textContent = confirmLabel;
-      invoker = trigger; onConfirm = action;
+      invoker = trigger; onConfirm = action; onCancelCallback = cancelAction; confirmed = false;
       if (api.isOpen()) return dialog;
       dialog.hidden = false;
       if (typeof dialog.showModal === 'function') {
@@ -313,12 +323,13 @@ function createConfirmDialog({ testid, cancelLabel = 'Cancel' }) {
       if (typeof dialog.close === 'function') dialog.close();
       dialog.hidden = true;
       const target = invoker; invoker = null; onConfirm = null;
+      settleCancel();
       target?.focus?.();
       return true;
     },
     isOpen: () => (typeof dialog.open === 'boolean' ? dialog.open : !dialog.hidden),
   };
-  dialog.addEventListener('close', () => { dialog.hidden = true; const target = invoker; invoker = null; onConfirm = null; target?.focus?.(); });
+  dialog.addEventListener('close', () => { dialog.hidden = true; const target = invoker; invoker = null; onConfirm = null; settleCancel(); target?.focus?.(); });
   dialog.addEventListener('cancel', event => { event.preventDefault?.(); api.close(); });
   dialog.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault?.(); api.close(); } });
   return api;
@@ -402,6 +413,13 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
   closeGuard.element.querySelector('[data-testid="editor-close-guard-confirm"]').classList.remove('lb-destructive');
   closeGuard.element.querySelector('[data-testid="editor-close-guard-confirm"]').textContent = 'Discard changes and close';
   let closeIntent = null;
+  // T20 single-surface navigation guard (same FO-3 confirm pattern): leaving
+  // the dirty editor destination asks first. Keep editing is the safe default
+  // and preserves every draft; only the explicit Discard clears them.
+  const leaveGuard = createConfirmDialog({ testid: 'editor-leave-guard', cancelLabel: 'Keep editing' });
+  leaveGuard.element.querySelector('[data-testid="editor-leave-guard-confirm"]').classList.remove('lb-destructive');
+  leaveGuard.element.querySelector('[data-testid="editor-leave-guard-confirm"]').textContent = 'Discard changes and leave';
+  let dirtyChip = null; // the in-surface header chip (built with the shell below)
 
   function computeDirty() {
     return Boolean(drafts.text.trim() || drafts.title.trim() || drafts.authority.trim()
@@ -501,8 +519,37 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     if (tabChrome.dot) tabChrome.dot.hidden = !dirty;
   }
   function updateDirty() {
-    root.dataset.dirty = String(computeDirty());
+    const dirty = computeDirty();
+    root.dataset.dirty = String(dirty);
+    if (dirtyChip) dirtyChip.hidden = !dirty;
     syncTabChrome();
+  }
+
+  // T20 navigation guard surface: the shell asks before it replaces this
+  // surface in place. `needsLeaveGuard` stays synchronous so clean editors
+  // never defer navigation; `confirmLeave` resolves once the dialog settles.
+  function needsLeaveGuard() {
+    return computeDirty();
+  }
+  function confirmLeave({ trigger = null } = {}) {
+    if (!computeDirty()) return Promise.resolve(true);
+    return new Promise(resolve => {
+      let settled = false;
+      const done = ok => {
+        if (settled) return;
+        settled = true;
+        if (ok) clearDrafts(); // only the explicit Discard ever spends drafts
+        resolve(ok);
+      };
+      leaveGuard.ask({
+        title: 'Leave with unsaved changes?',
+        detail: `This editor holds ${dirtySummary()}. Leaving this surface discards them; nothing has been sent through the command route yet.`,
+        confirmLabel: 'Discard changes and leave',
+        trigger,
+        onConfirm: () => done(true),
+        onCancel: () => done(false),
+      });
+    });
   }
 
   // ---- structured surface: plan records + transition legality ----
@@ -1377,7 +1424,15 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
   (function buildShell() {
     const head = element('header', 'stack');
     const titleRow = element('div', 'cluster spread');
-    titleRow.append(element('h2', '', 'Project and plan editors'),
+    // T20 in-surface dirty indicator: the hosting tab's dot degrades silently
+    // in the tab-less shell, so the editor's own page header carries the chip.
+    dirtyChip = statusChip({ state: 'attention', label: 'Unsaved changes' });
+    dirtyChip.dataset.testid = 'editor-dirty-chip';
+    dirtyChip.setAttribute('role', 'img');
+    dirtyChip.setAttribute('aria-label', 'Unsaved changes');
+    dirtyChip.title = 'Unsaved drafts — leaving this surface asks before discarding.';
+    dirtyChip.hidden = true;
+    titleRow.append(element('h2', '', 'Project and plan editors'), dirtyChip,
       element('span', 'meta', 'Edits land on the registered original through the shared command route; nothing here runs a plan.'));
     head.append(titleRow, fieldRow('Registered source', sourceSelect, 'source-select',
       { help: 'The registered original every surface below reads and edits.' }), sourceMeta);
@@ -1419,7 +1474,7 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
 
     for (const mode of EDITOR_MODES) root.append(panes[mode]);
     root.append(narrowList);
-    root.append(baselineDock.element, impactDock.element, closeGuard.element, retireGuard.element);
+    root.append(baselineDock.element, impactDock.element, closeGuard.element, retireGuard.element, leaveGuard.element);
   })();
 
   const ready = selectSource(selection.sourceId).then(() => { syncTabChrome(); });
@@ -1435,6 +1490,8 @@ export function createProjectEditor({ snapshot, sendCommand, captureSource, asse
     selectItem: id => chooseItem(id),
     openBaselineComparison(trigger) { setDockOpen(baselineDock, trigger ?? baselineDockTrigger, true); },
     openImpactPreview(trigger) { setDockOpen(impactDock, trigger ?? impactDockTrigger, true); },
+    needsLeaveGuard,
+    confirmLeave,
     update(nextSnapshot, options = {}) {
       if (!nextSnapshot || nextSnapshot.project_id !== current.snapshot.project_id) return;
       current.snapshot = nextSnapshot;

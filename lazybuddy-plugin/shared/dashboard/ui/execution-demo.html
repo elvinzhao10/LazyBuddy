@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="LazySeries 1.4.0 nested execution and timeline view (T16). Data is the recorded T09/T02 fixture; no live run is connected.">
   <title>Nested execution and timeline</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+  <script src="./theme-init.js"></script>
   <script>
-    document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     function showLoadFailure() {
       document.querySelector('#load-status').textContent = 'The execution view could not load. Reload this page to try again. No live run is connected.';
     }

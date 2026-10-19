@@ -128,3 +128,61 @@ test('live shell enables every layer, renders the registered long document, and 
   assert.equal(shell.element.querySelector('.lb-sidebar-destination[aria-current="page"]').dataset.destination, 'project',
     'the sidebar current state follows the shortcut navigation');
 });
+
+test('leaving a dirty live editor asks through the shell guard; polls never spend the drafts (T20, stale_state)', async () => {
+  const runElement = document.createElement('section');
+  const adapter = { source: async id => ({ source_id: id, path: '.omo/plans/live.md', sha256: 'a'.repeat(64),
+      content: '# Live dashboard plan\n\n## Work\n\n- [ ] Keep the authored checklist read-only\n' }),
+    command: async () => { throw new Error('not used'); },
+    assessTransition: async (_snapshot, _planId, to) => ({ allowed: false, from: 'active', to,
+      reasons: [{ code: 'FIXTURE_READ_ONLY', detail: 'UI composition test' }] }),
+    detail: async () => { throw new Error('not loaded in this scenario'); } };
+  let shell;
+  const live = createLiveProjectViews({ project, adapter, runElement, runId: 'run-live', runSnapshot,
+    onDestinationRequest: destination => shell.selectDestination(destination),
+    onOpenItem: item => shell.openItem(item),
+    onOpenPlan: planId => shell.openPlan(planId) });
+  shell = createProjectShell({ projectionProvider: () => overviewBundle(project), views: live.views });
+  await tick();
+
+  shell.selectDestination('project');
+  await tick();
+  const draftInput = shell.element.querySelector('[data-testid="edit-text"]');
+  assert.ok(draftInput, 'the structured editor composes inside the project destination');
+  const chip = shell.element.querySelector('[data-testid="editor-dirty-chip"]');
+  assert.equal(chip.hidden, true, 'a clean editor shows no in-surface chip');
+  draftInput.value = 'unsaved edit in the live shell';
+  draftInput.dispatchEvent({ type: 'input' });
+  assert.equal(chip.hidden, false, 'drafting lights the in-surface dirty chip');
+
+  // A poll while dirty never spends the drafts (stale_state).
+  live.update({ ...project, revision: 6 });
+  await tick();
+  assert.equal(chip.hidden, false, 'the chip survives the poll');
+  assert.equal(draftInput.value, 'unsaved edit in the live shell', 'the draft survives the poll');
+
+  // Sidebar leave while dirty: the guard asks; Keep editing aborts in place.
+  shell.selectDestination('overview');
+  await tick();
+  const guard = shell.element.querySelector('[data-testid="editor-leave-guard"]');
+  assert.ok(guard, 'the FO-3 leave guard renders inside the shell');
+  assert.equal(guard.hidden, false, 'the leave guard opens');
+  assert.equal(guard.textContent.includes('a composed source edit'), true, 'the guard names the pending change class');
+  assert.equal(shell.getStats().activeDestination, 'project', 'the navigation holds while the guard is open');
+  guard.querySelector('[data-testid="editor-leave-guard-cancel"]').click();
+  await tick();
+  assert.equal(guard.hidden, true, 'keep editing closes the guard');
+  assert.equal(shell.getStats().activeDestination, 'project', 'keep editing aborts the navigation (cancel_resume)');
+  assert.equal(draftInput.value, 'unsaved edit in the live shell', 'keep editing preserves the draft');
+
+  // Discard completes the navigation and spends the drafts locally.
+  shell.selectDestination('overview');
+  await tick();
+  guard.querySelector('[data-testid="editor-leave-guard-confirm"]').click();
+  await tick();
+  assert.equal(shell.getStats().activeDestination, 'overview', 'discard completes the navigation');
+  assert.equal(draftInput.value, '', 'discard spends the drafts');
+  shell.selectDestination('project');
+  await tick();
+  assert.equal(chip.hidden, true, 'returning to the destination shows a clean editor again');
+});

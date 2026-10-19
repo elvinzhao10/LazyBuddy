@@ -76,6 +76,32 @@ function stubViews() {
   return { opened, views: { plans: plansView, evidence: evidenceView } };
 }
 
+// A surface with a shell-level leave guard (the T20 navigation guard): dirty
+// state is synchronous, confirmation settles a promise through the FO-3
+// dialog pattern. Drafts live outside the guard, exactly like editor drafts.
+function stubGuardedView() {
+  const element = document.createElement('section');
+  element.dataset.testid = 'guarded-surface';
+  let dirty = false;
+  let asked = 0;
+  const view = {
+    element,
+    update() {},
+    draft() { dirty = true; },
+    needsLeaveGuard: () => dirty,
+    confirmLeave() {
+      asked += 1;
+      return new Promise(resolve => {
+        view.__settle = proceed => { view.__settle = null; if (proceed) dirty = false; resolve(proceed); };
+      });
+    },
+    asked: () => asked,
+    settle: proceed => view.__settle?.(proceed),
+    isDirty: () => dirty,
+  };
+  return view;
+}
+
 test('pre-init stays the IO-2 baseline: no frame, the same self-explaining notice', async () => {
   storage.clear();
   const { shell } = mountShell({ bundle: null });
@@ -319,10 +345,13 @@ test('navigation state survives a reload-shaped remount through session storage 
   assert.equal(before.historyDepth, 2);
 
   // A reload keeps the same origin storage; the shell remounts cold. The
-  // prior instance tears down first — one shell per document.
+  // prior instance tears down first — one shell per document. The reloaded
+  // provider reads the mutable state so the NEXT mount's teardown can drop
+  // its frame (and its document keydown listener) like every other shell.
   firstState.bundle = null; first.update(); first.element.remove();
-  const reloaded = createProjectShell({ projectionProvider: () => overviewBundle(project), product: { name: 'LazyBuddy' }, views });
-  dom.document.body.append(reloaded.element); mounted[0] = { state: { bundle: overviewBundle(project) }, shell: reloaded };
+  const reloadedState = { bundle: overviewBundle(project) };
+  const reloaded = createProjectShell({ projectionProvider: () => reloadedState.bundle, product: { name: 'LazyBuddy' }, views });
+  dom.document.body.append(reloaded.element); mounted[0] = { state: reloadedState, shell: reloaded };
   await settle();
   const after = reloaded.getStats();
   assert.deepEqual(after.location, before.location, 'destination and item restore after the reload');
@@ -388,4 +417,91 @@ test('rapid navigation loops stay consistent: one surface, bounded stack (cancel
   assert.ok(content().querySelector('[data-testid="overview-view"]'), 'the overview surface is mounted');
   shell.openPlan('plan:shell');
   assert.deepEqual(shell.getStats().location, { destination: 'plans', item: 'plan:plan:shell' }, 'navigation after the loop is exact — no residue, no duplicates');
+});
+
+test('a dirty surface guards in-place navigation: keep editing aborts, discard completes (T20)', async () => {
+  storage.clear();
+  const guarded = stubGuardedView();
+  const { shell } = mountShell({ views: { project: guarded } });
+  await settle();
+
+  // Clean surface: navigation stays synchronous — no promise, no deferral.
+  assert.equal(guarded.needsLeaveGuard(), false);
+  shell.selectDestination('project');
+  assert.equal(shell.getStats().activeDestination, 'project', 'a clean guarded surface navigates synchronously');
+  shell.selectDestination('overview');
+  assert.equal(shell.getStats().activeDestination, 'overview');
+
+  // Dirty surface: a real sidebar row click asks first; the row marks itself
+  // current on its own click, so the aborted navigation must restore it.
+  shell.selectDestination('project');
+  const depthBeforeGuard = shell.getStats().historyDepth;
+  guarded.draft();
+  destinationButton(shell, 'overview').click();
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'project', 'keep-editing-pending navigation never moved the surface');
+  assert.equal(shell.getStats().historyDepth, depthBeforeGuard, 'no history entry is pushed while the guard is pending');
+  assert.equal(guarded.asked(), 1, 'the guard asked exactly once');
+  guarded.settle(false); // Keep editing
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'project', 'keep editing aborts the navigation in place');
+  assert.equal(shell.getStats().historyDepth, depthBeforeGuard, 'keep editing changes nothing');
+  assert.equal(guarded.isDirty(), true, 'keep editing preserves the dirty drafts (cancel_resume)');
+  assert.equal(destinationButton(shell, 'project').getAttribute('aria-current'), 'page',
+    'the sidebar still marks the dirty surface — the row that marked itself current on click is restored');
+  assert.ok([null, ''].includes(destinationButton(shell, 'overview').getAttribute('aria-current')),
+    'the abandoned destination row loses its premature current state');
+
+  // A second leave attempt while dirty asks again; Discard completes it.
+  destinationButton(shell, 'overview').click();
+  await settle();
+  assert.equal(guarded.asked(), 2, 'each leave attempt asks again — the first dialog never leaks');
+  guarded.settle(true); // Discard
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'overview', 'discard completes the navigation');
+  assert.equal(guarded.isDirty(), false, 'discard clears the surface drafts');
+  assert.equal(shell.getStats().historyDepth, depthBeforeGuard + 1, 'the discard path pushes the left location onto the stack');
+  assert.equal(shellRoot(shell).querySelector('[data-testid="shell-back"]').getAttribute('aria-label'), 'Back to Project');
+});
+
+test('the back affordance and the destination shortcut respect the same leave guard (T20)', async () => {
+  storage.clear();
+  const guarded = stubGuardedView();
+  const { shell } = mountShell({ views: { project: guarded } });
+  await settle();
+  shell.selectDestination('project');
+  assert.equal(shell.getStats().historyDepth, 1, 'overview sits under the project destination');
+
+  // Dirty surface: back asks the same guard; the stack is not popped while
+  // the dialog is pending and Keep editing pops nothing (cancel_resume).
+  guarded.draft();
+  shell.goBack();
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'project', 'back from a dirty surface holds while the guard is pending');
+  assert.equal(shell.getStats().historyDepth, 1, 'the stack is not popped while the guard is pending');
+  guarded.settle(false);
+  await settle();
+  assert.equal(shell.getStats().historyDepth, 1, 'keep editing pops nothing');
+  assert.equal(guarded.isDirty(), true);
+
+  shell.goBack();
+  await settle();
+  guarded.settle(true);
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'overview', 'discard lets the back navigation complete');
+  assert.equal(shell.getStats().historyDepth, 0, 'the back pop happened exactly once');
+  assert.equal(guarded.isDirty(), false);
+
+  // The dirty leg again, now through the Cmd/Ctrl destination shortcut.
+  shell.selectDestination('project');
+  guarded.draft();
+  dom.document.dispatchEvent({ type: 'keydown', key: '1', code: 'Digit1', metaKey: true, bubbles: true, cancelable: true });
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'project', 'the shortcut navigation holds while the guard is pending');
+  assert.equal(shell.getStats().historyDepth, 1, 'nothing was pushed while the guard was pending');
+  guarded.settle(true);
+  await settle();
+  assert.equal(shell.getStats().activeDestination, 'overview', 'discard lets the shortcut navigation complete');
+  assert.equal(shell.getStats().historyDepth, 2, 'the discard path pushed the left location exactly once');
+  assert.equal(guarded.isDirty(), false);
 });

@@ -76,57 +76,51 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   const viewFor = id => id === 'overview' ? overview : views[id] ?? null;
   const plansOfBundle = () => (Array.isArray(bundle?.snapshot?.plans) ? bundle.snapshot.plans : []);
 
+  // Live-shell overview compaction (T20, rebuilt for the T14 structure): with
+  // destination views mounted, the overview's secondary context collapses into
+  // one disclosure so the status sentence, the attention queue, the leading
+  // metric tiles and the macro map lead the destination. Compaction only
+  // re-parents nodes — every clause, tile and record control keeps its route.
   function compactLiveOverview(node) {
     if (!Object.keys(views).length || !node || node.dataset.liveCompact === 'true') return;
     node.dataset.liveCompact = 'true';
     const details = element('details', 'panel overview-context stack');
     details.append(element('summary', '', 'Project context, coverage and attention'));
-    const head = node.querySelector('.overview-head');
-    const title = head?.querySelector('h2'); const subtitle = head?.querySelector('.meta');
-    if (title) details.append(element('p', 'meta', title.textContent));
-    if (subtitle) details.append(subtitle);
-    title?.remove();
-    const statement = node.querySelector('.overview-statement'); if (statement) details.append(statement);
-    const statusHeading = node.querySelector('.overview-sentence h3');
-    if (statusHeading) { node.querySelector('.overview-sentence')?.setAttribute('aria-label', statusHeading.textContent); details.append(statusHeading); }
-    const unavailableClauses = [...node.querySelectorAll('.overview-clause-unavailable')];
+    // The hero identity chips duplicate the shell header's context line
+    // (project, repository, runtime, branch); they ride the disclosure.
+    node.querySelector('.overview-hero-identity')?.remove();
+    // The status sentence stays the primary visible read; its heading rides
+    // the disclosure and the section keeps its accessible name.
+    const statusSection = node.querySelector('.overview-hero-status');
+    const statusHeading = statusSection?.querySelector('h3');
+    if (statusHeading) {
+      statusSection.setAttribute('aria-label', statusHeading.textContent);
+      details.append(statusHeading);
+    }
+    // Beyond the first, unavailable clause chips ride the disclosure: the
+    // first stays visible so the honest unprojected signal never disappears.
+    const unavailableClauses = [...node.querySelectorAll('.overview-clause-note[data-unavailable="true"]')];
     for (const clause of unavailableClauses.slice(1)) details.append(clause);
-    const sentenceCoverage = node.querySelector('.overview-sentence > .meta'); if (sentenceCoverage) details.append(sentenceCoverage);
-    const definitions = element('section', 'stack overview-definitions');
-    definitions.append(element('h3', '', 'Metric definitions'));
-    const metricsHeading = node.querySelector('.overview-metrics h3');
-    if (metricsHeading) { node.querySelector('.overview-metrics')?.setAttribute('aria-label', metricsHeading.textContent); details.append(metricsHeading); }
-    for (const metric of node.querySelectorAll('.overview-metric')) {
-      const coverage = metric.querySelector('.meta'); const label = metric.querySelector('[data-metric-id]')?.textContent;
-      if (coverage) { definitions.append(element('p', 'meta', `${label} · ${coverage.textContent}`)); coverage.remove(); }
+    // Metric tiles beyond the first four ride the disclosure in a tile grid
+    // of their own; the buttons keep their contributing-records routes.
+    const tiles = [...node.querySelectorAll('.overview-tile')];
+    if (tiles.length > 4) {
+      const contextTiles = element('div', 'overview-tiles');
+      contextTiles.setAttribute('role', 'toolbar');
+      contextTiles.setAttribute('aria-label', 'Further metrics — every total opens its contributing records');
+      for (const tile of tiles.slice(4)) contextTiles.append(tile);
+      details.append(contextTiles);
     }
-    const metricsNote = node.querySelector('.overview-metrics > .meta'); if (metricsNote) definitions.append(metricsNote);
-    details.append(definitions);
-    const metricCards = [...node.querySelectorAll('.overview-metric')];
-    const compactMetric = new Map([
-      ['metric:plans', 'Plans · active / future / history'],
-      ['metric:active-progress', 'Delivery progress'],
-      ['metric:baseline', 'Accepted baseline'],
-      ['metric:unassigned', 'Unassigned requirements'],
-    ]);
-    for (const metric of metricCards.slice(0, 4)) {
-      const control = metric.querySelector('[data-metric-id]');
-      if (!control) continue;
-      control.setAttribute('aria-label', control.textContent);
-      const label = compactMetric.get(control.dataset.metricId);
-      const original = control.textContent; const separator = original.indexOf(':');
-      control.textContent = `${label ?? original.slice(0, separator)} · ${original.slice(separator + 1).trim()}`;
-    }
-    for (const metric of metricCards.slice(4)) details.append(metric);
-    const queue = node.querySelector('.overview-queue'); if (queue) details.append(queue);
-    const spikeHead = node.querySelector('.spike-head'); if (spikeHead) details.append(spikeHead);
-    const legend = node.querySelector('.spike-legend');
+    // Spike chrome: the layout status joins the toolbar; the legend folds
+    // into its own disclosure inside the toolbar row.
     const toolbar = node.querySelector('.spike-toolbar');
     const layoutStatus = node.querySelector('.spike-status');
     if (layoutStatus && toolbar) toolbar.prepend(layoutStatus);
+    const legend = node.querySelector('.spike-legend');
     if (legend && toolbar) {
       const legendDetails = element('details', 'spike-legend-details');
-      legendDetails.append(element('summary', '', 'Edge legend'), legend); toolbar.append(legendDetails);
+      legendDetails.append(element('summary', '', 'Edge legend'), legend);
+      toolbar.append(legendDetails);
     }
     node.append(details);
   }
@@ -234,18 +228,48 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     return left.destination === right.destination && (left.item?.id ?? null) === (right.item?.id ?? null);
   }
 
+  // T20 navigation guard: a mounted surface that reports unsaved work (the
+  // project editor through needsLeaveGuard/confirmLeave) must confirm before
+  // the single surface replaces it. Clean surfaces keep the synchronous fast
+  // path, so navigation stays immediate unless a guard actually intervenes;
+  // only one guarded navigation is ever pending (the dialog is modal).
+  let pendingLeave = null;
+
+  function leaveGuardOf() {
+    if (!frame || !location || pendingLeave) return null;
+    const view = viewFor(location.destination);
+    if (view && typeof view.needsLeaveGuard === 'function' && view.needsLeaveGuard()
+      && typeof view.confirmLeave === 'function') return view;
+    return null;
+  }
+
   function navigate(next, { push = true } = {}) {
     if (!frame) { activeDestination = next.destination; return; } // remembered; the frame selects it when the record initializes
     if (location && sameLocation(location, next)) {
       next.item?.enter?.(); // re-entering the open location refreshes it without history noise
       return;
     }
-    if (push && location) {
-      history.push(location);
-      if (history.length > HISTORY_LIMIT) history.shift();
-    }
-    renderLocation(next);
-    persistNav();
+    const perform = () => {
+      if (push && location) {
+        history.push(location);
+        if (history.length > HISTORY_LIMIT) history.shift();
+      }
+      renderLocation(next);
+      persistNav();
+    };
+    const guard = leaveGuardOf();
+    if (!guard) { perform(); return; }
+    // The dirty surface asks first (Keep editing preserves every draft); the
+    // navigation completes only on the explicit Discard.
+    pendingLeave = next;
+    void guard.confirmLeave({ trigger: globalThis.document?.activeElement ?? null })
+      .then(proceed => {
+        pendingLeave = null;
+        if (proceed && frame) perform();
+        // The sidebar row already marked itself current on its own click; an
+        // aborted navigation restores the still-displayed destination.
+        else if (frame) sidebar?.navigate(location?.destination ?? activeDestination);
+      });
   }
 
   function selectDestination(id, { push = true } = {}) {
@@ -276,13 +300,25 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
 
   function goBack() {
     if (!frame || history.length === 0) return false;
-    renderLocation(history.pop());
-    persistNav();
-    // The affordance itself (or the destination row) keeps the focus after
-    // the in-place swap; nothing else moves focus.
-    const back = pageHead?.querySelector?.('[data-testid="shell-back"]');
-    if (back) back.focus?.();
-    else sidebar?.element?.querySelector?.(`[data-destination="${location.destination}"]`)?.focus?.();
+    const perform = () => {
+      renderLocation(history.pop());
+      persistNav();
+      // The affordance itself (or the destination row) keeps the focus after
+      // the in-place swap; nothing else moves focus.
+      const back = pageHead?.querySelector?.('[data-testid="shell-back"]');
+      if (back) back.focus?.();
+      else sidebar?.element?.querySelector?.(`[data-destination="${location.destination}"]`)?.focus?.();
+    };
+    const guard = leaveGuardOf();
+    if (!guard) { perform(); return true; }
+    // Back away from a dirty surface asks the same guard; the pop happens
+    // only on the explicit Discard.
+    pendingLeave = true;
+    void guard.confirmLeave({ trigger: globalThis.document?.activeElement ?? null })
+      .then(proceed => {
+        pendingLeave = null;
+        if (proceed && frame && history.length > 0) perform();
+      });
     return true;
   }
 
@@ -460,7 +496,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     releaseThemeControl();
     frame = null; sidebar = null; dock = null; dockTrigger = null;
     pageHead = null; contentRegion = null; footerControlsHost = null; frameRestored = false;
-    location = null; history.length = 0;
+    location = null; history.length = 0; pendingLeave = null;
   }
 
   function refreshOverview() {

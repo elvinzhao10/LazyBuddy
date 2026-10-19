@@ -729,6 +729,56 @@ test('closing the dirty tab opens the native guard; keep editing cancels, discar
   tablist.remove(); panel.remove();
 });
 
+test('the editor header carries an in-surface dirty chip that follows the drafts (T20)', async () => {
+  const project = setupProject('dirty-chip');
+  const { editor } = await mountEditor(project.root);
+  const chip = byTestid(editor, 'editor-dirty-chip');
+  assert.ok(chip, 'the editor page header carries the dirty chip');
+  assert.equal(chip.hidden, true, 'a clean editor shows no chip');
+  assert.equal(chip.getAttribute('aria-label'), 'Unsaved changes');
+  setInput(editor, 'edit-text', 'a drafted edit');
+  await settle();
+  assert.equal(chip.hidden, false, 'drafting lights the in-surface chip');
+  assert.equal(chip.textContent.includes('Unsaved changes'), true);
+  await draftCriterionEdit(editor);
+  byTestid(editor, 'edit-preview-button').click();
+  await settled(editor);
+  assert.equal(chip.hidden, false, 'a pending preview keeps the chip lit');
+  byTestid(editor, 'edit-apply-button').click();
+  await settled(editor);
+  assert.equal(chip.hidden, true, 'a saved apply spends the drafts and the chip');
+});
+
+test('confirmLeave guards surface replacement: clean resolves true, keep preserves drafts, discard clears (T20)', async () => {
+  const project = setupProject('leave-guard');
+  const { editor } = await mountEditor(project.root);
+  // Clean editor: the guard resolves immediately, nothing defers.
+  assert.equal(editor.needsLeaveGuard(), false);
+  assert.equal(await editor.confirmLeave(), true);
+  assert.equal(byTestid(editor, 'editor-leave-guard').hidden, true, 'a clean editor never opens the leave dialog');
+
+  setInput(editor, 'edit-text', 'unsaved work in progress');
+  await settle();
+  assert.equal(editor.needsLeaveGuard(), true, 'the shell can ask synchronously whether a guard is needed');
+  const first = editor.confirmLeave();
+  const dialog = byTestid(editor, 'editor-leave-guard');
+  assert.equal(dialog.hidden, false, 'leaving a dirty editor opens the FO-3 confirm');
+  assert.equal(dialog.textContent.includes('a composed source edit'), true, 'the guard names the pending change class');
+  byTestid(editor, 'editor-leave-guard-cancel').click();
+  assert.equal(await first, false, 'Keep editing resolves false');
+  assert.equal(dialog.hidden, true, 'keep editing closes the guard');
+  assert.equal(editor.getState().dirty, true, 'keep editing preserves every draft (cancel_resume)');
+  assert.equal(byTestid(editor, 'edit-text').value, 'unsaved work in progress');
+
+  const second = editor.confirmLeave();
+  assert.equal(dialog.hidden, false, 'the guard asks again on the next leave attempt');
+  byTestid(editor, 'editor-leave-guard-confirm').click();
+  assert.equal(await second, true, 'Discard resolves true for the navigation');
+  assert.equal(editor.getState().dirty, false, 'discard spends the drafts locally');
+  assert.equal(byTestid(editor, 'edit-text').value, '');
+  assert.equal(await editor.confirmLeave(), true, 'a clean editor resolves immediately again');
+});
+
 test('baseline comparison and amendment impact open as dock panels from toolbar actions and Escape closes them', async () => {
   const project = setupProject('docks');
   const detach = (await import('../ui/components.mjs')).installFocusSystem({ root: document });
