@@ -12,6 +12,8 @@ import { renderArtifactPreview } from '../project/artifacts/preview.mjs';
 import { architectureFixture } from './ui/architecture-model.mjs';
 import { evidenceFixture } from './ui/evidence-model.mjs';
 import { gitDetailModel, metricsDetailModel } from './ui/git-metrics-model.mjs';
+import { readProjectObservations, recordProjectObservations } from './adapters/observations.mjs';
+import { assertAdmissionForTransition, recheckProjectAdmission } from './adapters/admission.mjs';
 const packageMetadata = createRequire(import.meta.url)('../../tooling/package.json');
 
 export const buddyAuthority = Object.freeze({
@@ -21,11 +23,26 @@ export const buddyAuthority = Object.freeze({
   readProject: (options, actor) => readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor }),
   readProjectSource: (options, actor, sourceId) => readProjectSource(
     { projectRoot: options.projectRoot, projectId: options.projectId, actor }, sourceId),
-  commandProject: (options, actor, command) => executeProjectCommand(
-    { projectRoot: options.projectRoot, projectId: options.projectId, actor }, command),
+  commandProject: async (options, actor, command) => {
+    // Served admission rechecking: a transition into `active` is the moment a
+    // plan is admitted to execution, so any recorded admission evidence for
+    // that plan is revalidated against the current accepted project first. A
+    // stale or unsatisfied verifier gate refuses the command with the
+    // documented blocked reason; plans without recorded evidence keep the
+    // bridge's own transition rules.
+    if (command?.operation === 'plan.transition' && command?.payload?.to_lifecycle === 'active') {
+      await assertAdmissionForTransition(options, actor, command.payload.plan_id);
+    }
+    return executeProjectCommand(
+      { projectRoot: options.projectRoot, projectId: options.projectId, actor }, command);
+  },
   assessProjectTransition: async (options, actor, request) => assessPlanTransition(
     await readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor }),
     request.plan_id, request.to_lifecycle, request.payload ?? {}),
+  recheckProjectAdmission: (options, actor, request) => recheckProjectAdmission(
+    { projectRoot: options.projectRoot, projectId: options.projectId }, actor, request),
+  readProjectObservations: options => readProjectObservations(options),
+  recordProjectObservations: (options, actor, records) => recordProjectObservations(options, records),
   readProjectArchitecture: async (options, actor) => architectureFixture({
     snapshot: await readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor }),
   }),

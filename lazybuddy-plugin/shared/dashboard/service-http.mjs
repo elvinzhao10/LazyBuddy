@@ -97,6 +97,32 @@ export async function listen(options, control) {
           catch (error) { throw projectFailure(error); }
           return;
         }
+        if (request.method === 'POST' && request.url === '/api/project/admission-recheck') {
+          const requestBody = await readBody(request);
+          if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
+            || Object.keys(requestBody).sort().join(',') !== 'facts,graphs,plan_id,task_id') {
+            throw new ServiceError('INVALID_ADMISSION_RECHECK');
+          }
+          try { send(response, await authorityFor(options).recheckProjectAdmission(options, actor, requestBody)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'GET' && request.url === '/api/project/observations') {
+          try { send(response, await authorityFor(options).readProjectObservations(options, actor)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'POST' && request.url === '/api/project/observations') {
+          const requestBody = await readBody(request);
+          if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
+            || Object.keys(requestBody).length !== 1 || !Array.isArray(requestBody.observations)) {
+            throw new ServiceError('INVALID_OBSERVATION_BATCH');
+          }
+          try {
+            send(response, await authorityFor(options).recordProjectObservations(options, actor, requestBody.observations));
+          } catch (error) { throw projectFailure(error); }
+          return;
+        }
         if (request.method === 'POST' && request.url === '/api/project/evidence/preview') {
           const requestBody = await readBody(request);
           if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
