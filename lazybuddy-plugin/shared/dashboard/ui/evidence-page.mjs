@@ -8,6 +8,9 @@
 // switching, narrow list mode and a simulated polling tick used by the
 // browser evidence harness.
 import { createEvidenceView } from './evidence-view.mjs';
+import { installNativeExperience } from './components.mjs';
+
+installNativeExperience(); // T11: keyboard/focus/density layer, idempotent
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 const themeControl = document.querySelector('#theme');

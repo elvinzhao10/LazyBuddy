@@ -1,4 +1,6 @@
-import { element, statusChip, taskCard, field, button, notice, createInspector } from './components.mjs';
+import { element, statusChip, taskCard, field, button, notice, createInspector, installNativeExperience } from './components.mjs';
+
+installNativeExperience(); // T11 native layer: focus system, density control, tooltips (idempotent)
 
 const states = {
   ready: { state: 'neutral', title: 'Ready example', detail: 'Select a task to inspect its separate execution and verification states.' },

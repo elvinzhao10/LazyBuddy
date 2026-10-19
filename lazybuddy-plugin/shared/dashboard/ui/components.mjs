@@ -128,7 +128,7 @@ const DENSITY_KEY = 'lazyseries-density';
 export const NATIVE_DENSITY_STORAGE_KEY = DENSITY_KEY;
 export const NATIVE_DENSITIES = Object.freeze(['compact', 'regular']);
 const FOCUSABLE_TAGS = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'];
-const LIST_SCOPES = '[data-native-list], ol, ul, .task-list, .graph-viewport, .queue, .attention-list, dialog, .native-overlay';
+const LIST_SCOPES = '[data-native-list], ol, ul, .task-list, .graph-viewport, .spike-graph-viewport, .architecture-graph-viewport, .execution-graph-viewport, .execution-timeline-viewport, .queue, .attention-list, dialog, .native-overlay';
 const FILTER_INPUT = 'input[type=search], input[data-native-filter]';
 
 function closestMatch(node, selector) {

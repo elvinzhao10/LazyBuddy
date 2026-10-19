@@ -96,6 +96,25 @@ test('j/k is scoped to the graph viewport and ignored while typing', () => {
   } finally { detach.detach(); }
 });
 
+test('j/k also traverses the spike/architecture/execution graph viewport scopes', () => {
+  const detach = installFocusSystem();
+  try {
+    for (const scopeClass of ['spike-graph-viewport', 'architecture-graph-viewport', 'execution-graph-viewport']) {
+      const viewport = element('div', scopeClass);
+      const cardA = button('Boundary', () => {});
+      const cardB = button('Feature', () => {});
+      viewport.append(cardA, cardB);
+      dom.document.body.append(viewport);
+      cardA.focus();
+      press(cardA, 'j');
+      assert.equal(dom.document.activeElement, cardB, `j traverses .${scopeClass}`);
+      press(cardB, 'k');
+      assert.equal(dom.document.activeElement, cardA, `k traverses .${scopeClass}`);
+      viewport.remove();
+    }
+  } finally { detach.detach(); }
+});
+
 test('/ focuses the first filter input when one exists and stays inert otherwise', () => {
   const detach = installFocusSystem();
   try {

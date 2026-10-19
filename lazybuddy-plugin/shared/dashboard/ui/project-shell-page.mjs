@@ -3,6 +3,11 @@
 // evidence harness) and mounts the shell. `?state=uninitialized` composes the
 // pre-init state (no project destinations, IO-2) for comparison captures.
 import { createProjectShell } from './project-shell.mjs';
+import { installNativeExperience } from './components.mjs';
+
+// T11 native experience layer: focus system (Tab ring, j/k, /, Escape),
+// density control, tooltips, announcer. Idempotent — safe on every page.
+installNativeExperience();
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 const themeControl = document.querySelector('#theme');

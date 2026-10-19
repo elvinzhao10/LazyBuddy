@@ -4,6 +4,9 @@
 import { spikeFixtures, planFixture } from './project-fixtures.mjs';
 import { createProjectMapSpike } from './project-map-spike.mjs';
 import { layoutProjectGraph, measureNodeCard, presentationModel } from './project-presentation.mjs';
+import { installNativeExperience } from './components.mjs';
+
+installNativeExperience(); // T11: keyboard/focus/density layer, idempotent
 
 const WORKER_LATENCY_MS = 60; // simulated layout-worker latency so the revision guard is observable
 const latencyScheduler = (model, revision) => new Promise(resolve => setTimeout(() => resolve(layoutProjectGraph(model)), WORKER_LATENCY_MS));

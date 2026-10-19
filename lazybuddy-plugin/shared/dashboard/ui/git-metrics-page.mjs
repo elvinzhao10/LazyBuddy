@@ -5,6 +5,9 @@
 // modules, which are browser-safe: the collectors and accounting functions run
 // under Node in the test; the page consumes their recorded results.
 import { createGitMetricsView } from './git-metrics-view.mjs';
+import { installNativeExperience } from './components.mjs';
+
+installNativeExperience(); // T11: keyboard/focus/density layer, idempotent
 import { gitDetailModel, metricsDetailModel } from './git-metrics-model.mjs';
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');

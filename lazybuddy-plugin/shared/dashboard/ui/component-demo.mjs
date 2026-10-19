@@ -1,4 +1,7 @@
+import { installNativeExperience } from './components.mjs';
 import { createTaskInspector } from './inspector-view.mjs';
+
+installNativeExperience(); // T11: keyboard/focus/density layer, idempotent
 import { createVerificationView } from './verification-view.mjs';
 import { createWorkView } from './work-view.mjs';
 
