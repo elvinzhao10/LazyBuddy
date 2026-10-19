@@ -23,8 +23,10 @@
 .architecture-status { min-block-size: var(--control); display: flex; align-items: center; margin: 0;
   font-variant-numeric: var(--numeric); }
 
-/* Treatments shared by every surface that renders an identity. */
-.architecture-identity { display: grid; gap: var(--space-2); inline-size: 100%; text-align: start; padding: var(--space-2);
+/* Treatments shared by every surface that renders an identity. Card-class
+   containers share ONE padding, driven by the density gutter (16px regular,
+   8px compact — SP-2), so compact shrinks gutters, never targets. */
+.architecture-identity { display: grid; gap: var(--space-2); inline-size: 100%; text-align: start; padding: var(--density-gutter);
   background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-md); cursor: pointer; }
 .architecture-identity:hover { background: var(--hover); }
 .architecture-identity[aria-pressed='true'] { background: var(--selected); }
@@ -52,11 +54,11 @@
 .architecture-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
 
 .architecture-product[hidden], .architecture-engineering[hidden] { display: none; }
-.architecture-journey { padding: var(--space-3); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
+.architecture-journey { padding: var(--density-gutter); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
 .architecture-journey-steps { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .architecture-step { display: grid; gap: var(--space-2); }
 .architecture-step[data-dimmed='true'] .architecture-step-control { opacity: 0.55; }
-.architecture-step-control { display: grid; gap: var(--space-2); inline-size: 100%; text-align: start; padding: var(--space-2);
+.architecture-step-control { display: grid; gap: var(--space-2); inline-size: 100%; text-align: start; padding: var(--density-gutter);
   background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-md); cursor: pointer; }
 .architecture-step-control[data-treatment='planned'] { border-style: dashed; background: transparent; }
 .architecture-step-control[data-treatment='proposed'] { border-style: dashed; border-color: var(--subtle); background: var(--bg); }
@@ -111,7 +113,7 @@
 .architecture-minimap-viewport { fill: var(--selected); stroke: var(--control-edge); stroke-width: 1.5; }
 
 /* Change lens groups. */
-.architecture-change-group { padding: var(--space-3); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
+.architecture-change-group { padding: var(--density-gutter); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
 .architecture-change-toggle { min-block-size: auto; padding: var(--space-half) var(--space-1); font-size: var(--type-md-size);
   inline-size: fit-content; }
 .architecture-change-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
@@ -149,7 +151,7 @@
   inline-size: fit-content; text-align: start; overflow-wrap: anywhere; }
 .architecture-features { padding: var(--space-4); }
 .architecture-features h3, .architecture-features h4, .architecture-features h5 { margin: 0; }
-.architecture-feature { padding: var(--space-3); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
+.architecture-feature { padding: var(--density-gutter); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
 .architecture-feature-group { gap: var(--space-1); }
 .architecture-feature-group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-half); }
 .architecture-feature-group ul.stack { gap: var(--space-half); }

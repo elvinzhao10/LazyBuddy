@@ -44,11 +44,15 @@ const openedItems = [];
 // The shell frame (T12 library pieces): destinations rail + tabbed
 // workspace. Only the Architecture destination has data on this fixture page;
 // the others render the explicit unavailable state, never a disabled control.
+// `?product=<runtime>` previews the page under another family runtime — the
+// identity surfaces (sidebar badge, runtime label) swap their accent from the
+// real per-product tokens; nothing status-like recolors (audit CL-5).
+const previewRuntime = new URLSearchParams(location.search).get('product');
 const tabs = createTabs({ onChange: (tabId, kind) => {
   if (kind === 'select' && tabId !== 'architecture' && !tabId.startsWith('item:')) selectDestination(tabId);
 } });
 const sidebar = sidebarNav({
-  product: 'LazySeries', runtime: 'LazyBuddy', current: 'architecture',
+  product: 'LazySeries', runtime: previewRuntime ?? 'LazyBuddy', current: 'architecture',
   destinations: [{ id: 'overview', label: 'Overview' }, { id: 'architecture', label: 'Architecture' }],
   footer: element('p', 'meta', 'Fixture page — the live workspace projects the whole record.'),
   onNavigate: id => selectDestination(id),

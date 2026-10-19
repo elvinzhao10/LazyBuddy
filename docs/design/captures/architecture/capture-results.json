@@ -126,21 +126,11 @@
     "label": "Pan graph left"
   },
   {
-    "spec": "CL5-accent-LazyKimi-light-1440-regular",
-    "scrollWidth": 1440,
-    "innerWidth": 1440,
-    "h1": 1,
-    "headings": 19,
-    "skipped": 0,
-    "ready": true,
-    "theme": "light",
-    "density": "regular",
-    "loadStatus": "Architecture fixture ready."
-  },
-  {
     "spec": "S10-density-pair",
     "regular": "S10-density-regular-light-1440.png",
-    "compact": "S10-density-compact-light-1440.png"
+    "compact": "S10-density-compact-light-1440.png",
+    "gutterRegular": "1rem",
+    "gutterCompact": ".5rem"
   },
   {
     "spec": "perspective-product-light-1440-regular",
@@ -291,6 +281,20 @@
     "nodes": 5,
     "regionWidth": 412,
     "graphWidth": 844
+  },
+  {
+    "spec": "CL5-accent-LazyKimi-light-1440-regular",
+    "badge": "LazyKimi",
+    "accent": "rgb(184, 29, 93)",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "h1": 1,
+    "headings": 13,
+    "skipped": 0,
+    "ready": true,
+    "theme": "light",
+    "density": "regular",
+    "loadStatus": "Architecture fixture ready."
   },
   {
     "spec": "S7-error-light-1440-regular",
