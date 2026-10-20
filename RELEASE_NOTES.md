@@ -4,6 +4,60 @@ A feature release across the six LazySeries siblings: the family's portable
 dashboard core is vendored byte-identically into every package, and LazyBuddy
 is the vendoring source that distributes and drift-guards it.
 
+## Completion pass (2026-10-19)
+
+A scoped completion pass over the 1.4.0 surfaces; every bullet cites the
+branch commit that delivers it.
+
+- Per-repo dashboard isolation: the per-repo store isolation and
+  foreign-runtime refusal matrix landed as a family-wide test (8455d45) — a
+  foreign runtime's state and event writes are refused, and each repository's
+  dashboard stores stay isolated per package.
+- Six host-harness rescans landed conservative adoptions. This package
+  adopted plugin-uninstall and WorkBuddy MCP settings from the CodeBuddy
+  rescan (e8d23e7) and the active runtime badge fix (da1bc0a); LazyBuddy as
+  vendoring source also serves the observations, collectors, and admission
+  recheck surface (55bfde9).
+- Complete UI overhaul of the project dashboard, on the family design
+  language: design tokens v2 with per-product accents (d576750), the native
+  platform experience layer wired into every page bootstrap (f1db78c,
+  42baf90), the component library rebuilt on the tokens (4925371), and six
+  redesigned views — Overview (8bbf189), Evidence/Research (0475f0b),
+  Git/Metrics (fe210c3), Execution/Timeline (1bfc8dd), Architecture lenses
+  (852b2fa, with the round-2 audit fixes 39c63e8), and Editors (ade1f4e) —
+  each audited against the family checklist (850b46c; results in
+  `docs/design/audit-results/`).
+- De-tabbed shell: the tabs are gone. A static retractable sidebar
+  (WORKSPACE/OBSERVATION destination groups, 56px icon rail, Cmd/Ctrl+B)
+  navigates in place over a capped 24-entry history stack, with the dock
+  inspector unchanged (e919d71); the follow-up pass made the theme
+  dark-first with the stepped-surface depth system, destination glyphs, and
+  projection-fed count badges (ea2ed06), and added navigation guards and
+  single-surface polish (7bd1048).
+- Comprehension re-measured after the redesign (7bd1048): the blocker is
+  identified from Overview in 1 selection (target ≤2) and its exact
+  gate-check source in 2 selections total (target ≤3) — on both pointer and
+  keyboard-only paths, on the served standalone shell entry with the G2
+  harness bundle.
+- Canonical observe bridge (bb69609): served observations and admission
+  rechecks now persist into canonical accepted project state through a
+  validated, idempotent bridge `observe` action; the journal remains the
+  served read store and the fallback when the action is unavailable.
+- Performance budgets measured and held (dc06b45): served first paint FCP
+  medians 12–16 ms against the 1500 ms budget, cached shell mount not worse,
+  and 100 navigation cycles with flat element/listener counts; the harness
+  found two breaches, both fixed (unbounded graph relayout on node title
+  edit; poll-tick tooltip-note leaks from the swapped-out overview).
+- Family repin (b60f58c): both vendored families re-pinned at source
+  revision `bb696092` — dashboard tree `e55a9c00…`, project tree `16561f3…`
+  — and adopted byte-identically by all six sibling packages.
+- Residuals, honestly: host embedding, chat handoff, and host wake remain
+  unobserved on every surface; the served observation journal and canonical
+  accepted state keep their own record numbering (documented in the
+  observations adapter header); the Qoder/Kimi wall-clock telemetry flake is
+  pre-existing; host-native surfaces remain PENDING/unobserved by unchanged
+  policy.
+
 ## Project platform (2026-10-07)
 
 - The persistent project record ships as a second vendored family:
@@ -11,9 +65,11 @@ is the vendoring source that distributes and drift-guards it.
   CLI, architecture, usage accounting, reconciliation, artifacts, baseline,
   plans, source-edit, git-observation, portable qa harness) is hash-pinned by
   `project.vendor.json` and distributed byte-identically to the five sibling
-  packages; the family re-pinned at T26 to tree `95c0e0fc…`, then to the
-  final tree `1feb5646…` at source revision `537f393` at delivery prep, and
-  the CI family-drift workflow now requires all six roots
+  packages; the family re-pinned at T26 to tree `95c0e0fc…`, then to tree
+  `1feb5646…` at source revision `537f393` at delivery prep, and finally to
+  tree `16561f3…` at source revision `bb696092` in the completion repin
+  (b60f58c, alongside the dashboard family at tree `e55a9c00…`); the CI
+  family-drift workflow now requires all six roots
   complete (`--require-complete`) for both families.
 - Over that core, LazyBuddy (as family source) carries the project dashboard
   views, the chat/MCP project tools, transactional original-source editing,
@@ -31,10 +87,13 @@ is the vendoring source that distributes and drift-guards it.
   `/api/project`, `/api/project/architecture`, `/api/project/git` and
   `/api/project/evidence` answered 200 behind the session, with unauthenticated
   reads rejected 401 and the git route invoking the vendored local collector
-  (`unavailable` on the probe's non-repository fixture). The §14 comprehension
-  targets, however, were measured on the standalone shell entry, not the
-  production service (see the G2 verdict — deferral R-2: a dedicated verifier
-  and a comprehension re-measure on the served surface remain future work).
+  (`unavailable` on the probe's non-repository fixture). The §14
+  comprehension targets were measured on the standalone shell entry, not the
+  production service (the G2 verdict's deferral R-2 kept a dedicated verifier
+  on the served surface as future work); after the completion-pass redesign
+  the re-measure (7bd1048) passes both targets on that standalone surface —
+  blocker in 1 selection (target ≤2), exact source in 2 selections total
+  (target ≤3), pointer and keyboard-only paths both.
 - Boundaries stay honest: host embedding, chat handoff, and host wake remain
   unobserved on every surface; conflict assessment is deterministic only (no
   language-level semantic analysis); an immutable archive of older Markdown

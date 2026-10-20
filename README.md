@@ -25,6 +25,7 @@ session.
 - The family's portable dashboard core is vendored in `lazybuddy-plugin/shared/dashboard/` and pinned byte-identically in `lazybuddy-plugin/shared/dashboard.vendor.json`; this package is the family's vendoring source.
 - The `status-dashboard` MCP server gains two tools: `dashboard_service` (start, inspect, stop, or return the local browser entry) and `copy_task_context` (copy a validated producer context without executing or consuming it).
 - An authenticated loopback browser dashboard offers Work, Verification, and Plan-edit views with a task inspector, evidence preview, and queue planning; queue edits never start work.
+- The completion pass redesigned the project dashboard end to end: design tokens v2 dark-first family language, a de-tabbed shell with a static retractable sidebar and in-place navigation, six audited views, navigation guards, measured-and-held performance budgets, and a comprehension re-measure that passes both targets; per-repo dashboard isolation and the canonical observe bridge landed beside it.
 - Honest capability labels are documented: browser, transactional edits, project queue, context copy, and observations are available; host embedding, chat handoff, and wake are unobserved; native host readiness stays pending.
 
 This release adds the shared dashboard surface to the workflow foundation
@@ -42,6 +43,7 @@ token-saving or cost claim is made.
 | v1.3.4 maintenance | Transactional run integrity, safer lifecycle and native adapter repairs. |
 | v1.3.5 repairs | Real runtime exercises, bounded hooks, dependency updates and current platform guidance. |
 | v1.4.0 dashboard | Vendored portable dashboard core, authenticated loopback browser UI, two new status-dashboard tools, queue planning and honest capability labels. |
+| v1.4.0 completion | Redesigned project dashboard (dark-first family language, sidebar shell, in-place navigation), per-repo isolation, canonical observe bridge, family repin at `bb696092`. |
 
 ### Just ask, or use a command — both work
 
@@ -101,9 +103,11 @@ persistent project layer is vendored the same way as a second family tree:
 `lazybuddy-plugin/shared/project/` is pinned in
 `lazybuddy-plugin/shared/project.vendor.json` (31 files — the portable runtime
 modules and QA harness; tests, native-identity QA, and fault hooks stay
-Buddy-side by recorded decision), checked with `--family project`; until the
-T21–T25 ports land, sibling roots without the tree are reported as
-`PENDING_PORTS`, never as passing.
+Buddy-side by recorded decision), checked with `--family project`; after the
+T21–T25 ports and the completion repin, all six sibling roots carry both
+trees byte-identically (dashboard tree `e55a9c00…`, project tree `16561f3…`,
+source revision `bb696092`), and the drift job requires all six roots
+complete for both families.
 
 The `status-dashboard` MCP server exposes six tools: the four status views plus
 `dashboard_service` (`start`, `status`, `stop`, `open`) and `copy_task_context`,
@@ -114,6 +118,37 @@ Verification, and Plan-edit views with a task inspector, evidence preview, and
 queue planning (create, amend, and reorder queued plans). Transactional edits
 and the independent project queue are available; queue edits never start work,
 and no endpoint dispatches execution.
+
+### The project dashboard UI (as shipped after the completion pass)
+
+After an explicit project init, the served dashboard mounts the project shell
+— a tab-free single surface:
+
+- **Static retractable sidebar**: a fixed column of destinations grouped
+  WORKSPACE (Overview, Project, Plans) and OBSERVATION (Execution, Git,
+  Evidence, Research), retractable to a 56px icon rail
+  (Cmd/Ctrl+B, persisted), with projection-fed count badges on Overview and
+  Plans. Selecting a destination replaces the content **in place**; item
+  navigation (a plan, an evidence record) opens within the content region
+  over a capped in-place history stack with a back affordance in the page
+  header, and a dock inspector opens on the right for details.
+- **Dark-first family design language**: the dashboard defaults to the dark
+  theme (light/dark/system choice persists), on design tokens v2 — the
+  shared family palette and depth system with LazyBuddy's cobalt accent
+  marking identity and wayfinding only; status stays shape + icon + text.
+- **Keyboard map** (the native experience layer, installed on every page):
+  Tab keeps the native ring with an always-visible focus ring; `j`/`k`
+  traverse list scopes with wrap; `/` focuses the first filter input;
+  Escape closes the topmost overlay (dock, legend, dialog) and returns
+  focus to the invoker; segmented controls take Arrow/Home/End;
+  Cmd/Ctrl+1..7 jump to destinations; Cmd/Ctrl+B retracts the sidebar;
+  theme (light/dark/system) and density (compact/regular) persist per
+  browser. Navigation guards protect unsaved edits when you switch
+  destinations.
+- **Per-repo isolation**: each repository's dashboard stores (observations,
+  admission rechecks, shell navigation) live under that repository's own
+  root; the per-repo isolation and foreign-runtime refusal matrix
+  (family-wide test) keeps a foreign runtime's writes out.
 
 Honest capability labels: the browser UI, transactional edits, the project
 queue, context copy, and observations are available in the package; host
