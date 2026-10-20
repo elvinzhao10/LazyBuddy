@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serviceFixture, http } from './service-fixture.mjs';
 import { processCall } from './command-fixture.mjs';
+import { observationJournalSelfTest } from '../adapters/observations.mjs';
 
 // T20b residual 1: production observation persistence on the served route.
 // The served service must accept observation inputs (the same shapes the
@@ -24,6 +25,11 @@ async function projectCall(root, action, value) {
   return processCall([process.execPath, projectCLI, action, '--project-root', root,
     '--project-id', 'project:b1', '--actor', 'test:observations'], value === undefined ? '' : JSON.stringify(value));
 }
+
+const parseStdout = result => {
+  assert.equal(result.code, 0, result.stderr);
+  return JSON.parse(result.stdout);
+};
 
 const observation = (id, overrides = {}) => ({
   id, subject: { kind: 'source', id: 'source:dep' }, classification: 'observed',
@@ -137,4 +143,60 @@ test('the observation journal is a plain append-only file owned by the service, 
     assert.equal(corrupt.status, 422);
     assert.equal(corrupt.value.code, 'OBSERVATION_JOURNAL_CORRUPT');
   } finally { await f.cleanup(); }
+});
+
+// T23: every journal write is routed through the bridge `observe` action when
+// available, so served observations also persist into canonical accepted
+// project state. The journal stays the served read store; the canonical record
+// is the accepted-state copy an operator can read through the project itself.
+test('served observations mirror into canonical accepted state through the bridge observe action', async () => {
+  const f = await serviceFixture();
+  try {
+    assert.equal((await projectCall(f.root, 'init')).code, 0);
+    const canonical = await f.request('/api/project/observations',
+      { body: { observations: [observation('obs:c1', { subject: { kind: 'git' } }), observation('obs:c2', { subject: { kind: 'git' } })] } });
+    assert.equal(canonical.status, 200, JSON.stringify(canonical.value));
+    assert.equal(canonical.value.canonical.store, 'lazybuddy/project-observe@1');
+    assert.deepEqual(canonical.value.canonical.recorded, ['obs:c1', 'obs:c2']);
+    assert.equal(canonical.value.canonical.observation_revision, 2);
+
+    // The accepted project record holds the same observations with the same
+    // versions, and the command revision/receipts are untouched by them.
+    const read = parseStdout(await projectCall(f.root, 'read'));
+    assert.deepEqual(read.observations.map(entry => [entry.id, entry.version]),
+      [['obs:c1', 1], ['obs:c2', 2]]);
+    assert.equal(read.observation_revision, 2);
+    assert.equal(read.revision, 0);
+
+    // Canonical replay is idempotent alongside journal replay.
+    const replay = await f.request('/api/project/observations',
+      { body: { observations: [observation('obs:c1', { subject: { kind: 'git' } })] } });
+    assert.equal(replay.value.status, 'already-recorded');
+    assert.deepEqual(replay.value.canonical.already_recorded, [{ id: 'obs:c1', version: 1 }]);
+    assert.deepEqual(replay.value.canonical.recorded, []);
+
+    // A canonical refusal fails the served route closed: identity reuse with
+    // different content is refused by both stores identically.
+    const conflict = await f.request('/api/project/observations',
+      { body: { observations: [observation('obs:c1', { subject: { kind: 'git' }, text: 'rewritten' })] } });
+    assert.equal(conflict.status, 422);
+    assert.equal(conflict.value.code, 'DUPLICATE_OBSERVATION_ID');
+  } finally { await f.cleanup(); }
+});
+
+// T23 fallback discipline: only the exact refusals that mean "no bridge
+// observe action here" downgrade to journal-only persistence. Contract
+// refusals, duplicate identities, busy and timeout must never be swallowed.
+test('the observe fallback predicate accepts only bridge-unavailability refusals', () => {
+  const { observeUnavailable } = observationJournalSelfTest;
+  assert.equal(observeUnavailable({ code: 'BRIDGE_FAILED' }), true, 'a missing native bridge is unavailable');
+  assert.equal(observeUnavailable({ code: 'INVALID_ARGUMENTS' }), true, 'an older bridge without the action is unavailable');
+  assert.equal(observeUnavailable({ code: 'USAGE_INIT_READ_SOURCE_COMMAND_PROJECT_ROOT_PROJECT_ID_ACTOR_NODE' }), true,
+    'an older vendored cli without the verb is unavailable');
+  assert.equal(observeUnavailable({ code: 'DUPLICATE_OBSERVATION_ID' }), false, 'identity reuse is a real refusal');
+  assert.equal(observeUnavailable({ code: 'PROJECT_BUSY' }), false, 'a busy bridge is a real refusal');
+  assert.equal(observeUnavailable({ code: 'MODEL_TIMEOUT' }), false, 'a timed-out reducer is a real refusal');
+  assert.equal(observeUnavailable({ code: 'UNKNOWN_FIELD' }), false, 'contract refusals fail closed');
+  assert.equal(observeUnavailable(null), false);
+  assert.equal(observeUnavailable(new Error('plain')), false);
 });

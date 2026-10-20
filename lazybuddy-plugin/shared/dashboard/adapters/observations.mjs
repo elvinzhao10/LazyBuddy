@@ -1,22 +1,23 @@
-// Served observation persistence (T20b). The vendored project model exposes
-// `recordObservations` as a pure reducer step, but the native bridge has no
-// action that persists its outcome, so nothing on the served route ever landed
-// observations durably. This adapter is the service-side accommodation: a
-// dashboard-owned append-only JSONL journal under the project root that carries
-// the same semantics — inputs validated by the vendored contract, versions
-// assigned monotonically from the journal, observations never appended as
-// command receipts, and idempotent replay by observation identity. The store is
-// deliberately separate from `.lazybuddy/project` (the bridge's journaled
-// transactional state) so no service-side write can ever interleave with a
-// bridge transaction. The needed canonical-store change (a bridge `observe`
-// action persisting `recordObservations` output into `state.json`) is recorded
-// as a follow-up for the project-family regen.
+// Served observation persistence (T20b), bridged into canonical state (T23).
+// The vendored project model exposes `recordObservations` as a pure reducer
+// step; T20b shipped it with a service-side accommodation only — a
+// dashboard-owned append-only JSONL journal under the project root — because
+// the native bridge had no action that persisted the reducer's outcome. T23
+// adds that bridge `observe` action, so this adapter now routes every journal
+// write through the canonical store when the bridge action is available: the
+// records land in accepted project state (`state.json`) through the same
+// validated, idempotent, atomically published path as every other accepted
+// mutation. The journal remains the served read store (its restart, torn-tail
+// and corruption guarantees are unchanged) and stays the fallback when the
+// bridge observe action is unavailable — an older vendored family or a
+// sibling package without the native bridge keeps the T20b behavior whole.
 import { mkdir, open, readFile, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { assertObservationInput } from '../../project/contract.mjs';
-import { readProject } from '../../project/cli.mjs';
+import { observeProject, readProject } from '../../project/cli.mjs';
 
 export const OBSERVATION_STORE = 'dashboard-service/observation-journal@1';
+export const CANONICAL_OBSERVE_STORE = 'lazybuddy/project-observe@1';
 const JOURNAL_DIRECTORY = '.lazybuddy/project-observations';
 const MAX_BATCH = 1000;            // mirrors the vendored recordObservations bound
 const MAX_RECORDS = 8192;          // mirrors the contract's state.observations bound
@@ -24,6 +25,32 @@ const MAX_LINE_BYTES = 2 * 1024 * 1024;
 const LOCK_WAIT_MS = 5000;
 const STALE_LOCK_MS = 15000;
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+// Exactly the refusals that mean "this deployment has no bridge observe
+// action": an older bridge rejects the action (INVALID_ARGUMENTS), an older
+// vendored cli rejects the verb (the legacy usage code), and a package
+// without the native bridge script fails to launch it (BRIDGE_FAILED).
+// Everything else — contract refusals, duplicate identities, busy, timeout —
+// is a real typed refusal and fails the route closed.
+const OBSERVE_UNAVAILABLE_CODES = new Set(['INVALID_ARGUMENTS', 'BRIDGE_FAILED',
+  'USAGE_INIT_READ_SOURCE_COMMAND_PROJECT_ROOT_PROJECT_ID_ACTOR_NODE']);
+export const observeUnavailable = error => OBSERVE_UNAVAILABLE_CODES.has(error?.code);
+
+// Canonical mirror of a journal write (T23): records the same validated inputs
+// into accepted project state via the bridge `observe` action. Replay is
+// idempotent by observation identity, so re-sending a batch self-heals a
+// mirror that a previous invocation had to skip. Returns the bridge receipt,
+// or null when the observe action is unavailable here (journal-only fallback).
+async function mirrorToCanonicalState(options, inputs) {
+  try {
+    const outcome = await observeProject({ projectRoot: options.projectRoot, projectId: options.projectId,
+      actor: options.actor ?? 'dashboard:observations' }, inputs);
+    return outcome.receipt ?? null;
+  } catch (error) {
+    if (observeUnavailable(error)) return null;
+    throw error;
+  }
+}
 
 export class ObservationStoreError extends Error {
   constructor(code, detail = code) { super(detail); this.name = 'ObservationStoreError'; this.code = code; }
@@ -169,6 +196,11 @@ export async function recordProjectObservations(options, records) {
       const record = { ...input, version: existing.length + appended.length + 1 };
       appended.push(record);
     }
+    // Canonical first (T23): the accepted project record is the authority, the
+    // journal is the served store. A mirror that cannot run here (older family,
+    // no native bridge) leaves the journal write below as the whole durability
+    // story — the T20b fallback, unchanged.
+    const canonical = await mirrorToCanonicalState(options, inputs);
     if (appended.length) {
       await mkdir(paths.directory, { recursive: true, mode: 0o700 });
       const handle = torn
@@ -189,7 +221,10 @@ export async function recordProjectObservations(options, records) {
     return { status: already.length && !appended.length ? 'already-recorded' : 'recorded',
       recorded: [...already.map(entry => entry.id), ...appended.map(record => record.id)],
       versions: [...already, ...appended.map(record => ({ id: record.id, version: record.version }))],
-      observation_revision: total, observation_count: total, store: OBSERVATION_STORE };
+      observation_revision: total, observation_count: total, store: OBSERVATION_STORE,
+      canonical: canonical ? { store: CANONICAL_OBSERVE_STORE,
+        observation_revision: canonical.observation_revision,
+        recorded: canonical.recorded, already_recorded: canonical.already_recorded } : null };
   });
 }
 
@@ -204,4 +239,4 @@ export async function readProjectObservations(options) {
     store: OBSERVATION_STORE };
 }
 
-export const observationJournalSelfTest = { storePaths, readJournal, recordIdentity };
+export const observationJournalSelfTest = { storePaths, readJournal, recordIdentity, observeUnavailable };

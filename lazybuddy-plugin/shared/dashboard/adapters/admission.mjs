@@ -1,22 +1,28 @@
-// Served admission rechecking (T20b). The vendored plans library ships
-// `previewAdmission` / `recheckAdmission` as pure derivations with documented
-// refusal reasons, but no served route ever called them — the fafdbff scope
-// note recorded admission rechecking as harness-proven only. This adapter is
-// the service-side accommodation: it computes the admission preview itself
-// against the CURRENT accepted project (callers submit graph documents and
-// dependency facts, never a verdict), persists that evidence in a
-// dashboard-owned store, and rechecks it server-side the moment a plan
-// transition to `active` is attempted through the served command route. A
-// stale/unsatisfied verifier gate therefore refuses the transition with the
-// library's documented blocked reason (ADMIT_BLOCKED / STALE_PREVIEW /
-// GATE_INVALIDATED). Plans with no recorded admission evidence keep the
-// previous bridge semantics — the recheck layer is additive, never a bypass.
+// Served admission rechecking (T20b), bridged into canonical state (T23).
+// The vendored plans library ships `previewAdmission` / `recheckAdmission` as
+// pure derivations with documented refusal reasons, but no served route ever
+// called them — the fabdbff scope note recorded admission rechecking as
+// harness-proven only. This adapter is the service-side accommodation: it
+// computes the admission preview itself against the CURRENT accepted project
+// (callers submit graph documents and dependency facts, never a verdict),
+// persists that evidence in a dashboard-owned store, and rechecks it
+// server-side the moment a plan transition to `active` is attempted through
+// the served command route. A stale/unsatisfied verifier gate therefore
+// refuses the transition with the library's documented blocked reason
+// (ADMIT_BLOCKED / STALE_PREVIEW / GATE_INVALIDATED). Plans with no recorded
+// admission evidence keep the previous bridge semantics — the recheck layer
+// is additive, never a bypass. T23 additionally mirrors every recorded
+// recheck into canonical accepted state as an observation on the plan
+// (subject `plan`, classification `inferred`, provenance pointing at the
+// evidence file) through the bridge `observe` action when available; the
+// evidence file remains the recheck-time store either way.
 import { mkdir, open, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { readProject } from '../../project/cli.mjs';
+import { observeProject, readProject } from '../../project/cli.mjs';
 import { composeGraphSet } from '../../project/plans/dependencies.mjs';
 import { normalizeDependencyFacts, previewAdmission, recheckAdmission } from '../../project/plans/readiness.mjs';
+import { observeUnavailable } from './observations.mjs';
 
 export const ADMISSION_STORE = 'dashboard-service/admission-evidence@1';
 const STORE_DIRECTORY = '.lazybuddy/project-admissions';
@@ -121,6 +127,38 @@ function deriveAdmission(stateView, request) {
   return { set, facts, preview, verdict: recheckAdmission(stateView, set, facts, preview) };
 }
 
+// Canonical mirror of a recorded admission recheck (T23): one observation on
+// the plan, classified `inferred` (the verdict is derived, never caller-
+// supplied), provenance pointing at the evidence file. The identity digests
+// the whole recorded evidence — including its timestamp — so each recheck is
+// its own append-only observation and byte-identical evidence replays
+// idempotently. Returns the bridge receipt, or null when the observe action
+// is unavailable here (evidence-file-only fallback, the T20b behavior).
+async function mirrorAdmissionEvidence(options, actor, request, evidence, relativeEvidencePath) {
+  const subjectKey = createHash('sha256').update(`${request.plan_id}\0${request.task_id}`).digest('hex').slice(0, 16);
+  const contentDigest = createHash('sha256').update(JSON.stringify(evidence)).digest('hex').slice(0, 24);
+  const record = {
+    id: `admission:${subjectKey}:${contentDigest}`,
+    subject: { kind: 'plan', id: request.plan_id },
+    classification: 'inferred',
+    observed_by: actor,
+    observed_at: evidence.recorded_at,
+    provenance: { kind: 'file', reference: relativeEvidencePath },
+    content_revision: null,
+    text: JSON.stringify({ schema_version: 1, store: ADMISSION_STORE, plan_id: request.plan_id,
+      task_id: request.task_id, status: evidence.verdict.status, reason: evidence.verdict.reason,
+      basis: evidence.basis }),
+  };
+  try {
+    const outcome = await observeProject({ projectRoot: options.projectRoot, projectId: options.projectId,
+      actor }, [record]);
+    return outcome.receipt ?? null;
+  } catch (error) {
+    if (observeUnavailable(error)) return null;
+    throw error;
+  }
+}
+
 // POST-shaped admission recheck: the caller supplies the authored graph
 // documents and the dependency facts the native runtime reports; the preview
 // and the recheck verdict are computed here against the current accepted
@@ -141,11 +179,20 @@ export async function recheckProjectAdmission(options, actor, request) {
     task_id: request.task_id, preview, graphs: request.graphs, facts: request.facts,
     verdict: { status: verdict.status, reason: verdict.reason }, basis: verdict.basis ?? preview.basis,
     recorded_at: new Date().toISOString(), recorded_by: actor };
-  await withStoreLock(paths, () => writeEvidence(paths, evidence));
+  let canonical = null;
+  await withStoreLock(paths, async () => {
+    await writeEvidence(paths, evidence);
+    // Evidence file first (the recheck-time store), then the canonical mirror:
+    // an unavailable bridge observe leaves the T20b behavior whole.
+    canonical = await mirrorAdmissionEvidence(options, actor, request, evidence,
+      `${STORE_DIRECTORY}/${createHash('sha256').update(request.plan_id).digest('hex')}.json`);
+  });
   return { status: verdict.status, reason: verdict.reason, plan_id: request.plan_id,
     task_id: request.task_id, basis: verdict.basis, gate: verdict.gate,
     blockers: preview.blockers, preview_status: preview.status, store: ADMISSION_STORE,
-    recorded_at: evidence.recorded_at };
+    recorded_at: evidence.recorded_at,
+    canonical: canonical ? { store: 'lazybuddy/project-observe@1',
+      observation_revision: canonical.observation_revision } : null };
 }
 
 // Transition-time recheck on the served command route. Called for
@@ -175,4 +222,4 @@ export async function assertAdmissionForTransition(options, actor, planId) {
   }
 }
 
-export const admissionSelfTest = { storePath, readEvidence, deriveAdmission, withStoreLock };
+export const admissionSelfTest = { storePath, readEvidence, deriveAdmission, withStoreLock, mirrorAdmissionEvidence };

@@ -215,3 +215,68 @@ test('admission evidence for one plan never gates another plan, and unknown plan
     assert.equal(evidence, '', 'no evidence store is created by a lookup');
   } finally { await f.cleanup(); }
 });
+
+// T23: a recorded admission recheck also persists into canonical accepted
+// state as an observation on the plan — subject `plan`, classification
+// `inferred` (the verdict is derived server-side, never caller-supplied), and
+// provenance pointing at the evidence file the transition-time recheck reads.
+// The evidence file remains the recheck-time store; the observation is the
+// accepted-state record of the verdict.
+test('a recorded admission recheck mirrors into canonical state as a plan observation', async () => {
+  const f = await serviceFixture();
+  try {
+    await mkdir(join(f.root, '.omo/plans'), { recursive: true });
+    await writeFile(join(f.root, '.omo/plans/dep.md'), PLAN_MARKDOWN);
+    assert.equal((await projectCall(f.root, 'init')).code, 0);
+    await projectCall(f.root, 'command', { schema_version: 1, command_id: 'register:dep',
+      project_id: 'project:b1', expected_revision: 0, operation: 'register_source',
+      payload: { id: 'source:dep', path: '.omo/plans/dep.md', role: 'plan' } });
+    await projectCall(f.root, 'command', { schema_version: 1, command_id: 'plan:dep',
+      project_id: 'project:b1', expected_revision: 1, operation: 'register_plan',
+      payload: { id: 'plan:dep', source: { source_id: 'source:dep', sha256: digest(PLAN_MARKDOWN), anchor_id: 'document' },
+        declared_lifecycle: 'planned', baseline_refs: [] } });
+    const bound = await f.request('/api/commands', { body: amendment(f.revision) });
+    assert.equal(bound.status, 200, JSON.stringify(bound.value));
+    await projectCall(f.root, 'command', { schema_version: 1, command_id: 'link:probe',
+      project_id: 'project:b1', expected_revision: 2, operation: 'link_native_run',
+      payload: { plan_id: 'plan:dep', native_project_id: 'project:b1', run_id: 'probe' } });
+    const read = await f.request('/api/project');
+    const plan = read.value.project.plans.find(entry => entry.id === 'plan:dep');
+    const graphs = [graphFor('plan:dep', plan.revision, plan.source.sha256)];
+    const facts = [verificationFact('plan:dep', plan.source.sha256, plan.revision, true)];
+
+    const admitted = await f.request('/api/project/admission-recheck',
+      { body: { plan_id: 'plan:dep', task_id: 'B', graphs, facts } });
+    assert.equal(admitted.status, 200, JSON.stringify(admitted.value));
+    assert.equal(admitted.value.canonical.store, 'lazybuddy/project-observe@1');
+    assert.ok(admitted.value.canonical.observation_revision >= 1);
+
+    const canonical = JSON.parse((await projectCall(f.root, 'read')).stdout);
+    const mirrored = (canonical.observations ?? []).filter(entry => entry.subject.kind === 'plan'
+      && entry.subject.id === 'plan:dep');
+    assert.equal(mirrored.length, 1, 'exactly one canonical observation mirrors the recheck');
+    const [record] = mirrored;
+    assert.match(record.id, /^admission:[a-f0-9]{16}:[a-f0-9]{24}$/);
+    assert.equal(record.classification, 'inferred');
+    assert.match(record.observed_by, /^dashboard:/, 'the served route actor is recorded as the observer');
+    assert.equal(record.observed_at, admitted.value.recorded_at);
+    assert.equal(record.provenance.kind, 'file');
+    assert.equal(record.provenance.reference,
+      `.lazybuddy/project-admissions/${createHash('sha256').update('plan:dep').digest('hex')}.json`);
+    const summary = JSON.parse(record.text);
+    assert.equal(summary.schema_version, 1);
+    assert.equal(summary.plan_id, 'plan:dep');
+    assert.equal(summary.task_id, 'B');
+    assert.equal(summary.status, 'admitted');
+
+    // The second recheck of the same basis is a new observation event (its
+    // recorded_at differs), never a duplicate-identity refusal.
+    const again = await f.request('/api/project/admission-recheck',
+      { body: { plan_id: 'plan:dep', task_id: 'B', graphs, facts } });
+    assert.equal(again.status, 200, JSON.stringify(again.value));
+    const after = JSON.parse((await projectCall(f.root, 'read')).stdout);
+    assert.equal((after.observations ?? []).filter(entry => entry.subject.kind === 'plan'
+      && entry.subject.id === 'plan:dep').length, 2);
+    assert.equal(after.revision, canonical.revision, 'mirroring never advances the command revision');
+  } finally { await f.cleanup(); }
+});

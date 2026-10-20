@@ -3,7 +3,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createProject, applyProjectCommand } from './model.mjs';
+import { createProject, applyProjectCommand, recordObservations } from './model.mjs';
 import { assertProjectRegistry } from './contract.mjs';
 import { projectSnapshot } from './projection.mjs';
 
@@ -65,6 +65,10 @@ export const initProject = options => invoke('init', options);
 export const readProject = options => invoke('read', options);
 export const readProjectSource = (options, sourceId) => invoke('source', options, { source_id: sourceId });
 export const executeProjectCommand = (options, command) => invoke('command', options, command);
+// Canonical observation persistence (T23): the same validated inputs the served
+// routes accept, recorded into accepted project state through the bridge's
+// journaled `observe` action. Additive alongside init/read/source/command.
+export const observeProject = (options, observations) => invoke('observe', options, { observations });
 
 async function main(argv) {
   // Pure reducer entry point. It has no filesystem or native verification authority.
@@ -72,6 +76,7 @@ async function main(argv) {
     const input = await inputJSON(); let result;
     if (input.action === 'create') result = createProject(input.options);
     else if (input.action === 'command') result = applyProjectCommand(input.state, input.command, input.context);
+    else if (input.action === 'observe') result = recordObservations(input.state, input.records);
     else if (input.action === 'snapshot') result = projectSnapshot(input.state, input.context);
     else if (input.action === 'registry') result = assertProjectRegistry(input.registry);
     else throw new ProjectBridgeError('INVALID_REDUCER_ACTION');
@@ -80,8 +85,8 @@ async function main(argv) {
     process.stdout.write(output + '\n'); return;
   }
   const [action, ...arguments_] = argv;
-  if (!['init', 'read', 'source', 'command'].includes(action) || arguments_.length !== 6) {
-    throw new ProjectBridgeError('USAGE_INIT_READ_SOURCE_COMMAND_PROJECT_ROOT_PROJECT_ID_ACTOR');
+  if (!['init', 'read', 'source', 'command', 'observe'].includes(action) || arguments_.length !== 6) {
+    throw new ProjectBridgeError('USAGE_INIT_READ_SOURCE_COMMAND_OBSERVE_PROJECT_ROOT_PROJECT_ID_ACTOR');
   }
   const values = new Map();
   for (let index = 0; index < arguments_.length; index += 2) {
@@ -91,8 +96,8 @@ async function main(argv) {
     values.set(arguments_[index], arguments_[index + 1]);
   }
   const options = { projectRoot: values.get('--project-root'), projectId: values.get('--project-id'), actor: values.get('--actor') };
-  // Preserve command/source bytes until the native strict parser can reject duplicate keys.
-  const result = await invoke(action, options, ['command', 'source'].includes(action) ? await inputBytes() : undefined);
+  // Preserve command/source/observe bytes until the native strict parser can reject duplicate keys.
+  const result = await invoke(action, options, ['command', 'source', 'observe'].includes(action) ? await inputBytes() : undefined);
   process.stdout.write(JSON.stringify(result) + '\n');
 }
 

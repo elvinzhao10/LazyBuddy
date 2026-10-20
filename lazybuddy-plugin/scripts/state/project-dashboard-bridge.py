@@ -7,7 +7,7 @@ Document captures are observations, not a transaction over external editors.
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-# How to run: node lazybuddy-plugin/shared/project/cli.mjs init|read|command --project-root PATH --project-id ID --actor ID
+# How to run: node lazybuddy-plugin/shared/project/cli.mjs init|read|command|observe --project-root PATH --project-id ID --actor ID
 from __future__ import annotations
 
 import base64
@@ -739,6 +739,40 @@ def journal_name(command_id: object) -> str:
     return hashlib.sha256(command_id.encode("utf-8")).hexdigest() + ".json"
 
 
+def observation_identity(record: dict) -> str:
+    """Key-order-independent content identity of an observation, ignoring its version."""
+    def canonical(value: object) -> object:
+        if isinstance(value, dict):
+            return {key: canonical(value[key]) for key in sorted(value)}
+        if isinstance(value, list):
+            return [canonical(item) for item in value]
+        return value
+    stripped = {key: value for key, value in record.items() if key != "version"}
+    return json.dumps(canonical(stripped), ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"), allow_nan=False)
+
+
+def observation_replay(state: dict, records: list) -> tuple[list, list]:
+    """Split an observe batch into fresh records and idempotent replays.
+
+    A record whose identity already exists in accepted state with identical
+    content replays as already-recorded; the same identity with different
+    content is a typed refusal, mirroring command-id reuse rules.
+    """
+    existing = {entry["id"]: entry for entry in state.get("observations", [])}
+    fresh: list = []
+    already: list = []
+    for record in records:
+        prior = existing.get(record["id"])
+        if prior is None:
+            fresh.append(record)
+            continue
+        if observation_identity(prior) != observation_identity(record):
+            raise ProjectError("DUPLICATE_OBSERVATION_ID")
+        already.append({"id": prior["id"], "version": prior["version"]})
+    return fresh, already
+
+
 def recover_edit_journal(files: ProjectFiles) -> bool:
     """Complete or abandon interrupted source edits. Never overwrite a newer external edit.
 
@@ -981,7 +1015,7 @@ def command_captures(files: ProjectFiles, state: dict, command: dict) -> tuple[l
 
 
 def main(arguments: list[str]) -> object:
-    if len(arguments) != 9 or arguments[0] not in ("init", "read", "source", "command") or len(set(arguments[1::2])) != 4:
+    if len(arguments) != 9 or arguments[0] not in ("init", "read", "source", "command", "observe") or len(set(arguments[1::2])) != 4:
         raise ProjectError("INVALID_ARGUMENTS")
     action = arguments[0]
     options = dict(zip(arguments[1::2], arguments[2::2]))
@@ -995,17 +1029,28 @@ def main(arguments: list[str]) -> object:
     if not root.startswith("/") or str(Path(root).resolve()) != root:
         raise ProjectError("UNSAFE_PROJECT_ROOT")
     request = None
-    if action in ("command", "source"):
+    if action in ("command", "source", "observe"):
         content = sys.stdin.buffer.read(LIMIT + 1)
         if len(content) > LIMIT:
             raise ProjectError("INPUT_TOO_LARGE")
         request = strict_json(content)
         if not isinstance(request, dict):
-            raise ProjectError("INVALID_COMMAND" if action == "command" else "INVALID_SOURCE_REQUEST")
+            raise ProjectError("INVALID_COMMAND" if action == "command"
+                               else "INVALID_SOURCE_REQUEST" if action == "source" else "INVALID_OBSERVATION_REQUEST")
         if action == "source" and (set(request) != {"source_id"}
                                    or not isinstance(request.get("source_id"), str)
                                    or not request["source_id"] or len(request["source_id"]) > 256):
             raise ProjectError("INVALID_SOURCE_REQUEST")
+        if action == "observe":
+            # Shape guard only: full record validation is the reducer's, so the
+            # accepted contract stays the single source of truth.
+            if set(request) != {"observations"} or not isinstance(request["observations"], list) \
+                    or not request["observations"] or len(request["observations"]) > 1000:
+                raise ProjectError("INVALID_OBSERVATION_REQUEST")
+            for record in request["observations"]:
+                if not isinstance(record, dict) or not isinstance(record.get("id"), str) \
+                        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}", record["id"]):
+                    raise ProjectError("INVALID_OBSERVATION_REQUEST")
     facts = worktree_facts(root)
     registry, registry_root, main_root = resolve_registry(node, root, facts)
     if registry is not None and registry["project_id"] != project_id:
@@ -1080,6 +1125,7 @@ def main(arguments: list[str]) -> object:
                 raise ProjectError("PROJECT_IDENTITY_MISMATCH")
             receipt = None
             query_result = None
+            observation_receipt = None
             if action == "command":
                 captures, runs, authorities = command_captures(files, state, request)
                 reduction = reduce(node, "command", state=state, command=request,
@@ -1114,6 +1160,28 @@ def main(arguments: list[str]) -> object:
                             files.journal_unlink(entry_name)
                         state = reduction["state"]
                         state_changed = True
+            if action == "observe":
+                # Observations are source-backed records, not commands: they
+                # advance only the observation revision, never append a receipt,
+                # and publish atomically like every other accepted mutation.
+                # Validation is the reducer's own (`recordObservations`), so no
+                # telemetry is fabricated here — the records pass through
+                # verbatim and the reducer assigns their versions.
+                fresh, already = observation_replay(state, request["observations"])
+                if fresh:
+                    reduction = reduce(node, "observe", state=state, records=fresh)
+                    files.install("state.json", encoded(reduction["state"]), before)
+                    state = reduction["state"]
+                    state_changed = True
+                versions_by_id = {entry["id"]: entry["version"] for entry in state.get("observations", [])}
+                observation_receipt = {
+                    "status": "recorded" if fresh else "already-recorded",
+                    "recorded": [record["id"] for record in fresh],
+                    "already_recorded": already,
+                    "versions": [*already, *[{"id": record["id"], "version": versions_by_id[record["id"]]}
+                                             for record in fresh]],
+                    "observation_revision": state.get("observation_revision", 0),
+                }
             if action == "source":
                 source = next((entry for entry in state["sources"] if entry["id"] == request["source_id"]), None)
                 if source is None:
@@ -1136,6 +1204,8 @@ def main(arguments: list[str]) -> object:
                                                        for index, entry in enumerate(facts)]
             snapshot = reduce(node, "snapshot", state=state, context=context)
             # A link is identity only. Native execution, consumption and proof stay unobserved here.
+            if action == "observe":
+                return {"receipt": observation_receipt, "snapshot": snapshot}
             if action != "command":
                 return snapshot
             outcome = {"receipt": receipt, "snapshot": snapshot}
