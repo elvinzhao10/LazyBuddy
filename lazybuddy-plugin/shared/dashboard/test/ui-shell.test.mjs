@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
 
 /* T20a app-shell proof: the static retractable sidebar + single content
@@ -64,14 +65,21 @@ const stored = () => { const raw = storage.get('lazybuddy-shell-nav'); return ra
 // One document per process: every prior shell must tear its frame down
 // before the next mounts, exactly like one shell per real page.
 const mounted = [];
-function mountShell({ views = {}, bundle: initial = overviewBundle(project) } = {}) {
+function mountShell({ views = {}, bundle: initial = overviewBundle(project), viewport = null } = {}) {
   for (const prev of mounted) { prev.state.bundle = null; prev.shell.update(); prev.shell.element.remove(); }
   mounted.length = 0;
   const state = { bundle: initial };
-  const shell = createProjectShell({ projectionProvider: () => state.bundle, product: { name: 'LazyBuddy' }, views });
+  const shell = createProjectShell({ projectionProvider: () => state.bundle, product: { name: 'LazyBuddy' }, views, viewport });
   dom.document.body.append(shell.element);
   mounted.push({ state, shell });
   return { shell, state };
+}
+
+// A matchMedia-shaped stub for the <=48rem auto-retract query (V2-T2).
+function viewportQuery(initial = false) {
+  const listeners = [];
+  const query = { matches: initial, addEventListener: (type, listener) => listeners.push(listener) };
+  return { query, set(matches) { query.matches = matches; for (const listener of [...listeners]) listener({ matches }); } };
 }
 
 function stubViews() {
@@ -264,6 +272,128 @@ test('density follows the collapsed rail automatically; no user density setting 
     'the collapse persists with the navigation state');
   dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
   assert.equal(root.dataset.density, 'regular', 'expanding restores regular');
+});
+
+// V2-T2 collapse matrix — the diagnosed regression: the <=48rem retraction
+// was CSS-only and invisible to the state model (the control and Cmd/Ctrl+B
+// flipped hidden state at narrow widths, persistence recorded the effective
+// flip). The fix splits the explicit user choice from the narrow fact; every
+// path below must land the rail, the control state and persistence in the
+// same place.
+test('collapse matrix: button, Cmd+B, Ctrl+B, reload restore, <=48rem auto-retract, focus (V2-T2)', async () => {
+  const narrow = viewportQuery(false);
+  const key = (extra, keyName = 'b') => dom.document.dispatchEvent({ type: 'keydown', key: keyName, code: 'KeyB', bubbles: true, cancelable: true, ...extra });
+  const railState = shell => ({
+    rail: shellRoot(shell).querySelector('.lb-sidebar').dataset.collapsed,
+    control: shellRoot(shell).querySelector('[data-testid="shell-collapse"]')?.getAttribute('aria-expanded'),
+  });
+  const manualMount = () => {
+    const holder = { bundle: overviewBundle(project) };
+    const shell = createProjectShell({ projectionProvider: () => holder.bundle, product: { name: 'LazyBuddy' }, viewport: narrow.query });
+    dom.document.body.append(shell.element);
+    mounted[0] = { state: holder, shell };
+    return { shell, drop() { holder.bundle = null; shell.update(); shell.element.remove(); } };
+  };
+  const storedChoice = () => JSON.parse(storage.get('lazybuddy-shell-nav')).collapsed;
+
+  // 1. the « control in the top bar
+  storage.clear();
+  const first = mountShell({ viewport: narrow.query });
+  await settle();
+  assert.deepEqual(railState(first.shell), { rail: 'false', control: 'true' }, 'the rail starts expanded with an honest control');
+  shellRoot(first.shell).querySelector('[data-testid="shell-collapse"]').click();
+  assert.deepEqual(railState(first.shell), { rail: 'true', control: 'false' }, 'the « button retracts the rail and flips the control');
+  assert.equal(storedChoice(), true, 'the explicit choice persists');
+  shellRoot(first.shell).querySelector('[data-testid="shell-collapse"]').click();
+  assert.deepEqual(railState(first.shell), { rail: 'false', control: 'true' }, 'the « button expands it again');
+
+  // 2. Cmd+B and 3. Ctrl+B
+  key({ metaKey: true });
+  assert.deepEqual(railState(first.shell), { rail: 'true', control: 'false' }, 'Cmd+B retracts the rail');
+  key({ ctrlKey: true });
+  assert.deepEqual(railState(first.shell), { rail: 'false', control: 'true' }, 'Ctrl+B expands it again');
+  key({}); // plain B never toggles
+  assert.equal(railState(first.shell).rail, 'false', 'plain B never touches the rail');
+
+  // 4. persisted reload restore (both stored states)
+  key({ metaKey: true }); // collapsed=true stored
+  assert.equal(storedChoice(), true);
+  first.state.bundle = null; first.shell.update(); first.shell.element.remove();
+  const reloadedCollapsed = manualMount();
+  await settle();
+  assert.deepEqual(railState(reloadedCollapsed.shell), { rail: 'true', control: 'false' }, 'the persisted retraction restores with an honest control');
+  reloadedCollapsed.drop();
+  storage.set('lazybuddy-shell-nav', JSON.stringify({ v: 1, collapsed: false, location: null }));
+  const current = manualMount();
+  await settle();
+  assert.deepEqual(railState(current.shell), { rail: 'false', control: 'true' }, 'the persisted expansion restores too');
+
+  // 5. <=48rem auto-retract: the narrow fact retracts the rail without
+  // touching the persisted user choice, and going wide restores it.
+  assert.equal(storedChoice(), false, 'the stored choice is expanded before narrowing');
+  narrow.set(true);
+  assert.deepEqual(railState(current.shell), { rail: 'true', control: 'false' }, 'the <=48rem query retracts the rail');
+  assert.equal(storedChoice(), false, 'the auto-retract never persists as a user choice');
+  narrow.set(false);
+  assert.deepEqual(railState(current.shell), { rail: 'false', control: 'true' }, 'going wide restores the user choice');
+  // A user toggle while narrow records the choice for the wide return only:
+  narrow.set(true);
+  shellRoot(current.shell).querySelector('[data-testid="shell-collapse"]').click();
+  assert.deepEqual(railState(current.shell), { rail: 'true', control: 'false' }, 'the rail stays retracted while narrow — the control is honest, never a dead flip');
+  assert.equal(storedChoice(), false, 'the toggle while narrow records the explicit expand choice');
+  narrow.set(false);
+  assert.deepEqual(railState(current.shell), { rail: 'false', control: 'true' }, 'the recorded choice applies once wide');
+
+  // Reload while narrow with an explicit collapse stored: user choice OR
+  // narrow fact, one honest state.
+  key({ metaKey: true });
+  assert.equal(storedChoice(), true);
+  current.drop();
+  narrow.set(true);
+  const narrowReload = manualMount();
+  await settle();
+  assert.deepEqual(railState(narrowReload.shell), { rail: 'true', control: 'false' }, 'narrow reload: user choice OR narrow fact, one honest state');
+
+  // Focus: neither path strands focus — a focused destination row survives
+  // the retraction, and the bar control keeps its own focus.
+  narrow.set(false);
+  await settle();
+  assert.equal(railState(narrowReload.shell).rail, 'true', 'the stored user choice keeps the rail retracted once wide');
+  key({ metaKey: true }); // expand, so the retraction below is observable
+  assert.equal(railState(narrowReload.shell).rail, 'false');
+  const row = destinationButton(narrowReload.shell, 'overview');
+  row.focus();
+  key({ metaKey: true });
+  assert.equal(railState(narrowReload.shell).rail, 'true', 'Cmd+B retracts the rail from the focused row');
+  assert.equal(dom.document.activeElement, row, 'the focused destination row keeps focus through the Cmd+B retraction');
+  assert.ok(row.querySelector('svg'), 'the collapsed rail row keeps its icon');
+  assert.equal(row.getAttribute('title'), 'Overview', 'the collapsed rail row carries its label as a tooltip');
+  const control = shellRoot(narrowReload.shell).querySelector('[data-testid="shell-collapse"]');
+  control.focus();
+  control.click();
+  assert.equal(dom.document.activeElement, control, 'the bar control keeps focus through its own toggle');
+});
+
+test('section headers are divider rules: hairline + small uppercase label, icon rows, icon-only rail (V2-T2)', async () => {
+  storage.clear();
+  const { shell } = mountShell();
+  await settle();
+  const rail = shellRoot(shell).querySelector('.lb-sidebar');
+  const labels = [...rail.querySelectorAll('.lb-sidebar-group-label')];
+  assert.deepEqual(labels.map(node => node.textContent), ['Workspace', 'Observation'], 'the divider labels render');
+  for (const label of labels) assert.match(label.className, /lb-sidebar-group-label/, 'the label carries the divider class');
+  const css = await readFile(new URL('../ui/project-shell.css', import.meta.url), 'utf8');
+  const rule = /\.lb-sidebar-group-label\s*\{[^}]*\}/.exec(css)?.[0] ?? '';
+  assert.match(rule, /text-transform:\s*uppercase/, 'the label is small uppercase type');
+  assert.match(rule, /var\(--caption\)/, 'caption size');
+  assert.match(css, /\.lb-sidebar-group-label::after\s*\{[^}]*border-block-start:\s*var\(--line\) solid var\(--hairline\)/, 'the hairline rule fills the divider');
+  // Icons stay visible on every row in both rail states.
+  assert.ok([...rail.querySelectorAll('.lb-sidebar-destination')].every(control => control.querySelector('svg')), 'every row carries its icon');
+  shell.selectDestination('git');
+  dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
+  const shared = await readFile(new URL('../ui/style.css', import.meta.url), 'utf8');
+  assert.match(shared, /\.lb-sidebar\[data-collapsed='true'\]\s*\.lb-sidebar-group-label/, 'the collapsed rail drops the divider label for icon-only rows');
+  assert.ok([...rail.querySelectorAll('.lb-sidebar-destination')].every(control => control.querySelector('svg')), 'icons remain visible on the icon-only rail');
 });
 
 test('a destination switch replaces the content in place (unmount the previous surface)', async () => {

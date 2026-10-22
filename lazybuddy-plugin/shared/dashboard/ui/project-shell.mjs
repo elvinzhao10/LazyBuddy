@@ -51,8 +51,19 @@ function writeStored(key, value) {
   try { globalThis.sessionStorage?.setItem?.(key, JSON.stringify(value)); } catch { /* same degradation */ }
 }
 
-export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {}, views = {} }) {
+export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {}, views = {}, viewport = null }) {
   if (typeof projectionProvider !== 'function') throw new TypeError('projectionProvider is required');
+  // V2-T2 collapse state model. The reported regression: the <=48rem rail
+  // retraction was CSS-only, invisible to the state model — at narrow widths
+  // the control and Cmd/Ctrl+B flipped hidden state with no visual change
+  // and persistence recorded the effective flip, desyncing reloads. The fix
+  // separates the two inputs: `userCollapsed` is the explicit, persisted
+  // choice; `narrowRetract` mirrors the <=48rem query. The rail shows the
+  // OR of both, every state change re-syncs the top-bar control, and only
+  // the user choice ever persists.
+  const narrowQuery = viewport ?? (() => { try { return globalThis.matchMedia?.('(max-width: 48rem)') ?? null; } catch { return null; } })();
+  let userCollapsed = false;
+  let narrowRetract = Boolean(narrowQuery?.matches);
   const root = element('section', 'project-shell stack');
   root.dataset.testid = 'project-shell';
   root.dataset.live = String(Object.keys(views).length > 0);
@@ -77,6 +88,14 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
 
   const viewFor = id => id === 'overview' ? overview : views[id] ?? null;
   const plansOfBundle = () => (Array.isArray(bundle?.snapshot?.plans) ? bundle.snapshot.plans : []);
+
+  // The effective rail state (user choice OR narrow auto-retract), applied
+  // without a notify so it never masquerades as a user action; sidebarNav
+  // re-syncs the top-bar control, the row tooltips and the root density.
+  function applyRailState() {
+    if (!sidebar) return;
+    sidebar.setCollapsed(userCollapsed || narrowRetract, { notify: false });
+  }
 
   // Live-shell overview compaction (T20, rebuilt for the T14 structure): with
   // destination views mounted, the overview's secondary context collapses into
@@ -319,9 +338,11 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
 
   function persistNav() {
     // The bootstrap render must not clobber the saved session: persistence
-    // starts only after the frame restored its state.
+    // starts only after the frame restored its state. V2-T2: only the USER's
+    // explicit choice persists — the narrow auto-retract is a viewport fact,
+    // never a stored preference (the restore/auto-retract desync).
     if (!frame || !frameRestored) return;
-    writeStored(NAV_STORAGE_KEY, { v: 1, collapsed: sidebar?.isCollapsed() ?? false,
+    writeStored(NAV_STORAGE_KEY, { v: 1, collapsed: userCollapsed,
       location: location ? { destination: location.destination, item: location.item
         ? { id: location.item.id, title: location.item.title, meta: location.item.meta ?? '' }
         : null } : null });
@@ -332,7 +353,8 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     frameRestored = true;
     let restored = false;
     if (saved) {
-      if (typeof saved.collapsed === 'boolean') sidebar.setCollapsed(saved.collapsed, { notify: false });
+      if (typeof saved.collapsed === 'boolean') userCollapsed = saved.collapsed;
+      applyRailState();
       const destination = saved.location?.destination;
       const item = saved.location?.item;
       if (PROJECT_DESTINATIONS.some(entry => entry.id === destination)) {
@@ -500,7 +522,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
       collapseControl,
       footer: element('p', 'meta shell-footer-note', 'Destinations project the record; authority stays with the runtime.'),
       onNavigate: id => selectDestination(id),
-      onCollapse: () => persistNav() });
+      // A notify is a user-driven toggle (control click or Cmd/Ctrl+B): it
+      // records the explicit choice and persists it; restore and auto-retract
+      // go through applyRailState (notify: false) and persist nothing extra.
+      onCollapse: value => { userCollapsed = value; applyRailState(); persistNav(); } });
 
     pageHead = element('header', 'shell-page-head stack');
     pageHead.dataset.testid = 'shell-page-head';
@@ -516,6 +541,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     adoptDockRegions(overview);
     suppressThemeControl();
     syncSidebarCounts();
+    applyRailState(); // the narrow fact applies even before any saved state exists
     restoreNav();
     globalThis.document?.addEventListener?.('keydown', handleDestinationShortcut);
     callbacks.onStateChange?.({ initialized: true, destinations: PROJECT_DESTINATIONS.map(destination => destination.id) });
@@ -567,6 +593,13 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   }
 
   update();
+  // The <=48rem auto-retract tracks the live query for the shell's lifetime;
+  // applyRailState no-ops while no frame exists, so teardown/rebuild cycles
+  // never lose the narrow fact.
+  narrowQuery?.addEventListener?.('change', () => {
+    narrowRetract = Boolean(narrowQuery.matches);
+    applyRailState();
+  });
   return {
     element: root,
     update,

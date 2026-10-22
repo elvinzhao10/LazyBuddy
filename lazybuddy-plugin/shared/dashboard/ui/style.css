@@ -260,6 +260,7 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-destination { justify-content: center; padding-inline: 0; }
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-destination-label,
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-badge,
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-group-label,
 .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
 .lb-sidebar-collapse svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .lb-sidebar-tree { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }

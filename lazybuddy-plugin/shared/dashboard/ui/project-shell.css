@@ -53,11 +53,15 @@ body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 au
 .project-shell .lb-sidebar[data-collapsed='true'] .shell-footer-note,
 .project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
 
-/* Grouped destinations: small uppercase section headers over icon+label
-   rows; the active row is the accent-tinted pill with its left bar, and a
-   projection-fed count badge rides the trailing edge (T20-RF). */
+/* Grouped destinations: V2-T2 divider section headers — the small uppercase
+   label rides a thin hairline rule filling the trailing space (no boxed
+   header); icon+label rows keep every glyph visible, and the collapsed rail
+   drops the label for icon-only rows with native tooltips. The active row is
+   the accent-tinted pill with its left bar, and a projection-fed count badge
+   rides the trailing edge (T20-RF). */
 .project-shell .lb-sidebar-group + .lb-sidebar-group { margin-block-start: var(--s3); }
-.project-shell .lb-sidebar-group-label { display: block; padding-inline: var(--s2); font-size: var(--caption); font-weight: var(--strong); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.project-shell .lb-sidebar-group-label { display: flex; align-items: center; gap: var(--s2); padding-inline: var(--s2) 0; font-size: var(--caption); font-weight: var(--strong); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.project-shell .lb-sidebar-group-label::after { content: ''; flex: 1 1 auto; min-inline-size: var(--s2); border-block-start: var(--line) solid var(--hairline); }
 .project-shell .lb-sidebar-group-items { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
 .project-shell .lb-sidebar-destination { border-radius: var(--radius-pill); }
 .project-shell .lb-sidebar-destination[aria-current='page'] { background: var(--product-accent-soft); color: var(--product-accent); box-shadow: inset 2px 0 0 0 var(--product-accent); }
