@@ -134,7 +134,12 @@ try {
   await page.locator('#verification-tab').click(); await waitFor(async () => (await page.locator('[data-testid="evidence-link"]').count()) > 0, 'evidence link', 20000);
   await waitFor(async () => (await text(page, '[data-testid="verification-view"]')).includes('verified'), 'verified requirement row', 20000);
   const href = await page.locator('[data-testid="evidence-link"]').evaluate(node => node.getAttribute('href')); assert.match(href, /^\/api\/evidence\/[a-f0-9]{64}$/);
-  await page.locator('[data-testid="evidence-link"]').click(); await waitFor(async () => await page.locator('#evidence-preview').evaluate(node => node.open), 'authenticated evidence preview'); assert.match(await text(page, '#evidence-preview pre'), /verified-live/); await page.locator('[data-action="close-evidence"]').click();
+  // V2-T8: the verification table re-renders on every poll tick; a click that
+  // resolves the anchor and then lands inside a swap tick can miss it (the
+  // dialog never opens and the gate flakes). Click the CURRENT anchor until
+  // the preview opens — one fresh click per waitFor poll, bounded by its
+  // timeout — instead of betting the whole gate on a single race.
+  await waitFor(async () => { await page.locator('[data-testid="evidence-link"]').click().catch(() => {}); return await page.locator('#evidence-preview').evaluate(node => node.open); }, 'authenticated evidence preview'); assert.match(await text(page, '#evidence-preview pre'), /verified-live/); await page.locator('[data-action="close-evidence"]').click();
   const finalSnapshot = (await api('/api/snapshot')).value.snapshot; const ack = finalSnapshot.acknowledgements.find(item => item.status === 'applied'); assert.ok(ack); assert.equal(finalSnapshot.tasks.find(item => item.id === 'C').verification, 'verified');
   actions.push({ label: 'trusted:execute-distinct-verify', executor: 'worker:C-actual', verifier: 'worker:V-actual', acknowledgement: ack.status, evidence_href: href });
 
