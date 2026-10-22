@@ -681,6 +681,29 @@ test('the empty attention queue renders an actionable empty state', async () => 
   assert.ok(empty.querySelector('.lb-empty-detail').textContent.includes('proposals'), 'and how that happens');
 });
 
+test('reconciliation adoption states surface in the attention queue — a source save never reads as consumed (§14 step 6, V2-T8)', async () => {
+  const withReconciliations = structuredClone(bundle);
+  withReconciliations.snapshot.proposals = [];
+  withReconciliations.snapshot.plans = withReconciliations.snapshot.plans.map(plan => ({ ...plan, stale_item_ids: [] }));
+  withReconciliations.readiness = Object.fromEntries(Object.entries(bundle.readiness).map(([planId, assessment]) => [planId, { ...assessment, blockers: [] }]));
+  withReconciliations.snapshot.reconciliations = [
+    { id: 'reconciliation:open', unresolved_proposal_ids: ['proposal:p1'], native_adoption: 'requested' },
+    { id: 'reconciliation:waiting', unresolved_proposal_ids: [], native_adoption: 'requested' },
+    { id: 'reconciliation:observed', unresolved_proposal_ids: [], native_adoption: 'observed' },
+  ];
+  const view = createOverviewView({ bundle: withReconciliations });
+  await settle();
+  const rows = [...view.element.querySelectorAll('.overview-attention-control')].map(row => ({ id: row.dataset.queueId, text: row.textContent }));
+  const open = rows.find(row => row.id === 'queue:reconciliation:reconciliation:open');
+  assert.ok(open, 'an open reconciliation lists with its unresolved proposal');
+  assert.match(open.text, /native adoption requested/, 'the open row carries the native adoption state');
+  const waiting = rows.find(row => row.id === 'queue:adoption:reconciliation:waiting');
+  assert.ok(waiting, 'a resolved-but-unconsumed reconciliation surfaces as adoption pending');
+  assert.match(waiting.text, /not yet observed/, 'the pending row states the consumption gap honestly');
+  assert.ok(!rows.some(row => row.id.includes('reconciliation:observed')),
+    'an observed adoption adds no attention noise — consumption is health, not attention');
+});
+
 test('view CSS holds the token discipline: type, spacing, radius, motion, no color literals', async () => {
   const source = readFileSync(new URL('../ui/overview.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   const declarations = [...source.matchAll(/([-a-z]+)\s*:\s*([^;{}]+);/g)].map(match => [match[1], match[2].trim()]);

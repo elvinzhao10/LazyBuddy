@@ -325,11 +325,22 @@ export function overviewFixture(bundle) {
       records: unique([proposal.id, ...(proposal.impact?.plan_ids ?? []), ...(proposal.impact?.item_ids ?? [])]) });
   }
   for (const reconciliation of snapshot.reconciliations ?? []) {
-    if (!reconciliation.unresolved_proposal_ids?.length) continue;
-    attentionQueue.push({ id: `queue:reconciliation:${reconciliation.id}`, kind: 'reconciliation', state: 'attention', chipLabel: 'Reconciliation open',
-      title: `Reconciliation open — ${reconciliation.id}`,
-      detail: `${reconciliation.unresolved_proposal_ids.length} unresolved proposal${reconciliation.unresolved_proposal_ids.length === 1 ? '' : 's'}.`,
-      records: unique([reconciliation.id, ...reconciliation.unresolved_proposal_ids]) });
+    // V2-T8 (§14 step 6): the native adoption state rides every
+    // reconciliation row — a source save alone never reads as consumed.
+    const adoption = reconciliation.native_adoption ?? 'unobserved';
+    if (reconciliation.unresolved_proposal_ids?.length) {
+      attentionQueue.push({ id: `queue:reconciliation:${reconciliation.id}`, kind: 'reconciliation', state: 'attention', chipLabel: 'Reconciliation open',
+        title: `Reconciliation open — ${reconciliation.id}`,
+        detail: `${reconciliation.unresolved_proposal_ids.length} unresolved proposal${reconciliation.unresolved_proposal_ids.length === 1 ? '' : 's'} · native adoption ${adoption}.`,
+        records: unique([reconciliation.id, ...reconciliation.unresolved_proposal_ids]) });
+    } else if (adoption === 'requested') {
+      // Nothing is unresolved, but the runtime has not been observed
+      // consuming the change — that gap is attention, not health.
+      attentionQueue.push({ id: `queue:adoption:${reconciliation.id}`, kind: 'adoption', state: 'attention', chipLabel: 'Adoption pending',
+        title: `Native adoption pending — ${reconciliation.id}`,
+        detail: 'The reconciliation request is queued; consumption by the native runtime is not yet observed.',
+        records: [reconciliation.id] });
+    }
   }
   for (const plan of snapshot.plans) {
     if (!plan.stale_item_ids?.length) continue;
