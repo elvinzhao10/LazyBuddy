@@ -13,7 +13,12 @@ import { createMiniDom } from './fixtures/mini-dom.mjs';
    the unchanged pre-init composition (IO-2), the extended keyboard map
    (Cmd/Ctrl+1..7 destinations, j/k), navigation persistence across a
    reload-shaped remount, and polling refreshes that never reset the user's
-   place. */
+   place.
+   V2-T1 adds the compact icon top bar proof: one shell-rendered bar (product
+   badge + truncating destination/item title, theme icon-toggle cycling
+   light->dark->system persisted under 'lazyseries-theme', dock trigger icon,
+   relocated rail collapse control), no <select>, no density control —
+   density follows the collapsed rail automatically. */
 
 const dom = createMiniDom();
 globalThis.document = dom.document;
@@ -166,8 +171,99 @@ test('the frame mounts after init: grouped static sidebar, one content surface, 
     'the records region migrated into the dock, not inline');
   assert.equal(root.querySelector('[data-testid="overview-view"] [data-testid="overview-records"]'), null,
     'no inline contributing-records region remains in the overview');
-  assert.ok(root.querySelector('[data-testid="shell-footer-controls"]'), 'the identity footer reserves the theme/density slot');
   assert.ok(root.querySelector('.lb-sidebar-footer .lb-sidebar-product'), 'the product badge lives in the identity footer');
+});
+
+// V2-T1: the stacked header collapses into ONE compact icon top bar rendered
+// by the shell itself — product badge + the current destination/item title
+// (single truncating line) on the left, theme icon-toggle / dock trigger /
+// rail collapse control on the right. No <select>, no density control.
+test('the V2-T1 compact icon top bar replaces the stacked header', async () => {
+  storage.clear();
+  const { views } = stubViews();
+  const { shell } = mountShell({ views });
+  await settle();
+  const root = shellRoot(shell);
+  const bar = root.querySelector('[data-testid="shell-topbar"]');
+  assert.ok(bar, 'the top bar renders as part of the shell');
+  assert.equal(root.querySelectorAll('.lb-topbar').length, 1, 'exactly one bar, rendered by the shell (not the host page)');
+  assert.ok(bar.querySelector('.lb-topbar-badge'), 'the product badge leads the bar');
+  assert.equal(bar.querySelector('[data-testid="shell-bar-title"]').textContent, 'Overview',
+    'the bar title names the current destination');
+  assert.match(bar.querySelector('[data-testid="shell-bar-title"]').className, /lb-topbar-title/, 'the title is the single truncating line');
+  const toggle = bar.querySelector('[data-testid="shell-theme-toggle"]');
+  assert.ok(toggle, 'the theme icon-toggle renders in the bar');
+  assert.equal(toggle.tagName, 'BUTTON', 'the toggle is a button, not a select');
+  assert.equal(bar.querySelector('select'), null, 'no <select> anywhere in the bar');
+  assert.ok(toggle.querySelector('svg'), 'the toggle carries its glyph');
+  assert.equal(toggle.getAttribute('aria-pressed'), 'true', 'aria-pressed reflects the resolved dark default');
+  const dockTriggerInBar = bar.querySelector('[data-testid="shell-dock-trigger"]');
+  assert.ok(dockTriggerInBar, 'the dock trigger icon renders in the bar');
+  assert.equal(root.querySelector('.lb-shell [data-testid="shell-dock-trigger"]'), null, 'the page head no longer carries the dock trigger');
+  const collapse = bar.querySelector('[data-testid="shell-collapse"]');
+  assert.ok(collapse, 'the rail collapse control is relocated into the bar');
+  assert.equal(root.querySelector('.lb-sidebar .lb-sidebar-collapse'), null, 'the rail itself carries no collapse control');
+  assert.equal(collapse.getAttribute('aria-expanded'), 'true');
+  assert.equal(root.querySelectorAll('[aria-label="Density"]').length, 0, 'no density segmented control mounts anywhere in the shell');
+
+  shell.selectDestination('plans');
+  shell.openPlan('plan:shell');
+  assert.equal(bar.querySelector('[data-testid="shell-bar-title"]').textContent, 'Plan · Shell frame plan',
+    'the bar title follows the open item');
+  shell.selectDestination('evidence');
+  assert.equal(bar.querySelector('[data-testid="shell-bar-title"]').textContent, 'Evidence',
+    'the bar title follows the destination');
+});
+
+test('the theme icon-toggle cycles light -> dark -> system and persists under lazyseries-theme (stale_state)', async () => {
+  const themeStorage = new Map();
+  globalThis.localStorage = {
+    getItem: key => (themeStorage.has(key) ? themeStorage.get(key) : null),
+    setItem: (key, value) => themeStorage.set(key, String(value)),
+  };
+  try {
+    storage.clear();
+    const { shell } = mountShell();
+    await settle();
+    const toggle = shellRoot(shell).querySelector('[data-testid="shell-theme-toggle"]');
+    assert.equal(toggle.dataset.mode, 'dark', 'the stored-preference-free default is dark (dark-first)');
+    assert.equal(dom.document.documentElement.dataset.theme, 'dark');
+    toggle.click();
+    assert.equal(toggle.dataset.mode, 'system', 'dark cycles to system');
+    assert.equal(toggle.getAttribute('aria-pressed'), 'true', 'system resolves dark without a matchMedia (dark-first fallback)');
+    assert.equal(dom.document.documentElement.dataset.theme, 'dark');
+    toggle.click();
+    assert.equal(toggle.dataset.mode, 'light', 'system cycles to light');
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(dom.document.documentElement.dataset.theme, 'light');
+    toggle.click();
+    assert.equal(toggle.dataset.mode, 'dark');
+    assert.deepEqual([...themeStorage.entries()].at(-1), ['lazyseries-theme', 'dark'], 'every change persists');
+
+    // Reload-shaped remount (stale_state): the stored preference wins at creation.
+    const { shell: reloaded } = mountShell();
+    await settle();
+    const reloadedToggle = shellRoot(reloaded).querySelector('[data-testid="shell-theme-toggle"]');
+    assert.equal(reloadedToggle.dataset.mode, 'dark', 'the stored theme is honored on the next mount');
+    assert.equal(reloadedToggle.getAttribute('aria-label'), 'Theme: dark');
+  } finally {
+    delete globalThis.localStorage;
+  }
+});
+
+test('density follows the collapsed rail automatically; no user density setting persists', async () => {
+  storage.clear();
+  const { shell } = mountShell();
+  await settle();
+  const root = dom.document.documentElement;
+  assert.equal(root.dataset.density, 'regular', 'the expanded rail keeps regular density');
+  dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
+  assert.equal(shellRoot(shell).querySelector('.lb-sidebar').dataset.collapsed, 'true');
+  assert.equal(root.dataset.density, 'compact', 'the retracted rail switches the internal density token state');
+  assert.equal(JSON.parse(storage.get('lazybuddy-shell-nav')).collapsed, true,
+    'the collapse persists with the navigation state');
+  dom.document.dispatchEvent({ type: 'keydown', key: 'b', code: 'KeyB', metaKey: true, bubbles: true, cancelable: true });
+  assert.equal(root.dataset.density, 'regular', 'expanding restores regular');
 });
 
 test('a destination switch replaces the content in place (unmount the previous surface)', async () => {

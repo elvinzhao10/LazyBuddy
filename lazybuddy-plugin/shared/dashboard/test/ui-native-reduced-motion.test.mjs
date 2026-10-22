@@ -69,7 +69,7 @@ test('createNativeExperience wiring: the reduced-motion query degrades safely', 
   assert.ok(experience, 'the layer installs without localStorage');
   assert.equal(dom.document.documentElement.dataset.nativeExperience, 'true');
   assert.ok(dom.document.body.querySelector('[data-native-announcer]'), 'the polite announcer exists');
-  assert.equal(experience.density.get(), 'regular');
+  assert.equal(experience.control, undefined, 'V2-T1: no density control mounts with the layer');
   experience.announce('Quiet');
   assert.equal(dom.document.body.querySelector('[data-native-announcer]').textContent, 'Quiet');
 

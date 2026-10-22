@@ -104,24 +104,27 @@ export function taskCard({ id, title, execution, verification, progress, selecte
        the dialog close handler). Never moves focus without input.
    Segmented controls ([data-native-segmented], built by segmentedControl):
      ArrowLeft/ArrowRight/Home/End activate the previous/next/first/last
-     enabled segment and focus it; the current segment carries
-     aria-pressed='true' and data-current for styling.
-   Density (createDensityController): compact/regular is persisted per
-   browser under 'lazyseries-density' (every storage access is wrapped in
-   try/catch — private-mode/blocked storage degrades to in-memory only)
-   and applied as data-density on the root, which switches the
-   --density-gutter token between --density-compact and --density-regular.
-   Malformed stored values fall back to regular and never throw.
+       enabled segment and focus it; the current segment carries
+       aria-pressed='true' and data-current for styling.
+   Density is INTERNAL since V2-T1: the compact/regular user setting and its
+     persisted storage key are gone. data-density on the root now follows
+     the collapsed rail automatically (sidebarNav.setCollapsed applies
+     'compact' when the rail retracts, 'regular' when it expands), and the
+     --density-gutter token bridge keeps consuming it.
+   Theme (createThemeToggle): the V2-T1 icon toggle — one icon-only button
+     cycling light -> dark -> system, persisted under 'lazyseries-theme'
+     (blocked storage degrades to the session only), glyph sun/moon/monitor,
+     aria-pressed reflecting the resolved dark state, no <select>.
    Overlays (createOverlayPanel): elevated non-modal panels; Escape or the
-   Close button hides the panel and returns focus to the invoker.
+       Close button hides the panel and returns focus to the invoker.
    Tooltips (installTooltips): status chips and icon-only buttons get a
    title plus an aria-describedby note in a clipped .native-note node.
    Announcements (announce): one polite [role='status'] region dedicated
    to the layer (never the application status line). */
 
-const DENSITY_KEY = 'lazyseries-density';
-export const NATIVE_DENSITY_STORAGE_KEY = DENSITY_KEY;
-export const NATIVE_DENSITIES = Object.freeze(['compact', 'regular']);
+const THEME_KEY = 'lazyseries-theme';
+export const THEME_STORAGE_KEY = THEME_KEY;
+export const THEME_MODES = Object.freeze(['light', 'dark', 'system']);
 const FOCUSABLE_TAGS = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'];
 const LIST_SCOPES = '[data-native-list], ol, ul, .task-list, .graph-viewport, .spike-graph-viewport, .architecture-graph-viewport, .execution-graph-viewport, .execution-timeline-viewport, .queue, .attention-list, dialog, .native-overlay';
 const FILTER_INPUT = 'input[type=search], input[data-native-filter]';
@@ -336,40 +339,50 @@ export function segmentedControl({ label, options, current, onChange, tooltip = 
   return { element: group, setCurrent: value => set(value, { notify: false }), get: () => active };
 }
 
-export function createDensityController({ root = globalThis.document?.documentElement, storage = globalThis.localStorage, onAnnounce } = {}) {
-  let current = 'regular';
+// V2-T1 theme icon toggle. One icon-only button cycling light -> dark ->
+// system (the glyph mirrors the current mode: sun/moon/monitor); the stored
+// 'lazyseries-theme' preference wins at creation, changes persist, and a
+// blocked storage degrades to the session only. aria-pressed reflects the
+// RESOLVED dark state (dark or system-resolved-dark = pressed), so the
+// button stays honest without a <select>.
+const themeGlyphs = {
+  light: [['circle', { cx: 12, cy: 12, r: 4 }], ['path', { d: 'M12 2v2 M12 20v2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M2 12h2 M20 12h2 M4.9 19.1l1.4-1.4 M17.7 6.3l1.4-1.4' }]],
+  dark: [['path', { d: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z' }]],
+  system: [['path', { d: 'M2 13h20' }], ['rect', { x: 5, y: 3, width: 14, height: 10, rx: 2 }], ['path', { d: 'M8 21h8 M12 17v4' }]],
+};
+
+export function createThemeToggle({ storage = globalThis.localStorage, media = null, onAnnounce } = {}) {
+  const systemQuery = media ?? (() => { try { return globalThis.matchMedia?.('(prefers-color-scheme: dark)') ?? null; } catch { return null; } })();
+  let mode = 'dark'; // the T20-RF dark-first default when nothing valid is stored
   try {
-    const stored = storage?.getItem?.(DENSITY_KEY);
-    if (NATIVE_DENSITIES.includes(stored)) current = stored;
-  } catch { /* storage unavailable (blocked/private mode): keep the default */ }
-  const listeners = new Set();
-  function apply(next, { persist = true, notify = true } = {}) {
-    if (!NATIVE_DENSITIES.includes(next)) return current;
-    current = next;
-    try { root?.setAttribute?.('data-density', current); } catch { /* detached root: stay in memory */ }
-    if (persist) { try { storage?.setItem?.(DENSITY_KEY, current); } catch { /* persistence unavailable: in-memory only */ } }
-    if (notify) for (const listener of listeners) listener(current);
-    return current;
+    const stored = storage?.getItem?.(THEME_KEY);
+    if (THEME_MODES.includes(stored)) mode = stored;
+  } catch { /* storage unavailable (blocked/private mode): session-only */ }
+  const control = button('', () => set(THEME_MODES[(THEME_MODES.indexOf(mode) + 1) % THEME_MODES.length]));
+  control.className = 'lb-theme-toggle';
+  control.dataset.testid = 'shell-theme-toggle';
+  const resolved = () => (mode === 'system' ? (systemQuery ? (systemQuery.matches ? 'dark' : 'light') : 'dark') : mode);
+  function paint() {
+    control.dataset.mode = mode;
+    control.replaceChildren(svgIcon(themeGlyphs[mode]));
+    control.setAttribute('aria-pressed', String(resolved() === 'dark'));
+    const next = THEME_MODES[(THEME_MODES.indexOf(mode) + 1) % THEME_MODES.length];
+    control.setAttribute('aria-label', `Theme: ${mode}`);
+    control.title = `Theme: ${mode} — switch to ${next}`;
+    const root = control.ownerDocument ?? globalThis.document;
+    try { root?.documentElement?.setAttribute?.('data-theme', resolved()); } catch { /* detached root */ }
   }
-  apply(current, { persist: false, notify: false });
-  return {
-    apply,
-    get: () => current,
-    toggle() { return apply(current === 'compact' ? 'regular' : 'compact'); },
-    onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    control() {
-      const control = segmentedControl({
-        label: 'Density',
-        tooltip: true,
-        options: [{ value: 'compact', label: 'Compact' }, { value: 'regular', label: 'Regular' }],
-        current,
-        onChange: next => { apply(next); onAnnounce?.(next); },
-      });
-      const sync = value => control.setCurrent(value);
-      listeners.add(sync);
-      return control;
-    },
-  };
+  function set(next, { persist = true } = {}) {
+    if (!THEME_MODES.includes(next)) return mode;
+    mode = next;
+    if (persist) { try { storage?.setItem?.(THEME_KEY, mode); } catch { /* session-only */ } }
+    paint();
+    onAnnounce?.(`Theme set to ${mode}`);
+    return mode;
+  }
+  systemQuery?.addEventListener?.('change', paint);
+  paint();
+  return { element: control, get: () => mode, set, resolved };
 }
 
 export function announce(message, { root = globalThis.document } = {}) {
@@ -423,19 +436,18 @@ export function installNativeExperience({ root = globalThis.document, storage = 
   root.documentElement.dataset.nativeExperience = 'true';
   const report = message => announce(message, { root });
   report(''); // the polite region exists from first paint, before any message
-  const density = createDensityController({ root: root.documentElement, storage, onAnnounce: value => report(`Density set to ${value}`) });
-  const control = density.control();
-  const theme = root.querySelector?.('#theme');
-  const target = mount ?? (theme ? closestMatch(theme, 'label')?.parentNode ?? null : null);
-  target?.append?.(control.element);
+  // V2-T1: no density control mounts here — compact/regular stopped being a
+  // user setting; data-density follows the collapsed rail (sidebarNav). The
+  // installer still seeds the internal token state when a page carries none
+  // (real pages resolve it pre-paint in theme-init.js).
+  try { if (!root.documentElement.hasAttribute('data-density')) root.documentElement.setAttribute('data-density', 'regular'); } catch { /* detached root */ }
   const focus = installFocusSystem({ root });
   const tooltips = installTooltips({ root });
   tooltips.describe(root.body);
   return {
-    density, control, focus, tooltips,
+    focus, tooltips,
     announce: report,
     overlay: createOverlayPanel,
-    setDensity: density.apply,
     detach() { focus.detach(); root.documentElement.removeAttribute('data-native-experience'); },
   };
 }
@@ -860,14 +872,24 @@ const destinationGlyphs = {
   research: [['path', { d: 'M10 2v7.31 M14 9.3V2' }], ['path', { d: 'M8.5 2h7' }], ['path', { d: 'M14 9.3l4.7 8.66A2 2 0 0 1 17 21H7a2 2 0 0 1-1.7-3.04L10 9.3' }], ['path', { d: 'M6.9 15h10.2' }]],
 };
 
-// Common action glyphs (Lucide chevrons, ISC): the rail collapse control
-// swaps between these instead of text arrows.
+// Common action glyphs (Lucide chevrons + panel geometry, ISC): the rail
+// collapse control swaps between the chevrons instead of text arrows; the
+// V2-T1 top-bar dock trigger uses the panel glyph.
 const actionGlyphs = {
   'collapse-left': [['path', { d: 'm15 18-6-6 6-6' }]],
   'collapse-right': [['path', { d: 'm9 18 6-6-6-6' }]],
+  dock: [['rect', { x: 3, y: 4, width: 18, height: 16, rx: 2 }], ['path', { d: 'M15 4v16' }]],
 };
 
 export const SIDEBAR_ACTION_ICONS = Object.freeze(Object.keys(actionGlyphs));
+
+// Draws one of the sidebar action glyphs (the « / » collapse chevrons) — the
+// V2-T1 top bar builds its collapse control from the same geometry the rail
+// uses, so both homes always agree.
+export function sidebarActionIcon(name) {
+  if (!Object.hasOwn(actionGlyphs, name)) throw new TypeError('Unknown sidebar action icon');
+  return svgIcon(actionGlyphs[name]);
+}
 
 export const SIDEBAR_DESTINATION_ICONS = Object.freeze(Object.keys(destinationGlyphs));
 
@@ -884,14 +906,20 @@ export const SIDEBAR_DESTINATION_ICONS = Object.freeze(Object.keys(destinationGl
 // Collapsing to the icon rail also gives every destination a native title
 // tooltip, following the T11 clipped-note contract (visible label when
 // expanded, title + aria-label when the label is hidden).
-export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', destinations = [], groups = null, identityPosition = 'header', tree = null, footer = null, current = null, collapsed = false, onNavigate = null, onCollapse = null, testid } = {}) {
+// V2-T1: collapseControl accepts an EXTERNALLY built button (the shell top
+// bar relocates the control there); the rail then never mounts its own, and
+// setCollapsed keeps the external control's aria-expanded/label/glyph in
+// step. Collapsing also drives the root data-density: compact follows the
+// retracted rail automatically (internal token state, no user setting).
+export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', destinations = [], groups = null, identityPosition = 'header', tree = null, footer = null, current = null, collapsed = false, collapseControl = null, onNavigate = null, onCollapse = null, testid } = {}) {
   const rail = element('aside', 'lb-sidebar');
   rail.dataset.testid = testid ?? 'sidebar-nav';
-  const collapseControl = button('', null);
-  collapseControl.className = 'lb-sidebar-collapse';
-  collapseControl.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
-  collapseControl.setAttribute('aria-expanded', String(!collapsed));
-  collapseControl.append(svgIcon(actionGlyphs[collapsed ? 'collapse-right' : 'collapse-left']));
+  const ownsCollapse = collapseControl == null;
+  const railCollapse = ownsCollapse ? button('', null) : collapseControl;
+  if (ownsCollapse) railCollapse.className = 'lb-sidebar-collapse';
+  railCollapse.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  railCollapse.setAttribute('aria-expanded', String(!collapsed));
+  railCollapse.append(svgIcon(actionGlyphs[collapsed ? 'collapse-right' : 'collapse-left']));
   const identity = element(identityPosition === 'footer' ? 'div' : 'header', 'lb-sidebar-identity');
   const badge = element('span', 'lb-sidebar-product', product);
   badge.dataset.product = runtime; // the per-product accent wash, identity only
@@ -942,8 +970,13 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
   } else {
     for (const destination of destinations) list.append(destinationItem(destination));
   }
-  if (identityPosition === 'footer') rail.append(collapseControl, list);
-  else rail.append(collapseControl, identity, list);
+  if (identityPosition === 'footer') {
+    // the shell's footer-identity rail carries no in-rail collapse control
+    // when the owner relocated it (V2-T1 top bar); a standalone footer rail
+    // without an external control keeps its own affordance
+    if (ownsCollapse) rail.append(railCollapse);
+    rail.append(list);
+  } else rail.append(railCollapse, identity, list);
   if (tree != null) {
     const treeRegion = element('nav', 'lb-sidebar-tree');
     treeRegion.setAttribute('aria-label', 'Context objects');
@@ -972,9 +1005,9 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
     setCollapsed(next, { notify = true } = {}) {
       const value = Boolean(next);
       rail.dataset.collapsed = String(value);
-      collapseControl.setAttribute('aria-expanded', String(!value));
-      collapseControl.setAttribute('aria-label', value ? 'Expand sidebar' : 'Collapse sidebar');
-      collapseControl.replaceChildren(svgIcon(actionGlyphs[value ? 'collapse-right' : 'collapse-left']));
+      railCollapse.setAttribute('aria-expanded', String(!value));
+      railCollapse.setAttribute('aria-label', value ? 'Expand sidebar' : 'Collapse sidebar');
+      railCollapse.replaceChildren(svgIcon(actionGlyphs[value ? 'collapse-right' : 'collapse-left']));
       for (const control of list.querySelectorAll('.lb-sidebar-destination')) {
         // T20a rail tooltips: the visible label disappears with the rail, so
         // the collapsed rows carry their label as a native title (the T11
@@ -982,13 +1015,17 @@ export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', dest
         if (value) { if (!control.getAttribute('title')) control.setAttribute('title', control.getAttribute('aria-label')); }
         else control.removeAttribute('title');
       }
+      // V2-T1: density follows the rail automatically — compact is the
+      // retracted-rail layout state, never a persisted user choice.
+      const rootDocument = rail.ownerDocument ?? globalThis.document;
+      try { rootDocument?.documentElement?.setAttribute?.('data-density', value ? 'compact' : 'regular'); } catch { /* detached: in-memory only */ }
       if (notify) onCollapse?.(value);
       return value;
     },
     toggle() { return api.setCollapsed(rail.dataset.collapsed !== 'true'); },
     isCollapsed: () => rail.dataset.collapsed === 'true',
   };
-  collapseControl.addEventListener('click', () => api.toggle());
+  railCollapse.addEventListener('click', () => api.toggle());
   api.setCollapsed(collapsed, { notify: false }); // the initial state is not a user action
   return api;
 }

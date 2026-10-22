@@ -18,8 +18,8 @@ const {
   assignSublanes, timelineTrack, timelineChart, inspectorPanel,
   skeleton, emptyState, metricTile, sidebarNav, createTabs, createDockPanel,
   installNativeExperience, installFocusSystem, installTooltips, announce,
-  segmentedControl, createDensityController, createOverlayPanel, createInspector,
-  NATIVE_DENSITY_STORAGE_KEY, NATIVE_DENSITIES, STATUS_STATES,
+  segmentedControl, createThemeToggle, sidebarActionIcon, createOverlayPanel, createInspector,
+  THEME_STORAGE_KEY, THEME_MODES, STATUS_STATES,
 } = await import('../ui/components.mjs');
 
 test('the T11 native layer exports survive the T12 overhaul', () => {
@@ -28,13 +28,15 @@ test('the T11 native layer exports survive the T12 overhaul', () => {
   assert.equal(typeof installTooltips, 'function');
   assert.equal(typeof announce, 'function');
   assert.equal(typeof segmentedControl, 'function');
-  assert.equal(typeof createDensityController, 'function');
+  assert.equal(typeof createThemeToggle, 'function');
   assert.equal(typeof createOverlayPanel, 'function');
   assert.equal(typeof createInspector, 'function');
-  assert.deepEqual([...NATIVE_DENSITIES], ['compact', 'regular']);
-  assert.equal(NATIVE_DENSITY_STORAGE_KEY, 'lazyseries-density');
+  assert.deepEqual([...THEME_MODES], ['light', 'dark', 'system']);
+  assert.equal(THEME_STORAGE_KEY, 'lazyseries-theme');
+  assert.ok(sidebarActionIcon('collapse-left'), 'the shared action glyphs stay available');
   const installed = installNativeExperience({ storage: undefined, mount: dom.document.body });
   assert.ok(installed, 'the native layer still installs');
+  assert.equal(installed.control, undefined, 'V2-T1: the installer returns no density control');
   installed.detach();
 });
 

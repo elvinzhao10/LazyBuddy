@@ -43,12 +43,12 @@ test('the installer is idempotent so multiple boot paths are safe', async () => 
   assert.ok(installNativeExperience({ storage: undefined, mount: dom.document.body }), 'install works again after detach');
 });
 
-test('theme-init restores density pre-paint and falls back without storage', async () => {
+test('theme-init restores the internal density pre-paint from the persisted rail state', async () => {
   const source = await readFile(new URL('../ui/theme-init.js', import.meta.url), 'utf8');
   assert.match(source, /dataset\.density/, 'the pre-paint density bootstrap exists');
-  assert.match(source, /localStorage\.getItem\('lazyseries-density'\)/, 'it reads the persisted density');
-  assert.match(source, /catch/, 'a blocked localStorage degrades instead of throwing');
-  assert.match(source, /'compact' || storedDensity === 'regular'/, 'only known densities restore');
+  assert.match(source, /sessionStorage\.getItem\('lazybuddy-shell-nav'\)/, 'V2-T1: density derives from the persisted collapsed rail, not a user setting');
+  assert.equal(source.includes("localStorage.getItem('lazyseries-density')"), false, 'the retired density key is no longer read');
+  assert.match(source, /catch/, 'a blocked storage degrades instead of throwing');
 });
 
 test('the demo pages keep their mount flow: no double DOM roots', async () => {

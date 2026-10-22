@@ -383,7 +383,9 @@ try {
   const requested = parameters.get('theme');
   if (requested === 'light' || requested === 'dark') themeControl.value = requested;
   const requestedDensity = parameters.get('density');
-  if (requestedDensity === 'compact' || requestedDensity === 'regular') experience.density.apply(requestedDensity, { persist: false, notify: false });
+  // V2-T1: density is internal token state (no controller, no persistence) —
+  // the capture hook applies the root attribute directly.
+  if (requestedDensity === 'compact' || requestedDensity === 'regular') document.documentElement.dataset.density = requestedDensity;
 } catch (error) { /* capture hooks are best-effort only */ }
 function updateTheme() {
   document.documentElement.dataset.theme = themeControl.value === 'system' ? (systemTheme.matches ? 'dark' : 'light') : themeControl.value;

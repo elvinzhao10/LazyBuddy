@@ -18,7 +18,7 @@
 // (destination + optional item) and restores it on reload. The frame is
 // built once per init transition; polling refreshes swap the overview view
 // in place, so the location, the back stack and the dock survive updates.
-import { button, element, statusChip, sidebarNav, createDockPanel } from './components.mjs';
+import { button, element, statusChip, sidebarNav, createDockPanel, createThemeToggle, sidebarActionIcon } from './components.mjs';
 import { createOverviewView } from './overview.mjs';
 
 export const PROJECT_DESTINATIONS = Object.freeze([
@@ -65,13 +65,15 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   let sidebar = null;
   let dock = null;
   let dockTrigger = null;
+  let collapseControl = null; // the V2-T1 top-bar home of the rail collapse control
   let dockInspectorRegion = null;
   let dockRecordsRegion = null;
-  let footerControlsHost = null;
+  let topBar = null;
+  let barTitle = null;
   let pageHead = null;
   let contentRegion = null;
   let frameRestored = false;
-  let themeHome = null; // where the adopted #theme control returns when the frame tears down
+  let suppressedThemeControl = null; // the host page #theme select hidden while the bar toggle owns theme
 
   const viewFor = id => id === 'overview' ? overview : views[id] ?? null;
   const plansOfBundle = () => (Array.isArray(bundle?.snapshot?.plans) ? bundle.snapshot.plans : []);
@@ -126,7 +128,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   }
 
   function renderUninitialized() {
-    root.replaceChildren();
+    root.replaceChildren(buildTopBar(false));
     root.dataset.initialized = 'false';
     const notice = element('div', 'panel notice stack');
     notice.dataset.testid = 'shell-uninitialized';
@@ -178,6 +180,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     if (!pageHead) return;
     const label = DESTINATION_LABEL(location.destination);
     const inItem = Boolean(location.item);
+    if (barTitle) barTitle.textContent = inItem ? location.item.title : label;
     pageHead.replaceChildren();
     const lead = element('div', 'cluster shell-page-lead');
     if (history.length > 0) {
@@ -202,14 +205,6 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     lead.append(titles);
     const bar = element('div', 'cluster spread shell-page-bar');
     bar.append(lead);
-    dockTrigger = button('Inspector dock', () => {
-      dock.toggle(dockTrigger);
-      dockTrigger.setAttribute('aria-pressed', String(dock.isOpen()));
-    });
-    dockTrigger.dataset.testid = 'shell-dock-trigger';
-    dockTrigger.setAttribute('aria-pressed', 'false');
-    dockTrigger.setAttribute('aria-label', 'Toggle the contextual inspector dock');
-    bar.append(dockTrigger);
     pageHead.append(bar, renderContextLine(overview.getFixture()));
   }
 
@@ -401,28 +396,63 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     sidebar.setCount?.('plans', Number.isFinite(plans) ? plans : 0);
   }
 
-  // The page's theme control moves into the sidebar's identity footer while
-  // the frame exists and returns home when the record is lost, so theme and
-  // density always have exactly one home.
-  function adoptThemeControl() {
+  // V2-T1: while the frame exists, the top-bar theme icon-toggle is the one
+  // appearance control. A host page that still carries a legacy #theme
+  // select (the served dashboard header) has it hidden for the frame's
+  // lifetime and restored when the record is lost — one home, either way.
+  function suppressThemeControl() {
     const select = globalThis.document?.querySelector?.('#theme');
-    if (!select || !footerControlsHost || footerControlsHost.contains(select)) return;
-    const label = typeof select.closest === 'function' ? select.closest('label') : null;
-    const control = label ?? select;
-    themeHome = { parent: control.parentNode, next: control.nextSibling ?? null };
-    footerControlsHost.append(control);
+    if (!select) return;
+    const control = typeof select.closest === 'function' ? select.closest('label') : null;
+    const target = control ?? select;
+    if (!target || target.hidden) return;
+    target.hidden = true;
+    suppressedThemeControl = target;
   }
 
   function releaseThemeControl() {
-    if (!themeHome) return;
-    const select = footerControlsHost?.querySelector?.('#theme');
-    const label = select && typeof select.closest === 'function' ? select.closest('label') : null;
-    const control = label ?? select;
-    if (control) {
-      control.remove();
-      if (themeHome.parent?.isConnected ?? false) themeHome.parent.insertBefore?.(control, themeHome.next?.isConnected ? themeHome.next : null);
+    if (suppressedThemeControl) suppressedThemeControl.hidden = false;
+    suppressedThemeControl = null;
+  }
+
+  // The V2-T1 compact icon top bar (<= 48px): product badge + the current
+  // destination/item title on one truncating line; theme icon-toggle, dock
+  // trigger and the rail collapse control on the right. The chrome-less
+  // pre-init variant keeps badge/title/theme only — no rail, no dock.
+  function buildTopBar(withChrome) {
+    const bar = element('header', 'lb-topbar');
+    bar.dataset.testid = 'shell-topbar';
+    const lead = element('div', 'cluster lb-topbar-lead');
+    const badge = element('span', 'lb-topbar-badge', product.family ?? 'LazySeries');
+    badge.dataset.product = product.name; // the per-product accent wash
+    barTitle = element('span', 'lb-topbar-title');
+    barTitle.dataset.testid = 'shell-bar-title';
+    barTitle.textContent = withChrome ? DESTINATION_LABEL(activeDestination) : 'No initialized project';
+    lead.append(badge, barTitle);
+    const actions = element('div', 'cluster lb-topbar-actions');
+    actions.append(createThemeToggle().element);
+    if (withChrome) {
+      dockTrigger = button('', () => {
+        dock.toggle(dockTrigger);
+        dockTrigger.setAttribute('aria-pressed', String(dock.isOpen()));
+      });
+      dockTrigger.className = 'lb-topbar-icon';
+      dockTrigger.dataset.testid = 'shell-dock-trigger';
+      dockTrigger.setAttribute('aria-pressed', 'false');
+      dockTrigger.setAttribute('aria-label', 'Toggle the contextual inspector dock');
+      dockTrigger.title = 'Toggle the contextual inspector dock';
+      dockTrigger.append(sidebarActionIcon('dock')); // panel-style glyph: the inspector dock surface
+      collapseControl = button('', null); // sidebarNav wires the click to its toggle
+      collapseControl.className = 'lb-topbar-icon lb-topbar-collapse';
+      collapseControl.dataset.testid = 'shell-collapse';
+      collapseControl.setAttribute('aria-label', 'Collapse sidebar');
+      collapseControl.setAttribute('aria-expanded', 'true');
+      collapseControl.append(sidebarActionIcon('collapse-left'));
+      actions.append(dockTrigger, collapseControl);
     }
-    themeHome = null;
+    bar.append(lead, actions);
+    topBar = bar;
+    return bar;
   }
 
   function createOverview(next) {
@@ -463,12 +493,12 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
       if (group) group.destinations.push({ id: destination.id, label: destination.label });
       else groups.push({ label: destination.group, destinations: [{ id: destination.id, label: destination.label }] });
     }
-    footerControlsHost = element('div', 'cluster shell-footer-controls');
-    footerControlsHost.dataset.testid = 'shell-footer-controls';
+    const bar = buildTopBar(true); // creates the collapse control the rail adopts
     sidebar = sidebarNav({ product: product.family ?? 'LazySeries', runtime: product.name,
       groups, identityPosition: 'footer',
       current: activeDestination,
-      footer: [footerControlsHost, element('p', 'meta shell-footer-note', 'Destinations project the record; authority stays with the runtime.')],
+      collapseControl,
+      footer: element('p', 'meta shell-footer-note', 'Destinations project the record; authority stays with the runtime.'),
       onNavigate: id => selectDestination(id),
       onCollapse: () => persistNav() });
 
@@ -481,10 +511,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     frame = element('div', 'lb-shell');
     frame.dataset.testid = 'shell-frame';
     frame.append(sidebar.element, main);
-    root.replaceChildren(frame, dock.element);
+    root.replaceChildren(bar, frame, dock.element);
     root.dataset.initialized = 'true';
     adoptDockRegions(overview);
-    adoptThemeControl();
+    suppressThemeControl();
     syncSidebarCounts();
     restoreNav();
     globalThis.document?.addEventListener?.('keydown', handleDestinationShortcut);
@@ -494,8 +524,9 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   function teardownFrame() {
     globalThis.document?.removeEventListener?.('keydown', handleDestinationShortcut);
     releaseThemeControl();
-    frame = null; sidebar = null; dock = null; dockTrigger = null;
-    pageHead = null; contentRegion = null; footerControlsHost = null; frameRestored = false;
+    frame = null; sidebar = null; dock = null; dockTrigger = null; collapseControl = null;
+    topBar = null; barTitle = null;
+    pageHead = null; contentRegion = null; frameRestored = false;
     location = null; history.length = 0; pendingLeave = null;
   }
 

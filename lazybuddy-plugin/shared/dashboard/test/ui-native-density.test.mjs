@@ -3,118 +3,59 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
 
-// T11 density proof: compact/regular persistence per browser (localStorage via
-// a safe try/catch shim), the data-density -> --density-gutter token bridge,
-// the mounted segmented control, and the malformed-input / unavailable-storage
-// adversarial classes (stored garbage must fall back to regular and never
-// throw; a blocked localStorage degrades to in-memory).
+/* V2-T1 density proof — the INTERNAL contract. Compact/regular stopped being
+   a user setting: the persisted 'lazyseries-density' key and the segmented
+   control are GONE, and data-density on the root now follows the collapsed
+   rail automatically (sidebarNav.setCollapsed applies compact when the rail
+   retracts, regular when it expands). The --density-gutter token bridge in
+   CSS keeps consuming the state. The old persistence/malformed-storage
+   adversarial classes retired with the setting; the compact-rail behavior
+   tests stay. */
 
 const dom = createMiniDom();
 globalThis.document = dom.document;
 
-const { createDensityController, announce, NATIVE_DENSITY_STORAGE_KEY } = await import('../ui/components.mjs');
+const { sidebarNav, installNativeExperience } = await import('../ui/components.mjs');
 
-function memoryStorage(initial = new Map()) {
-  const map = initial instanceof Map ? initial : new Map(Object.entries(initial));
-  return {
-    reads: 0, writes: [], failures: { getItem: false, setItem: false },
-    getItem(key) { this.reads += 1; if (this.failures.getItem) throw new Error('blocked'); return map.has(key) ? map.get(key) : null; },
-    setItem(key, value) { if (this.failures.setItem) throw new Error('blocked'); this.writes.push([key, String(value)]); map.set(key, String(value)); },
-    dump: () => Object.fromEntries(map),
-  };
-}
-
-test('density applies to the root element and persists through the storage', () => {
-  const storage = memoryStorage();
-  const density = createDensityController({ storage });
-  assert.equal(density.get(), 'regular', 'first visit starts at regular density');
-  assert.equal(dom.document.documentElement.dataset.density, 'regular');
-
-  density.apply('compact');
-  assert.equal(density.get(), 'compact');
-  assert.equal(dom.document.documentElement.dataset.density, 'compact');
-  assert.deepEqual(storage.writes.at(-1), [NATIVE_DENSITY_STORAGE_KEY, 'compact']);
-
-  density.toggle();
-  assert.equal(density.get(), 'regular');
-  density.toggle();
-  assert.equal(density.get(), 'compact', 'toggle flips both ways');
+test('density follows the collapsed rail automatically (no user setting)', () => {
+  const rail = sidebarNav({
+    product: 'LazySeries', runtime: 'LazyBuddy',
+    destinations: [{ id: 'overview', label: 'Overview' }, { id: 'git', label: 'Git' }],
+  });
+  dom.document.body.append(rail.element);
+  assert.equal(dom.document.documentElement.dataset.density, 'regular', 'the expanded rail keeps regular');
+  rail.toggle();
+  assert.equal(rail.element.dataset.collapsed, 'true');
+  assert.equal(dom.document.documentElement.dataset.density, 'compact', 'the retracted rail switches the root to compact');
+  rail.setCollapsed(false);
+  assert.equal(dom.document.documentElement.dataset.density, 'regular', 'expanding restores regular');
+  rail.element.remove();
 });
 
-test('stale_state: a stored density survives a controller rebuild (reload)', () => {
-  const storage = memoryStorage({ [NATIVE_DENSITY_STORAGE_KEY]: 'compact' });
-  const first = createDensityController({ storage });
-  assert.equal(first.get(), 'compact', 'the persisted value is read back before first paint');
-  first.toggle(); // user switches to regular and reloads immediately
-  const reloaded = createDensityController({ storage });
-  assert.equal(reloaded.get(), 'regular', 'the rebuilt controller sees the last stored density');
-  assert.equal(dom.document.documentElement.dataset.density, 'regular');
-});
-
-test('malformed_input: garbage storage values fall back to regular without throwing', () => {
-  for (const garbage of ['dense', '', 'COMPACT', '"compact"', 'null', 'compact ', '2']) {
-    const storage = memoryStorage({ [NATIVE_DENSITY_STORAGE_KEY]: garbage });
-    let density;
-    assert.doesNotThrow(() => { density = createDensityController({ storage }); }, `stored ${JSON.stringify(garbage)}`);
-    assert.equal(density.get(), 'regular', `stored ${JSON.stringify(garbage)} must not resolve to a density`);
+test('installNativeExperience mounts no density control and no density key persists', async () => {
+  const writes = [];
+  const storage = { getItem: () => null, setItem: (key, value) => writes.push([key, String(value)]) };
+  const experience = installNativeExperience({ storage, mount: dom.document.body });
+  try {
+    assert.ok(experience, 'the native layer still installs');
+    assert.equal(experience.control, undefined, 'the installer returns no density control');
+    assert.equal(experience.density, undefined, 'no density controller rides the layer');
+    assert.equal(dom.document.body.querySelector('[aria-label="Density"]'), null, 'no density segmented control mounted');
+    assert.deepEqual(writes, [], 'no density value is persisted');
+    const source = await readFile(new URL('../ui/components.mjs', import.meta.url), 'utf8');
+    assert.equal(source.includes("'lazyseries-density'"), false, 'the retired storage key is gone from the layer');
+  } finally {
+    experience.detach();
   }
-  const density = createDensityController({ storage: memoryStorage({ [NATIVE_DENSITY_STORAGE_KEY]: 'nope' }) });
-  assert.equal(density.apply('spacious'), 'regular', 'unknown programmatic values are rejected');
-  assert.equal(density.apply(undefined), 'regular');
 });
 
-test('blocked storage degrades to in-memory density and never throws', () => {
-  const storage = memoryStorage({ [NATIVE_DENSITY_STORAGE_KEY]: 'compact' });
-  storage.failures.getItem = true;
-  const readBlocked = createDensityController({ storage });
-  assert.equal(readBlocked.get(), 'regular', 'unreadable storage falls back to the default');
-
-  storage.failures.getItem = false;
-  storage.failures.setItem = true;
-  const writeBlocked = createDensityController({ storage });
-  assert.doesNotThrow(() => writeBlocked.apply('compact'));
-  assert.equal(writeBlocked.get(), 'compact', 'the density still applies in memory');
-  assert.deepEqual(writeBlocked.apply('regular'), 'regular');
-
-  assert.doesNotThrow(() => createDensityController({ storage: undefined }), 'missing storage object is safe');
-});
-
-test('the density segmented control reflects and changes the persisted state', () => {
-  const storage = memoryStorage();
-  const density = createDensityController({ storage, onAnnounce: () => {} });
-  const control = density.control();
-  dom.document.body.append(control.element);
-  const segments = [...control.element.querySelectorAll('button')];
-  assert.deepEqual(segments.map(node => node.dataset.segment), ['compact', 'regular']);
-  assert.equal(segments[1].getAttribute('aria-pressed'), 'true', 'regular is current initially');
-
-  segments[0].click();
-  assert.equal(density.get(), 'compact');
-  assert.deepEqual(storage.writes.at(-1), [NATIVE_DENSITY_STORAGE_KEY, 'compact']);
-  assert.equal(segments[0].getAttribute('aria-pressed'), 'true');
-  assert.equal(segments[0].getAttribute('data-current'), 'true', 'the current segment carries the styling hook');
-  assert.equal(segments[1].getAttribute('aria-pressed'), 'false');
-  assert.equal(segments[1].hasAttribute('data-current'), false);
-
-  density.apply('regular'); // e.g. keyboard shortcut path
-  assert.equal(segments[1].getAttribute('aria-pressed'), 'true', 'programmatic apply syncs the control');
-  control.element.remove();
-});
-
-test('density announcements use a dedicated polite region, never the app status line', () => {
-  const appStatus = dom.document.createElement('p');
-  appStatus.setAttribute('role', 'status');
-  appStatus.textContent = 'Connected · revision 7';
-  dom.document.body.append(appStatus);
-
-  const region = announce('Density set to compact');
-  assert.equal(region.getAttribute('role'), 'status');
-  assert.equal(region.getAttribute('aria-live'), 'polite');
-  assert.equal(region.textContent, 'Density set to compact');
-  assert.equal(appStatus.textContent, 'Connected · revision 7', 'the application status line is untouched');
-  assert.equal(announce('Density set to regular'), region, 'one region is reused');
-  region.remove();
-  appStatus.remove();
+test('theme-init derives the pre-paint density from the persisted collapsed rail', async () => {
+  const source = await readFile(new URL('../ui/theme-init.js', import.meta.url), 'utf8');
+  assert.match(source, /dataset\.density/, 'the pre-paint density bootstrap exists');
+  assert.match(source, /sessionStorage\.getItem\('lazybuddy-shell-nav'\)/, 'it reads the persisted shell navigation state');
+  assert.equal(source.includes("'lazyseries-density'"), false, 'the retired user-setting key is no longer read');
+  assert.match(source, /storedNav\.collapsed === true \? 'compact' : 'regular'/, 'a retracted rail pre-paints compact, everything else regular');
+  assert.match(source, /catch/, 'a blocked sessionStorage degrades instead of throwing');
 });
 
 test('the compact density switches the --density-gutter token in CSS', async () => {

@@ -78,10 +78,10 @@ async function refreshProject({ force = false } = {}) {
           if (planId) projectShell.openPlan(planId);
         } } });
       projectRoot.replaceChildren(projectShell.element);
-      // The T11 density control re-homes into the shell's identity footer
-      // (T20a): one theme control and one density control, both in the rail.
-      const footerHost = projectShell.element.querySelector('[data-testid="shell-footer-controls"]');
-      if (footerHost && !footerHost.contains(native.control.element)) footerHost.append(native.control.element);
+      // V2-T1: the shell renders its own compact icon top bar (theme
+      // icon-toggle, dock trigger, rail collapse); the legacy header #theme
+      // select is suppressed by the shell while the frame exists, and no
+      // density control re-homes anywhere — density follows the rail.
     } else if (project) {
       projectViews?.update(project); projectShell.update();
     }
@@ -127,5 +127,5 @@ const systemTheme = matchMedia('(prefers-color-scheme: dark)'); const theme = do
 function applyTheme() { document.documentElement.dataset.theme = theme.value === 'system' ? (systemTheme.matches ? 'dark' : 'light') : theme.value; }
 theme.addEventListener('change', applyTheme); systemTheme.addEventListener('change', applyTheme);
 window.addEventListener('pagehide', () => { clearTimeout(pollTimer); if (evidenceObjectUrl) URL.revokeObjectURL(evidenceObjectUrl); if (editor?.getState().dirty) sessionStorage.setItem('lazybuddy-draft', JSON.stringify(editor.getState())); });
-const native = installNativeExperience(); // T11 native layer: focus system, density, tooltips (idempotent with theme-init)
+installNativeExperience(); // T11 native layer: focus system, tooltips (idempotent with theme-init; V2-T1: no density control)
 document.documentElement.dataset.dashboardReady = 'true';

@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="LazySeries 1.4.0 project shell — the static retractable sidebar, single content surface and dock app frame (T20a). Destinations render only after initialization.">
+  <meta name="description" content="LazySeries 1.4.0 project shell — the compact icon top bar, static retractable sidebar, single content surface and dock app frame (V2-T1). Destinations render only after initialization.">
   <title>Project shell — app frame</title>
   <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
-       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme.
+       V2-T1: the compact icon top bar (theme icon-toggle, dock trigger, rail
+       collapse) is rendered by the shell itself; the theme <select> is gone. -->
   <script src="./theme-init.js"></script>
   <script>
     function showLoadFailure() {
@@ -19,13 +21,9 @@
 </head>
 <body>
   <main>
-    <header class="stack">
-      <div class="cluster spread"><span class="meta">LazySeries / 1.4.0 project platform — app shell (T20a)</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
-      <p class="fixture-label">Read-only projection bundle · No scheduler authority, no commands, no file access from the view</p>
-      <p id="load-status" role="status">Loading project shell…</p>
-    </header>
+    <p id="load-status" role="status">Loading project shell…</p>
     <div id="shell-root" class="stack"></div>
-    <footer>Project destinations render only after this service exposes an initialized project record (IO-2). Execution, verification and editing authority stay with the runtime and the shared command route; nothing here dispatches work.</footer>
+    <footer>Project destinations render only after this service exposes an initialized project record (IO-2). Read-only projection bundle: no scheduler authority, no commands, no file access from the view. Execution, verification and editing authority stay with the runtime and the shared command route; nothing here dispatches work.</footer>
   </main>
 </body>
 </html>

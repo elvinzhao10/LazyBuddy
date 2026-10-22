@@ -2,26 +2,20 @@
 // projection bundle (built from a real initialized fixture project by the
 // evidence harness) and mounts the shell. `?state=uninitialized` composes the
 // pre-init state (no project destinations, IO-2) for comparison captures.
+// V2-T1: the shell renders the compact icon top bar itself (theme icon-toggle,
+// dock trigger, rail collapse); theme/density selects no longer exist here.
 import { createProjectShell } from './project-shell.mjs';
 import { installNativeExperience } from './components.mjs';
 
 // T11 native experience layer: focus system (Tab ring, j/k, /, Escape),
-// density control, tooltips, announcer. Idempotent — safe on every page.
-const native = installNativeExperience();
-
-const systemTheme = matchMedia('(prefers-color-scheme: dark)');
-const themeControl = document.querySelector('#theme');
-function updateTheme() {
-  document.documentElement.dataset.theme = themeControl.value === 'system' ? (systemTheme.matches ? 'dark' : 'light') : themeControl.value;
-}
-themeControl.addEventListener('change', updateTheme);
-systemTheme.addEventListener('change', updateTheme);
-themeControl.disabled = false;
+// tooltips, announcer. Idempotent — safe on every page.
+installNativeExperience();
 
 const root = document.querySelector('#shell-root');
 const loadStatus = document.querySelector('#load-status');
 const uninitialized = new URLSearchParams(location.search).get('state') === 'uninitialized';
 let bundle = null;
+let loadError = null;
 
 try {
   if (!uninitialized) {
@@ -30,6 +24,7 @@ try {
     bundle = await response.json();
   }
 } catch (error) {
+  loadError = error;
   loadStatus.textContent = `The projection bundle could not load (${error.message}). No live run is connected.`;
 }
 
@@ -41,13 +36,10 @@ const shell = createProjectShell({ projectionProvider: () => bundle, product: { 
   },
 } });
 root.append(shell.element);
-// The T11 density control re-homes into the shell's identity footer (T20a):
-// one theme control and one density control, both in the rail.
-const footerHost = shell.element.querySelector('[data-testid="shell-footer-controls"]');
-if (footerHost && !footerHost.contains(native.control.element)) footerHost.append(native.control.element);
-loadStatus.textContent = uninitialized
-  ? 'Shell composed without an initialized project record (pre-init state).'
-  : 'Shell ready — projection bundle loaded.';
+// The top bar replaces the stacked header; the pre-boot status line retires
+// once the bar (initialized or pre-init) owns the surface — except a load
+// failure, which stays visible above it.
+if (!loadError) loadStatus.hidden = true;
 document.documentElement.dataset.shellReady = 'true';
 
 // Cached-shell usability measurement (plan §9.4): medians over repeated mounts

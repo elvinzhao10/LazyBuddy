@@ -21,28 +21,35 @@
 /* The initialized frame fills its host edge to edge (the hosts opt in via
    :has in this file and live.css); the pre-init state keeps the padded
    page flow. */
-.project-shell[data-initialized='true'] { gap: 0; min-block-size: 0; }
+.project-shell[data-initialized='true'] { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; min-block-size: 0; }
 .project-shell[data-initialized='true'] .lb-shell { block-size: 100%; min-block-size: 0; align-items: stretch; background: var(--bg); }
 body:has(.project-shell[data-initialized='true']) { block-size: 100dvh; overflow: hidden; }
 body:has(.project-shell[data-initialized='true']) > main { display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; max-inline-size: none; padding: 0; }
-body:has(.project-shell[data-initialized='true']) > main > header { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-end: var(--line) solid var(--border); background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); }
 body:has(.project-shell[data-initialized='true']) > main > #shell-root { flex: 1 1 auto; min-block-size: 0; display: grid; }
 body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-start: var(--line) solid var(--border); }
 
+/* V2-T1 compact icon top bar: ONE <=48px row spanning the frame — product
+   badge + current destination/item title (single line, truncates) on the
+   left; theme icon-toggle, dock trigger and the rail collapse control on
+   the right. Frosted veil like the sticky page head. */
+.lb-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); block-size: calc(var(--space-1) * 6); min-inline-size: 0; padding-inline: var(--s3); border-block-end: var(--line) solid var(--border); background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); }
+.lb-topbar-lead { flex: 1 1 auto; min-inline-size: 0; gap: var(--s2); }
+.lb-topbar-badge { flex-shrink: 0; padding: var(--s1) var(--s2); border-radius: var(--radius-control); background: var(--product-accent-soft); color: var(--product-accent); font-size: var(--caption); font-weight: var(--strong); }
+.lb-topbar-title { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--body); font-weight: var(--strong); }
+.lb-topbar-actions { flex: 0 0 auto; gap: var(--s1); }
+.lb-topbar-icon { min-inline-size: var(--density-control); padding: 0; justify-content: center; }
+.lb-topbar-icon svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lb-topbar[hidden] { display: none; }
+
 /* The rail: a static column of the frame grid — never position:fixed, never
    an overlay. Destinations scroll inside it; the identity footer pins. The
-   rail sits on the card surface over the tinted app canvas (T20-RF). */
+   rail sits on the card surface over the tinted app canvas (T20-RF). The
+   collapse control lives in the top bar (V2-T1), not the rail. */
 .project-shell .lb-sidebar { position: static; block-size: 100%; display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; border: none; border-inline-end: var(--line) solid var(--border); border-radius: 0; box-shadow: var(--elevation-2); }
-.project-shell .lb-sidebar .lb-sidebar-collapse { align-self: flex-end; }
-.project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-collapse { align-self: center; }
 .project-shell .lb-sidebar .lb-sidebar-destinations { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; margin-block-start: var(--s2); }
 .project-shell .lb-sidebar .lb-sidebar-footer { flex: 0 0 auto; display: grid; gap: var(--s2); border-block-start: var(--line) solid var(--border); padding-block-start: var(--s2); }
 .project-shell .lb-sidebar .lb-sidebar-identity { display: grid; gap: var(--s1); justify-items: start; }
-.project-shell .shell-footer-controls:empty { display: none; }
-.project-shell .shell-footer-controls label { display: flex; align-items: center; gap: var(--s1); }
-.project-shell .shell-footer-controls select { min-inline-size: 0; }
 .project-shell .shell-footer-note { margin: 0; }
-.project-shell .lb-sidebar[data-collapsed='true'] .shell-footer-controls,
 .project-shell .lb-sidebar[data-collapsed='true'] .shell-footer-note,
 .project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
 
