@@ -265,6 +265,35 @@ test('the theme icon-toggle cycles light -> dark -> system and persists under la
   }
 });
 
+test('one theme home per shell state: a host #theme select hides while the shell is mounted (V2-T8)', async () => {
+  storage.clear();
+  // The served dashboard header carries a legacy #theme select; while the
+  // shell is mounted — framed OR chrome-less pre-init — the top-bar
+  // icon-toggle is the one visible home. Only a torn-down shell restores it
+  // (and the next mount re-suppresses), so no state ever shows both.
+  const hostLabel = document.createElement('label');
+  const hostSelect = document.createElement('select'); hostSelect.id = 'theme';
+  hostLabel.append(hostSelect); dom.document.body.append(hostLabel);
+  // mini-dom implements no Element.closest, so the suppressor hides the
+  // select itself there; a real DOM hides its wrapping label. Either way
+  // exactly one control surface disappears.
+  const hiddenHome = () => Boolean(hostSelect.closest ? hostLabel.hidden : hostSelect.hidden);
+  try {
+    const { shell, state } = mountShell({ bundle: null });
+    await settle();
+    assert.equal(hiddenHome(), true, 'pre-init: the chrome-less top bar owns theme; the select hides');
+    assert.ok(shellRoot(shell).querySelector('[data-testid="shell-theme-toggle"]'), 'the pre-init bar carries the toggle');
+    state.bundle = overviewBundle(project); shell.update();
+    await settle();
+    assert.equal(hiddenHome(), true, 'framed: the select stays hidden');
+    state.bundle = null; shell.update();
+    await settle();
+    assert.equal(hiddenHome(), true, 'back to pre-init after teardown: still exactly one visible home');
+  } finally {
+    hostLabel.remove();
+  }
+});
+
 test('density follows the collapsed rail automatically; no user density setting persists', async () => {
   storage.clear();
   const { shell } = mountShell();

@@ -204,6 +204,12 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   function renderUninitialized() {
     root.replaceChildren(buildTopBar(false));
     root.dataset.initialized = 'false';
+    // V2-T8: the chrome-less pre-init bar carries the theme icon-toggle too,
+    // so the legacy #theme select is suppressed from the moment the shell
+    // mounts — exactly one visible theme home in every shell state. The
+    // select stays the home only before the shell mounts (the pre-connect
+    // login header), and releaseThemeControl on teardown restores it there.
+    suppressThemeControl();
     const notice = element('div', 'panel notice stack');
     notice.dataset.testid = 'shell-uninitialized';
     notice.append(statusChip({ state: 'unavailable', label: 'No initialized project record' }),
@@ -488,7 +494,9 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   // select (the served dashboard header) has it hidden for the frame's
   // lifetime and restored when the record is lost — one home, either way.
   function suppressThemeControl() {
-    const select = globalThis.document?.querySelector?.('#theme');
+    // The attribute form (not '#theme') keeps the lookup testable under the
+    // mini-dom harness; in a browser it selects the same node.
+    const select = globalThis.document?.querySelector?.('[id="theme"]');
     if (!select) return;
     const control = typeof select.closest === 'function' ? select.closest('label') : null;
     const target = control ?? select;
