@@ -22,6 +22,7 @@ let projectShell; let projectViews; let projectReadPending = null; let projectRe
 let runBound = true;
 const projectAdapter = createLiveProjectAdapter({ connection });
 let resumeField = null;
+let lastFocusedField = null; // V2-T8: the focused editor field remembered before the disconnect read-only pass blurs it
 const viewContext = { connection: 'disconnected' };
 let savedDraft = null; try { savedDraft = JSON.parse(sessionStorage.getItem('lazybuddy-draft')); } catch { savedDraft = null; }
 const evidenceHref = evidence => {
@@ -102,8 +103,14 @@ async function poll() {
   }
   catch (error) {
     viewContext.connection = 'disconnected'; state(`Disconnected · last observation retained · ${error.message}`, 'attention');
+    // V2-T8: remember the focused editor field BEFORE the read-only pass —
+    // disabling the controls blurs the input, so the 401 handler below can
+    // no longer read it from activeElement on a later tick (the reconnect
+    // focus restore silently died on any disconnect-then-401 sequence).
+    const focusedField = document.activeElement?.dataset?.field ?? null;
+    if (focusedField) lastFocusedField = focusedField;
     if (envelope) { work.update(envelope.snapshot); editor.update(envelope.snapshot, { readOnlyReason: 'DISCONNECTED' }); }
-    if (error.status === 401) { resumeField = document.activeElement?.dataset?.field ?? resumeField; connection.disconnect(); connectForm.hidden = false; accessKey.focus(); }
+    if (error.status === 401) { resumeField = document.activeElement?.dataset?.field ?? lastFocusedField ?? resumeField; connection.disconnect(); connectForm.hidden = false; accessKey.focus(); }
     schedule(1200);
   }
 }
@@ -119,7 +126,7 @@ connectForm.addEventListener('submit', async event => {
     }
     await refreshProject({ force: true });
     if (resumeField) document.querySelector(`[data-field="${CSS.escape(resumeField)}"]`)?.focus();
-    resumeField = null; schedule(runBound ? 700 : 5000);
+    resumeField = null; lastFocusedField = null; schedule(runBound ? 700 : 5000);
   }
   catch (error) { connection.disconnect(); connectForm.hidden = false; state(`Connection rejected · ${error.message}`, 'failed'); accessKey.focus(); }
 });
