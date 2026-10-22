@@ -164,7 +164,7 @@ test('the showcase is the acceptance gallery for every component family', async 
 
 test('the T11 native layer still installs on the rebuilt showcase', async () => {
   const source = await css('showcase.mjs');
-  assert.match(source, /import\s*\{[^}]*installNativeExperience[^}]*\}\s*from\s*'\.\/components\.mjs'/, 'the showcase imports the installer');
+  assert.match(source, /import\s*\{[^}]*installNativeExperience[^}]*}\s*from\s*'\.\/components\.mjs'/, 'the showcase imports the installer');
   const calls = [...source.matchAll(/(?<!function\s)installNativeExperience\(/g)].length;
   assert.equal(calls, 1, 'exactly one bootstrap call');
   assert.ok(source.includes("document.querySelector('#"), 'the showcase still queries its DOM roots');
@@ -174,4 +174,28 @@ test('the T11 native layer still installs on the rebuilt showcase', async () => 
   assert.ok(dom.document.body.querySelector('[data-native-announcer]'), 'the polite announcer exists');
   assert.ok(dom.document.documentElement.hasAttribute('data-density'), 'density applies to the root');
   installed.detach();
+});
+
+/* -- V2-T9 pattern adoptions: daisyUI class discipline + shadcn polish ------- */
+
+test('segmented controls have one canonical class; the legacy alias never carries a second fill', async () => {
+  const style = (await css('style.css')).replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(style, /\.lb-segmented,\s*\.view-switcher\s*\{[^}]*background:\s*var\(--inset\)/, 'the canonical .lb-segmented and the .view-switcher alias share ONE track rule');
+  assert.match(style, /\.lb-segmented button\[aria-pressed='true'\],\s*\.view-switcher button\[aria-pressed='true'\]/, 'one raised-current rule covers both names');
+  const views = (await css('views.css')).replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(views, /\.view-switcher[^{]*\{[^}]*background/, 'views.css no longer repaints the current segment (one source of truth)');
+});
+
+test('small-caps section labels, the relations rename and the overlay bevel ride tokens', async () => {
+  const style = (await css('style.css')).replace(/\/\*[\s\S]*?\*\//g, '');
+  const caps = /\.lb-table caption,\s*\.lb-sidebar-group-label\s*\{[^}]*\}/.exec(style)?.[0] ?? '';
+  assert.match(caps, /text-transform:\s*uppercase/, 'captions and group labels are small caps');
+  assert.match(caps, /letter-spacing:\s*var\(--tracking-caps\)/, 'the caps tracking is a token');
+  const tokens = await css('tokens.css');
+  assert.match(tokens, /--tracking-caps:\s*\.08em/, 'the tracking token exists');
+  assert.match(style, /\.graph,\s*\.lb-relations\s*\{/, 'the three-column relation layout has its canonical one-meaning name with the legacy alias');
+  for (const surface of ['.native-overlay', '.lb-inspector', '.lb-dock', 'dialog']) {
+    const rule = new RegExp(`${surface.replace('.', '\\.')}\\s*\\{[^}]*\\}`).exec(style)?.[0] ?? '';
+    assert.match(rule, /box-shadow:\s*var\(--edge-highlight\),\s*var\(--elevation-\d\)/, `${surface} rides the 1px bevel ahead of its soft shadow (shadcn border/shadow rhythm)`);
+  }
 });

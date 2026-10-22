@@ -21,7 +21,7 @@ small,.meta { font-size: var(--type-sm-size); color: var(--subtle); }
 code { font-family: var(--mono); }
 button,input,textarea,select { font: inherit; color: inherit; }
 button,select,input,textarea { min-block-size: var(--control); border: var(--line) solid var(--control-edge); border-radius: var(--radius-sm); background: var(--surface); padding: var(--space-1) var(--space-2); max-inline-size: 100%; }
-button { cursor: pointer; transition: opacity var(--motion-fast) var(--motion-ease); }
+button { cursor: pointer; transition: background-color var(--motion-instant) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease); }
 button:hover:enabled { background: var(--hover); }
 button:active:enabled { opacity: var(--pressed-opacity); }
 button:disabled { cursor: not-allowed; color: var(--subtle); background: var(--neutral-fill); }
@@ -65,7 +65,10 @@ section > header { display: grid; gap: var(--space-1); margin-block-end: var(--s
 .task-title { font-weight: var(--weight-strong); }
 .notice { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--space-1); }
 .notice h3 { font-size: var(--type-md-size); }
-.graph { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-2); align-items: center; }
+.graph, .lb-relations { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-2); align-items: center; }
+/* V2-T9 daisyUI one-class-one-meaning: `.lb-relations` is the canonical name
+   for the three-column relation layout (one class, one meaning — "graph"
+   says nothing about columns); the legacy `.graph` name stays as an alias. */
 .graph-lane { display: grid; gap: var(--space-1); }
 .relation { color: var(--subtle); font-size: var(--type-sm-size); }
 .inventory { border-block-start: var(--line) solid var(--border); padding-block-start: var(--space-2); }
@@ -73,7 +76,7 @@ section > header { display: grid; gap: var(--space-1); margin-block-end: var(--s
 .queue li { padding: var(--space-1) 0; }
 .queue li + li { border-block-start: var(--line) solid var(--border); }
 .safe-text,button,p,h1,h2,h3,label,li,small { overflow-wrap: anywhere; }
-dialog { margin-inline-start: auto; margin-inline-end: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector),calc(100% - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); grid-template-rows: auto minmax(0,1fr); overflow: hidden; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-3); }
+dialog { margin-inline-start: auto; margin-inline-end: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector),calc(100% - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); grid-template-rows: auto minmax(0,1fr); overflow: hidden; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--edge-highlight), var(--elevation-3); }
 .inspector-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
 dialog::backdrop { background: var(--backdrop); }
 dialog:not([open]) { display: none; }
@@ -82,9 +85,9 @@ dialog header { margin-block-end: var(--space-3); }
 [role='status'] { min-block-size: var(--control); }
 footer { margin-block: var(--space-6); color: var(--subtle); }
 @container (max-width: 44rem) {
-  .graph { grid-template-columns: minmax(0,1fr); }
+  .graph, .lb-relations { grid-template-columns: minmax(0,1fr); }
   .graph-lane { gap: var(--space-2); }
-  .graph .relation::before { content: '↓ '; }
+  .graph .relation::before, .lb-relations .relation::before { content: '↓ '; }
 }
 @media (max-width: 44rem) {
   :root { --body: 1.0625rem; --caption: .9375rem; }
@@ -105,17 +108,24 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 :root[data-density='compact'] { --density-gutter: var(--density-compact); }
 
 /* Segmented controls: inset track, one raised current segment (the v1
-   .view-switcher rules in views.css keep the current fill). Segments are
-   primary controls: 44px block and inline hit areas via tokens. */
-.view-switcher { display: inline-flex; align-items: stretch; gap: var(--space-half); padding: var(--space-half); background: var(--inset); border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); }
-.view-switcher button { min-block-size: var(--density-control); min-inline-size: var(--density-control); padding-inline: var(--space-2); background: transparent; border-color: transparent; transition: background-color var(--motion-instant) var(--motion-ease), box-shadow var(--motion-instant) var(--motion-ease); }
-.view-switcher button[aria-pressed='true'] { background: var(--surface); border-color: var(--border); box-shadow: var(--elevation-1); }
+   .view-switcher rules in views.css kept the current fill). Segments are
+   primary controls: 44px block and inline hit areas via tokens.
+   V2-T9 daisyUI one-class-one-meaning: `.lb-segmented` is the canonical
+   component class; `.view-switcher` remains as a pure alias so existing
+   view wiring never breaks. shadcn calm default: the current segment is
+   the one raised surface on the track (the legacy --selected fill override
+   in views.css is retired). */
+.lb-segmented, .view-switcher { display: inline-flex; align-items: stretch; gap: var(--space-half); padding: var(--space-half); background: var(--inset); border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); }
+.lb-segmented button, .view-switcher button { min-block-size: var(--density-control); min-inline-size: var(--density-control); padding-inline: var(--space-2); background: transparent; border-color: transparent; transition: background-color var(--motion-instant) var(--motion-ease), box-shadow var(--motion-instant) var(--motion-ease); }
+.lb-segmented button[aria-pressed='true'], .view-switcher button[aria-pressed='true'] { background: var(--surface); border-color: var(--border); box-shadow: var(--elevation-1); font-weight: var(--weight-strong); }
 /* the focused current segment keeps BOTH its raised state and the keyboard ring */
-.view-switcher button[aria-pressed='true']:focus-visible { box-shadow: var(--elevation-1), var(--focus-ring); }
+.lb-segmented button[aria-pressed='true']:focus-visible, .view-switcher button[aria-pressed='true']:focus-visible { box-shadow: var(--elevation-1), var(--focus-ring); }
 
 /* Overlay panels: elevated transient surfaces (elevation ladder), eased
-   entrance through the motion tokens. */
-.native-overlay { position: fixed; inset-block-end: var(--space-4); inset-inline-end: var(--space-4); z-index: 60; display: grid; gap: var(--density-gutter); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); overflow-y: auto; overscroll-behavior: contain; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-3); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+   entrance through the motion tokens. V2-T9 shadcn border/shadow rhythm:
+   the quiet 1px inset top highlight rides every elevated overlay edge
+   (--edge-highlight) ahead of its soft shadow step. */
+.native-overlay { position: fixed; inset-block-end: var(--space-4); inset-inline-end: var(--space-4); z-index: 60; display: grid; gap: var(--density-gutter); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); overflow-y: auto; overscroll-behavior: contain; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--edge-highlight), var(--elevation-3); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .native-overlay[hidden] { display: none; }
 
 /* Clipped description notes (aria-describedby targets) and the dedicated
@@ -137,7 +147,13 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
    the first elevation step (hairline border + soft shadow), raised cards
    lift one step further. */
 .lb-card { display: grid; gap: var(--space-2); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); min-inline-size: 0; box-shadow: var(--elevation-1); transition: box-shadow var(--motion-instant) var(--motion-ease); }
-.lb-card[data-elevation='raised'] { box-shadow: var(--elevation-2); }
+.lb-card[data-elevation='raised'] { box-shadow: var(--edge-highlight), var(--elevation-2); }
+/* V2-T9 Mantine factory hooks: interactive factory cards (createCard with
+   onSelect) are one control — calm hover, the quiet hairline edge carries
+   the resting outline, the accent only ever marks selection intent. */
+.lb-card[data-interactive='true'] { cursor: pointer; }
+.lb-card[data-interactive='true']:hover { background: var(--hover); }
+.lb-card[data-selected='true'] { border-color: var(--product-accent); box-shadow: var(--edge-highlight), var(--elevation-1); }
 .lb-card-head { display: grid; gap: var(--space-half); }
 .lb-card-title { margin: 0; font-size: var(--type-md-size); line-height: var(--type-md-lh); font-weight: var(--weight-strong); }
 .lb-card-meta { margin: 0; }
@@ -149,6 +165,9 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 .lb-table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); overscroll-behavior: contain; }
 .lb-table { inline-size: 100%; border-collapse: collapse; }
 .lb-table caption { text-align: start; padding: var(--lb-table-pad-block) var(--space-2); }
+/* V2-T9 shadcn small-caps section labels: table captions and sidebar group
+   labels render as uppercase micro-labels with the caps tracking metric. */
+.lb-table caption, .lb-sidebar-group-label { text-transform: uppercase; letter-spacing: var(--tracking-caps); font-weight: var(--weight-strong); }
 .lb-table th,.lb-table td { padding: var(--lb-table-pad-block) var(--space-2); border-block-end: var(--line) solid var(--hairline); text-align: start; vertical-align: top; }
 .lb-table thead th { position: sticky; inset-block-start: 0; background: var(--elevated); z-index: 1; font-size: var(--type-xs-size); line-height: var(--type-xs-lh); }
 .lb-table [data-numeric='true'] { font-variant-numeric: var(--numeric); text-align: end; }
@@ -203,8 +222,9 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 .lb-track { --lb-lane-size: calc(var(--density-control-compact) + var(--space-half)); position: relative; block-size: calc(var(--lb-lanes, 1) * var(--lb-lane-size) + (var(--lb-lanes, 1) - 1) * var(--space-half)); background: var(--inset); border-radius: var(--radius-sm); }
 .lb-interval { position: absolute; inset-block-start: calc(var(--lb-lane-index, 0) * (var(--lb-lane-size, 0px) + var(--space-half))); block-size: var(--lb-lane-size, calc(var(--density-control-compact) + var(--space-half))); display: inline-flex; align-items: center; overflow: hidden; padding-inline: var(--space-half); border-radius: var(--radius-xs); border: var(--line) solid var(--state-ink, var(--control-edge)); background: var(--state-fill, var(--neutral-fill)); color: var(--state-ink, var(--neutral-ink)); font-size: var(--type-xs-size); line-height: var(--type-xs-lh); white-space: nowrap; text-overflow: ellipsis; }
 
-/* Inspector panel: header/content/footer side overlay at elevation-2. */
-.lb-inspector { position: fixed; inset-block: var(--space-4); inset-inline-end: var(--space-4); z-index: 50; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-2); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+/* Inspector panel: header/content/footer side overlay at elevation-2.
+   V2-T9: edge-highlight bevel ahead of the shadow (border/shadow rhythm). */
+.lb-inspector { position: fixed; inset-block: var(--space-4); inset-inline-end: var(--space-4); z-index: 50; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--edge-highlight), var(--elevation-2); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .lb-inspector[hidden] { display: none; }
 .lb-inspector-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
 .lb-inspector-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
@@ -283,8 +303,10 @@ footer { margin-block: var(--space-6); color: var(--subtle); }
 .lb-tabpanel[hidden] { display: none; }
 
 /* Right dock: full-height elevation-2 surface, Escape + focus-return ride
-   the same overlay stack contract as the inspector panel. */
-.lb-dock { position: fixed; inset-block: 0; inset-inline-end: 0; z-index: 50; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); background: var(--elevated); color: var(--text); border-inline-start: var(--line) solid var(--border); box-shadow: var(--elevation-2); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+   the same overlay stack contract as the inspector panel. V2-T9: the
+   edge-highlight bevel rides the fixed edge (the V2-T4 floating treatment
+   in project-shell.css layers the elevation-3 radius on top of this base). */
+.lb-dock { position: fixed; inset-block: 0; inset-inline-end: 0; z-index: 50; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); background: var(--elevated); color: var(--text); border-inline-start: var(--line) solid var(--border); box-shadow: var(--edge-highlight), var(--elevation-2); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .lb-dock[hidden] { display: none; }
 .lb-dock-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
 .lb-dock-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }

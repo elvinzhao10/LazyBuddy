@@ -13,7 +13,10 @@
 .attention-list li { display: grid; grid-template-columns: minmax(10rem,.45fr) minmax(0,1fr); gap: var(--space-2); align-items: center; }
 .attention-list button { inline-size: 100%; text-align: start; }
 .work-body { min-inline-size: 0; }
-.view-switcher button[aria-pressed='true'] { background: var(--selected); font-weight: var(--weight-strong); }
+/* V2-T9: the legacy current-segment fill override is RETIRED — the shared
+   .lb-segmented/.view-switcher track in style.css owns the whole treatment
+   (inset track, one raised current segment, the calm shadcn-style default).
+   A second fill here gave the same control two competing sources of truth. */
 .graph-viewport { min-block-size: 25rem; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); overscroll-behavior: contain; }
 .work-graph { display: block; max-inline-size: none; }
 .graph-edges path { fill: none; stroke: var(--subtle); stroke-width: 1.5; }
@@ -43,7 +46,7 @@
 @container (max-width: 44rem) {
   .graph-viewport { display: none; }
   .task-list[hidden] { display: grid; }
-  .view-switcher { display: none; }
+  .view-switcher, .lb-segmented { display: none; }
   .now-line,.attention-list li { grid-template-columns: minmax(0,1fr); }
 }
 

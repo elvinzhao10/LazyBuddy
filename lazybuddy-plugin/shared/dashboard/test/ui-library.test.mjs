@@ -20,6 +20,7 @@ const {
   installNativeExperience, installFocusSystem, installTooltips, announce,
   segmentedControl, createThemeToggle, sidebarActionIcon, createOverlayPanel, createInspector,
   THEME_STORAGE_KEY, THEME_MODES, STATUS_STATES,
+  createStatusChip, createCard, createDataTable,
 } = await import('../ui/components.mjs');
 
 test('the T11 native layer exports survive the T12 overhaul', () => {
@@ -314,6 +315,85 @@ test('the original primitives (notice, taskCard) keep their DOM contracts', () =
   assert.equal(task.getAttribute('aria-pressed'), 'true');
   assert.equal(task.querySelector('.task-title').textContent, 'Release readiness');
   assert.equal(task.querySelectorAll('.status').length, 2);
+});
+
+/* -- V2-T9 factory hooks: controlled/uncontrolled parity (Mantine use-*) ----- */
+
+test('createStatusChip updates in place, notifies, and validates states', () => {
+  const changes = [];
+  const chip = createStatusChip({ defaultState: 'neutral', label: 'idle', onStateChange: (state, label) => changes.push(`${state}:${label}`) });
+  assert.equal(chip.get(), 'neutral');
+  assert.equal(chip.element.dataset.state, 'neutral');
+  assert.equal(chip.element.textContent, 'idle');
+  chip.set('verified', '3 of 7 verified');
+  assert.equal(chip.get(), 'verified');
+  assert.equal(chip.element.dataset.state, 'verified');
+  assert.equal(chip.element.textContent, '3 of 7 verified');
+  assert.ok(chip.element.querySelector('svg'), 'the updated glyph re-renders');
+  assert.deepEqual(changes, ['verified:3 of 7 verified'], 'set notifies the owner');
+  chip.set('attention', undefined, { notify: false });
+  assert.deepEqual(changes, ['verified:3 of 7 verified'], 'silent set never notifies');
+  assert.equal(chip.getLabel(), '3 of 7 verified', 'an omitted label keeps the current one');
+  chip.set({ state: 'failed', label: 'attempt 3 failed' });
+  assert.equal(chip.element.textContent, 'attempt 3 failed');
+  assert.equal(chip.get(), 'failed');
+  assert.throws(() => chip.set('cheerful'), TypeError);
+  const controlled = createStatusChip({ state: 'stale', label: 'historical' });
+  assert.equal(controlled.get(), 'stale', 'the value prop seeds the controlled chip');
+});
+
+test('createCard: uncontrolled toggles itself; controlled notifies and re-applies through set', () => {
+  const uncontrolledEvents = [];
+  const free = createCard({ title: 'Pick a verifier', defaultSelected: false, onSelect: value => uncontrolledEvents.push(value) });
+  assert.equal(free.element.dataset.interactive, 'true');
+  assert.equal(free.element.getAttribute('aria-pressed'), 'false');
+  free.element.click();
+  assert.equal(free.get(), true, 'the uncontrolled card toggles itself');
+  assert.equal(free.element.dataset.selected, 'true');
+  assert.deepEqual(uncontrolledEvents, [true]);
+  free.element.dispatchEvent({ type: 'keydown', key: ' ', bubbles: true });
+  assert.equal(free.get(), false, 'Space toggles like a native control');
+  free.element.dispatchEvent({ type: 'keydown', key: 'Enter', bubbles: true });
+  assert.equal(free.get(), true);
+  free.set(false, { notify: false });
+  assert.equal(free.get(), false, 'set re-applies without notifying');
+  assert.deepEqual(uncontrolledEvents, [true, false, true], 'only the card-applied changes notify');
+
+  const ownerEvents = [];
+  const controlled = createCard({ title: 'Owner-managed', selected: false, onSelect: value => ownerEvents.push(value) });
+  controlled.element.click();
+  assert.equal(controlled.get(), false, 'the controlled card never toggles itself');
+  assert.deepEqual(ownerEvents, [true], 'the click only notifies the owner');
+  controlled.set(true);
+  assert.equal(controlled.get(), true, 'the owner re-applies through set()');
+  assert.equal(controlled.element.getAttribute('aria-pressed'), 'true');
+  // a display card (no onSelect) is plain markup: no interaction affordances
+  const plain = createCard({ title: 'Static' });
+  assert.equal(plain.element.hasAttribute('data-interactive'), false);
+  assert.equal(plain.element.hasAttribute('aria-pressed'), false);
+});
+
+test('createDataTable.setRows rebuilds the body in place; head and caption survive', () => {
+  const columns = [{ key: 'task', label: 'Task' }, { key: 'checks', label: 'Checks', numeric: true }];
+  const table = createDataTable({ columns, defaultRows: [{ task: 'Setup', checks: 2 }], caption: 'Observed attempts' });
+  const notified = [];
+  table.onRowsChange = rows => notified.push(rows.length);
+  const head = table.element.querySelector('thead');
+  const caption = table.element.querySelector('caption');
+  table.setRows([{ task: 'Setup', checks: 2 }, { task: 'Remove', checks: 0 }]);
+  assert.equal(table.get().length, 2);
+  assert.deepEqual([...table.element.querySelectorAll('tbody td')].map(node => node.textContent), ['Setup', '2', 'Remove', '0']);
+  assert.equal(table.element.querySelector('thead'), head, 'the sticky header node survives the refresh');
+  assert.equal(table.element.querySelector('caption'), caption, 'the caption survives the refresh');
+  assert.deepEqual(notified, [2], 'setRows notifies the owner');
+  table.setRows([], { notify: false });
+  assert.equal(table.element.querySelectorAll('tbody tr').length, 0, 'an empty refresh renders zero rows, honestly');
+  assert.deepEqual(notified, [2], 'silent setRows never notifies');
+});
+
+test('emptyState actions must say what they do (V2-T9 clarity)', () => {
+  assert.throws(() => emptyState({ icon: 'inbox', title: 'Nothing here', action: { primary: true } }), TypeError,
+    'a config action without a label is a caller error, never a mystery button');
 });
 
 /* -- App shell (T12 addendum): sidebar rail, tab strip, dock --------------- */

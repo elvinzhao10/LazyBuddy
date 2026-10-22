@@ -104,6 +104,12 @@
   --veil: #ffffffd6;           /* translucent sticky-header wash      */
   --veil-blur: 14px;           /* backdrop blur of the sticky header  */
 
+  /* -- 3d. V2-T9 pattern-adoption additions (ADDITIVE, values only) -------
+     shadcn-style small-caps section labels: the tracking metric for the
+     uppercase micro-label treatment (table captions, sidebar group labels).
+     Nothing above changes meaning or value. */
+  --tracking-caps: .08em;      /* letter-spacing of small-caps labels */
+
   /* -- 4. v1 compatibility aliases (SET frozen — do not renumber) --------
      --surface, --border and --text are declared once above: the v1 names
      and the v2 roles are the same token by design. T20-RF refreshed the

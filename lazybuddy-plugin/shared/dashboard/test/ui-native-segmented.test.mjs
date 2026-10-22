@@ -162,3 +162,45 @@ test('a work-view-shaped switcher activates through the document layer while re-
     root.remove();
   } finally { detach.detach(); }
 });
+
+/* -- V2-T9 roving tabindex parity (Radix RovingTabIndex) --------------------- */
+
+test('segmentedControl ships roving tabindex from paint and moves the stop with the current segment', () => {
+  const control = segmented();
+  const [graph, list, table] = [...control.element.querySelectorAll('button')];
+  assert.equal(graph.tabIndex, 0, 'the current segment is the single tab stop');
+  assert.equal(list.tabIndex, -1, 'inactive segments leave the tab ring');
+  assert.equal(table.tabIndex, -1, 'disabled segments leave the tab ring');
+  list.click();
+  assert.equal(list.tabIndex, 0, 'activation moves the roving stop');
+  assert.equal(graph.tabIndex, -1);
+  control.setCurrent('graph');
+  assert.equal(graph.tabIndex, 0, 'programmatic setCurrent moves the stop too');
+  assert.equal(control.element.classList.contains('lb-segmented'), true, 'the canonical component class ships alongside the alias');
+});
+
+test('the document layer normalizes roving tabindex on hand-wired segmented groups', () => {
+  const detach = installFocusSystem();
+  try {
+    const switcher = element('div', 'view-switcher');
+    switcher.dataset.nativeSegmented = 'true';
+    const buttons = ['graph', 'list', 'table'].map(value => {
+      const control = button(value, () => {
+        for (const peer of buttons) peer.setAttribute('aria-pressed', String(peer === control));
+      });
+      control.dataset.segment = value;
+      return control;
+    });
+    buttons[0].setAttribute('aria-pressed', 'true');
+    for (const peer of buttons.slice(1)) peer.setAttribute('aria-pressed', 'false');
+    switcher.append(...buttons);
+    dom.document.body.append(switcher);
+    assert.equal(new Set(buttons.map(control => control.tabIndex)).size, 1, 'hand-wired groups paint with a uniform tab order (no roving yet)');
+
+    buttons[0].focus();
+    buttons[0].dispatchEvent({ type: 'keydown', key: 'ArrowRight', bubbles: true });
+    assert.equal(buttons[1].getAttribute('aria-pressed'), 'true', 'the layer activated the next segment');
+    assert.deepEqual(buttons.map(control => control.tabIndex), [-1, 0, -1], 'the layer normalizes the roving stop after activation');
+    switcher.remove();
+  } finally { detach.detach(); }
+});

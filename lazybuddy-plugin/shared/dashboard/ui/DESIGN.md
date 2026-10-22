@@ -120,6 +120,42 @@ The v1 token set (canvas/surface/raised/hover/selected/text/muted/border/focus, 
 
 The component contract from the original component system (statusChip/notice/taskCard/field/button/inspector constructors, textContent-only dynamic strings, no fetch or authority in components, one polite status region, bounded inspector scroll ownership) and the shell authority rules (destinations render only after initialization; missing native data renders an actionable hollow state, never a zero metric or fabricated observation) remain binding on every family member.
 
+## 10. Factory hooks: controlled/uncontrolled parity (V2-T9, additive)
+
+Pattern adoption from Mantine's use-* conventions, dependency-free
+(`docs/design/pattern-adoption.md` has the full adopted/adapted/rejected
+table). The one-shot renderers of §9 remain the static contract; for the three
+most-composed components the `create*` factories add owner-updatable state:
+
+| Factory | Value props | Default props | Change callback | Api |
+| --- | --- | --- | --- | --- |
+| `createStatusChip` | `state`, `label` | `defaultState`, `defaultLabel` | `onStateChange(state, label)` | `{ element, get, getLabel, set(state, label?, { notify }) }` |
+| `createCard` | `selected` | `defaultSelected` | `onSelect(value)` | `{ element, get, set(value, { notify }) }` |
+| `createDataTable` | `rows` | `defaultRows` | `onRowsChange` (assignable property) | `{ element, get, setRows(rows, { notify }) }` |
+
+Conventions, identical for all three:
+
+- **value prop = controlled**: the owner seeds the value and keeps re-applying
+  it through `set`/`setRows`; a controlled `createCard` never toggles itself —
+  a click only notifies, the owner decides and re-applies.
+- **defaultValue prop = uncontrolled**: the component owns the state from
+  creation (a `defaultSelected` card toggles itself on click/Space/Enter).
+- **on\*Change fires on factory-applied changes** (and on user interaction
+  that the factory applies); `set(value, { notify: false })` is silent — the
+  same rule `segmentedControl.setCurrent` has shipped since T11.
+- **One handle**: `{ element, get, set }` — DOM updates in place (the data
+  table keeps its sticky head and caption across `setRows`), no re-render
+  protocol, no framework.
+- Interactive factory cards paint `aria-pressed`, `data-selected` and a 44px
+  tab stop; display cards (no `onSelect`) stay plain §9 markup.
+
+Accessibility context from the same adoption pass: overlay panels carry
+`aria-describedby` dismissal notes (Radix Dialog.Description), Tab loops
+inside `data-native-trap` overlays while focus is within them (Radix
+FocusScope loop, non-modal), and segmented groups keep exactly one tab stop
+(Radix RovingTabIndex) — proven in `test/ui-native-focus.test.mjs` and
+`test/ui-native-segmented.test.mjs`.
+
 ## 9. Component inventory (T12)
 
 The shared component library (`ui/components.mjs` + the `.lb-*` styles in `ui/style.css`) rebuilds the primitives every view composes from, entirely on the v2 tokens: `statusChip` (seven kinds, each pairing its distinct glyph with a distinct border treatment — neutral hairline outline, active ink outline, verified sealed double edge, attention weighted baseline, failed heavy frame, stale dashed edge, unavailable hollow dashed chip), `card` (header/body/footer slots, density-driven padding, resting border or the `raised` elevation step), `dataTable` (sticky header on `--elevated`, hairline zebra-free rows, tabular numerals on `data-numeric` columns) and `rowList`, `formField` (label + help + inline error slots wired through `aria-invalid`/`aria-describedby`, with `field` keeping the legacy two-slot signature) plus `destructiveAction` (danger styling with a bounded undo affordance on an injectable clock), `graphNode` (state-driven size/border, ellipsized titles that keep their full text in the tooltip, selection as the only product-accent use), overlap-honest `timelineTrack`/`timelineChart`/`assignSublanes` (overlapping intervals stack into sublanes; adjacency shares one), `inspectorPanel` (header/content/footer side overlay at `--elevation-2`, Escape and focus-return through the T11 overlay stack), static `skeleton` (aria-busy, no shimmer loop), `emptyState` (icon + title + one detail line + action) and `metricTile` (tabular value + label + coverage chip, hollow unavailable variant). The app shell composes the same discipline: `sidebarNav` (240px left rail collapsing to a 56px icon rail through the density system — product identity header with the runtime accent wash, destination list with `aria-current` and j/k traversal via the T11 layer, contextual object-tree slot, footer hosting theme + density), `createTabs` (open-item tab strip with a pinned Home, closable items, horizontal overflow scroll, one raised active tab on the inset track, arrow/Home/End and ⌘/Ctrl+1..9 switching consistent with the segmented control, panels that hide rather than destroy so view state survives switches and polling) and `createDockPanel` (collapsible elevation-2 right dock with Escape and focus-return through the T11 overlay stack). `ui/showcase.html` is the acceptance gallery presenting every family in every state; `test/ui-library*.test.mjs` holds the DOM and token contracts (no color/size literals in shared component CSS beyond tokens.css). The shared CSS now uses v2 names throughout; the v1 aliases that remain — `--hover --selected --focus --control-edge --primary-hover --pressed-opacity --neutral-ink --neutral-fill --stale-ink --stale-fill --line --control --icon --sans --mono --content --measure --card-min --inspector` — are what per-view CSS (T14–T19) still consumes and will retire as each view migrates.

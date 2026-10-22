@@ -2,6 +2,7 @@ import {
   element, statusChip, taskCard, field, button, notice, createInspector, installNativeExperience,
   card, dataTable, rowList, formField, destructiveAction, graphNode, timelineChart, inspectorPanel,
   skeleton, emptyState, metricTile, sidebarNav, createTabs, createDockPanel,
+  createStatusChip, createCard, createDataTable,
 } from './components.mjs';
 
 /* -- App shell (T12): sidebar rail + tab strip + dock. Built FIRST so the
@@ -135,7 +136,33 @@ const cardRaised = card({
   testid: 'card-raised',
 });
 const cardBare = card({ body: [element('p', '', 'A card without a header stays quiet — the body leads.'), element('p', 'meta', 'Footer slot omitted here.')], testid: 'card-bare' });
+/* V2-T9 Mantine-style factory hooks: the create* factories add controlled /
+   uncontrolled parity (value/defaultValue + on*Change + get/set) on top of
+   the one-shot renderers. The demo composes all three most-used ones. */
+const factoryChip = createStatusChip({ defaultState: 'neutral', label: 'selected: false' });
+factoryChip.element.dataset.testid = 'chip-factory';
+const factoryCard = createCard({
+  title: 'Factory card · createCard',
+  meta: 'selected/defaultSelected parity · aria-pressed stays in sync',
+  body: element('p', 'meta', 'Click or press Space: the uncontrolled card toggles itself; a card created with `selected` only notifies its owner and re-applies through set().'),
+  defaultSelected: false,
+  onSelect() { factoryChip.set(factoryCard.get() ? 'verified' : 'neutral', `selected: ${factoryCard.get()}`); },
+  testid: 'card-factory',
+});
+const factoryTable = createDataTable({
+  columns: [{ key: 'surface', label: 'Surface' }, { key: 'state', label: 'State' }, { key: 'rows', label: 'Rows', numeric: true }],
+  defaultRows: [{ surface: 'factory table', state: 'after setRows', rows: 2 }],
+  caption: 'createDataTable · setRows refreshes the body in place',
+});
+factoryTable.onRowsChange = rows => factoryChip.set('active', `${rows.length} rows shown`);
+const refreshRows = button('Refresh rows example', () => factoryTable.setRows([
+  { surface: 'factory table', state: 'polling tick', rows: 3 },
+  { surface: 'factory table', state: 'polling tick', rows: 4 },
+]));
 document.querySelector('#card-inventory').append(cardResting, cardRaised, cardBare);
+const factoryCluster = element('div', 'cluster', '');
+factoryCluster.append(factoryCard.element, factoryChip.element);
+document.querySelector('#card-inventory').append(factoryCluster, refreshRows, factoryTable.element);
 
 /* -- Data table & rows ---------------------------------------------------- */
 const tableColumns = [

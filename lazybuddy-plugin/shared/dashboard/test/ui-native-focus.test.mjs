@@ -13,6 +13,7 @@ globalThis.document = dom.document;
 
 const {
   installFocusSystem, createInspector, createOverlayPanel, button, element,
+  createDockPanel, inspectorPanel, installTooltips, statusChip,
 } = await import('../ui/components.mjs');
 
 function press(target, key, extra = {}) {
@@ -197,4 +198,147 @@ test('overlay API closes with focus return even when the invoker was re-rendered
   assert.equal(overlay.isOpen(), false);
   assert.notEqual(dom.document.activeElement, invoker, 'a detached invoker is never refocused; no crash');
   overlay.element.remove();
+});
+
+/* -- V2-T9 Radix FocusScope-style Tab loop containment ---------------------- */
+
+test('Tab inside the trapped dock loops through the panel focusables and wraps', () => {
+  const detach = installFocusSystem();
+  try {
+    const body = element('div', 'stack');
+    const firstField = element('input');
+    firstField.type = 'text';
+    const lastAction = button('Apply', null);
+    body.append(firstField, element('p', '', 'Body'), lastAction);
+    const dock = createDockPanel({ title: 'Inspector dock', content: body, footer: button('Dismiss', null) });
+    const invoker = button('Open dock', () => {});
+    dom.document.body.append(invoker, dock.element);
+    dock.open(invoker);
+    // initial focus is the close control (the unchanged first-open contract)
+    assert.equal(dom.document.activeElement, dock.element.querySelector('[data-testid="dock-panel-close"]'), 'open focuses the close control');
+    // DOM-order focusables: close, the scrollable body region (tabIndex=0,
+    // a real tab stop for keyboard scrolling), input, Apply, footer Dismiss
+    const order = [
+      dock.element.querySelector('[data-testid="dock-panel-close"]'),
+      dock.element.querySelector('.lb-dock-body'),
+      firstField,
+      lastAction,
+      dock.element.querySelector('.lb-dock-foot button'),
+    ];
+
+    press(order[0], 'Tab');
+    assert.equal(dom.document.activeElement, order[1], 'Tab moves to the next focusable inside the dock');
+    press(order[1], 'Tab');
+    assert.equal(dom.document.activeElement, order[2]);
+    press(order[2], 'Tab');
+    assert.equal(dom.document.activeElement, order[3]);
+    press(order[3], 'Tab');
+    assert.equal(dom.document.activeElement, order[4]);
+    press(order[4], 'Tab');
+    assert.equal(dom.document.activeElement, order[0], 'Tab from the last focusable wraps to the first (loop)');
+
+    press(order[0], 'Tab', { shiftKey: true });
+    assert.equal(dom.document.activeElement, order[4], 'Shift+Tab from the first focusable wraps to the last');
+    press(order[4], 'Tab', { shiftKey: true });
+    assert.equal(dom.document.activeElement, order[3], 'Shift+Tab steps backwards inside the panel');
+
+    dock.close();
+    dock.element.remove();
+    invoker.remove();
+  } finally { detach.detach(); }
+});
+
+test('Tab keeps its native flow outside a trapped overlay; trapFocus: false opts out', () => {
+  const detach = installFocusSystem();
+  try {
+    const outside = button('Page control', () => {});
+    const other = button('Next page control', () => {});
+    dom.document.body.append(outside, other);
+    const overlay = createOverlayPanel({ title: 'Activity', content: element('p', '', 'Quiet') });
+    const loose = createOverlayPanel({ title: 'Loose', content: element('p', '', 'No trap'), trapFocus: false });
+    dom.document.body.append(overlay.element, loose.element);
+    overlay.open(outside);
+    assert.equal(overlay.element.hasAttribute('data-native-trap'), true, 'panels opt into the loop by default');
+    loose.open(outside);
+    assert.equal(loose.element.hasAttribute('data-native-trap'), false, 'trapFocus: false removes the loop contract');
+
+    // focus OUTSIDE the topmost (loose) overlay: the layer never interferes
+    const event = { type: 'keydown', key: 'Tab', bubbles: true, target: outside, defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; } };
+    outside.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, false, 'Tab from the page keeps its native flow (non-modal overlays)');
+
+    loose.close();
+    overlay.close();
+    overlay.element.remove();
+    loose.element.remove();
+    outside.remove();
+    other.remove();
+  } finally { detach.detach(); }
+});
+
+test('every overlay panel carries an aria-describedby dismissal note (Radix Dialog.Description)', () => {
+  for (const built of [
+    createOverlayPanel({ title: 'Overlay', content: element('p', '', 'x') }),
+    createDockPanel({ title: 'Dock', content: element('p', '', 'x') }),
+    inspectorPanel({ title: 'Panel', content: element('p', '', 'x') }),
+    createInspector({ title: 'Dialog', content: element('div', 'stack') }),
+  ]) {
+    const panel = built.element ?? built; // createInspector returns { element }
+    const describedBy = panel.getAttribute('aria-describedby');
+    assert.ok(describedBy, `${panel.tagName}.${panel.className} is described`);
+    const note = panel.querySelector('.native-note');
+    assert.ok(note, 'the description note lives inside the panel (it dies with it)');
+    assert.equal(note.id, describedBy, 'aria-describedby points at the note');
+    assert.match(note.textContent, /Escape/i, 'the default note states the dismissal contract');
+    panel.remove();
+  }
+  const custom = createOverlayPanel({ title: 'Custom', content: element('p', '', 'x'), description: 'Session summary for this run.' });
+  assert.equal(custom.element.querySelector('.native-note').textContent, 'Session summary for this run.');
+  assert.equal(createOverlayPanel({ title: 'Bare', content: element('p', '', 'x'), description: '' }).element.hasAttribute('aria-describedby'), false, 'description: "" opts out');
+  custom.element.remove();
+});
+
+test('opening an overlay re-describes dynamic icon-only buttons inside it', () => {
+  const detach = installFocusSystem();
+  try {
+    const tooltips = installTooltips({ root: dom.document });
+    const iconOnly = button('', () => {});
+    iconOnly.setAttribute('aria-label', 'Refresh records');
+    const body = element('div', 'stack');
+    body.append(element('p', '', 'Rendered by a polling refresh after open'), iconOnly);
+    const overlay = createOverlayPanel({ title: 'Dynamic', content: body });
+    dom.document.body.append(overlay.element);
+    assert.equal(iconOnly.hasAttribute('aria-describedby'), false, 'nothing is described before the open');
+    overlay.open(button('Opener', () => {}));
+    assert.ok(iconOnly.getAttribute('aria-describedby'), 'the icon-only button rendered inside the open panel got its note');
+    assert.equal(tooltips.describe(body), 0, 'a second pass is idempotent');
+    overlay.close();
+    overlay.element.remove();
+  } finally { detach.detach(); }
+});
+
+test('describe() runs clean on first-paint content: chips and every naming source (misleading-success guard)', () => {
+  // Direct call — NOT through the best-effort describeOnOpen() swallow — so a
+  // ReferenceError inside the describe pass fails HERE instead of hiding
+  // behind the overlay-open try/catch (the class of bug the V2-T9 browser
+  // pass caught on the showcase).
+  const tooltips = installTooltips({ root: dom.document });
+  const host = element('div', 'stack');
+  host.append(statusChip({ state: 'verified', label: 'Verified' }));
+  const labelled = button('', () => {});
+  labelled.setAttribute('aria-label', 'Open records');
+  const titled = button('', () => {});
+  titled.title = 'Close panel';
+  const nameless = button('', () => {});
+  host.append(labelled, titled, nameless);
+  assert.equal(tooltips.describe(host), 3, 'three nodes described: one chip + two named icon-only buttons');
+  for (const node of [host.querySelector('.status'), labelled, titled]) {
+    assert.ok(node.getAttribute('aria-describedby'), 'each described node carries aria-describedby');
+    assert.ok(node.getAttribute('title'), 'each described node carries a native tooltip');
+  }
+  assert.equal(nameless.getAttribute('data-native-unlabeled'), 'true', 'a nameless icon-only button is flagged, never invented-for');
+  assert.equal(nameless.hasAttribute('aria-describedby'), false);
+  assert.equal(tooltips.describe(host), 0, 'the second pass is a no-op');
+  host.remove();
 });
