@@ -381,10 +381,17 @@ function renderGraph(document_, state, viewport, presentation) {
   }
   svg.append(edgeLayer, nodeLayer);
   region.append(svg);
-  wrap.append(head, viewport.controls(), region);
+  wrap.append(head, region);
   viewport.bind(region, svg, layout.width, layout.height);
+  // V2-T3 fit-on-mount: once per controller instance — polling re-renders
+  // re-bind and restore the user's place instead of re-fitting.
+  if (!fittedViewports.has(viewport)) { fittedViewports.add(viewport); viewport.fitAnimated('fit-mount'); }
   return { wrap, region, layout, model };
 }
+
+// V2-T3: controllers that already fitted once (per view instance) — see
+// renderGraph's post-bind pass.
+const fittedViewports = new WeakSet();
 
 export function createExecutionView({ document: initialDocument, timeline: initialTimeline, mode = 'graph', callbacks = {} }) {
   let currentDocument = structuredClone(initialDocument);
@@ -411,7 +418,6 @@ export function createExecutionView({ document: initialDocument, timeline: initi
   inspector.setAttribute('role', 'region');
   inspector.setAttribute('aria-label', 'Contextual inspector');
   const graphViewport = createGraphViewportController({
-    label: 'Execution graph',
     getRegion: () => root.querySelector('.execution-graph-viewport'),
     getSvg: () => root.querySelector('.execution-graph'),
     onChange: event => callbacks.onViewportChange?.(event),

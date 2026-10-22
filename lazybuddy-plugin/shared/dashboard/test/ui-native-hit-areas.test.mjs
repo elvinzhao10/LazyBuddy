@@ -31,11 +31,11 @@ test('the density control tokens carry the 44px HIG minimum', async () => {
 });
 
 test('interactive controls declare hit areas only through tokens', async () => {
-  const sources = await Promise.all([css('style.css'), css('views.css'), css('live.css')]);
+  const sources = await Promise.all([css('style.css'), css('views.css'), css('live.css'), css('project-shell.css')]);
   const controlRules = [];
   for (const source of sources) {
     for (const rule of source.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      if (/button|graph-viewport-action|segmented/.test(rule[1])) controlRules.push([rule[1].trim(), rule[2]]);
+      if (/button|lb-topbar-icon|segmented/.test(rule[1])) controlRules.push([rule[1].trim(), rule[2]]);
     }
   }
   const sizes = controlRules.flatMap(([, body]) => [...body.matchAll(/min-(?:block|inline)-size:\s*([^;]+);/g)].map(match => match[1].trim()));
@@ -45,32 +45,25 @@ test('interactive controls declare hit areas only through tokens', async () => {
   }
   assert.match(sources[0], /button,select,input,textarea\s*\{[^}]*min-block-size:\s*var\(--control\)/, 'native controls keep the 44px baseline');
   assert.match(sources[0], /\.view-switcher button\s*\{[^}]*min-block-size:\s*var\(--density-control\)[^}]*min-inline-size:\s*var\(--density-control\)/, 'segments meet 44px in both axes');
-  assert.match(sources[1], /\.graph-viewport-action\s*\{[^}]*min-block-size:\s*var\(--density-control\)[^}]*min-inline-size:\s*var\(--density-control\)/, 'icon-only graph actions meet 44px in both axes');
+  assert.match(sources[3], /\.lb-topbar-icon\s*\{[^}]*min-inline-size:\s*var\(--density-control\)/, 'V2-T1: the top-bar icon controls meet the density hit-area floor');
 });
 
-test('graph viewport actions are icon-only buttons that carry names and titles', async () => {
-  const { createGraphViewportController } = await import('../ui/graph-viewport.mjs');
-  const getRegion = () => null;
-  const viewport = createGraphViewportController({ label: 'Tasks', getRegion });
-  const toolbar = viewport.controls();
-  dom.document.body.append(toolbar);
-  const actions = [...toolbar.querySelectorAll('button')];
-  assert.ok(actions.length >= 7, 'pan/zoom/fit controls remain');
-  for (const action of actions) {
-    assert.equal(Boolean(action.getAttribute('aria-label')), true, 'every icon-only action is named');
-    assert.equal(action.title, action.getAttribute('aria-label'), 'the label is also the native tooltip');
+// V2-T3: the on-canvas graph viewport button cluster is gone — pointer pan/
+// zoom, the focused-region keyboard map and fit-on-mount replace it, so no
+// graph-viewport action styling or toolbar markup may resurface.
+test('the graph viewport button cluster is gone from controller, views and CSS (V2-T3)', async () => {
+  const controller = await import('../ui/graph-viewport.mjs');
+  assert.equal(controller.createGraphViewportController({ getRegion: () => null }).controls, undefined,
+    'the controller no longer exposes a controls() toolbar');
+  for (const sheet of ['views.css', 'execution.css', 'architecture.css', 'project-map-spike.css', 'project-shell.css']) {
+    const source = await css(sheet);
+    assert.doesNotMatch(source, /graph-viewport-(action|controls|zoom)/, `${sheet}: no viewport cluster rules remain`);
   }
-  const tooltips = installTooltips();
-  tooltips.describe(toolbar);
-  const glyphs = actions.filter(action => !/[a-zA-Z0-9]/.test(action.textContent));
-  assert.equal(glyphs.length, 6, 'six glyph actions are icon-only');
-  for (const action of glyphs) {
-    assert.match(action.getAttribute('aria-describedby') ?? '', /^native-note-\d+$/, 'icon-only buttons gain described notes');
+  for (const view of ['project-map-spike.mjs', 'execution-view.mjs', 'architecture-view.mjs']) {
+    const source = await readFile(new URL(`../ui/${view}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\.controls\(\)/, `${view}: no view mounts the cluster`);
+    assert.match(source, /fitAnimated\('fit-mount'\)/, `${view}: the graph fits on its first mount`);
   }
-  const fit = actions.find(action => action.textContent === 'Fit');
-  assert.equal(fit.hasAttribute('aria-describedby'), false, 'text buttons keep their visible label as the name');
-  toolbar.remove();
-  for (const note of dom.document.body.querySelectorAll('.native-note')) note.remove();
 });
 
 test('status chips gain a title and a described state note exactly once', () => {

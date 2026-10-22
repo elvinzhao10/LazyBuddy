@@ -89,9 +89,6 @@
 .execution-reason { margin: 0; }
 .execution-action { justify-self: start; }
 .execution-graph-wrap[hidden] { display: none; }
-.execution-graph-wrap .graph-viewport-controls { justify-content: flex-end; gap: var(--s1); }
-.execution-graph-wrap .graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--s2); }
-.execution-graph-wrap .graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: tabular-nums; }
 
 /* Attempt/verifier drill-down dock content. The dock surface itself is the T12
    createDockPanel frame (.lb-dock, elevation-2, Escape + focus return). */

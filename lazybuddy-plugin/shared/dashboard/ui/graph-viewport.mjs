@@ -1,4 +1,4 @@
-// Shared DOM/SVG viewport controls for the project and execution graphs.
+// Shared DOM/SVG viewport controller for the project and execution graphs.
 // The controller owns only presentation state: it never changes graph data or layout.
 //
 // T11 native motion: pan and zoom animate along the design motion tokens
@@ -9,8 +9,13 @@
 // programmatic interaction cancels it. Presentation state (scale + scroll)
 // lives in the controller, so re-binding after a polling re-render restores
 // the viewport instead of resetting it.
-import { button, element } from './components.mjs';
-
+//
+// V2-T3: the on-canvas button cluster (pan arrows, zoom +/-, Fit) is GONE.
+// The viewport is controlled by eased pointer pan/zoom (drag + inertia +
+// wheel-scale via the host), the keyboard equivalents when the graph region
+// is focused (arrows pan, +/- zoom, 0 fits), and fit-on-mount — each view
+// calls fitAnimated once after its FIRST bind, so polling re-renders keep
+// restoring the user's place instead of re-fitting.
 const SCALE_MIN = 0.25;
 const SCALE_MAX = 2;
 const SCALE_STEP = 0.25;
@@ -63,7 +68,8 @@ function cubicBezier(x1, y1, x2, y2) {
 const MOTION_EASE = cubicBezier(0.2, 0, 0, 1);
 
 export function createGraphViewportController({
-  label = 'Graph', getRegion, getSvg, onChange,
+  // label retired with the V2-T3 button cluster; kept out of the signature
+  getRegion, getSvg, onChange,
   requestFrame = globalThis.requestAnimationFrame?.bind(globalThis),
   cancelFrame = globalThis.cancelAnimationFrame?.bind(globalThis),
   now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()),
@@ -71,7 +77,6 @@ export function createGraphViewportController({
 } = {}) {
   const isReduced = () => (typeof reducedMotion === 'function' ? reducedMotion() : prefersReducedMotion());
   let state = { scale: 1, scrollLeft: 0, scrollTop: 0 };
-  let zoomOutput = null;
   let drag = null;
   let animation = null;
 
@@ -127,7 +132,6 @@ export function createGraphViewportController({
       region.scrollTop = state.scrollTop;
       region.dataset.zoom = String(state.scale);
     }
-    if (zoomOutput) zoomOutput.textContent = `${Math.round(state.scale * 100)}%`;
     if (notify) onChange?.({ ...state, reason });
     return { ...state };
   }
@@ -317,33 +321,11 @@ export function createGraphViewportController({
     apply('render', false);
   }
 
-  function controls() {
-    const toolbar = element('div', 'graph-viewport-controls cluster');
-    toolbar.setAttribute('role', 'group');
-    toolbar.setAttribute('aria-label', `${label} viewport controls`);
-    const action = (text, ariaLabel, handler) => {
-      const control = button(text, handler);
-      control.className = 'graph-viewport-action';
-      control.setAttribute('aria-label', ariaLabel);
-      control.title = ariaLabel;
-      return control;
-    };
-    toolbar.append(
-      action('←', 'Pan graph left', () => panByAnimated(-PAN_STEP, 0)),
-      action('↑', 'Pan graph up', () => panByAnimated(0, -PAN_STEP)),
-      action('↓', 'Pan graph down', () => panByAnimated(0, PAN_STEP)),
-      action('→', 'Pan graph right', () => panByAnimated(PAN_STEP, 0)),
-      action('−', 'Zoom graph out', () => zoomByAnimated(-SCALE_STEP)),
-      action('+', 'Zoom graph in', () => zoomByAnimated(SCALE_STEP)),
-      action('Fit', 'Fit graph to viewport', () => fitAnimated()),
-    );
-    zoomOutput = element('output', 'meta graph-viewport-zoom', `${Math.round(state.scale * 100)}%`);
-    zoomOutput.setAttribute('aria-label', 'Graph zoom');
-    toolbar.append(zoomOutput);
-    return toolbar;
-  }
-
-  return { bind, capture, controls, fit, fitAnimated, panBy, panByAnimated, setViewport, zoomBy, zoomByAnimated,
+  // V2-T3: the button cluster is gone; the remaining public motion surface
+  // is pointer pan/zoom with inertia, the keyboard map on the focused region,
+  // and the programmatic fit/pan/zoom API (fit-on-mount + the spike's
+  // fitViewport entry point).
+  return { bind, capture, fit, fitAnimated, panBy, panByAnimated, setViewport, zoomBy, zoomByAnimated,
     cancelMotion: stopAnimation, getState: capture };
 }
 

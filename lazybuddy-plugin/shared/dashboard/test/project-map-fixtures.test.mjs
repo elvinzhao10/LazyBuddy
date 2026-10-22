@@ -215,14 +215,12 @@ test('pointer selection, viewport controls and polling updates preserve the grap
   viewport.clientHeight = 400;
   view.setViewport({ scale: 1.5, scrollLeft: 120, scrollTop: 80 }, 'test');
   assert.deepEqual(view.getStats().viewport, { scale: 1.5, scrollLeft: 120, scrollTop: 80 });
-  const zoomOut = [...view.element.querySelectorAll('.graph-viewport-action')]
-    .find(control => control.getAttribute('aria-label') === 'Zoom graph out');
-  assert.ok(zoomOut, 'zoom-out control is present and named');
-  zoomOut.click();
-  assert.equal(view.getStats().viewport.scale, 1.25);
+  assert.equal(view.element.querySelector('.graph-viewport-controls'), null, 'V2-T3: no viewport button cluster renders');
   viewport.focus();
+  viewport.dispatchEvent({ type: 'keydown', key: '-' });
+  assert.equal(view.getStats().viewport.scale, 1.25, 'keyboard zoom-out replaces the removed cluster control');
   viewport.dispatchEvent({ type: 'keydown', key: '+' });
-  assert.equal(view.getStats().viewport.scale, 1.5, 'keyboard zoom is equivalent to the toolbar control');
+  assert.equal(view.getStats().viewport.scale, 1.5, 'keyboard zoom-in restores the level');
   viewport.dispatchEvent({ type: 'keydown', key: 'ArrowRight' });
   assert.ok(view.getStats().viewport.scrollLeft > 120, 'focused viewport supports keyboard panning');
   const beforeDrag = view.getStats().viewport;

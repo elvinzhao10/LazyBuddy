@@ -123,8 +123,8 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   inspector.tabIndex = 0;
   inspector.setAttribute('role', 'region');
   inspector.setAttribute('aria-label', 'Contextual inspector');
+  let graphMounted = false; // V2-T3: the graph fits on its FIRST mount only
   const graphViewport = createGraphViewportController({
-    label: 'Project composition graph',
     getRegion: () => root.querySelector('.spike-graph-viewport'),
     getSvg: () => root.querySelector('.spike-graph'),
     onChange: event => callbacks.onViewportChange?.(event),
@@ -231,10 +231,11 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     }
     svg.append(edgeLayer, nodeLayer);
     region.append(svg);
-    wrap.append(graphViewport.controls(), region);
+    wrap.append(region);
     const body = root.querySelector('.spike-body');
     body.prepend(wrap);
     graphViewport.bind(region, svg, appliedLayout.width, appliedLayout.height);
+    if (!graphMounted) { graphMounted = true; graphViewport.fitAnimated('fit-mount'); }
     if (focusedId) region.querySelector(`.spike-node[data-node-id="${focusedId}"]`)?.focus();
   }
 

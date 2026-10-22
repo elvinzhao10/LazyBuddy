@@ -47,9 +47,6 @@
 .spike-chiprow .meta { font-size: var(--caption); }
 .spike-chiprow .status { min-inline-size: 0; overflow-wrap: anywhere; white-space: normal; }
 .spike-summary { overflow-wrap: anywhere; }
-.graph-viewport-controls { justify-content: flex-end; gap: var(--s1); }
-.graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--s2); }
-.graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: tabular-nums; }
 .spike-node.kind-boundary, .spike-list .kind-boundary > .spike-row-control { border-style: dashed; }
 .spike-toggle { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content; }
 

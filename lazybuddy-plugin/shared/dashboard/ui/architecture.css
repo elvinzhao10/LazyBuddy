@@ -95,9 +95,6 @@
 .architecture-graph-node { block-size: 100%; overflow: visible; align-content: start; }
 .architecture-graph-title { line-height: var(--type-md-lh); overflow-wrap: anywhere; }
 .architecture-graph-kind, .architecture-graph-role { overflow-wrap: anywhere; }
-.architecture-graph-wrap .graph-viewport-controls { justify-content: flex-end; gap: var(--space-1); }
-.architecture-graph-wrap .graph-viewport-action { min-block-size: var(--control); min-inline-size: var(--control); padding: var(--space-1); }
-.architecture-graph-wrap .graph-viewport-zoom { min-inline-size: 3.5rem; text-align: end; font-variant-numeric: var(--numeric); }
 
 /* Overview strip: rendered only when the laid-out graph exceeds the viewport.
    Distorted on purpose (preserveAspectRatio none) so the mapping stays linear;

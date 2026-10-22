@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
 
-// T11 graph motion proof: toolbar and keyboard pan/zoom animate along the
-// motion tokens through an injectable frame clock (eased interpolation,
-// clamped bounds), pointer drags release into inertia that is bounded and
-// cancelled by interaction, reduced motion resolves instantly, and the
-// viewport state survives a polling re-bind (no reset).
+// T11 graph motion proof: keyboard pan/zoom animate along the motion tokens
+// through an injectable frame clock (eased interpolation, clamped bounds),
+// pointer drags release into inertia that is bounded and cancelled by
+// interaction, reduced motion resolves instantly, and the viewport state
+// survives a polling re-bind (no reset). V2-T3: the toolbar cluster is gone
+// — pointer, keyboard and programmatic fit-on-mount are the whole surface.
 
 const dom = createMiniDom();
 globalThis.document = dom.document;

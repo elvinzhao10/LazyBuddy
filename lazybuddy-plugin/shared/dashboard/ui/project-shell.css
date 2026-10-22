@@ -118,7 +118,6 @@ body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 au
 .project-shell[data-live='true'] .spike-toolbar { min-block-size: var(--control); }
 .project-shell[data-live='true'] .spike-toolbar .spike-status { min-block-size: auto; }
 .project-shell[data-live='true'] .spike-graph-wrap { position: relative; }
-.project-shell[data-live='true'] .spike-graph-wrap > .graph-viewport-controls { position: absolute; z-index: 1; inset-block-start: var(--s2); inset-inline-end: var(--s2); padding: var(--s1); border-radius: var(--radius-control); background: var(--raised); box-shadow: var(--shadow); }
 .project-detail-loader > .architecture-view,.project-detail-loader > .git-metrics-view,.project-detail-loader > .evidence-view { margin-block-start: var(--s3); }
 .project-summary { --card-min: 9rem; }
 .project-summary > .panel { padding: var(--s3); }

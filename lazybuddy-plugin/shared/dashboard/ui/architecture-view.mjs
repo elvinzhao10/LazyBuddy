@@ -207,8 +207,8 @@ export function createArchitectureView({ fixture: initialFixture, lens = null, p
   viewport.tabIndex = 0;
   viewport.setAttribute('role', 'region');
   viewport.setAttribute('aria-label', 'Architecture content');
+  let graphMounted = false; // V2-T3: the graph fits on its FIRST mount only
   const graphViewport = createGraphViewportController({
-    label: 'Architecture graph',
     getRegion: () => viewport.querySelector('.architecture-graph-viewport'),
     getSvg: () => viewport.querySelector('.architecture-graph'),
     onChange: event => { minimapPaint?.(event); callbacks.onViewportChange?.(event); },
@@ -521,7 +521,6 @@ export function createArchitectureView({ fixture: initialFixture, lens = null, p
     const layout = architectureGraphModel(currentFixture, currentLensTab);
     graphLayout = { width: layout.width, height: layout.height };
     const wrap = element('div', 'architecture-graph-wrap');
-    wrap.append(graphViewport.controls());
     const region = element('div', 'architecture-graph-viewport');
     region.dataset.testid = 'architecture-graph';
     region.tabIndex = 0;
@@ -589,6 +588,7 @@ export function createArchitectureView({ fixture: initialFixture, lens = null, p
     region.append(svg);
     wrap.append(region);
     graphViewport.bind(region, svg, layout.width, layout.height);
+    if (!graphMounted) { graphMounted = true; graphViewport.fitAnimated('fit-mount'); }
     const regionWidth = finite(region.clientWidth, 0);
     const regionHeight = finite(region.clientHeight, 0);
     if (layout.width > regionWidth || layout.height > regionHeight) {

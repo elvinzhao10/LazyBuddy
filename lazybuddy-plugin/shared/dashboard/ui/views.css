@@ -15,8 +15,6 @@
 .work-body { min-inline-size: 0; }
 .view-switcher button[aria-pressed='true'] { background: var(--selected); font-weight: var(--weight-strong); }
 .graph-viewport { min-block-size: 25rem; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); overscroll-behavior: contain; }
-.graph-viewport-action { min-block-size: var(--density-control); min-inline-size: var(--density-control); padding-inline: var(--space-1); }
-.graph-viewport-controls { gap: var(--density-gutter); }
 .work-graph { display: block; max-inline-size: none; }
 .graph-edges path { fill: none; stroke: var(--subtle); stroke-width: 1.5; }
 .work-graph foreignObject { overflow: visible; }
