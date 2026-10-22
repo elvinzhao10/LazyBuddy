@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries V2-T5 plugin self-health panel, standalone. Both mounts render REAL recorded collector snapshots (one over this checkout, one over a deliberately broken plugin copy); no live service is connected.">
+  <title>Plugin self-health (V2-T5)</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash. -->
+  <script src="./theme-init.js"></script>
+  <script>
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The health view could not load. Reload this page to try again. No collector or service is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./health.css">
+  <script type="module">
+import { createHealthView } from './health-view.mjs';
+try { clearTimeout(loadTimeout); } catch { /* the timeout callback owns the failure surface */ }
+
+// Two REAL recorded snapshots from dashboard/adapters/health.mjs:
+//   clean  — collected over this repository's plugin checkout (it honestly
+//            carries the working tree's current vendor-pin drift as a warn);
+//   broken — collected over a deliberately damaged copy of the same tree
+//            (one project-family entry point removed, one pinned dashboard
+//            file byte-tampered), proving WARN renders from real findings.
+const clean = JSON.parse(document.querySelector('#fixture-clean').textContent);
+const broken = JSON.parse(document.querySelector('#fixture-broken').textContent);
+
+const recorded = document.querySelector('#health-recorded');
+const unbound = document.querySelector('#health-unbound');
+const note = document.querySelector('#fixture-note');
+
+function mountRecorded(snapshot, caption) {
+  recorded.replaceChildren();
+  const view = createHealthView({ adapter: { read: async () => snapshot } });
+  recorded.append(view.element);
+  note.textContent = caption;
+  return view;
+}
+
+const CAPTIONS = {
+  clean: 'Recorded collection over this checkout: every ok row is an observed fact; the vendor-integrity warn is the real working-tree drift against the pins, and the three unavailable rows (host activation, observation journal) are honestly unobserved.',
+  broken: 'Recorded collection over a deliberately damaged plugin copy: the missing entry point and the tampered pinned file each render as a typed WARN — nothing silently turns healthy.',
+};
+
+const view = mountRecorded(clean, CAPTIONS.clean);
+window.healthView = view; // manual-QA hook: window.healthView.update(broken)
+
+// No adapter at all: the honest standalone state — explicit unavailable,
+// never zero-as-healthy.
+unbound.append(createHealthView().element);
+
+document.querySelector('[data-fixture="clean"]').addEventListener('click', () => mountRecorded(clean, CAPTIONS.clean));
+document.querySelector('[data-fixture="broken"]').addEventListener('click', () => mountRecorded(broken, CAPTIONS.broken));
+document.querySelector('[data-fixture="malformed"]').addEventListener('click', () => {
+  // A malformed payload (wrong schema) is refused whole by the view — the
+  // unavailable banner names the typed refusal code.
+  view.update({ schema: 'something-else@9', sections: [] });
+  note.textContent = 'Malformed payload: the view refused the snapshot whole and reports the typed code; it never half-renders it as if observed.';
+});
+  </script></head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / V2-T5 plugin self-health — standalone proof page</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <p class="fixture-label">Recorded collector snapshots (no live service, no commands, read-only) · Toggle the second mount's snapshot below</p>
+      <p id="load-status" role="status">Loading health fixtures…</p>
+      <nav class="cluster" aria-label="Recorded fixtures">
+        <span class="meta">Fixture</span>
+        <button type="button" data-fixture="clean">This checkout (real)</button>
+        <button type="button" data-fixture="broken">Deliberately broken copy (real)</button>
+        <button type="button" data-fixture="malformed">Malformed payload (refused)</button>
+      </nav>
+    </header>
+    <p id="fixture-note" class="meta" role="status"></p>
+    <section class="stack" aria-label="Health view with recorded adapter">
+      <h1>Plugin self-health — recorded adapter</h1>
+      <div id="health-recorded" class="stack"></div>
+    </section>
+    <section class="stack" aria-label="Health view without an adapter">
+      <h1>Plugin self-health — no adapter connected</h1>
+      <div id="health-unbound" class="stack"></div>
+    </section>
+    <footer>V2-T5 health view. Observation authority stays with dashboard/adapters/health.mjs (doctor-style collector) and the session-authenticated GET /api/project/health route; this page renders recorded results only and mutates nothing.</footer>
+  </main>
+  <script type="application/json" id="fixture-clean">{
+  "schema": "lazybuddy/plugin-health@1",
+  "observed_at": "2026-10-22T22:05:02.094Z",
+  "collector": "dashboard/adapters/health@1",
+  "subject": {
+    "plugin": "lazybuddy",
+    "root": "/private/tmp/t5-demo-fixture/repo/lazybuddy-plugin"
+  },
+  "summary": {
+    "ok": 34,
+    "warn": 1,
+    "unavailable": 3
+  },
+  "sections": [
+    {
+      "id": "plugin-package",
+      "title": "Plugin package",
+      "items": [
+        {
+          "id": "plugin-manifest",
+          "label": "Plugin manifest",
+          "status": "ok",
+          "detail": "manifest parsed for lazybuddy",
+          "observed": "1.4.0"
+        },
+        {
+          "id": "surface:skills",
+          "label": "Declared skills",
+          "status": "ok",
+          "detail": "declared path present: ./skills/",
+          "observed": "./skills/"
+        },
+        {
+          "id": "surface:commands",
+          "label": "Declared commands",
+          "status": "ok",
+          "detail": "declared path present: ./commands/",
+          "observed": "./commands/"
+        },
+        {
+          "id": "surface:agents",
+          "label": "Declared agents",
+          "status": "ok",
+          "detail": "declared path present: ./agents/",
+          "observed": "./agents/"
+        },
+        {
+          "id": "surface:hooks",
+          "label": "Declared hooks",
+          "status": "ok",
+          "detail": "declared path present: ./hooks/hooks.json",
+          "observed": "./hooks/hooks.json"
+        },
+        {
+          "id": "surface:mcpServers",
+          "label": "Declared mcpServers",
+          "status": "ok",
+          "detail": "declared path present: ./.mcp.json",
+          "observed": "./.mcp.json"
+        }
+      ]
+    },
+    {
+      "id": "entry-points",
+      "title": "Entry points",
+      "items": [
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/projection.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/projection.mjs"
+        },
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/command-reducer.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/command-reducer.mjs"
+        },
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/queue-reducer.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/queue-reducer.mjs"
+        },
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/ui/index.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/ui/index.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/contract.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/contract.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/model.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/model.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/history.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/history.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/projection.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/projection.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/cli.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/cli.mjs"
+        }
+      ]
+    },
+    {
+      "id": "mcp-tools",
+      "title": "MCP tool registration",
+      "items": [
+        {
+          "id": "mcp:run-ledger",
+          "label": "MCP server run-ledger",
+          "status": "ok",
+          "detail": "entry script present; 9 tool name(s) statically registered: create_run, list_runs, latest_run, read_state, summarize_run, append_event, update_task, create_checkpoint, recover_run",
+          "observed": "run-ledger"
+        },
+        {
+          "id": "mcp:verification",
+          "label": "MCP server verification",
+          "status": "ok",
+          "detail": "entry script present; 7 tool name(s) statically registered: discover_checks, run_check, record_gate_result, record_criterion_result, list_gate_results, create_repair_task, summarize_verification",
+          "observed": "verification"
+        },
+        {
+          "id": "mcp:status-dashboard",
+          "label": "MCP server status-dashboard",
+          "status": "ok",
+          "detail": "entry script present; 7 tool name(s) statically registered: show_run_status, show_task_graph, show_verification_matrix, show_pending_approvals, dashboard_service, copy_task_context, project",
+          "observed": "status-dashboard"
+        },
+        {
+          "id": "mcp:context-graph",
+          "label": "MCP server context-graph",
+          "status": "ok",
+          "detail": "entry script present; tool list is declared by the implementation (not a static bash list)",
+          "observed": "context-graph"
+        },
+        {
+          "id": "mcp:code-intel",
+          "label": "MCP server code-intel",
+          "status": "ok",
+          "detail": "entry script present; tool list is declared by the implementation (not a static bash list)",
+          "observed": "code-intel"
+        },
+        {
+          "id": "mcp:docs",
+          "label": "MCP server docs",
+          "status": "ok",
+          "detail": "entry script present; tool list is declared by the implementation (not a static bash list)",
+          "observed": "docs"
+        },
+        {
+          "id": "mcp:dashboard-tool",
+          "label": "Dashboard MCP tool",
+          "status": "ok",
+          "detail": "tool name registered by the server script",
+          "observed": "dashboard_service"
+        },
+        {
+          "id": "mcp:project-tool",
+          "label": "Project MCP tool",
+          "status": "ok",
+          "detail": "tool name registered by the server script",
+          "observed": "project"
+        },
+        {
+          "id": "mcp:host-activation",
+          "label": "MCP host activation",
+          "status": "unavailable",
+          "detail": "whether a host actually loaded these servers is not observable from the service process",
+          "observed": null,
+          "code": "HOST_ACTIVATION_UNOBSERVED"
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "title": "Hooks",
+      "items": [
+        {
+          "id": "hook-scripts",
+          "label": "Hook scripts",
+          "status": "ok",
+          "detail": "25 event type(s) installed in the manifest",
+          "observed": "13 script(s) present"
+        },
+        {
+          "id": "hooks-host-active",
+          "label": "Hook host activity",
+          "status": "unavailable",
+          "detail": "whether a host actually fires these hooks is not observable from the service process",
+          "observed": null,
+          "code": "HOST_ACTIVATION_UNOBSERVED"
+        }
+      ]
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
+      "items": [
+        {
+          "id": "bundled-skills",
+          "label": "Bundled skills",
+          "status": "ok",
+          "detail": "14 bundled skill(s), each with a SKILL.md",
+          "observed": 14
+        },
+        {
+          "id": "bundled-skill-list",
+          "label": "Bundled skill list",
+          "status": "ok",
+          "detail": "lazy-debugging, lazy-git-master, lazy-init-deep, lazy-librarian, lazy-migration-planner, lazy-programming, lazy-remove-ai-slops, lazy-review-work, lazy-reviewer, lazy-start-work, lazy-ultrawork, lazy-ulw-loop, lazy-ulw-plan, lazy-verifier",
+          "observed": 14
+        }
+      ]
+    },
+    {
+      "id": "runtimes",
+      "title": "Runtime probes",
+      "items": [
+        {
+          "id": "runtime:node",
+          "label": "Node runtime",
+          "status": "ok",
+          "detail": "executed /opt/homebrew/Cellar/node/26.5.0/bin/node --version",
+          "observed": "v26.5.0"
+        },
+        {
+          "id": "runtime:python",
+          "label": "Python runtime",
+          "status": "ok",
+          "detail": "executed python3 --version",
+          "observed": "Python 3.12.14"
+        }
+      ]
+    },
+    {
+      "id": "vendor-integrity",
+      "title": "Vendor manifest integrity",
+      "items": [
+        {
+          "id": "vendor:dashboard",
+          "label": "Vendor integrity (dashboard)",
+          "status": "warn",
+          "detail": "19 integrity finding(s); first: VENDOR_BYTE_DRIFT at ui/architecture-view.mjs",
+          "observed": "79 pinned file(s)",
+          "code": "VENDOR_BYTE_DRIFT"
+        },
+        {
+          "id": "vendor:project",
+          "label": "Vendor integrity (project)",
+          "status": "ok",
+          "detail": "31 pinned file(s) re-hashed byte-identical; tree hash and sidecar match",
+          "observed": 31
+        }
+      ]
+    },
+    {
+      "id": "project-store",
+      "title": "Project store",
+      "items": [
+        {
+          "id": "store:owner",
+          "label": "Project store owner",
+          "status": "ok",
+          "detail": "namespace and project identity match this binding",
+          "observed": "project:b1"
+        },
+        {
+          "id": "store:state",
+          "label": "Accepted project state",
+          "status": "ok",
+          "detail": "state.json parses (schema v1, LazyBuddy)",
+          "observed": "revision 0"
+        },
+        {
+          "id": "store:observation-journal",
+          "label": "Observation journal",
+          "status": "unavailable",
+          "detail": "no observation journal exists yet — zero observations were never reported, the journal is simply unobserved here",
+          "observed": "absent",
+          "code": "OBSERVATION_JOURNAL_ABSENT"
+        }
+      ]
+    },
+    {
+      "id": "service-process",
+      "title": "Service process",
+      "items": [
+        {
+          "id": "process:uptime",
+          "label": "Service uptime",
+          "status": "ok",
+          "detail": "process started 2026-10-22T22:05:02.094Z",
+          "observed": "0s"
+        },
+        {
+          "id": "process:runtime",
+          "label": "Service runtime",
+          "status": "ok",
+          "detail": "service process executes /opt/homebrew/Cellar/node/26.5.0/bin/node",
+          "observed": "v26.5.0"
+        },
+        {
+          "id": "process:pid",
+          "label": "Service process id",
+          "status": "ok",
+          "detail": "observed from inside the serving process",
+          "observed": 22638
+        }
+      ]
+    }
+  ]
+}</script>
+  <script type="application/json" id="fixture-broken">{
+  "schema": "lazybuddy/plugin-health@1",
+  "observed_at": "2026-10-22T22:05:02.124Z",
+  "collector": "dashboard/adapters/health@1",
+  "subject": {
+    "plugin": "lazybuddy",
+    "root": "/private/tmp/t5-demo-fixture/repo/lazybuddy-plugin"
+  },
+  "summary": {
+    "ok": 32,
+    "warn": 3,
+    "unavailable": 3
+  },
+  "sections": [
+    {
+      "id": "plugin-package",
+      "title": "Plugin package",
+      "items": [
+        {
+          "id": "plugin-manifest",
+          "label": "Plugin manifest",
+          "status": "ok",
+          "detail": "manifest parsed for lazybuddy",
+          "observed": "1.4.0"
+        },
+        {
+          "id": "surface:skills",
+          "label": "Declared skills",
+          "status": "ok",
+          "detail": "declared path present: ./skills/",
+          "observed": "./skills/"
+        },
+        {
+          "id": "surface:commands",
+          "label": "Declared commands",
+          "status": "ok",
+          "detail": "declared path present: ./commands/",
+          "observed": "./commands/"
+        },
+        {
+          "id": "surface:agents",
+          "label": "Declared agents",
+          "status": "ok",
+          "detail": "declared path present: ./agents/",
+          "observed": "./agents/"
+        },
+        {
+          "id": "surface:hooks",
+          "label": "Declared hooks",
+          "status": "ok",
+          "detail": "declared path present: ./hooks/hooks.json",
+          "observed": "./hooks/hooks.json"
+        },
+        {
+          "id": "surface:mcpServers",
+          "label": "Declared mcpServers",
+          "status": "ok",
+          "detail": "declared path present: ./.mcp.json",
+          "observed": "./.mcp.json"
+        }
+      ]
+    },
+    {
+      "id": "entry-points",
+      "title": "Entry points",
+      "items": [
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/projection.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/projection.mjs"
+        },
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/command-reducer.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/command-reducer.mjs"
+        },
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/queue-reducer.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/queue-reducer.mjs"
+        },
+        {
+          "id": "entrypoint:dashboard:shared/dashboard/ui/index.mjs",
+          "label": "Entry point (dashboard)",
+          "status": "ok",
+          "detail": "dashboard family entry point present",
+          "observed": "shared/dashboard/ui/index.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/contract.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/contract.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/model.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/model.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/history.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/history.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/projection.mjs",
+          "label": "Entry point (project)",
+          "status": "ok",
+          "detail": "project family entry point present",
+          "observed": "shared/project/projection.mjs"
+        },
+        {
+          "id": "entrypoint:project:shared/project/cli.mjs",
+          "label": "Entry point (project)",
+          "status": "warn",
+          "detail": "project family entry point missing from the plugin tree",
+          "observed": "shared/project/cli.mjs",
+          "code": "ENTRYPOINT_MISSING"
+        }
+      ]
+    },
+    {
+      "id": "mcp-tools",
+      "title": "MCP tool registration",
+      "items": [
+        {
+          "id": "mcp:run-ledger",
+          "label": "MCP server run-ledger",
+          "status": "ok",
+          "detail": "entry script present; 9 tool name(s) statically registered: create_run, list_runs, latest_run, read_state, summarize_run, append_event, update_task, create_checkpoint, recover_run",
+          "observed": "run-ledger"
+        },
+        {
+          "id": "mcp:verification",
+          "label": "MCP server verification",
+          "status": "ok",
+          "detail": "entry script present; 7 tool name(s) statically registered: discover_checks, run_check, record_gate_result, record_criterion_result, list_gate_results, create_repair_task, summarize_verification",
+          "observed": "verification"
+        },
+        {
+          "id": "mcp:status-dashboard",
+          "label": "MCP server status-dashboard",
+          "status": "ok",
+          "detail": "entry script present; 7 tool name(s) statically registered: show_run_status, show_task_graph, show_verification_matrix, show_pending_approvals, dashboard_service, copy_task_context, project",
+          "observed": "status-dashboard"
+        },
+        {
+          "id": "mcp:context-graph",
+          "label": "MCP server context-graph",
+          "status": "ok",
+          "detail": "entry script present; tool list is declared by the implementation (not a static bash list)",
+          "observed": "context-graph"
+        },
+        {
+          "id": "mcp:code-intel",
+          "label": "MCP server code-intel",
+          "status": "ok",
+          "detail": "entry script present; tool list is declared by the implementation (not a static bash list)",
+          "observed": "code-intel"
+        },
+        {
+          "id": "mcp:docs",
+          "label": "MCP server docs",
+          "status": "ok",
+          "detail": "entry script present; tool list is declared by the implementation (not a static bash list)",
+          "observed": "docs"
+        },
+        {
+          "id": "mcp:dashboard-tool",
+          "label": "Dashboard MCP tool",
+          "status": "ok",
+          "detail": "tool name registered by the server script",
+          "observed": "dashboard_service"
+        },
+        {
+          "id": "mcp:project-tool",
+          "label": "Project MCP tool",
+          "status": "ok",
+          "detail": "tool name registered by the server script",
+          "observed": "project"
+        },
+        {
+          "id": "mcp:host-activation",
+          "label": "MCP host activation",
+          "status": "unavailable",
+          "detail": "whether a host actually loaded these servers is not observable from the service process",
+          "observed": null,
+          "code": "HOST_ACTIVATION_UNOBSERVED"
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "title": "Hooks",
+      "items": [
+        {
+          "id": "hook-scripts",
+          "label": "Hook scripts",
+          "status": "ok",
+          "detail": "25 event type(s) installed in the manifest",
+          "observed": "13 script(s) present"
+        },
+        {
+          "id": "hooks-host-active",
+          "label": "Hook host activity",
+          "status": "unavailable",
+          "detail": "whether a host actually fires these hooks is not observable from the service process",
+          "observed": null,
+          "code": "HOST_ACTIVATION_UNOBSERVED"
+        }
+      ]
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
+      "items": [
+        {
+          "id": "bundled-skills",
+          "label": "Bundled skills",
+          "status": "ok",
+          "detail": "14 bundled skill(s), each with a SKILL.md",
+          "observed": 14
+        },
+        {
+          "id": "bundled-skill-list",
+          "label": "Bundled skill list",
+          "status": "ok",
+          "detail": "lazy-debugging, lazy-git-master, lazy-init-deep, lazy-librarian, lazy-migration-planner, lazy-programming, lazy-remove-ai-slops, lazy-review-work, lazy-reviewer, lazy-start-work, lazy-ultrawork, lazy-ulw-loop, lazy-ulw-plan, lazy-verifier",
+          "observed": 14
+        }
+      ]
+    },
+    {
+      "id": "runtimes",
+      "title": "Runtime probes",
+      "items": [
+        {
+          "id": "runtime:node",
+          "label": "Node runtime",
+          "status": "ok",
+          "detail": "executed /opt/homebrew/Cellar/node/26.5.0/bin/node --version",
+          "observed": "v26.5.0"
+        },
+        {
+          "id": "runtime:python",
+          "label": "Python runtime",
+          "status": "ok",
+          "detail": "executed python3 --version",
+          "observed": "Python 3.12.14"
+        }
+      ]
+    },
+    {
+      "id": "vendor-integrity",
+      "title": "Vendor manifest integrity",
+      "items": [
+        {
+          "id": "vendor:dashboard",
+          "label": "Vendor integrity (dashboard)",
+          "status": "warn",
+          "detail": "20 integrity finding(s); first: VENDOR_BYTE_DRIFT at adapters/host.mjs",
+          "observed": "79 pinned file(s)",
+          "code": "VENDOR_BYTE_DRIFT"
+        },
+        {
+          "id": "vendor:project",
+          "label": "Vendor integrity (project)",
+          "status": "warn",
+          "detail": "2 integrity finding(s); first: VENDOR_FILE_MISSING at cli.mjs",
+          "observed": "31 pinned file(s)",
+          "code": "VENDOR_FILE_MISSING"
+        }
+      ]
+    },
+    {
+      "id": "project-store",
+      "title": "Project store",
+      "items": [
+        {
+          "id": "store:owner",
+          "label": "Project store owner",
+          "status": "ok",
+          "detail": "namespace and project identity match this binding",
+          "observed": "project:b1"
+        },
+        {
+          "id": "store:state",
+          "label": "Accepted project state",
+          "status": "ok",
+          "detail": "state.json parses (schema v1, LazyBuddy)",
+          "observed": "revision 0"
+        },
+        {
+          "id": "store:observation-journal",
+          "label": "Observation journal",
+          "status": "unavailable",
+          "detail": "no observation journal exists yet — zero observations were never reported, the journal is simply unobserved here",
+          "observed": "absent",
+          "code": "OBSERVATION_JOURNAL_ABSENT"
+        }
+      ]
+    },
+    {
+      "id": "service-process",
+      "title": "Service process",
+      "items": [
+        {
+          "id": "process:uptime",
+          "label": "Service uptime",
+          "status": "ok",
+          "detail": "process started 2026-10-22T22:05:02.124Z",
+          "observed": "0s"
+        },
+        {
+          "id": "process:runtime",
+          "label": "Service runtime",
+          "status": "ok",
+          "detail": "service process executes /opt/homebrew/Cellar/node/26.5.0/bin/node",
+          "observed": "v26.5.0"
+        },
+        {
+          "id": "process:pid",
+          "label": "Service process id",
+          "status": "ok",
+          "detail": "observed from inside the serving process",
+          "observed": 22638
+        }
+      ]
+    }
+  ]
+}</script>
+</body>
+</html>

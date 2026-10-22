@@ -1,0 +1,36 @@
+@import './style.css';
+
+/* V2-T5 plugin self-health panel — composed from the shared component layer
+   on tokens v2 (status chips, panels, meta rows). The three item states are
+   structurally distinct: ok (verified glyph), warn (attention), unavailable
+   (dashed). Every value resolves to a tokens.css v2 name; no color, size,
+   spacing, radius or duration literals; no animation beyond the shared
+   transitions. */
+
+.health-view { display: grid; gap: var(--space-3); }
+.health-head { display: grid; gap: var(--space-1); }
+.health-head h2 { margin: 0; }
+.health-lead { font-size: var(--type-md-size); line-height: var(--type-md-lh); max-inline-size: var(--measure); margin: 0; }
+.health-sections { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--measure)), 1fr)); align-items: start; }
+
+.health-section { display: grid; gap: var(--space-1); padding: var(--space-2); }
+.health-section h3 { margin: 0; font-size: var(--type-sm-size); line-height: var(--type-sm-lh); font-weight: var(--weight-strong); }
+.health-section-head { gap: var(--space-2); }
+.health-section-head .meta { font-variant-numeric: var(--numeric); margin: 0; }
+.health-item-list { display: grid; gap: var(--space-half); margin: 0; padding: 0; list-style: none; }
+
+.health-item { display: grid; grid-template-columns: auto auto 1fr; gap: var(--space-1); align-items: baseline; padding: var(--space-half) 0; }
+.health-item-label { font-size: var(--type-sm-size); line-height: var(--type-sm-lh); }
+.health-item-observed code { font-size: var(--type-sm-size); overflow-wrap: anywhere; font-variant-numeric: var(--numeric); }
+.health-item-observed .meta { margin: 0; color: var(--subtle); }
+.health-item-detail { grid-column: 1 / -1; margin: 0; font-size: var(--type-xs-size); color: var(--subtle); }
+
+/* A warned row keeps its structural edge visible without turning the whole
+   section red — the chip owns the state, the row owns the fact. */
+.health-item[data-status='warn'] { border-block-start: var(--line) solid var(--active-ink); }
+.health-item[data-status='unavailable'] { border-block-start: var(--line) dashed var(--border); }
+
+/* The honest unavailable banner (no adapter, failed adapter, refused
+   snapshot) is the whole surface in that state — no section skeletons, no
+   invented rows. */
+.health-view[data-snapshot-observed='false'] .notice { border: var(--line) dashed var(--border); border-radius: var(--radius-md); padding: var(--space-2); }

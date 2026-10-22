@@ -13,6 +13,7 @@ import { architectureFixture } from './ui/architecture-model.mjs';
 import { evidenceFixture } from './ui/evidence-model.mjs';
 import { gitDetailModel, metricsDetailModel } from './ui/git-metrics-model.mjs';
 import { readProjectObservations, recordProjectObservations } from './adapters/observations.mjs';
+import { collectProjectHealth } from './adapters/health.mjs';
 import { assertAdmissionForTransition, recheckProjectAdmission } from './adapters/admission.mjs';
 const packageMetadata = createRequire(import.meta.url)('../../tooling/package.json');
 
@@ -42,6 +43,7 @@ export const buddyAuthority = Object.freeze({
   recheckProjectAdmission: (options, actor, request) => recheckProjectAdmission(
     { projectRoot: options.projectRoot, projectId: options.projectId }, actor, request),
   readProjectObservations: options => readProjectObservations(options),
+  readProjectHealth: (options, actor) => collectProjectHealth(options, actor),
   recordProjectObservations: (options, actor, records) => recordProjectObservations(options, records),
   readProjectArchitecture: async (options, actor) => architectureFixture({
     snapshot: await readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor }),
