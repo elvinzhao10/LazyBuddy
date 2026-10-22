@@ -1157,7 +1157,25 @@ export function createTabs({ tabs = [], current = null, onChange = null } = {}) 
   };
 }
 
-export function createDockPanel({ title, content, footer = null, open: initiallyOpen = false, onClose } = {}) {
+// V2-T4 rework: the dock is a FLOATING OVERLAY inspector, not a layout
+// column — elevation-3 rounded panel floating over the right edge with a
+// capped height and an internally scrolling body, so opening it NEVER
+// resizes the main content (geometry lives in the sheets: the base .lb-dock
+// in style.css stays the fixed-overlay baseline; the project shell layers
+// the floating 380–420px treatment plus the narrow-only scrim on top).
+// Contract unchanged and additive: testids, dataset.open, Escape through the
+// T11 overlay stack with focus return, toggle, footer slot. New pieces:
+//   open(invoker, { focus })  a session-restore open passes focus: false so
+//                             the reopened dock never steals focus on mount
+//   onOpen                    announced with the close side (the shell syncs
+//                             its dock chrome from both)
+//   persistKey + storage      the open state persists per session under the
+//                             key ('true'/'false'); a blocked or absent
+//                             storage degrades to the in-memory session.
+//                             A persisted-open dock restores WITHOUT focus
+//                             at creation; the explicit `open: true` option
+//                             keeps its focused first-open behavior.
+export function createDockPanel({ title, content, footer = null, open: initiallyOpen = false, onClose, onOpen = null, persistKey = null, storage = globalThis.sessionStorage } = {}) {
   const dock = element('aside', 'lb-dock');
   dock.dataset.testid = 'dock-panel';
   dock.hidden = true;
@@ -1184,15 +1202,19 @@ export function createDockPanel({ title, content, footer = null, open: initially
   }
   let trigger = null;
   let openState = false;
+  const readPersisted = () => { try { return persistKey ? storage?.getItem?.(persistKey) === 'true' : false; } catch { return false; } };
+  const writePersisted = value => { try { if (persistKey) storage?.setItem?.(persistKey, String(value)); } catch { /* blocked storage: the session keeps the in-memory state only */ } };
   const api = {
     element: dock,
-    open(invoker = null) {
+    open(invoker = null, { focus = true } = {}) {
       if (invoker) trigger = invoker;
       openState = true;
       dock.hidden = false;
       dock.dataset.open = 'true';
       overlayStack.push(api);
-      closeControl.focus();
+      if (persistKey) writePersisted(true);
+      if (focus) closeControl.focus();
+      onOpen?.();
       return dock;
     },
     close(reason = 'api') {
@@ -1202,6 +1224,7 @@ export function createDockPanel({ title, content, footer = null, open: initially
       dock.removeAttribute('data-open');
       const index = overlayStack.indexOf(api);
       if (index !== -1) overlayStack.splice(index, 1);
+      if (persistKey) writePersisted(false);
       const connected = trigger ? (trigger.isConnected ?? globalThis.document?.body?.contains?.(trigger) ?? false) : false;
       const target = connected ? trigger : null;
       trigger = null;
@@ -1209,9 +1232,10 @@ export function createDockPanel({ title, content, footer = null, open: initially
       target?.focus();
       return true;
     },
-    toggle(invoker = null) { return openState ? api.close('toggle') : (api.open(invoker), true); },
+    toggle(invoker = null, options = {}) { return openState ? api.close('toggle') : (api.open(invoker, options), true); },
     isOpen: () => openState,
   };
-  if (initiallyOpen) api.open();
+  if (persistKey && readPersisted()) api.open(null, { focus: false }); // the session-restore open never moves focus
+  else if (initiallyOpen) api.open();
   return api;
 }

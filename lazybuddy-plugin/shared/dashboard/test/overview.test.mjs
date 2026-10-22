@@ -24,7 +24,8 @@ const { normalizeDependencyFacts, derivePlanReadiness } = await import('../../pr
 const { groupProgress } = await import('../../project/plans/progress.mjs');
 const { normalizeUsage, accountTime } = await import('../../project/usage-accounting.mjs');
 const { overviewFixture, OverviewProjectionError } = await import('../ui/overview-fixture.mjs');
-const { createOverviewView } = await import('../ui/overview.mjs');
+const { createOverviewView, createStatusHero, createAttentionList, createPlanLifecycleStrip, createCoverageTiles,
+  createMacroMapSection, createFreshnessLine, microBar } = await import('../ui/overview.mjs');
 const { createProjectShell, PROJECT_DESTINATIONS } = await import('../ui/project-shell.mjs');
 const { installFocusSystem, STATUS_STATES } = await import('../ui/components.mjs');
 
@@ -245,10 +246,11 @@ test('the overview renders as a scannable dashboard: hero card, native attention
   assert.ok(root.querySelector('[data-testid="overview-metrics"]'));
   assert.ok(root.querySelector('[data-testid="overview-records"]'));
   // S1 hierarchy: the standalone view owns h2 sections (the shell supplies
-  // the single h1); heading ranks never skip.
+  // the single h1); heading ranks never skip. V2-T4 adds the plan-lifecycle
+  // strip section between Attention and Metrics.
   const headings = headingsIn(root);
   assert.equal(headings.filter(node => node.tagName === 'H1').length, 0, 'the view itself promotes nothing to h1');
-  assert.deepEqual(headings.filter(node => node.tagName === 'H2').map(node => node.textContent), ['Offline notebook', 'Attention', 'Metrics', 'Macro map']);
+  assert.deepEqual(headings.filter(node => node.tagName === 'H2').map(node => node.textContent), ['Offline notebook', 'Attention', 'Plan lifecycle', 'Metrics', 'Macro map']);
   let rank = 1;
   for (const node of headings) {
     const next = Number(node.tagName[1]);
@@ -368,6 +370,78 @@ test('metric tiles: every available total opens its records; unavailable renders
     assert.ok(tile.querySelector('.status[data-state="unavailable"]'), 'the hollow dashed unavailable chip renders');
     assert.doesNotMatch(tile.textContent, /\b0 (tokens|min|changed)/, 'absence of data never renders as a zero total');
   }
+});
+
+// V2-T4 decomposition — the overview composes from named components (status
+// hero, attention list, plan-lifecycle strip, coverage tiles, macro map,
+// freshness line), each a pure factory over fixture facts; micro-bars render
+// only from real ratios/comparisons and every count is a tabular numeral.
+test('the overview decomposes into named components with token-driven micro-treatment (V2-T4)', async () => {
+  const fixture = overviewFixture(bundle);
+  for (const component of [createStatusHero, createAttentionList, createPlanLifecycleStrip, createCoverageTiles,
+    createMacroMapSection, createFreshnessLine, microBar]) assert.equal(typeof component, 'function', 'the named components are exported factories');
+  assert.deepEqual({ active: fixture.lifecycle.active.count, future: fixture.lifecycle.future.count, historical: fixture.lifecycle.historical.count },
+    { active: 1, future: 2, historical: 1 }, 'the lifecycle groups derive from the declared lifecycles');
+  for (const group of ['active', 'future', 'historical']) {
+    assert.ok(fixture.lifecycle[group].records.length === fixture.lifecycle[group].count, `lifecycle.${group} records are exactly its plans`);
+  }
+
+  const view = createOverviewView({ bundle });
+  await settle();
+  // Plan-lifecycle strip: three interactive cells, tabular counts, honest fills.
+  const strip = view.element.querySelector('[data-testid="overview-lifecycle"]');
+  assert.ok(strip, 'the lifecycle strip renders as its own section');
+  const cells = [...strip.querySelectorAll('.overview-lifecycle-cell')];
+  assert.deepEqual(cells.map(cell => cell.dataset.group), ['active', 'future', 'historical']);
+  assert.deepEqual(cells.map(cell => cell.dataset.count), ['1', '2', '1']);
+  for (const cell of cells) {
+    assert.equal(cell.tagName, 'BUTTON', 'a lifecycle cell opens its group records');
+    assert.equal(cell.querySelector('.overview-lifecycle-count').dataset.numeric, 'true', 'counts are tabular numerals');
+    assert.match(cell.getAttribute('aria-label'), /open contributing records/);
+  }
+  const activeFill = cells[0].querySelector('.overview-lifecycle-fill');
+  assert.equal(activeFill.getAttribute('style'), 'inline-size: 25%;', 'the fill is the real share (1 of 4 declared plans)');
+  cells[0].click();
+  const recordsPanel = view.element.querySelector('[data-testid="overview-records"]');
+  assert.ok(recordsPanel.textContent.includes('Plans — active'), 'the strip cell opens its group records');
+  assert.ok(recordsPanel.querySelectorAll('.overview-record button[data-record-id="plan:search"]').length === 1,
+    'the active group records are exactly its plan ids');
+
+  // Coverage tiles: micro-bars only where the projection carries the data.
+  const tile = id => view.element.querySelector(`[data-testid="overview-metrics"] [data-metric-id="${id}"]`);
+  for (const id of ['metric:active-progress', 'metric:usage', 'metric:time']) {
+    const bar = tile(id).querySelector('[data-testid="overview-microbar"]');
+    assert.ok(bar, `${id} carries a micro-bar from its projected ratio/comparison`);
+    assert.equal(bar.getAttribute('aria-hidden'), 'true', 'bar geometry is decoration; the numbers stay as text');
+    assert.ok(bar.querySelectorAll('.overview-microbar-segment').length >= 2, `${id} bar has its real segments`);
+  }
+  assert.equal(tile('metric:plans').querySelector('[data-testid="overview-microbar"]'), null,
+    'no invented bar where no ratio exists');
+  // Unprojected inputs never borrow a bar (the unavailable path drops them).
+  const partial = createOverviewView({ bundle: { ...bundle, usage: undefined, time: undefined } });
+  await settle();
+  assert.equal(partial.element.querySelector('[data-metric-id="metric:usage"] [data-testid="overview-microbar"]'), null,
+    'an unprojected usage input renders no bar');
+  assert.deepEqual(partial.getStats().lifecycleCounts, { active: 1, future: 2, historical: 1 });
+
+  // microBar itself: no data, no bar; real proportions otherwise.
+  assert.equal(microBar([{ value: 0 }, { value: 0 }]), null, 'a zero total renders nothing');
+  assert.equal(microBar([{ value: Number.NaN }]), null, 'non-finite parts render nothing');
+  const two = microBar([{ value: 10 }, { value: 30 }]);
+  assert.equal(two.querySelectorAll('.overview-microbar-segment').length, 2);
+  assert.match(two.children[0].getAttribute('style'), /inline-size: 25%/);
+  assert.match(two.children[1].getAttribute('style'), /inline-size: 75%/);
+
+  // Freshness line: one meta line of observed facts; absence reads honestly.
+  const line = view.element.querySelector('[data-testid="overview-freshness"]');
+  assert.ok(line, 'the freshness line renders');
+  assert.match(line.textContent, /projection revision \d+ · baseline \d+ · observation \d+/);
+  assert.match(line.textContent, /git observed /, 'the observed git stamp rides the line');
+  assert.match(line.textContent, /plan sources/);
+  const noGit = createOverviewView({ bundle: { ...bundle, git: undefined } });
+  await settle();
+  assert.match(noGit.element.querySelector('[data-testid="overview-freshness"]').textContent, /git observation not projected/,
+    'a missing git observation never reads as fresh');
 });
 
 test('the attention queue is a native list whose rows open their contributing records in the dock', async () => {
@@ -520,7 +594,7 @@ test('hostile record text renders as text only', async () => {
 });
 
 test('project destinations are absent pre-init and present post-init (IO-2)', async () => {
-  assert.deepEqual(PROJECT_DESTINATIONS.map(destination => destination.id), ['overview', 'project', 'plans', 'execution', 'git', 'evidence', 'research']);
+  assert.deepEqual(PROJECT_DESTINATIONS.map(destination => destination.id), ['overview', 'project', 'plans', 'health', 'execution', 'git', 'evidence', 'research']);
   const uninitialized = createProjectShell({ projectionProvider: () => null, product: { name: 'LazyBuddy' } });
   uninitialized.update();
   assert.equal(uninitialized.element.dataset.initialized, 'false');
@@ -531,7 +605,7 @@ test('project destinations are absent pre-init and present post-init (IO-2)', as
   await settle();
   assert.equal(initialized.element.dataset.initialized, 'true');
   const destinations = [...initialized.element.querySelectorAll('[data-destination]')];
-  assert.equal(destinations.length, 7, 'all seven project destinations after init');
+  assert.equal(destinations.length, 8, 'all eight project destinations after init (V2-T4 adds health)');
   assert.deepEqual(destinations.map(destination => destination.dataset.destination), PROJECT_DESTINATIONS.map(destination => destination.id));
   assert.ok(initialized.element.querySelector('[data-testid="shell-title"]').textContent.includes('Offline notebook'), 'project name leads the shell');
   assert.match(initialized.element.querySelector('[data-testid="shell-context"]').textContent, /repo:offline-notebook/, 'repository identity in the header');
@@ -550,7 +624,7 @@ test('project destinations are absent pre-init and present post-init (IO-2)', as
   exposed = bundle;
   flipping.update();
   await settle();
-  assert.equal(flipping.element.querySelectorAll('[data-destination]').length, 7);
+  assert.equal(flipping.element.querySelectorAll('[data-destination]').length, 8);
 });
 
 test('shell destinations stay selectable (T12b) and preserve the selection through updates', async () => {
@@ -558,7 +632,7 @@ test('shell destinations stay selectable (T12b) and preserve the selection throu
   shell.update();
   await settle();
   const enabled = [...shell.element.querySelectorAll('[data-destination]')];
-  assert.equal(enabled.length, 7, 'all seven sidebar destinations render');
+  assert.equal(enabled.length, 8, 'all eight sidebar destinations render');
   assert.equal(enabled.every(control => !control.disabled), true, 'no destination is disabled; missing data renders an unavailable view instead');
   enabled[0].focus();
   document.activeElement.dispatchEvent({ type: 'keydown', key: 'Enter' });

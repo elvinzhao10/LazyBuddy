@@ -251,6 +251,21 @@ export function overviewFixture(bundle) {
   const totalTokens = inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0);
   const time = bundle.time;
 
+  // V2-T4 structured micro-bar vocabulary (derived, never invented): a bar
+  // renders only where the projection itself carries the ratio or the
+  // comparison — active-delivery satisfied/required, the token split, the
+  // elapsed/wall/agent minutes. A missing input contributes no part, and a
+  // part with no data never appears as a zero segment.
+  const tokenCompare = [];
+  if (inputTokens != null) tokenCompare.push({ label: 'input', value: inputTokens });
+  if (outputTokens != null) tokenCompare.push({ label: 'output', value: outputTokens });
+  const timeCompare = [];
+  if (time) {
+    if (Number.isFinite(time.elapsed_minutes)) timeCompare.push({ label: 'elapsed', value: time.elapsed_minutes });
+    if (Number.isFinite(time.observed_execution_wall_minutes)) timeCompare.push({ label: 'wall', value: time.observed_execution_wall_minutes });
+    if (Number.isFinite(time.recorded_agent_minutes)) timeCompare.push({ label: 'agent', value: time.recorded_agent_minutes });
+  }
+
   // Compact metric-tile vocabulary: `value` is the tabular headline, `label`
   // names it, `detail` is the single meta line under the figure, `coverage`
   // is the provenance note (a tooltip in the view) and `chip` is an optional
@@ -268,7 +283,10 @@ export function overviewFixture(bundle) {
       detail: bundle.progress ? 'required obligations satisfied among active plans' : 'progress not projected',
       coverage: bundle.progress ? 'unique required tasks and criteria among active plans' : 'progress not projected',
       chip: bundle.progress && bundle.progress.summary.active_required > 0 ? { state: bundle.progress.summary.active_satisfied >= bundle.progress.summary.active_required ? 'verified' : 'attention', label: `${bundle.progress.summary.active_satisfied} of ${bundle.progress.summary.active_required} satisfied` } : null,
-      records: bundle.progress ? bundle.progress.plans.active : [] },
+      records: bundle.progress ? bundle.progress.plans.active : [],
+      ...(bundle.progress && bundle.progress.summary.active_required > 0
+        ? { bar: { satisfied: bundle.progress.summary.active_satisfied, required: bundle.progress.summary.active_required } }
+        : {}) },
     { id: 'metric:baseline', label: 'Accepted baseline', value: `${baselineTotal}`,
       detail: `${snapshot.summary.accepted_features} features · ${snapshot.summary.accepted_requirements} requirements · ${snapshot.summary.accepted_principles} principles · ${snapshot.summary.accepted_decisions} decisions`,
       coverage: `accepted baseline revision ${snapshot.baseline_revision}`,
@@ -282,18 +300,20 @@ export function overviewFixture(bundle) {
     { id: 'metric:usage', label: 'Tokens', value: usage ? `${totalTokens}` : null,
       detail: usage ? `${usage.coverage.requests_with_usage} of ${usage.coverage.distinct_request_ids} requests reported` : 'usage not projected',
       coverage: usage ? 'declared subsets never add to totals' : 'usage not projected',
-      records: usage ? usage.requests.map(request => request.request_id) : [] },
+      records: usage ? usage.requests.map(request => request.request_id) : [],
+      ...(usage && tokenCompare.length ? { compare: tokenCompare } : {}) },
     { id: 'metric:time', label: 'Elapsed', value: time ? formatMinutes(time.elapsed_minutes) : null,
       detail: time ? `${formatMinutes(time.observed_execution_wall_minutes)} wall · ${formatMinutes(time.recorded_agent_minutes)} agent · peak ${time.peak_concurrency}` : 'time accounting not projected',
       coverage: time ? (time.source_record_ids?.length ? 'observed intervals per distinct agent' : 'contributing interval records not supplied') : 'time accounting not projected',
-      records: time?.source_record_ids ?? [] },
+      records: time?.source_record_ids ?? [],
+      ...(timeCompare.length ? { compare: timeCompare } : {}) },
     { id: 'metric:git', label: 'Changed paths', value: changedPaths != null ? `${changedPaths}` : null,
       detail: changedPaths != null ? `${observedWorktrees.length} worktree${observedWorktrees.length === 1 ? '' : 's'} observed · union across worktrees` : 'git facts not projected',
       coverage: changedPaths != null ? 'local Git facts, union across observed worktrees' : 'git facts not projected',
       chip: changedPaths > 0 ? { state: 'attention', label: `${changedPaths} uncommitted` } : (changedPaths === 0 ? { state: 'neutral', label: 'clean worktrees' } : null),
       records: observedWorktrees.map(worktree => `worktree:${worktree.branch ?? worktree.root}`) },
   ];
-  for (const metric of metrics) if (metric.value == null) { metric.unavailable = true; metric.chip = null; }
+  for (const metric of metrics) if (metric.value == null) { metric.unavailable = true; metric.chip = null; delete metric.bar; delete metric.compare; }
 
   // The attention queue is a native list: each item carries its designed chip
   // state and a short chip label; the row itself opens its records.
@@ -326,11 +346,33 @@ export function overviewFixture(bundle) {
       records: unique([planId, ...assessment.blockers.map(blocker => blocker.code)]) });
   }
 
+  // V2-T4 decomposition vocabulary (additive, derived only):
+  //   lifecycle   plan ids grouped by the three display groups — feeds the
+  //               plan-lifecycle strip; each group's records are exactly its
+  //               plan ids, so a strip segment opens real contributing records
+  //   freshness   observed-facts summary for the freshness line — git
+  //               observation state, stale baseline reference count, plan
+  //               source freshness buckets and the projection revisions
+  const lifecycle = {
+    active: { count: plansByGroup.active.length, records: plansByGroup.active.map(plan => plan.id) },
+    future: { count: plansByGroup.future.length, records: plansByGroup.future.map(plan => plan.id) },
+    historical: { count: plansByGroup.historical.length, records: plansByGroup.historical.map(plan => plan.id) },
+  };
+  const sourceFreshness = { current: 0, changed: 0, missing: 0 };
+  for (const plan of snapshot.plans) if (plan.source_freshness in sourceFreshness) sourceFreshness[plan.source_freshness] += 1;
+  const freshness = {
+    gitProjected: bundle.git?.status === 'observed',
+    observedAt: bundle.git?.observed_at ?? null,
+    staleReferenceCount: snapshot.plans.reduce((total, plan) => total + (plan.stale_item_ids?.length ?? 0), 0),
+    sourceFreshness,
+    revisions: { projection: snapshot.revision, baseline: snapshot.baseline_revision, observation: snapshot.observation_revision },
+  };
+
   return {
     viewId: 'overview', level: 'project', docId: `overview:${snapshot.project_id}`,
     title: bundle.project_name ?? snapshot.project_id,
     subtitle: 'Macro map · durable feature areas, plans, inter-plan dependencies and attention (read-only projection)',
-    statement, nodes, edges, statusSentence, metrics, attentionQueue,
+    statement, nodes, edges, statusSentence, metrics, attentionQueue, lifecycle, freshness,
     context: bundle.context ?? (currentWorktree ? { branch: currentWorktree.branch, head: currentWorktree.head,
       observed_at: bundle.git.observed_at } : null),
     projection: { project_id: snapshot.project_id, runtime: snapshot.runtime, repository_key: snapshot.repository_key,

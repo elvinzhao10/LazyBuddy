@@ -20,8 +20,9 @@
 
 /* The initialized frame fills its host edge to edge (the hosts opt in via
    :has in this file and live.css); the pre-init state keeps the padded
-   page flow. */
-.project-shell[data-initialized='true'] { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; min-block-size: 0; }
+   page flow. V2-T4: the root is the positioning context for the narrow-only
+   dock scrim (::after below). */
+.project-shell[data-initialized='true'] { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; min-block-size: 0; }
 .project-shell[data-initialized='true'] .lb-shell { block-size: 100%; min-block-size: 0; align-items: stretch; background: var(--bg); }
 body:has(.project-shell[data-initialized='true']) { block-size: 100dvh; overflow: hidden; }
 body:has(.project-shell[data-initialized='true']) > main { display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; max-inline-size: none; padding: 0; }
@@ -86,6 +87,30 @@ body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 au
 .project-shell .lb-dock .overview-records { border: none; padding: 0; background: transparent; box-shadow: none; }
 .shell-dock-section + .shell-dock-section { border-block-start: var(--line) solid var(--border); padding-block-start: var(--s3); }
 .shell-dock-section:empty { display: none; }
+
+/* V2-T4 — the inspector dock is a FLOATING OVERLAY, never a layout column.
+   Geometry: elevation-3 rounded panel floating off the right edge, 380–420px
+   wide (clamped; narrower viewports subtract their own breathing room), top
+   anchored below the compact bar, capped height with the body scrolling
+   internally (the base .lb-dock in style.css already fixes the position and
+   the auto/1fr/auto rows; this layer floats it). Because the panel is out of
+   flow, opening it NEVER resizes the main content; the frame grid keeps its
+   static two-track columns. */
+.project-shell .lb-dock { inset-block: calc(var(--space-1) * 6 + var(--s4)) auto; inset-inline-end: var(--s4); inline-size: min(clamp(23.75rem, 24.5rem, 26.25rem), calc(100vw - var(--s4))); max-block-size: calc(100dvh - (var(--space-1) * 6 + var(--s4) * 2)); border: var(--line) solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--elevation-3); }
+/* Refined dock content: compact stacked blocks with icon headers; the
+   heading glyphs ride inline before the label, hairline-separated. */
+.project-shell .lb-dock .shell-dock-block { display: grid; gap: var(--s1); border-block-start: none; padding-block-start: 0; }
+.project-shell .lb-dock .shell-dock-block + .shell-dock-block { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--s2); }
+.project-shell .lb-dock .shell-dock-block :is(h2, h3, h4) { display: inline-flex; align-items: center; gap: var(--s1); margin: 0; font-size: var(--caption); font-weight: var(--strong); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.project-shell .lb-dock .shell-dock-block svg { flex: 0 0 auto; inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.project-shell .lb-dock .shell-dock-block p { margin: 0; }
+/* Narrow-only subtle scrim: the open floating dock dims the frame beneath
+   (the modal --backdrop token at reduced strength); pointer events land on
+   the root itself and the shell closes the dock on them. Wide viewports
+   never paint a scrim — the panel floats quietly beside the content. */
+@media (max-width: 48rem) {
+  .project-shell[data-dock-open='true']::after { content: ''; position: absolute; inset: 0; z-index: 40; background: var(--backdrop); opacity: .35; }
+}
 
 .plan-browser { display: grid; grid-template-columns: minmax(min(18rem, 100%), .7fr) minmax(0, 2fr); gap: var(--s4); align-items: start; }
 .plan-index { position: sticky; inset-block-start: var(--s4); max-block-size: calc(100dvh - var(--s8)); overflow: auto; }

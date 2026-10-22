@@ -25,6 +25,7 @@ export const PROJECT_DESTINATIONS = Object.freeze([
   { id: 'overview', label: 'Overview', group: 'Workspace' },
   { id: 'project', label: 'Project', group: 'Workspace' },
   { id: 'plans', label: 'Plans', group: 'Workspace' },
+  { id: 'health', label: 'Health', group: 'Workspace' },
   { id: 'execution', label: 'Execution', group: 'Observation' },
   { id: 'git', label: 'Git', group: 'Observation' },
   { id: 'evidence', label: 'Evidence', group: 'Observation' },
@@ -35,9 +36,63 @@ export const PROJECT_DESTINATIONS = Object.freeze([
 // getStats().activeDestination stay truthful while an item is open.
 const ITEM_SURFACE = { plan: 'plans', evidence: 'evidence', research: 'research' };
 const NAV_STORAGE_KEY = 'lazybuddy-shell-nav';
+const DOCK_STORAGE_KEY = 'lazybuddy-shell-dock-open'; // V2-T4: dock open state, persisted per session
 const HISTORY_LIMIT = 24; // the in-place back stack is small by design — not tabs
 const DESTINATION_OF = id => (PROJECT_DESTINATIONS.some(destination => destination.id === id) ? id : ITEM_SURFACE[String(id).split(':')[0]]);
 const DESTINATION_LABEL = id => PROJECT_DESTINATIONS.find(destination => destination.id === id)?.label ?? id;
+
+// V2-T4 health destination glyph (Lucide activity/pulse geometry, ISC). The
+// sidebar library's destination vocabulary lives in components.mjs (outside
+// this task's owned changes), so the shell swaps the health row's fallback
+// grid glyph for the pulse AFTER the rail mounts — the row keeps its label,
+// tooltip and hit area exactly as the library builds them.
+function pulseGlyph() {
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  const trace = document.createElementNS(icon.namespaceURI, 'path');
+  trace.setAttribute('d', 'M22 12h-4l-3 9L9 3l-3 9H2');
+  icon.append(trace);
+  return icon;
+}
+
+// V2-T4 dock content refinement: the adopted inspector sections (Summary /
+// Source / Changes / Evidence / Edges) become compact stacked blocks with
+// icon headers. Pure re-markup of the adopted nodes at adopt time — the
+// spike module keeps building its own structure; the dock chrome only
+// decorates it.
+const DOCK_BLOCK_ICONS = {
+  summary: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
+  source: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6'],
+  changes: ['M12 20h9', 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'],
+  evidence: ['m9 12 2 2 4-4', 'M21 12a9 9 0 1 1-9-9'],
+  edges: ['M6 3v12', 'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M18 9a9 9 0 0 1-9 9'],
+};
+function dockBlockIcon(name) {
+  const geometry = DOCK_BLOCK_ICONS[name];
+  if (!geometry) return null;
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  for (const spec of geometry) {
+    const shape = document.createElementNS(icon.namespaceURI, 'path');
+    shape.setAttribute('d', spec);
+    icon.append(shape);
+  }
+  return icon;
+}
+
+function refineDockInspector(node) {
+  if (!node || node.dataset.dockRefined === 'true') return;
+  node.dataset.dockRefined = 'true';
+  for (const section of [...node.querySelectorAll('section')]) {
+    section.classList.add('shell-dock-block');
+    const heading = section.querySelector('h4') ?? section.querySelector('h3') ?? section.querySelector('h2');
+    const key = String(heading?.textContent ?? '').trim().toLowerCase();
+    const icon = dockBlockIcon(key);
+    if (heading && icon) heading.prepend(icon);
+  }
+}
 
 function readStored(key) {
   try {
@@ -402,9 +457,19 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
 
   function adoptDockRegions(view) {
     const inspectorNode = view.element.querySelector('[data-testid="spike-inspector"]');
-    if (inspectorNode) dockInspectorRegion.replaceChildren(inspectorNode);
+    if (inspectorNode) { refineDockInspector(inspectorNode); dockInspectorRegion.replaceChildren(inspectorNode); }
     const recordsNode = view.element.querySelector('[data-testid="overview-records"]');
     if (recordsNode) dockRecordsRegion.replaceChildren(recordsNode);
+  }
+
+  // V2-T4: every dock open/close path (trigger click, Escape, selection
+  // callbacks, session restore) lands here — the root data-dock-open drives
+  // the narrow-only scrim and the trigger keeps its honest aria-pressed.
+  function syncDockChrome() {
+    const open = Boolean(dock?.isOpen?.());
+    if (open) root.setAttribute('data-dock-open', 'true');
+    else root.removeAttribute('data-dock-open');
+    dockTrigger?.setAttribute('aria-pressed', String(open));
   }
 
   // T20-RF sidebar count badges: the projection feeds the attention queue
@@ -454,13 +519,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     const actions = element('div', 'cluster lb-topbar-actions');
     actions.append(createThemeToggle().element);
     if (withChrome) {
-      dockTrigger = button('', () => {
-        dock.toggle(dockTrigger);
-        dockTrigger.setAttribute('aria-pressed', String(dock.isOpen()));
-      });
+      dockTrigger = button('', () => dock.toggle(dockTrigger)); // open/close both sync the chrome through onOpen/onClose
       dockTrigger.className = 'lb-topbar-icon';
       dockTrigger.dataset.testid = 'shell-dock-trigger';
-      dockTrigger.setAttribute('aria-pressed', 'false');
+      dockTrigger.setAttribute('aria-pressed', String(dock?.isOpen?.() ?? false));
       dockTrigger.setAttribute('aria-label', 'Toggle the contextual inspector dock');
       dockTrigger.title = 'Toggle the contextual inspector dock';
       dockTrigger.append(sidebarActionIcon('dock')); // panel-style glyph: the inspector dock surface
@@ -507,7 +569,9 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     dockBody.append(dockInspectorRegion, dockRecordsRegion);
     dock = createDockPanel({ title: 'Contextual inspector', content: dockBody,
       footer: element('p', 'meta', 'Escape collapses the dock; focus returns to the invoking control.'),
-      onClose: () => dockTrigger?.setAttribute('aria-pressed', 'false') });
+      persistKey: DOCK_STORAGE_KEY,
+      onOpen: () => syncDockChrome(),
+      onClose: () => syncDockChrome() });
 
     const groups = [];
     for (const destination of PROJECT_DESTINATIONS) {
@@ -526,6 +590,9 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
       // records the explicit choice and persists it; restore and auto-retract
       // go through applyRailState (notify: false) and persist nothing extra.
       onCollapse: value => { userCollapsed = value; applyRailState(); persistNav(); } });
+    // V2-T4: the health row carries the pulse glyph (the library's fallback
+    // icon vocabulary is out of scope for this task; the swap is presentational).
+    sidebar.element.querySelector('.lb-sidebar-destination[data-destination="health"] svg')?.replaceChildren(pulseGlyph());
 
     pageHead = element('header', 'shell-page-head stack');
     pageHead.dataset.testid = 'shell-page-head';
@@ -538,6 +605,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     frame.append(sidebar.element, main);
     root.replaceChildren(bar, frame, dock.element);
     root.dataset.initialized = 'true';
+    syncDockChrome(); // a session-restored open dock announces itself to the chrome
     adoptDockRegions(overview);
     suppressThemeControl();
     syncSidebarCounts();
@@ -599,6 +667,14 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   narrowQuery?.addEventListener?.('change', () => {
     narrowRetract = Boolean(narrowQuery.matches);
     applyRailState();
+  });
+  // V2-T4: the narrow-only scrim dismisses the floating dock. The scrim is
+  // the root's ::after, so its pointer events land on the root itself; clicks
+  // on the dock or any real content bubble past this guard. Registered once
+  // per shell (not per frame), so teardown/rebuild cycles never stack it.
+  root.addEventListener('click', event => {
+    if (event.target !== root || !dock?.isOpen?.() || !narrowQuery?.matches) return;
+    dock.close('scrim');
   });
   return {
     element: root,

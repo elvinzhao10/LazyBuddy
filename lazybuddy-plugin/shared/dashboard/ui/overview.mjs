@@ -13,6 +13,14 @@
 // of text: they ride the T11 tooltip-note pattern (aria-describedby + title)
 // and the single polite announcer. No commands, no scheduling, no file
 // access — authority stays with the runtime and the shared command route.
+//
+// V2-T4 decomposition: the view composes from named components, each a pure
+// factory over fixture facts (no shared mutable state; handlers are passed
+// in): createStatusHero, createAttentionList, createPlanLifecycleStrip,
+// createCoverageTiles, createMacroMapSection and createFreshnessLine. The
+// visual treatment stays token-driven — micro-bars render only where the
+// projection carries a real ratio or comparison (no invented data), and every
+// count renders as a tabular numeral.
 import { announce, button, element, emptyState, statusChip } from './components.mjs';
 import { createProjectMapSpike } from './project-map-spike.mjs';
 import { overviewFixture } from './overview-fixture.mjs';
@@ -33,6 +41,26 @@ function explain(subject, text) {
   subject.setAttribute('aria-describedby', note.id);
   if (!subject.getAttribute('title')) subject.setAttribute('title', text);
   return note;
+}
+
+// Token-driven micro-bar: proportional segments from REAL projected values
+// only. Parts with non-finite or negative values drop out; a total of zero
+// renders nothing (absence never draws an invented bar). The geometry is
+// aria-hidden — the numbers stay visible as text in the owning surface.
+export function microBar(parts) {
+  const clean = (Array.isArray(parts) ? parts : []).filter(part => Number.isFinite(part?.value) && part.value >= 0);
+  const total = clean.reduce((sum, part) => sum + part.value, 0);
+  if (!clean.length || total <= 0) return null;
+  const bar = element('span', 'overview-microbar');
+  bar.dataset.testid = 'overview-microbar';
+  bar.setAttribute('aria-hidden', 'true');
+  for (const part of clean) {
+    const segment = element('span', 'overview-microbar-segment');
+    if (part.state) segment.dataset.state = part.state;
+    segment.setAttribute('style', `inline-size: ${Math.max((part.value / total) * 100, 2)}%;`);
+    bar.append(segment);
+  }
+  return bar;
 }
 
 // Contributing-record routing. The view never invents a destination: a record
@@ -77,9 +105,233 @@ function recordRoute(record, { nodes, drill, selectAndFocus, expandGroup }) {
   return null;
 }
 
+/* -- Named components (V2-T4 decomposition) --------------------------- */
+
+// Component 1 — status hero: project identity plus the traceable status
+// sentence as designed clause chips. The statement stays a tooltip; the
+// sentence owns the second look.
+export function createStatusHero({ fixture, ownNote, openClause }) {
+  const hero = element('article', 'lb-card overview-hero');
+  hero.dataset.testid = 'overview-hero';
+  const head = element('header', 'lb-card-head overview-hero-head');
+  const title = element('h2', 'lb-card-title overview-hero-title', fixture.title);
+  // The project statement is a summary, not a primary statement — the
+  // status sentence owns the second look, the statement rides its tooltip.
+  ownNote(title, [fixture.statement.text, fixture.statement.coverage].filter(Boolean).join(' '));
+  head.append(title);
+  const identity = element('p', 'meta cluster overview-hero-identity');
+  identity.dataset.testid = 'overview-identity';
+  identity.append(statusChip({ state: 'neutral', label: fixture.projection.runtime }),
+    statusChip({ state: 'neutral', label: fixture.projection.repository_key }));
+  if (fixture.context?.branch) identity.append(statusChip({ state: 'neutral', label: `branch ${fixture.context.branch}` }));
+  else identity.append(statusChip({ state: 'unavailable', label: 'git observation not projected' }));
+  head.append(identity);
+  hero.append(head);
+
+  const statusSection = element('section', 'overview-hero-status stack');
+  const statusHeading = element('h3', '', 'Status');
+  ownNote(statusHeading, 'Coverage and freshness qualify the summary; absence of a finding does not prove project health.');
+  const line = element('p', 'overview-sentence-line');
+  line.dataset.testid = 'overview-status-sentence';
+  line.setAttribute('aria-label', fixture.statusSentence.text);
+  if (!fixture.statusSentence.clauses.length) line.append(element('span', 'meta', 'No status clauses projected for this bundle.'));
+  for (const clause of fixture.statusSentence.clauses) {
+    if (clause.unavailable) {
+      const note = element('span', 'overview-clause-note');
+      note.dataset.clauseId = clause.id;
+      note.dataset.unavailable = 'true';
+      note.append(statusChip({ state: 'unavailable', label: clause.text }));
+      ownNote(note, 'This input is not projected in the current bundle; the clause stays explicit rather than reading as a healthy zero.');
+      line.append(note);
+      continue;
+    }
+    const control = button('', () => openClause(clause));
+    control.className = 'overview-clause';
+    control.dataset.clauseId = clause.id;
+    control.dataset.ref = clause.ref ?? '';
+    control.dataset.records = clause.records.join(',');
+    control.setAttribute('aria-label', `${clause.text} — open contributing records`);
+    control.append(statusChip({ state: clause.state ?? 'neutral', label: clause.text }));
+    line.append(control);
+  }
+  statusSection.append(statusHeading, line);
+  hero.append(statusSection);
+  return hero;
+}
+
+// Component 2 — attention list: the native queue whose rows open their
+// contributing records in the dock.
+export function createAttentionList({ fixture, ownNote, openRecords }) {
+  const attention = element('section', 'overview-attention stack');
+  attention.dataset.testid = 'overview-queue';
+  const heading = element('h2', '', 'Attention');
+  ownNote(heading, 'Pending proposals, open reconciliations, stale baseline references and blocked readiness gate execution; items resolve only through the shared authority, never in this view.');
+  attention.append(heading);
+  if (!fixture.attentionQueue.length) {
+    attention.append(emptyState({ icon: 'inbox', title: 'Nothing needs attention',
+      detail: 'No pending proposals, open reconciliations, stale baseline references or blocked readiness in the projected records. New items arrive when baseline or readiness records change.' }));
+    return attention;
+  }
+  const list = element('ul', 'overview-attention-list');
+  list.dataset.testid = 'overview-attention-list';
+  list.dataset.nativeList = 'true'; // j/k traversal through the T11 focus layer
+  list.setAttribute('aria-label', 'Attention queue');
+  for (const item of fixture.attentionQueue) {
+    const entry = element('li', 'overview-attention-row');
+    entry.dataset.queueId = item.id;
+    const control = button('', () => openRecords({ id: item.id, title: item.title, note: item.detail, records: item.records }));
+    control.className = 'overview-attention-control';
+    control.dataset.queueId = item.id;
+    control.dataset.records = item.records.join(',');
+    control.dataset.state = item.state;
+    control.setAttribute('aria-label', `${item.title} — open contributing records`);
+    control.append(statusChip({ state: item.state, label: item.chipLabel ?? item.kind }),
+      element('span', 'overview-attention-title', item.title),
+      element('span', 'meta overview-attention-detail', item.detail));
+    entry.append(control);
+    list.append(entry);
+  }
+  attention.append(list);
+  return attention;
+}
+
+// Component 3 — plan-lifecycle strip: the declared plan distribution across
+// the three display groups. Each cell is an interactive control opening that
+// group's real contributing records (exactly its plan ids); the fill width
+// is the group's share of declared plans — zero counts render an honest
+// empty track, never a borrowed share.
+export function createPlanLifecycleStrip({ fixture, ownNote, openRecords }) {
+  const strip = element('section', 'overview-lifecycle stack');
+  strip.dataset.testid = 'overview-lifecycle';
+  const heading = element('h2', '', 'Plan lifecycle');
+  ownNote(heading, 'Declared lifecycles grouped as the projection defines them — active/paused, draft/planned, and retained history. Counts never include inferred states.');
+  strip.append(heading);
+  const total = ['active', 'future', 'historical'].reduce((sum, group) => sum + fixture.lifecycle[group].count, 0);
+  const cells = element('div', 'overview-lifecycle-cells');
+  cells.dataset.total = String(total);
+  for (const group of ['active', 'future', 'historical']) {
+    const entry = fixture.lifecycle[group];
+    const cell = button('', () => openRecords({
+      id: `lifecycle:${group}`,
+      title: `Plans — ${group}`,
+      note: 'Lifecycle strip segment — the records are exactly the declared plans in this group.',
+      records: entry.records,
+    }));
+    cell.className = 'overview-lifecycle-cell';
+    cell.dataset.group = group;
+    cell.dataset.count = String(entry.count);
+    cell.setAttribute('aria-label', `${entry.count} ${group} plan${entry.count === 1 ? '' : 's'} — open contributing records`);
+    const figure = element('span', 'overview-lifecycle-count', String(entry.count));
+    figure.dataset.numeric = 'true';
+    cell.append(figure, element('span', 'overview-lifecycle-label', group));
+    const track = element('span', 'overview-lifecycle-track');
+    track.setAttribute('aria-hidden', 'true');
+    const fill = element('span', 'overview-lifecycle-fill');
+    fill.dataset.state = group === 'active' ? 'active' : group === 'future' ? 'neutral' : 'stale';
+    fill.setAttribute('style', `inline-size: ${total > 0 ? (entry.count / total) * 100 : 0}%;`);
+    track.append(fill);
+    cell.append(track);
+    cells.append(cell);
+  }
+  strip.append(cells);
+  if (!total) strip.append(element('p', 'meta', 'No plans are declared in this projection; the strip renders exact zeros, never borrowed counts.'));
+  return strip;
+}
+
+// Component 4 — coverage tiles: the compact metric tiles. Every available
+// total opens its contributing records; unavailable renders hollow, never
+// zero. Micro-bars ride the tiles only where the fixture carries a real
+// ratio (bar) or comparison (compare).
+export function createCoverageTiles({ fixture, ownNote, openRecords }) {
+  const metrics = element('section', 'overview-metrics stack');
+  metrics.dataset.testid = 'overview-metrics';
+  const heading = element('h2', '', 'Metrics');
+  ownNote(heading, 'Every total opens its contributing records in the dock; unprojected inputs read as unavailable, never as zero.');
+  metrics.append(heading);
+  const row = element('div', 'overview-tiles');
+  row.setAttribute('role', 'toolbar');
+  row.setAttribute('aria-label', 'Compact metrics — every total opens its contributing records');
+  for (const metric of fixture.metrics) {
+    // The value is always the tabular figure; unavailable renders the em
+    // dash plus the hollow chip, never a zero that reads as a measurement.
+    const figure = element('span', 'lb-metric-value', metric.unavailable ? '—' : metric.value);
+    figure.dataset.numeric = 'true';
+    let tile;
+    if (metric.unavailable) {
+      tile = element('div', 'lb-metric overview-tile');
+      tile.dataset.unavailable = 'true';
+      const unavailableChip = statusChip({ state: 'unavailable', label: 'not projected' });
+      ownNote(unavailableChip, metric.coverage ?? 'This input is not projected in the current bundle; it never reads as zero.');
+      tile.append(figure, unavailableChip);
+    } else {
+      tile = button('', () => openRecords({ id: metric.id, title: metric.label, note: metric.coverage, records: metric.records }));
+      tile.className = 'lb-metric overview-tile';
+      tile.setAttribute('aria-label', `${metric.label}: ${metric.value} — open contributing records`);
+      tile.append(figure);
+      if (metric.chip) tile.append(statusChip(metric.chip));
+    }
+    if (!metric.unavailable) {
+      // Micro-bars from projected facts only: the satisfied/required ratio,
+      // the token split, the elapsed/wall/agent minutes.
+      const bar = metric.bar && metric.bar.required > 0
+        ? microBar([{ label: 'satisfied', value: metric.bar.satisfied, state: 'verified' },
+          { label: 'remaining', value: Math.max(metric.bar.required - metric.bar.satisfied, 0), state: 'attention' }])
+        : metric.compare ? microBar(metric.compare.map(part => ({ label: part.label, value: part.value }))) : null;
+      if (bar) tile.append(bar);
+    }
+    tile.dataset.metricId = metric.id;
+    tile.dataset.testid = 'overview-tile';
+    tile.append(element('span', 'lb-metric-label meta', metric.label));
+    if (metric.detail) tile.append(element('span', 'meta overview-tile-detail', metric.detail));
+    row.append(tile);
+  }
+  row.addEventListener('keydown', event => {
+    const controls = [...row.querySelectorAll('button[data-metric-id]')];
+    const index = controls.indexOf(document.activeElement);
+    if (index === -1) return;
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    event.preventDefault();
+    const next = controls[(index + (event.key === 'ArrowRight' ? 1 : controls.length - 1)) % controls.length];
+    next.focus();
+  });
+  metrics.append(row);
+  return metrics;
+}
+
+// Component 5 — the first-class macro map section (composition view at
+// default zoom; the list equivalent stays reachable through the spike).
+export function createMacroMapSection({ spike, ownNote }) {
+  const mapSection = element('section', 'overview-map stack');
+  mapSection.dataset.testid = 'overview-map';
+  const heading = element('h2', '', 'Macro map');
+  ownNote(heading, 'Durable feature areas, plans, inter-plan dependencies and attention. Graph cards render at their default zoom; the list equivalent carries the same content.');
+  mapSection.append(heading, spike.element);
+  return mapSection;
+}
+
+// Component 6 — freshness line: one compact meta line of observed freshness
+// facts (git observation, stale baseline references, plan source freshness,
+// projection revisions). Every fact names its source; an unprojected input
+// reads as not projected, never as fresh.
+export function createFreshnessLine({ fixture, ownNote }) {
+  const line = element('p', 'meta cluster overview-freshness');
+  line.dataset.testid = 'overview-freshness';
+  line.setAttribute('aria-label', 'Projection freshness');
+  const freshness = fixture.freshness;
+  const parts = [`projection revision ${freshness.revisions.projection} · baseline ${freshness.revisions.baseline} · observation ${freshness.revisions.observation}`];
+  if (freshness.gitProjected) parts.push(`git observed ${freshness.observedAt ?? 'at an unstamped time'}`);
+  else parts.push('git observation not projected');
+  const freshnessCounts = freshness.sourceFreshness;
+  parts.push(`${freshnessCounts.current} current · ${freshnessCounts.changed + freshnessCounts.missing} changed/missing plan sources`);
+  parts.push(freshness.staleReferenceCount ? `${freshness.staleReferenceCount} stale baseline references` : 'no stale baseline references');
+  line.append(document.createTextNode(parts.join(' · ')));
+  ownNote(line, 'Freshness facts name their source records; a not-projected input never reads as fresh.');
+  return line;
+}
+
 export function createOverviewView({ bundle, callbacks = {} }) {
   const fixture = overviewFixture(bundle);
-  const mapFixture = { ...fixture, statement: undefined, metrics: undefined, attentionQueue: undefined, statusSentence: undefined, context: undefined, projection: undefined };
+  const mapFixture = { ...fixture, statement: undefined, metrics: undefined, attentionQueue: undefined, statusSentence: undefined, context: undefined, projection: undefined, lifecycle: undefined, freshness: undefined };
   const spike = createProjectMapSpike({ fixture: mapFixture, callbacks: {
     onSelect: event => callbacks.onNodeSelect?.(event),
     onDrill: event => callbacks.onNodeDrill?.(event),
@@ -178,146 +430,18 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     callbacks.onClauseOpened?.(clause);
   }
 
-  function clauseChip(clause) {
-    if (clause.unavailable) {
-      const note = element('span', 'overview-clause-note');
-      note.dataset.clauseId = clause.id;
-      note.dataset.unavailable = 'true';
-      note.append(statusChip({ state: 'unavailable', label: clause.text }));
-      ownNote(note, 'This input is not projected in the current bundle; the clause stays explicit rather than reading as a healthy zero.');
-      return note;
-    }
-    const control = button('', () => openClause(clause));
-    control.className = 'overview-clause';
-    control.dataset.clauseId = clause.id;
-    control.dataset.ref = clause.ref ?? '';
-    control.dataset.records = clause.records.join(',');
-    control.setAttribute('aria-label', `${clause.text} — open contributing records`);
-    control.append(statusChip({ state: clause.state ?? 'neutral', label: clause.text }));
-    return control;
-  }
-
-  (function renderHero() {
-    const hero = element('article', 'lb-card overview-hero');
-    hero.dataset.testid = 'overview-hero';
-    const head = element('header', 'lb-card-head overview-hero-head');
-    const title = element('h2', 'lb-card-title overview-hero-title', fixture.title);
-    // The project statement is a summary, not a primary statement — the
-    // status sentence owns the second look, the statement rides its tooltip.
-    ownNote(title, [fixture.statement.text, fixture.statement.coverage].filter(Boolean).join(' '));
-    head.append(title);
-    const identity = element('p', 'meta cluster overview-hero-identity');
-    identity.dataset.testid = 'overview-identity';
-    identity.append(statusChip({ state: 'neutral', label: fixture.projection.runtime }),
-      statusChip({ state: 'neutral', label: fixture.projection.repository_key }));
-    if (fixture.context?.branch) identity.append(statusChip({ state: 'neutral', label: `branch ${fixture.context.branch}` }));
-    else identity.append(statusChip({ state: 'unavailable', label: 'git observation not projected' }));
-    head.append(identity);
-    hero.append(head);
-
-    const statusSection = element('section', 'overview-hero-status stack');
-    const statusHeading = element('h3', '', 'Status');
-    ownNote(statusHeading, 'Coverage and freshness qualify the summary; absence of a finding does not prove project health.');
-    const line = element('p', 'overview-sentence-line');
-    line.dataset.testid = 'overview-status-sentence';
-    line.setAttribute('aria-label', fixture.statusSentence.text);
-    if (!fixture.statusSentence.clauses.length) line.append(element('span', 'meta', 'No status clauses projected for this bundle.'));
-    for (const clause of fixture.statusSentence.clauses) line.append(clauseChip(clause), document.createTextNode(' '));
-    statusSection.append(statusHeading, line);
-    hero.append(statusSection);
-    root.append(hero);
-  })();
-
-  (function renderAttention() {
-    const attention = element('section', 'overview-attention stack');
-    attention.dataset.testid = 'overview-queue';
-    const heading = element('h2', '', 'Attention');
-    ownNote(heading, 'Pending proposals, open reconciliations, stale baseline references and blocked readiness gate execution; items resolve only through the shared authority, never in this view.');
-    attention.append(heading);
-    if (!fixture.attentionQueue.length) {
-      attention.append(emptyState({ icon: 'inbox', title: 'Nothing needs attention',
-        detail: 'No pending proposals, open reconciliations, stale baseline references or blocked readiness in the projected records. New items arrive when baseline or readiness records change.' }));
-      root.append(attention);
-      return;
-    }
-    const list = element('ul', 'overview-attention-list');
-    list.dataset.testid = 'overview-attention-list';
-    list.dataset.nativeList = 'true'; // j/k traversal through the T11 focus layer
-    list.setAttribute('aria-label', 'Attention queue');
-    for (const item of fixture.attentionQueue) {
-      const entry = element('li', 'overview-attention-row');
-      entry.dataset.queueId = item.id;
-      const control = button('', () => openRecords({ id: item.id, title: item.title, note: item.detail, records: item.records }));
-      control.className = 'overview-attention-control';
-      control.dataset.queueId = item.id;
-      control.dataset.records = item.records.join(',');
-      control.dataset.state = item.state;
-      control.setAttribute('aria-label', `${item.title} — open contributing records`);
-      control.append(statusChip({ state: item.state, label: item.chipLabel ?? item.kind }),
-        element('span', 'overview-attention-title', item.title),
-        element('span', 'meta overview-attention-detail', item.detail));
-      entry.append(control);
-      list.append(entry);
-    }
-    attention.append(list);
-    root.append(attention);
-  })();
-
-  (function renderMetrics() {
-    const metrics = element('section', 'overview-metrics stack');
-    metrics.dataset.testid = 'overview-metrics';
-    const heading = element('h2', '', 'Metrics');
-    ownNote(heading, 'Every total opens its contributing records in the dock; unprojected inputs read as unavailable, never as zero.');
-    metrics.append(heading);
-    const row = element('div', 'overview-tiles');
-    row.setAttribute('role', 'toolbar');
-    row.setAttribute('aria-label', 'Compact metrics — every total opens its contributing records');
-    for (const metric of fixture.metrics) {
-      // The value is always the tabular figure; unavailable renders the em
-      // dash plus the hollow chip, never a zero that reads as a measurement.
-      const figure = element('span', 'lb-metric-value', metric.unavailable ? '—' : metric.value);
-      figure.dataset.numeric = 'true';
-      let tile;
-      if (metric.unavailable) {
-        tile = element('div', 'lb-metric overview-tile');
-        tile.dataset.unavailable = 'true';
-        const unavailableChip = statusChip({ state: 'unavailable', label: 'not projected' });
-        ownNote(unavailableChip, metric.coverage ?? 'This input is not projected in the current bundle; it never reads as zero.');
-        tile.append(figure, unavailableChip);
-      } else {
-        tile = button('', () => openRecords({ id: metric.id, title: metric.label, note: metric.coverage, records: metric.records }));
-        tile.className = 'lb-metric overview-tile';
-        tile.setAttribute('aria-label', `${metric.label}: ${metric.value} — open contributing records`);
-        tile.append(figure);
-        if (metric.chip) tile.append(statusChip(metric.chip));
-      }
-      tile.dataset.metricId = metric.id;
-      tile.dataset.testid = 'overview-tile';
-      tile.append(element('span', 'lb-metric-label meta', metric.label));
-      if (metric.detail) tile.append(element('span', 'meta overview-tile-detail', metric.detail));
-      row.append(tile);
-    }
-    row.addEventListener('keydown', event => {
-      const controls = [...row.querySelectorAll('button[data-metric-id]')];
-      const index = controls.indexOf(document.activeElement);
-      if (index === -1) return;
-      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-      event.preventDefault();
-      const next = controls[(index + (event.key === 'ArrowRight' ? 1 : controls.length - 1)) % controls.length];
-      next.focus();
-    });
-    metrics.append(row);
-    root.append(metrics);
-  })();
-
-  (function renderMap() {
-    const mapSection = element('section', 'overview-map stack');
-    mapSection.dataset.testid = 'overview-map';
-    const heading = element('h2', '', 'Macro map');
-    ownNote(heading, 'Durable feature areas, plans, inter-plan dependencies and attention. Graph cards render at their default zoom; the list equivalent carries the same content.');
-    mapSection.append(heading, spike.element);
-    root.append(mapSection);
-  })();
+  // V2-T4 composition: named components in reading order — status hero,
+  // attention list, plan-lifecycle strip, coverage tiles, macro map, then
+  // the freshness line. The records panel rides last; the shell adopts it
+  // into the floating inspector dock.
+  root.append(
+    createStatusHero({ fixture, ownNote, openClause }),
+    createAttentionList({ fixture, ownNote, openRecords }),
+    createPlanLifecycleStrip({ fixture, ownNote, openRecords }),
+    createCoverageTiles({ fixture, ownNote, openRecords }),
+    createMacroMapSection({ spike, ownNote }),
+    createFreshnessLine({ fixture, ownNote }),
+  );
 
   recordsPanel.append(element('h3', '', 'Contributing records'));
   const hint = element('p', 'meta overview-records-hint', 'Select a metric, clause or attention item to list the records behind it.');
@@ -347,6 +471,11 @@ export function createOverviewView({ bundle, callbacks = {} }) {
         metricIds: fixture.metrics.map(metric => metric.id),
         queueIds: fixture.attentionQueue.map(item => item.id),
         openRecordsId,
+        lifecycleCounts: {
+          active: fixture.lifecycle.active.count,
+          future: fixture.lifecycle.future.count,
+          historical: fixture.lifecycle.historical.count,
+        },
         map: spike.getStats(),
       };
     },

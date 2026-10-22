@@ -388,6 +388,82 @@ function createResearchView(project, { adapter, onOpenEvidence }) {
   return { element: root, update, open };
 }
 
+// V2-T4 Health destination — the workspace-level health view composes from
+// the sibling module ui/health-view.mjs (exact contract:
+// `import { createHealthView } from './health-view.mjs'`,
+// `createHealthView({ adapter })` returning `{ element, update?(snapshot) }`).
+// The module lands in parallel, so the import is DYNAMIC and lazy (first
+// visit); while it is absent or fails to load, the destination mounts the
+// honest unavailable panel behind the same import — never a fabricated
+// health state, never a dead empty surface.
+// The adapter is narrowed to the contract the health view defines —
+// `{ read(): Promise<health snapshot> }`. The live project adapter's own
+// read() yields a PROJECT record, which the view's schema gate would (rightly)
+// refuse as malformed, so the health read wires only when the base adapter
+// actually exposes a health reader (health()/readHealth()); without one the
+// view renders its honest 'no health adapter is connected' state.
+function healthAdapterOf(adapter) {
+  if (!adapter || typeof adapter !== 'object') return null;
+  const reader = typeof adapter.health === 'function' ? () => adapter.health()
+    : typeof adapter.readHealth === 'function' ? () => adapter.readHealth() : null;
+  return reader ? { read: reader } : null;
+}
+
+function createHealthDestination({ adapter }) {
+  const root = element('section', 'stack health-destination');
+  root.dataset.testid = 'health-destination';
+  let view = null;
+  let settled = false;
+  let pending = null;
+
+  const unavailable = detail => {
+    const panel = element('section', 'panel notice stack');
+    panel.dataset.testid = 'health-unavailable';
+    panel.append(statusChip({ state: 'unavailable', label: 'Health view unavailable' }),
+      element('p', 'meta', detail));
+    return panel;
+  };
+
+  const mount = () => {
+    if (settled || pending) return pending;
+    const status = element('p', 'meta', 'Composing the health view from its module…');
+    status.setAttribute('role', 'status');
+    root.replaceChildren(status);
+    pending = (async () => {
+      try {
+        const { createHealthView } = await import('./health-view.mjs');
+        const next = createHealthView({ adapter: healthAdapterOf(adapter) });
+        if (!next?.element) throw new Error('createHealthView returned no element');
+        view = next;
+        root.replaceChildren(next.element);
+      } catch (error) {
+        root.replaceChildren(unavailable(
+          `The health view module is not available in this build (${error instanceof Error ? error.message : String(error)}). `
+          + 'No health data is projected here; nothing is inferred in its place.'));
+      } finally {
+        settled = true;
+        pending = null;
+      }
+      return view;
+    })();
+    return pending;
+  };
+
+  return {
+    element: root,
+    activate: mount,
+    getView: () => view,
+    update(snapshot) {
+      // The view is schema-gated: only health-shaped payloads ({ schema,
+      // sections }) re-render it. The shell's project polling snapshots are
+      // not health snapshots — forwarding them would trip the view's own
+      // malformed-input refusal — so they never reach it.
+      if (view && snapshot && typeof snapshot === 'object'
+        && typeof snapshot.schema === 'string' && Array.isArray(snapshot.sections)) view.update(snapshot);
+    },
+  };
+}
+
 export function createLiveProjectViews({ project, adapter, runElement = null, runId = null, runSnapshot = null,
   onDestinationRequest = null, onOpenItem = null, onOpenPlan = null }) {
   const projectView = createProjectView(project, { adapter });
@@ -427,7 +503,11 @@ export function createLiveProjectViews({ project, adapter, runElement = null, ru
     const entry = view?.getFixture().entries.find(candidate => candidate.path === path);
     if (entry) { await view.select(entry.id); view.focusRow(entry.id); }
   } });
-  const views = { project: projectView, plans, execution, git, evidence, research };
+  // V2-T4: the Health workspace destination — lazy dynamic import of the
+  // sibling health-view module through the exact contract, with the honest
+  // unavailable panel while it is absent.
+  const health = createHealthDestination({ adapter });
+  const views = { project: projectView, plans, execution, git, evidence, research, health };
   return { views, openPlan(planId) { openPlanLocation(planId); }, updateRun(next) {
     execution.updateRun(next);
   }, update(next) {

@@ -12,14 +12,20 @@ import { createMiniDom } from './fixtures/mini-dom.mjs';
    contributing-records regions (open on selection, Escape with focus
    return), the explicit unavailable state for destinations without data,
    the unchanged pre-init composition (IO-2), the extended keyboard map
-   (Cmd/Ctrl+1..7 destinations, j/k), navigation persistence across a
-   reload-shaped remount, and polling refreshes that never reset the user's
-   place.
+   (Cmd/Ctrl+1..8 destinations incl. the V2-T4 health row, j/k), navigation
+   persistence across a reload-shaped remount, and polling refreshes that
+   never reset the user's place.
    V2-T1 adds the compact icon top bar proof: one shell-rendered bar (product
    badge + truncating destination/item title, theme icon-toggle cycling
    light->dark->system persisted under 'lazyseries-theme', dock trigger icon,
    relocated rail collapse control), no <select>, no density control —
-   density follows the collapsed rail automatically. */
+   density follows the collapsed rail automatically.
+   V2-T4 adds the floating overlay dock proof: out-of-flow geometry that
+   never resizes the main surface, the 380–420px clamp with capped height and
+   elevation-3, the narrow-only scrim (CSS-scoped AND dismissible), the
+   per-session dock open persistence (restored without focus steal), rapid
+   open/close churn consistency, and the health destination with its pulse
+   glyph. */
 
 const dom = createMiniDom();
 globalThis.document = dom.document;
@@ -142,13 +148,13 @@ test('the frame mounts after init: grouped static sidebar, one content surface, 
   const root = shellRoot(shell);
   assert.equal(root.dataset.initialized, 'true');
   const destinations = [...root.querySelectorAll('[data-destination]')];
-  assert.equal(destinations.length, PROJECT_DESTINATIONS.length, 'all seven sidebar destinations render');
+  assert.equal(destinations.length, PROJECT_DESTINATIONS.length, 'all sidebar destinations render (incl. the V2-T4 health row)');
   assert.ok(destinations.every(control => !control.disabled), 'every destination is selectable; missing data never disables a control');
   assert.deepEqual(destinations.map(control => control.dataset.destination), PROJECT_DESTINATIONS.map(entry => entry.id));
   const groups = [...root.querySelectorAll('.lb-sidebar-group-label')];
   assert.deepEqual(groups.map(node => node.textContent), ['Workspace', 'Observation'], 'destinations group under section headers');
   assert.deepEqual([...root.querySelectorAll('.lb-sidebar-group')].map(node => node.querySelectorAll('[data-destination]').length),
-    [3, 4], 'Workspace carries overview/project/plans; Observation carries the four observation rows');
+    [4, 4], 'Workspace carries overview/project/plans/health; Observation carries the four observation rows');
   assert.equal(destinationButton(shell, 'overview').getAttribute('aria-current'), 'page', 'the sidebar marks the current destination');
   assert.ok(destinationButton(shell, 'overview').querySelector('svg'), 'rows are icon+label');
   // T20-RF count badges: the projection feeds the plans count; the empty
@@ -520,7 +526,218 @@ test('the dock opens on selection, Escape closes it, focus returns to the invoki
   }
 });
 
-test('keyboard map: Cmd/Ctrl+1..7 destinations, Cmd/Ctrl+B retracts the rail, j/k sidebar traversal', async () => {
+// V2-T4 — the dock is a FLOATING OVERLAY, never a layout column. Geometry is
+// CSS-side (the mini-dom has no layout engine), so the proof pairs the sheet
+// audit with DOM structure: the panel is out of flow (fixed), the frame grid
+// keeps its static two-track columns, and the main content element is the
+// SAME untouched node across open/close — opening the dock can never resize
+// it. 380–420px width clamp, capped height, elevation-3, rounded, and the
+// scrim exists ONLY inside the narrow media block.
+test('the dock is a floating overlay: main-view geometry never changes on open/close (V2-T4)', async () => {
+  storage.clear();
+  const detach = installFocusSystem({ root: dom.document });
+  try {
+    const { shell } = mountShell();
+    await settle();
+    const root = shellRoot(shell);
+  const dock = root.querySelector('[data-testid="dock-panel"]');
+  const main = root.querySelector('.lb-shell-main');
+  const frame = root.querySelector('[data-testid="shell-frame"]');
+  assert.ok(main && frame, 'the frame and the main surface render');
+  assert.equal(dock.parentNode, root, 'the dock is a direct child of the shell root, not of the frame grid');
+  assert.equal(frame.contains(dock), false, 'the dock never occupies a frame grid track');
+  assert.equal(main.contains(dock), false, 'the dock never lives inside the main content surface');
+
+  const mainIdentity = () => ({ node: main, className: main.className, style: main.getAttribute('style'), parent: main.parentNode });
+  const closed = mainIdentity();
+  root.querySelector('[data-testid="shell-dock-trigger"]').click();
+  assert.equal(dock.hidden, false);
+  assert.equal(root.getAttribute('data-dock-open'), 'true', 'the open state drives the scrim attribute');
+  const opened = mainIdentity();
+  assert.equal(opened.node, closed.node, 'the main surface is the same node with the dock open');
+  assert.deepEqual([opened.className, opened.style, opened.parent], [closed.className, closed.style, closed.parent],
+    'open changes nothing about the main surface geometry inputs (class, inline style, grid position)');
+  dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+  assert.equal(dock.hidden, true);
+  assert.equal(root.hasAttribute('data-dock-open'), false, 'the scrim attribute retires with the close');
+  const reclosed = mainIdentity();
+  assert.deepEqual([reclosed.className, reclosed.style, reclosed.parent], [closed.className, closed.style, closed.parent],
+    'close restores the exact closed geometry inputs');
+
+  const shellCss = await readFile(new URL('../ui/project-shell.css', import.meta.url), 'utf8');
+  const styleCss = await readFile(new URL('../ui/style.css', import.meta.url), 'utf8');
+  // The base dock is out of flow (fixed overlay) and its body scrolls internally.
+  const baseDock = /\.lb-dock\s*\{[^}]*\}/.exec(styleCss)?.[0] ?? '';
+  assert.match(baseDock, /position:\s*fixed/, 'the dock is a fixed overlay, never an in-flow column');
+  assert.match(/\.lb-dock-body\s*\{[^}]*\}/.exec(styleCss)?.[0] ?? '', /overflow-y:\s*auto/, 'the dock body scrolls internally');
+  assert.match(/\.lb-dock-body\s*\{[^}]*\}/.exec(styleCss)?.[0] ?? '', /overscroll-behavior:\s*contain/, 'the dock body owns the internal scroll');
+  // The floating treatment: 380–420px clamp, capped height, rounded, elevation-3.
+  const overlayRule = /\.project-shell \.lb-dock\s*\{[^}]*\}/.exec(shellCss)?.[0] ?? '';
+  assert.ok(overlayRule, 'the floating overlay rule exists');
+  const clamp = /clamp\(([\d.]+)rem,\s*([\d.]+)rem,\s*([\d.]+)rem\)/.exec(overlayRule);
+  assert.ok(clamp, 'the overlay width is a token-friendly clamp');
+  const [minPx, prefPx, maxPx] = [clamp[1], clamp[2], clamp[3]].map(rem => Number(rem) * 16);
+  assert.ok(minPx >= 380 && maxPx <= 420, `the floating panel stays in the 380–420px band (${minPx}..${maxPx})`);
+  assert.ok(minPx <= prefPx && prefPx <= maxPx, 'the preferred width sits inside the clamp');
+  assert.match(overlayRule, /max-block-size:\s*calc\(100dvh/, 'the panel height is capped');
+  assert.match(overlayRule, /border-radius:\s*var\(--radius-lg\)/, 'the panel is rounded');
+  assert.match(overlayRule, /box-shadow:\s*var\(--elevation-3\)/, 'the panel floats at elevation-3');
+  // The frame grid is static: two tracks, never dock-dependent.
+  const frameRule = /\.lb-shell\s*\{[^}]*\}/.exec(styleCss)?.[0] ?? '';
+  assert.match(frameRule, /grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)/, 'the frame keeps its static sidebar+main tracks');
+  assert.doesNotMatch(shellCss + styleCss, /data-dock-open[^{]*\{[^}]*grid-template-columns/, 'no rule ever re-grids the frame on dock state');
+  // The scrim is narrow-only: the ::after rule must live INSIDE the <=48rem
+  // block — its nearest enclosing @media header is the narrow query, it
+  // appears exactly once (no unscoped duplicate), and no wide carve-out
+  // exists.
+  const scrimAt = shellCss.indexOf("[data-dock-open='true']::after");
+  assert.ok(scrimAt !== -1, 'the scrim rule exists');
+  assert.equal((shellCss.match(/\[data-dock-open='true'\]::after/g) ?? []).length, 1, 'exactly one scrim rule');
+  const enclosing = shellCss.slice(0, scrimAt).lastIndexOf('@media');
+  assert.ok(enclosing !== -1, 'the scrim lives inside a media block');
+  assert.ok(shellCss.slice(enclosing).startsWith('@media (max-width: 48rem)'),
+    'the scrim rule exists only inside the narrow media block');
+  assert.match(shellCss.slice(scrimAt, shellCss.indexOf('}', scrimAt)), /background:\s*var\(--backdrop\)/, 'the scrim rides the modal backdrop token');
+  assert.equal(shellCss.indexOf('@media (min-width'), -1, 'no wide-viewport scrim carve-out exists');
+  } finally {
+    detach.detach();
+  }
+});
+
+// V2-T4 session persistence (stale_state): the open state survives a
+// reload-shaped remount under its own storage key, and the restored dock
+// never steals focus at mount.
+test('the dock open state persists per session and restores without stealing focus (stale_state)', async () => {
+  storage.clear();
+  const detach = installFocusSystem({ root: dom.document });
+  try {
+    const { shell, state } = mountShell();
+    await settle();
+    assert.equal(storage.get('lazybuddy-shell-dock-open'), undefined, 'a closed dock persists nothing');
+    shellRoot(shell).querySelector('[data-testid="shell-dock-trigger"]').click();
+    assert.equal(storage.get('lazybuddy-shell-dock-open'), 'true', 'the open state persists under its session key');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(storage.get('lazybuddy-shell-dock-open'), 'false', 'the close persists too');
+
+    // Reload-shaped remount with the dock left OPEN.
+    shellRoot(shell).querySelector('[data-testid="shell-dock-trigger"]').click();
+    state.bundle = null; shell.update(); shell.element.remove();
+    const focusBeforeRemount = dom.document.activeElement;
+    const reloadedState = { bundle: overviewBundle(project) };
+    const reloaded = createProjectShell({ projectionProvider: () => reloadedState.bundle, product: { name: 'LazyBuddy' } });
+    dom.document.body.append(reloaded.element); mounted[0] = { state: reloadedState, shell: reloaded };
+    await settle();
+    assert.equal(reloaded.getStats().dockOpen, true, 'the persisted open state restores after the reload');
+    assert.equal(reloaded.element.querySelector('[data-testid="dock-panel"]').hidden, false);
+    assert.equal(reloaded.element.querySelector('[data-testid="shell-dock-trigger"]').getAttribute('aria-pressed'), 'true',
+      'the trigger stays honest about the restored open dock');
+    assert.equal(reloaded.element.getAttribute('data-dock-open'), 'true', 'the scrim attribute follows the restored state');
+    assert.equal(dom.document.activeElement, focusBeforeRemount, 'the restored dock never moves focus at mount');
+    assert.notEqual(dom.document.activeElement, reloaded.element.querySelector('[data-testid="dock-panel-close"]'),
+      'the restore path does not focus the dock close control');
+    dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(reloaded.getStats().dockOpen, false, 'Escape still closes the restored dock through the overlay stack');
+    assert.equal(storage.get('lazybuddy-shell-dock-open'), 'false');
+  } finally {
+    detach.detach();
+  }
+});
+
+// V2-T4 cancel_resume: rapid open/close churn — trigger clicks, Escape spam
+// and navigation while the dock flips — must land the dock, the trigger and
+// the scrim attribute in the same state at every step, with no overlay-stack
+// leak (a stray Escape after close never throws and never moves focus).
+test('rapid dock open/close churn stays consistent across navigation (cancel_resume)', async () => {
+  storage.clear();
+  const detach = installFocusSystem({ root: dom.document });
+  try {
+    const { shell } = mountShell();
+    await settle();
+    const root = shellRoot(shell);
+    const dock = () => root.querySelector('[data-testid="dock-panel"]');
+    const trigger = () => root.querySelector('[data-testid="shell-dock-trigger"]');
+    const escape = () => dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    for (let index = 0; index < 100; index += 1) {
+      trigger().click();
+      if (index % 3 === 0) escape(); // Escape racing the next open
+      trigger().click();
+      if (index % 2 === 0) shell.selectDestination(index % 4 ? 'git' : 'evidence'); // navigation mid-churn
+      const open = dock().hidden === false;
+      assert.equal(shell.getStats().dockOpen, open, `step ${index}: getStats and the panel agree`);
+      assert.equal(trigger().getAttribute('aria-pressed'), String(open), `step ${index}: the trigger stays honest`);
+      assert.equal(root.hasAttribute('data-dock-open'), open, `step ${index}: the scrim attribute follows`);
+      escape();
+      assert.equal(dock().hidden, true, `step ${index}: Escape settles every state closed`);
+      escape(); // a stray Escape on a closed dock is a no-op
+    }
+    shell.selectDestination('overview');
+    assert.ok(root.querySelector('[data-testid="overview-view"]'), 'navigation after the churn lands on a mounted surface');
+    assert.equal(storage.get('lazybuddy-shell-dock-open'), 'false', 'the churn settles closed in the session store');
+  } finally {
+    detach.detach();
+  }
+});
+
+// V2-T4: the health workspace destination renders with the pulse glyph. The
+// icon vocabulary of the sidebar library is out of scope for this task, so
+// the shell swaps the health row's fallback grid glyph for the pulse after
+// the rail mounts — label, tooltip and hit area stay the library's own.
+test('the health destination renders in the Workspace group with the pulse glyph', async () => {
+  storage.clear();
+  const { shell } = mountShell();
+  await settle();
+  const row = destinationButton(shell, 'health');
+  assert.ok(row, 'the health destination row renders');
+  assert.equal(row.querySelector('.lb-sidebar-destination-label').textContent, 'Health');
+  const glyph = row.querySelector('svg path');
+  assert.equal(glyph?.getAttribute('d'), 'M22 12h-4l-3 9L9 3l-3 9H2', 'the health row carries the pulse glyph');
+  assert.equal(row.disabled, false, 'the destination is selectable; missing data renders an unavailable view, never a disabled control');
+  assert.equal(shell.selectDestination('health'), true);
+  const unavailable = shellRoot(shell).querySelector('[data-testid="shell-destination-unavailable"]');
+  assert.ok(unavailable, 'without a mounted health view the honest unavailable panel renders');
+  assert.equal(unavailable.dataset.destination, 'health');
+  assert.equal(unavailable.querySelectorAll('.status')[0].dataset.state, 'unavailable');
+});
+
+// V2-T4: at narrow widths the subtle scrim dismisses the open dock — the
+// scrim is the root's ::after, so its pointer events land on the root itself
+// (a click on the dock or any content bubbles past the guard). Wide shells
+// ignore root clicks entirely: no scrim, no dismissal.
+test('the narrow scrim dismisses the open dock; wide root clicks never do', async () => {
+  storage.clear();
+  const narrow = viewportQuery(true);
+  const wide = viewportQuery(false);
+  // Each mount tears down the previous one — a leaked shell keeps its
+  // document keydown listener alive and steals later tests' shortcuts.
+  const mountWith = query => {
+    for (const prev of mounted) { prev.state.bundle = null; prev.shell.update(); prev.shell.element.remove(); }
+    mounted.length = 0;
+    const state = { bundle: overviewBundle(project) };
+    const shell = createProjectShell({ projectionProvider: () => state.bundle, product: { name: 'LazyBuddy' }, viewport: query });
+    dom.document.body.append(shell.element); mounted.push({ state, shell });
+    return shell;
+  };
+
+  const narrowShell = mountWith(narrow.query);
+  await settle();
+  narrowShell.element.querySelector('[data-testid="shell-dock-trigger"]').click();
+  assert.equal(narrowShell.getStats().dockOpen, true);
+  narrowShell.element.dispatchEvent({ type: 'click', bubbles: true }); // the scrim hit: target is the root
+  assert.equal(narrowShell.getStats().dockOpen, false, 'a scrim click at <=48rem closes the dock');
+  // A content click (bubbling from a child) never dismisses.
+  narrowShell.element.querySelector('[data-testid="shell-dock-trigger"]').click();
+  narrowShell.element.querySelector('[data-testid="shell-page-title"]').dispatchEvent({ type: 'click', bubbles: true });
+  assert.equal(narrowShell.getStats().dockOpen, true, 'clicks on real content keep the dock open');
+  narrowShell.element.dispatchEvent({ type: 'click', bubbles: true });
+
+  const wideShell = mountWith(wide.query);
+  await settle();
+  wideShell.element.querySelector('[data-testid="shell-dock-trigger"]').click();
+  wideShell.element.dispatchEvent({ type: 'click', bubbles: true });
+  assert.equal(wideShell.getStats().dockOpen, true, 'a wide shell has no scrim: root clicks never close the dock');
+});
+
+test('keyboard map: Cmd/Ctrl+1..8 destinations, Cmd/Ctrl+B retracts the rail, j/k sidebar traversal', async () => {
   storage.clear();
   const detach = installFocusSystem({ root: dom.document });
   try {
@@ -528,11 +745,11 @@ test('keyboard map: Cmd/Ctrl+1..7 destinations, Cmd/Ctrl+B retracts the rail, j/
     const { shell } = mountShell({ views });
     await settle();
     shell.openPlan('plan:shell');
-    dom.document.dispatchEvent({ type: 'keydown', key: '5', code: 'Digit5', metaKey: true, bubbles: true, cancelable: true });
-    assert.equal(shell.getStats().activeDestination, 'git', 'Cmd/Ctrl+5 selects the fifth destination (git) from anywhere');
+    dom.document.dispatchEvent({ type: 'keydown', key: '6', code: 'Digit6', metaKey: true, bubbles: true, cancelable: true });
+    assert.equal(shell.getStats().activeDestination, 'git', 'Cmd/Ctrl+6 selects the sixth destination (git — health shifted the map) from anywhere');
     assert.equal(dom.document.activeElement, destinationButton(shell, 'git'), 'the shortcut focuses the sidebar destination');
     assert.equal(destinationButton(shell, 'git').getAttribute('aria-current'), 'page');
-    dom.document.dispatchEvent({ type: 'keydown', key: '8', code: 'Digit8', ctrlKey: true, bubbles: true, cancelable: true });
+    dom.document.dispatchEvent({ type: 'keydown', key: '9', code: 'Digit9', ctrlKey: true, bubbles: true, cancelable: true });
     assert.equal(shell.getStats().activeDestination, 'git', 'a digit past the destinations is ignored');
 
     const rail = shellRoot(shell).querySelector('.lb-sidebar');

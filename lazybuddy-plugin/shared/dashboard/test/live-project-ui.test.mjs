@@ -69,7 +69,7 @@ test('live shell enables every layer, renders the registered long document, and 
   shell = createProjectShell({ projectionProvider: () => overviewBundle(project), views: live.views });
   await tick();
   const destinations = [...shell.element.querySelectorAll('[data-destination]')];
-  assert.equal(destinations.length, 7); assert.equal(destinations.every(control => !control.disabled), true);
+  assert.equal(destinations.length, 8); assert.equal(destinations.every(control => !control.disabled), true);
   const context = shell.element.querySelector('[data-testid="shell-context"]').textContent;
   assert.match(context, /branch main @ b{12}/, 'the live project worktree supplies the compact header context');
   assert.doesNotMatch(context, /not projected|observed 2026/, 'source freshness is not mislabeled as Git observation time');
@@ -127,6 +127,60 @@ test('live shell enables every layer, renders the registered long document, and 
   assert.equal(shell.getStats().activeDestination, 'project', 'Cmd/Ctrl+2 reaches the second destination from anywhere in the shell');
   assert.equal(shell.element.querySelector('.lb-sidebar-destination[aria-current="page"]').dataset.destination, 'project',
     'the sidebar current state follows the shortcut navigation');
+});
+
+// V2-T4 — the Health workspace destination composes from the sibling module
+// ui/health-view.mjs through the exact contract (dynamic import,
+// createHealthView({ adapter })). The module lands in parallel, so the proof
+// accepts BOTH honest outcomes: the view mounting with its element, or the
+// explicit unavailable panel while the module is absent — never a fabricated
+// health surface either way.
+test('the health destination mounts the sibling view or the honest unavailable panel (V2-T4)', async () => {
+  const adapter = { source: async () => { throw new Error('not used'); },
+    command: async () => { throw new Error('not used'); },
+    assessTransition: async () => { throw new Error('not used'); },
+    detail: async () => { throw new Error('not used'); } };
+  let shell;
+  const live = createLiveProjectViews({ project, adapter,
+    onDestinationRequest: destination => shell.selectDestination(destination),
+    onOpenItem: item => shell.openItem(item),
+    onOpenPlan: planId => shell.openPlan(planId) });
+  shell = createProjectShell({ projectionProvider: () => overviewBundle(project), views: live.views });
+  await tick();
+
+  const row = shell.element.querySelector('.lb-sidebar-destination[data-destination="health"]');
+  assert.ok(row, 'the health destination row renders in the live shell');
+  shell.selectDestination('health');
+  await tick();
+  await tick(); // the lazy dynamic import settles over a microtask
+  assert.equal(shell.getStats().activeDestination, 'health');
+  const surface = shell.element.querySelector('[data-testid="health-destination"]');
+  assert.ok(surface, 'the health destination surface mounts in the content region');
+  const view = surface.querySelector('[data-testid="health-view"]');
+  if (view) {
+    assert.ok(view.nodeType === 1, 'the sibling module mounted through createHealthView({ adapter })');
+    assert.equal(surface.children[0], view, 'the mounted view owns the destination surface');
+    // The base adapter exposes no health reader, so the narrowed adapter is
+    // null and the view renders its OWN honest no-adapter state — never a
+    // project record refused as a malformed health snapshot.
+    assert.match(view.textContent, /no health adapter is connected/,
+      'without a health reader the view states its honest unobserved case');
+    // Project polling snapshots are NOT health snapshots — they must never
+    // reach the schema-gated view (no malformed-refusal takeover).
+    live.update({ ...project, revision: 9 });
+    await tick();
+    assert.match(live.views.health.getView().element.textContent, /no health adapter is connected/,
+      'project polling never trips the health view refusal');
+  } else {
+    const unavailable = surface.querySelector('[data-testid="health-unavailable"]');
+    assert.ok(unavailable, 'the honest unavailable panel renders while the module is absent');
+    assert.ok(unavailable.textContent.includes('not available'), 'the panel names the actual reason');
+    assert.ok(unavailable.textContent.includes('nothing is inferred'), 'no fabricated health state rides the panel');
+  }
+  // Updates keep flowing to whichever outcome owns the surface (no throw).
+  live.update({ ...project, revision: 10 });
+  await tick();
+  assert.equal(shell.getStats().activeDestination, 'health', 'polling preserves the health destination');
 });
 
 test('leaving a dirty live editor asks through the shell guard; polls never spend the drafts (T20, stale_state)', async () => {
