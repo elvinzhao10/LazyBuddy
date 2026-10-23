@@ -104,10 +104,11 @@ persistent project layer is vendored the same way as a second family tree:
 `lazybuddy-plugin/shared/project.vendor.json` (31 files — the portable runtime
 modules and QA harness; tests, native-identity QA, and fault hooks stay
 Buddy-side by recorded decision), checked with `--family project`; after the
-T21–T25 ports and the completion repin, all six sibling roots carry both
-trees byte-identically (dashboard tree `e55a9c00…`, project tree `16561f3…`,
-source revision `bb696092`), and the drift job requires all six roots
-complete for both families.
+T21–T25 ports, the completion repin and the V2 refinement repin (V2-T7), all
+six sibling roots carry both trees byte-identically (dashboard tree
+`97c14d4d…` — 81 files, the V2 refinement chrome plus the health page —
+project tree `16561f3…`, source revision `9b8aa932`), and the drift job
+requires all six roots complete for both families.
 
 The `status-dashboard` MCP server exposes six tools: the four status views plus
 `dashboard_service` (`start`, `status`, `stop`, `open`) and `copy_task_context`,
