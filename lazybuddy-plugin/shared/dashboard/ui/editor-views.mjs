@@ -291,7 +291,11 @@ function createConfirmDialog({ testid, cancelLabel = 'Cancel' }) {
   const cancelControl = button(cancelLabel, () => api.close());
   cancelControl.dataset.testid = `${testid}-cancel`;
   let confirmed = false; // the confirm path marks itself so close-without-confirm runs onCancel
-  const confirmControl = button('', () => { const action = onConfirm; onConfirm = null; confirmed = true; api.close(); action?.(); });
+  // V2-T7 (T9 residual fix): the confirm control is created named ("Confirm")
+  // so it never sits in the DOM as an unnamed icon-only button between mounts;
+  // ask() replaces the label with the action-specific confirmLabel, so the
+  // visible label and the accessible name can never disagree.
+  const confirmControl = button('Confirm', () => { const action = onConfirm; onConfirm = null; confirmed = true; api.close(); action?.(); });
   confirmControl.dataset.testid = `${testid}-confirm`;
   confirmControl.classList.add('lb-destructive');
   const actions = element('div', 'cluster editor-dialog-actions');

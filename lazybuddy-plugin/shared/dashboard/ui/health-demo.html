@@ -18,6 +18,9 @@
   <script type="module">
 import { createHealthView } from './health-view.mjs';
 try { clearTimeout(loadTimeout); } catch { /* the timeout callback owns the failure surface */ }
+// V2-T7 audit fix (ST-1): the bounded loading line must not linger after the
+// fixtures mounted — clear it once the recorded views are on screen.
+try { document.querySelector('#load-status').hidden = true; } catch { /* absent on trimmed hosts */ }
 
 // Two REAL recorded snapshots from dashboard/adapters/health.mjs:
 //   clean  — collected over this repository's plugin checkout (it honestly
@@ -79,8 +82,11 @@ document.querySelector('[data-fixture="malformed"]').addEventListener('click', (
       <h1>Plugin self-health — recorded adapter</h1>
       <div id="health-recorded" class="stack"></div>
     </section>
+    <!-- V2-T7 audit fix (TY-1): one h1 per page — the second mount is a
+         supporting proof section, so it heads at h2 (heading order stays
+         h1 → h2 → h3 through both mounts). -->
     <section class="stack" aria-label="Health view without an adapter">
-      <h1>Plugin self-health — no adapter connected</h1>
+      <h2>Plugin self-health — no adapter connected</h2>
       <div id="health-unbound" class="stack"></div>
     </section>
     <footer>V2-T5 health view. Observation authority stays with dashboard/adapters/health.mjs (doctor-style collector) and the session-authenticated GET /api/project/health route; this page renders recorded results only and mutates nothing.</footer>
