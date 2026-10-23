@@ -14,6 +14,32 @@ that view cannot exercise (Editors has none).
 | Git and metrics | T18 · fe210c3 | 9 PASS + 1 NA | PASS |
 | Evidence and research | T19 · 0475f0b | 9 PASS + 1 NA | PASS |
 
+V2 refinement re-audit (V2-T7, 2026-10-22): every surface re-walked at the
+final V2 head with this round's changes in place (compact icon top bar,
+collapse fix + divider headers, overlay dock, decomposed overview, Health
+destination, T8 polish, T9 pattern adoption).
+
+| Surface | Record | Sections | Result |
+| --- | --- | ---: | --- |
+| Overview (decomposed, V2-T4) | `overview.md` V2-T7 note | 9 PASS + 1 NA | PASS |
+| Editors | `editors.md` V2-T7 note (confirm-control naming residual closed) | 10 PASS | PASS |
+| Execution + timeline | `execution.md` V2-T7 note | 9 PASS + 1 NA | PASS |
+| Architecture lenses | `architecture.md` V2-T7 note | 9 PASS + 1 NA | PASS |
+| Git and metrics | `git-metrics.md` V2-T7 note | 9 PASS + 1 NA | PASS |
+| Evidence and research | `evidence-research.md` V2-T7 note | 9 PASS + 1 NA | PASS |
+| Plugin self-health (V2-T5, audited now) | `health.md` (full block, 2 audit fixes applied) | 9 PASS + 1 NA | PASS |
+| Served shell + all 10 demo/QA pages | `shell-and-demos.md` | scoped PASS rows | PASS |
+
+Re-audit method (recorded in
+`.lazyzcode/runs/dashboard-v2-refinement-20261022/evidence/T7/`): the full
+`test/*.test.mjs` suite green (459/459) with the tooling venv python; the
+whole-tree static CSS audit — the shipped `ui-library-tokens.test.mjs` rules
+applied to every view stylesheet — 14/14 CLEAN (one verified non-finding,
+see `evidence-research.md`); a 10-page cold-headless smoke with console
+capture, zero console errors; cold light/dark/narrow captures of the shell
+and four theme/width captures of the health page
+(`docs/design/captures/shell-v2/`, `docs/design/captures/health/`).
+
 The records are dated snapshots taken against the T12b shell frame
 (c1261f6), which still navigated through tabs; after the audits, the T20a
 de-tabbing rework (e919d71) replaced that frame with the static retractable

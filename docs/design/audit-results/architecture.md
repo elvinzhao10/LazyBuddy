@@ -12,6 +12,13 @@ fixture itself is exported there as `architecture-fixture.json` by the test
 suite). Probe numbers quoted below come from `capture-results.json` in the
 same directories.
 
+V2-T7 re-audit (2026-10-22): sections re-verified at the final V2 head —
+`architecture-view.test.mjs` green (fixture regenerated this pass),
+`architecture.css` CLEAN in the V2-T7 whole-tree static CSS audit,
+`architecture-demo.html` re-smoked cold with zero console errors. The V2-T3
+removal of the graph viewport button cluster is unchanged and pinned by
+`ui-native-graph-motion.test.mjs`. Verdicts stand.
+
 ### Design audit — Architecture (Current/Planned/Change lenses)
 
 Task: T17 · View slug: architecture · Entry page: ui/architecture-demo.html · Date: 2026-10-19 · Commit: (this commit)

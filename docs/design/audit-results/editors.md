@@ -15,6 +15,19 @@ composes no uncovered pair); [C] captures in
 `capture-results.json`; session notes in `manual-qa.md` — cold headless
 Chromium over the real command route).
 
+V2-T7 re-audit (2026-10-22): all ten sections re-verified at the final V2
+head — `editor-views.test.mjs` + `live-project-ui.test.mjs` green (36 cases;
+full suite 459/459), `editor.css` CLEAN in the V2-T7 whole-tree static CSS
+audit. The T9-recorded view-file residual is CLOSED this pass: the confirm
+dialog's confirm control was created as an unnamed icon-only `button('')`
+(T9 flagged it `data-native-unlabeled`-class); it is now created named
+("Confirm") and `ask()` replaces the label with the action-specific
+`confirmLabel`, so the visible label and the accessible name can never
+disagree (`ui/editor-views.mjs`, this commit). The other T9 view-file note
+(hand-wired Graph/List switchers roving from first arrow, not from paint)
+STAYS a recorded residual by decision — see
+`docs/design/pattern-adoption.md` and `shell-and-demos.md`.
+
 ### Design audit — Editors (project and plan editors + document reading surface)
 
 Task: T15 · View slug: editors · Entry page: served dashboard Project destination (harness: editors.html over `ui/`) · Date: 2026-10-19 · Commit: (this commit)

@@ -9,6 +9,14 @@ plus the cited shared suites; [C] captures in `docs/design/captures/execution/`
 `.lazyzcode/runs/1p4p0-completion-ux-20261018/evidence/T16/` — capture-results.json
 records the cold-headless-Chromium probe numbers behind every [C] claim).
 
+V2-T7 re-audit (2026-10-22): sections re-verified at the final V2 head —
+`execution-view.test.mjs` + `live-execution-model.test.mjs` green (fixture
+regenerated this pass), `execution.css` and `timeline.css` CLEAN in the
+V2-T7 whole-tree static CSS audit, `execution-demo.html` re-smoked cold with
+zero console errors. The V2-T8 fix this view carries (reconnect focus after
+a mid-edit disconnect) is pinned in `ui/index.mjs` by the live suites.
+Verdicts stand.
+
 ### Design audit — Execution + timeline (nested DAG + actual-run swimlanes)
 
 Task: T16 · View slug: execution · Entry page: ui/execution-demo.html · Date: 2026-10-19 · Commit: (this commit)

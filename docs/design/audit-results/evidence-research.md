@@ -2,6 +2,15 @@
 
 Per-view application of `docs/design/design-audit-checklist.md` (Section 12 template) for the T19 evidence and research redesign. Evidence codes: **[T]** computed/token invariant via `test/design-tokens.test.mjs`, **[D]** DOM/static assertion in `test/evidence-view.test.mjs` (case names cited), **[C]** browser capture. Captures for this run live under the run evidence directory `.lazyzcode/runs/1p4p0-completion-ux-20261018/evidence/T19/captures/` (run-level convention for the 2026-10-18 UX pass; the fixture-only entry page `ui/evidence-demo.html` served over a local HTTP server in cold headless Chromium driven through the DevTools protocol, theme forced via the documented `?theme=` hook; procedure and observed facts in `evidence/T19/manual-qa.md`).
 
+V2-T7 re-audit (2026-10-22): sections re-verified at the final V2 head —
+`evidence-view.test.mjs` green (fixture regenerated this pass),
+`evidence.css` CLEAN in the V2-T7 whole-tree static CSS audit (the single
+SP-4 hit, `border-radius:0 var(--radius-sm) var(--radius-sm) 0`, is the
+per-corner composition of the token and zero — the scale's floor, not a
+literal), `evidence-demo.html` re-smoked cold with zero console errors. The
+V2-T8 bounded-retry fix for the evidence-preview click race is pinned by
+this suite. Verdicts stand.
+
 ### Design audit — evidence and research
 
 Task: T19 · View slug: evidence-research · Entry page: ui/evidence-demo.html (and the Evidence destination inside the T12b project shell) · Date: 2026-10-18 · Commit: this commit

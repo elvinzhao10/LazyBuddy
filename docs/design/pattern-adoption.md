@@ -91,7 +91,10 @@ backlog)**
 
 - `ui/editor-views.mjs` (~line 294): the confirm-dialog confirm control is an
   icon-only `button('')` with NO accessible name — needs an `aria-label` in a
-  view-owned pass.
+  view-owned pass. **CLOSED in V2-T7:** the
+  control is now created named (`button('Confirm', …)`) and `ask()` swaps in
+  the action-specific `confirmLabel`, so the visible label and the accessible
+  name can never disagree — see `audit-results/editors.md` (V2-T7 note).
 - Hand-wired Graph/List switchers (e.g. `work-view.mjs`) paint without roving
   tabindex; the layer normalizes them on first arrow interaction, but a
   view-owned migration to `segmentedControl()` would ship it from paint.

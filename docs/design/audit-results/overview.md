@@ -23,6 +23,16 @@ parity probe MAIN=1200px closed/open/restored @1440 in
 new Health destination (pulse glyph; honest unavailable panel without a
 mounted view).
 
+V2-T7 re-audit (2026-10-22): all ten sections re-verified at the final
+V2 head — `overview.test.mjs` green (full suite 459/459), the V2-T7
+whole-tree static CSS audit keeps `overview.css` CLEAN on every checklist
+static item (TY-3/7, SP-1/4, CL-1, MO-1, NF-4), the shell re-captures
+(`captures/shell-v2/S1-hierarchy-{light,dark}-1440.png`,
+`S4-responsive-{light,dark}-390.png`, `S10-overlay-dock-dark-1440.png` +
+`geometry-readouts.txt`) carry the decomposed overview in the real shell
+frame with `SCROLL=390<=390` at both themes and `MAIN=1200px` unchanged with
+the dock open. No new findings; the verdicts above stand.
+
 ### Design audit — Overview (project dashboard tab)
 
 Task: T14 (V2-T4 refresh) · View slug: overview · Entry page: ui/project-shell.html · Date: 2026-10-19, refreshed 2026-10-22 (V2-T4 captures and probes re-taken cold; earlier results reproduced) · Commit: (this commit)

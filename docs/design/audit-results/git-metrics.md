@@ -8,6 +8,12 @@ lives in `lazybuddy-plugin/shared/dashboard/test/git-metrics-view.test.mjs`
 captures in `docs/design/captures/git-metrics/` (mirrored with the raw probe
 results in `.lazyzcode/runs/1p4p0-completion-ux-20261018/evidence/T18/`).
 
+V2-T7 re-audit (2026-10-22): sections re-verified at the final V2 head —
+`git-metrics-view.test.mjs` green (fixture regenerated this pass),
+`git-metrics.css` CLEAN in the V2-T7 whole-tree static CSS audit,
+`git-metrics-demo.html` re-smoked cold with zero console errors ("fixture
+ready inside the app shell" — the shell frame mounts it). Verdicts stand.
+
 ### Design audit — Git and metrics detail (project dashboard Git tab)
 
 Task: T18 · View slug: git-metrics · Entry page: ui/git-metrics-demo.html · Date: 2026-10-19 · Commit: (this commit)
