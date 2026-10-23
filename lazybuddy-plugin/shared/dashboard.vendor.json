@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "bb696092bc75cbddf80f35026ecd66e364d7ddfd",
+    "revision": "9b8aa938274187ff8515cfafbda950617a223efb",
     "path": "lazybuddy-plugin/shared/dashboard",
-    "treeSha256": "e55a9c005d9808ac2a6a49115e1dacb45f83b291c26ec303ac5709310dd3cdfb"
+    "treeSha256": "97c14d4d9ade0718aef12dd8af0c26fd8818e8e40751e8c55ed063bc28b01fdb"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -107,13 +107,13 @@
     },
     {
       "path": "ui/architecture-view.mjs",
-      "bytes": 53249,
-      "sha256": "712256e5a0a9b3f3efc0560cabeefff4a3793dde294e68b9b3e055051a20d46b"
+      "bytes": 53338,
+      "sha256": "c813cf7482429ce2b48fd99288a3f06dd05763a677f1241ea9979e66ae69a9b9"
     },
     {
       "path": "ui/architecture.css",
-      "bytes": 12648,
-      "sha256": "bc452dc9b94d1312efcb6088ccbfeb59f62cf1af3256eb30bdbde5c37ecfd3b7"
+      "bytes": 12274,
+      "sha256": "411507bf2e1f01b86bd874a189bacadc7e9b72ca3a0521d6d6186b50b22da3d5"
     },
     {
       "path": "ui/asset-manifest.json",
@@ -132,8 +132,8 @@
     },
     {
       "path": "ui/components.mjs",
-      "bytes": 52780,
-      "sha256": "c4cc610475812d0bfe00902d691d8e678e106b85a8a5de15d123e51542b4bdca"
+      "bytes": 68779,
+      "sha256": "d4b83597ff073b5b862a2e19c99f775e59edb8f3e93b9f8406c0c707d6f95db0"
     },
     {
       "path": "ui/connection.mjs",
@@ -142,8 +142,8 @@
     },
     {
       "path": "ui/DESIGN.md",
-      "bytes": 15594,
-      "sha256": "eecfd187715f72649dd3a4e9aa08d5897e6d10c18bc6e9268bf4a8f26a1d430c"
+      "bytes": 17828,
+      "sha256": "550c80f78f39f278e477260cddc4c948f60ff6ed0b0c7fca53c6d0b115ddb48e"
     },
     {
       "path": "ui/document-view.css",
@@ -161,14 +161,9 @@
       "sha256": "5ab44e137a1f8a91451b0b1fe31def9f0fc6fbdc3d971f24e537aa37ae71d86b"
     },
     {
-      "path": "ui/editor-page.mjs",
-      "bytes": 2290,
-      "sha256": "6994f5c54e31902a93321624d86ed085088f38fb3bded40a67a0d42372ea5324"
-    },
-    {
       "path": "ui/editor-views.mjs",
-      "bytes": 79133,
-      "sha256": "df942f86c0c9ecadd3c8e9196d0fe59373d7b8805b1852457e94bc61e4679a16"
+      "bytes": 79438,
+      "sha256": "a210b229d3bb9a72a10db79cf58cd8b4cdaa0d75ef7964383100e5ab1078aea8"
     },
     {
       "path": "ui/editor.css",
@@ -217,13 +212,13 @@
     },
     {
       "path": "ui/execution-view.mjs",
-      "bytes": 45259,
-      "sha256": "7c0922ce2da5ca4dfe4aa038458ab74b2f1df4f0c4a1ad47f6ec8c45a915d0c8"
+      "bytes": 45606,
+      "sha256": "ad857750de25659a2e0e3a3792907a2ee2ed769a73d835feea11b79e0a80e503"
     },
     {
       "path": "ui/execution.css",
-      "bytes": 8851,
-      "sha256": "4717420ecc667c97cb9bf9cbda3c3029f984977bcae6a326a80ca14c0c7ac3e5"
+      "bytes": 8498,
+      "sha256": "b8041e06cc06ee0ba25feb811c3312d9ab1492cf0d9f09e286dab57bde6440d4"
     },
     {
       "path": "ui/git-metrics-demo.html",
@@ -257,8 +252,23 @@
     },
     {
       "path": "ui/graph-viewport.mjs",
-      "bytes": 15358,
-      "sha256": "848248e2845509d02a88b7c08528802df48a8bdcdb275297a0f6864f294a2957"
+      "bytes": 14725,
+      "sha256": "ec5eb9e62a9f61a61b22fe11be133cefcec61fb86a3b42b346c8298892256356"
+    },
+    {
+      "path": "ui/health-demo.html",
+      "bytes": 28576,
+      "sha256": "b51c81ad64b8d44beb0fdeea3058b850312788555217c7c965430889f6ec96e3"
+    },
+    {
+      "path": "ui/health-view.mjs",
+      "bytes": 9108,
+      "sha256": "538a5584a0a3ceada203ca911615ad114f76742c7e28b89bca62f6a52c6c5baf"
+    },
+    {
+      "path": "ui/health.css",
+      "bytes": 2485,
+      "sha256": "502167a2be040bc7d8de5a364240444711ac39eec2ad01d4f41b8a531ef58d1e"
     },
     {
       "path": "ui/icons.LICENSE",
@@ -272,8 +282,8 @@
     },
     {
       "path": "ui/index.mjs",
-      "bytes": 9495,
-      "sha256": "f0bc9372174a88e089a75b7cb8e70649c373784c681596ad9b1c7c28c76de3e2"
+      "bytes": 10020,
+      "sha256": "ec1e0f3e8724fad6cd367f72c658c94090cdb9bc1a272ba64a44914adba36c25"
     },
     {
       "path": "ui/inspector-view.mjs",
@@ -302,18 +312,18 @@
     },
     {
       "path": "ui/overview-fixture.mjs",
-      "bytes": 22750,
-      "sha256": "a6fa8e8afdff32858760058e279570f7acb43a6d9a5960904d05b8a644fd9e97"
+      "bytes": 26398,
+      "sha256": "070f96bbbbe5933568fecb6c775cd2c83ae31741636f7e3ab6f46ef459262cf4"
     },
     {
       "path": "ui/overview.css",
-      "bytes": 5887,
-      "sha256": "2b01a341aa2d11b7f77f90e7c1855b03d2de501d5f9c8d10b00086a2786972e4"
+      "bytes": 8441,
+      "sha256": "7b3410e98dc25895efd87924f6f1236f9cf784fcd6056e91871a2651c81c717e"
     },
     {
       "path": "ui/overview.mjs",
-      "bytes": 18241,
-      "sha256": "15c3736981bc58da3d14f23df22585a04222d3c8c651772612d632a27234b68b"
+      "bytes": 25622,
+      "sha256": "d34083734e7a57ce547c6d3c634eafee22b6727d84592c1b46da0e8c23b31401"
     },
     {
       "path": "ui/project-fixtures.mjs",
@@ -322,8 +332,8 @@
     },
     {
       "path": "ui/project-live-views.mjs",
-      "bytes": 24527,
-      "sha256": "df0adfa37341cccb9fd91c123553e080b80790cf3a524c8073fa8c86efc1a952"
+      "bytes": 28144,
+      "sha256": "15d0e1bcb6f5bee007b9c5d7767815b0c87d78a758d58ddd5dd0fdb270583ae9"
     },
     {
       "path": "ui/project-map-page.mjs",
@@ -332,8 +342,8 @@
     },
     {
       "path": "ui/project-map-spike.css",
-      "bytes": 5955,
-      "sha256": "40f6836adf0e9f92f85c7470199c7e65624c9ff39bb6220e1e660f90378e6e23"
+      "bytes": 5668,
+      "sha256": "b136429c05aab7a1f3d55a743dc821a545b67ba3fdaca6ef89a89a28fa6e3621"
     },
     {
       "path": "ui/project-map-spike.html",
@@ -342,8 +352,8 @@
     },
     {
       "path": "ui/project-map-spike.mjs",
-      "bytes": 28159,
-      "sha256": "275dac3bcfafb10b84e78277a4cfefdecc5e3a5abd5b7ec50cb8c80fe35dedbc"
+      "bytes": 28258,
+      "sha256": "58910419ae2cf945c361d35d4471291fda8df2c3ddc49448ffed43990d49d972"
     },
     {
       "path": "ui/project-presentation.mjs",
@@ -352,23 +362,23 @@
     },
     {
       "path": "ui/project-shell-page.mjs",
-      "bytes": 3657,
-      "sha256": "3c8a3b4bba1c6f3feb6c379f7c9b02aa3166fe04b8b2671011645c666a690cfc"
+      "bytes": 3136,
+      "sha256": "a99e4d0de3bf2f98938035f311751f1a9aa6d660d123b5fc86787484ce193f37"
     },
     {
       "path": "ui/project-shell.css",
-      "bytes": 11226,
-      "sha256": "2ca83057b14f93fa023c89347c63553f186faeb4f6791c071ba666b5ae84c974"
+      "bytes": 14687,
+      "sha256": "0a283d2e17352eaa4801768984d9fda1cda793b4711120536516111c63a2c62b"
     },
     {
       "path": "ui/project-shell.html",
-      "bytes": 1956,
-      "sha256": "3e9dbefd4eeabf5f22232a6ceae93fef230002b0a6238fa27aefed4b0fcd909c"
+      "bytes": 1777,
+      "sha256": "1f200433984d60025bd14b36dc7957dd2765160de2770be3b0f11af1d4a55f0b"
     },
     {
       "path": "ui/project-shell.mjs",
-      "bytes": 27743,
-      "sha256": "e8755397ae7887a4ceb496c1d27a660f320eba7e17721d8cf494dac6c21c36b1"
+      "bytes": 35935,
+      "sha256": "29842663ba4012608a53fc6c480c6e1244d29f7813518104a059f10711f871b4"
     },
     {
       "path": "ui/showcase.html",
@@ -377,18 +387,18 @@
     },
     {
       "path": "ui/showcase.mjs",
-      "bytes": 30741,
-      "sha256": "ae5ca5e54ab51730399a327d30f70f2466b0395f16938690b5587a2d82ec075d"
+      "bytes": 32625,
+      "sha256": "a47bc1e7b2d703f9d343dcb44e3a038b824914a846cfd66ac62a20c6a2dc5c92"
     },
     {
       "path": "ui/style.css",
-      "bytes": 27916,
-      "sha256": "86d52906aa2182b8c149574e165236138215b966e608e0fd519b44668f209679"
+      "bytes": 30114,
+      "sha256": "c2b18ab5eb38e1125929c51cf81951e496fe4bc4b037d087faa91eef2c2f7e8c"
     },
     {
       "path": "ui/theme-init.js",
-      "bytes": 2797,
-      "sha256": "1319d8c3cfe6e257e2aebdadd3287ceddb9614ecc66b53102e050b0867cad0c1"
+      "bytes": 3106,
+      "sha256": "926b00dc0a1923480dae62e0e6ffbf433608a1341c8645f14cc73143a890a3bc"
     },
     {
       "path": "ui/timeline-model.mjs",
@@ -402,8 +412,8 @@
     },
     {
       "path": "ui/tokens.css",
-      "bytes": 12002,
-      "sha256": "834ddafc6b8af17bb97e6fd877f7aa362ea583385fa2c577e49f9e19afbcfbf2"
+      "bytes": 12351,
+      "sha256": "e887deeaf5e3a331831d2f33133ea127452f7f37bd9481ca7b9e7fbd2baca358"
     },
     {
       "path": "ui/verification-view.mjs",
@@ -412,8 +422,8 @@
     },
     {
       "path": "ui/views.css",
-      "bytes": 4327,
-      "sha256": "beff09df172e06b389175eb34fec04ba6b19633d016a4531fae4fe61416313c3"
+      "bytes": 4343,
+      "sha256": "f05174f67e1663a368b0a718f61b4c7457eb66105152217287179c8fb139973e"
     },
     {
       "path": "ui/work-view.mjs",
