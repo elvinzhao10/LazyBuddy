@@ -8,7 +8,7 @@ export const plugin = fileURLToPath(new URL('../../../', import.meta.url));
 export const cli = join(plugin, 'shared/dashboard/commands.mjs');
 export function processCall(argv, input = '', environment = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(argv[0], argv.slice(1), { env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn('bash', ['-c', 'exec "$@"', 'dashboard-test', ...argv], { env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'] });
     const timer = setTimeout(() => child.kill('SIGKILL'), 20000);
     let stdout = ''; let stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; });

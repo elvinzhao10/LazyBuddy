@@ -10,7 +10,7 @@ import {
 const sha256Bytes = bytes => createHash('sha256').update(bytes).digest('hex');
 const DANGEROUS_BLOCK = /<\s*(script|iframe|object|embed|style|svg|math)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi;
 const DANGEROUS_VOID = /<\s*(?:script|iframe|object|embed|style|svg|math)\b[^>]*\/?>/gi;
-const ANY_TAG = /<\s*\/?\s*[A-Za-z][^>]*>/g;
+const ANY_TAG = /<\s*\/?\s*[A-Za-z][^>\n]*(?:>|$)/gm;
 const MARKDOWN_LINK = /\[([^\]]*)\]\(\s*([^)\s]+)\s*(?:"[^"]*"|'[^']*')?\)/g;
 const UNSAFE_URL_SCHEME = /^\s*(?:javascript|vbscript|data):/i;
 
@@ -25,7 +25,13 @@ export function previewProfile(relativePath) {
 }
 
 function stripTags(text, report) {
-  return text.replace(ANY_TAG, () => { report.removed_html_tags += 1; return ''; });
+  let previous;
+  let value = text;
+  do {
+    previous = value;
+    value = value.replace(ANY_TAG, () => { report.removed_html_tags += 1; return ''; });
+  } while (value !== previous);
+  return value;
 }
 
 function inlineSanitize(text, report) {
@@ -71,6 +77,33 @@ function segment(source) {
 
 export function sanitizeMarkdown(source) {
   const report = { removed_html_tags: 0, removed_script_blocks: 0, removed_js_urls: 0, links: [] };
+  const parts = segment(source);
+  let markupStarts = 0;
+  let proseBytes = 0;
+  // Bound both regex rescans and fixed-point rounds before processing any markup.
+  // Code fences remain verbatim data and do not consume the prose budget.
+  for (const part of parts) {
+    if (part.kind === 'code') continue;
+    const prose = part.lines.join('\n');
+    proseBytes += Buffer.byteLength(prose, 'utf8');
+    let unresolvedDelimiters = 0;
+    let pendingLength = 0;
+    let brackets = 0;
+    let parentheses = 0;
+    for (const character of prose) {
+      if (character === '<') markupStarts += 1;
+      if (character === '[') brackets += 1;
+      if (character === '(') parentheses += 1;
+      if (character === ']' || character === '\n') brackets = 0;
+      if (character === ')' || character === '\n') parentheses = 0;
+      unresolvedDelimiters = Math.max(brackets, parentheses);
+      pendingLength = unresolvedDelimiters ? pendingLength + character.length : 0;
+      if (markupStarts > 128 || unresolvedDelimiters > 128 || pendingLength > PREVIEW_TEXT_LIMIT) break;
+    }
+    if (markupStarts > 128 || unresolvedDelimiters > 128 || pendingLength > PREVIEW_TEXT_LIMIT || (markupStarts > 0 && proseBytes > PREVIEW_TEXT_LIMIT)) {
+      return { sanitized: true, available: false, reason: 'markdown_complexity_limit', blocks: [], sanitization: report };
+    }
+  }
   const blocks = [];
   const emitProse = lines => {
     let paragraph = [];
@@ -81,15 +114,20 @@ export function sanitizeMarkdown(source) {
         paragraph = [];
       }
     };
-    for (const raw of lines) {
+    let prose = lines.join('\n');
+    let previous;
+    do {
+      previous = prose;
+      prose = prose.replace(DANGEROUS_BLOCK, () => { report.removed_script_blocks += 1; return ''; });
+    } while (prose !== previous);
+    do {
+      previous = prose;
+      prose = prose.replace(DANGEROUS_VOID, () => { report.removed_script_blocks += 1; return ''; });
+    } while (prose !== previous);
+    for (const raw of prose.split('\n')) {
       const bare = raw.trim();
       if (!bare) { flush(); continue; }
-      let line = bare.replace(DANGEROUS_BLOCK, (match, tag) => {
-        report.removed_script_blocks += 1;
-        return '';
-      });
-      line = line.replace(DANGEROUS_VOID, () => { report.removed_script_blocks += 1; return ''; });
-      line = stripTags(line, report);
+      const line = stripTags(bare, report);
       const heading = line.match(/^(#{1,6})\s+(.*)$/);
       if (heading) { flush(); blocks.push({ type: 'heading', level: heading[1].length, text: inlineSanitize(heading[2], report).trim() }); continue; }
       const quote = line.match(/^>\s?(.*)$/);
@@ -100,7 +138,7 @@ export function sanitizeMarkdown(source) {
     }
     flush();
   };
-  for (const part of segment(source)) {
+  for (const part of parts) {
     if (part.kind === 'code') {
       if (part.text.trim()) blocks.push({ type: 'code', text: part.text });
     } else emitProse(part.lines);

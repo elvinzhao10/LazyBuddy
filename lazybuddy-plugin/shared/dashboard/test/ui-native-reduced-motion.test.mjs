@@ -50,7 +50,7 @@ test('style.css disables the non-essential transitions under reduced motion', as
   assert.ok(reduced, 'the layer keeps its own reduced-motion block');
   assert.match(reduced, /transition:\s*none/, 'non-essential transitions switch off');
   for (const surface of ['button', '.view-switcher button', '.native-overlay']) {
-    assert.match(reduced, new RegExp(surface.replace(/[.*+?^${}()|[\]]/g, '\\$&')), `${surface} is covered`);
+    assert.ok(reduced.includes(surface), `${surface} is covered`);
   }
 });
 

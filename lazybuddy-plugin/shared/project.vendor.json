@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "9b8aa938274187ff8515cfafbda950617a223efb",
+    "revision": "75933ddf79a9ea396d6ab894742d1e93b8d03f99",
     "path": "lazybuddy-plugin/shared/project",
-    "treeSha256": "16561f3c3c1b7b95d9f5149bad33aacadbcf83e6eaca0cd40a4d5ce2b53a8052"
+    "treeSha256": "fd8089154cad39792f0c276ea32945634c9eb16dbc92511d6cc0d9829ef5e030"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -39,8 +39,8 @@
     },
     {
       "path": "artifacts/preview.mjs",
-      "bytes": 7439,
-      "sha256": "531ceffdfafa78857febdd679b3bc29e68ecd9ad315f232f7ac23bc020f76cc2"
+      "bytes": 9088,
+      "sha256": "34dd40d4c9772e4c7beff65a1a78d02ec1fb008d1abd0cc694b5f37860ed984f"
     },
     {
       "path": "artifacts/query.mjs",
@@ -139,8 +139,8 @@
     },
     {
       "path": "qa/inactivity-baseline.mjs",
-      "bytes": 9796,
-      "sha256": "d88e9537c631a1cbfa6e0369cd05078d2a49f1901ff915ed1a11c3c624c0f575"
+      "bytes": 9848,
+      "sha256": "917e814cdb469663557d315827ed54c82da210627db576dbb0b5601de89706fe"
     },
     {
       "path": "qa/README.md",
