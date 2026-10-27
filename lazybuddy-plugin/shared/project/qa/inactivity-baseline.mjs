@@ -67,7 +67,7 @@ export async function compare(baselinePath, artifactsDir) {
     const git = (args, options = {}) => run('git', ['-c', 'user.name=T02', '-c', 'user.email=t02@invalid', ...args], { cwd: fixtureRoot, ...options });
     if (run('git', ['init', '-q'], { cwd: fixtureRoot }).status !== 0) throw new Error('GIT_INIT_FAILED');
     if (git(['commit', '-q', '--allow-empty', '-m', 'fixture baseline']).status !== 0) throw new Error('GIT_COMMIT_FAILED');
-    const created = run('bash', [CREATE_RUN, 't01run', 'T01 inactivity baseline run'],
+    const created = run('bash', ['-c', 'exec "$@"', 'inactivity-create-run', 'bash', CREATE_RUN, 't01run', 'T01 inactivity baseline run'],
       { cwd: fixtureRoot, env: { ...process.env, CWD: fixtureRoot } });
     if (created.status !== 0) throw new Error(`CREATE_RUN_FAILED: ${created.stderr}`);
     report.run_created = 't01run';
