@@ -22,28 +22,66 @@ session.
 
 ## What's in 1.4.0
 
-- The family's portable dashboard core is vendored in `lazybuddy-plugin/shared/dashboard/` and pinned byte-identically in `lazybuddy-plugin/shared/dashboard.vendor.json`; this package is the family's vendoring source.
-- The `status-dashboard` MCP server offers `dashboard_service` (start, inspect, stop, or return the local browser entry), `copy_task_context` (copy a validated producer context without executing or consuming it), and typed `project` operations alongside four status views.
-- An authenticated loopback browser dashboard offers Work, Verification, and Plan-edit views with a task inspector, evidence preview, and queue planning; queue edits never start work.
-- The completion pass redesigned the project dashboard end to end: design tokens v2 dark-first family language, a de-tabbed shell with a static retractable sidebar and in-place navigation, six audited views, navigation guards, measured-and-held performance budgets, and a comprehension re-measure that passes both targets; per-repo dashboard isolation and the canonical observe bridge landed beside it.
-- Honest capability labels are documented: browser, transactional edits, project queue, context copy, and observations are available; host embedding, chat handoff, and wake are unobserved; native host readiness stays pending.
+- An authenticated local dashboard with eight destinations: **Overview, Project,
+  Plans, Health, Execution, Git, Evidence and Research**.
+- A project record, editable plans, queue planning and research capture, with
+  source revisions and evidence references visible for review.
+- A run monitor that separates execution progress from verified completion,
+  plus reported token usage, resource activity and retained-run history.
+- A Health inventory of package components, separate from observed host activity.
 
-This release adds the shared dashboard surface to the workflow foundation
-introduced in the family since v1.3.0. The details below describe the
-cumulative v1.4.0 experience; the [release notes](RELEASE_NOTES.md)
-distinguish this release's additions from inherited features. No new speed,
-token-saving or cost claim is made.
+The `status-dashboard` MCP server exposes seven tools, including
+`dashboard_service`, `copy_task_context` and typed `project` operations.
 
-| Family milestone | What you get in the current package |
-| --- | --- |
-| v1.3.0 foundation | Natural-language entry, editable plans, durable decisions and verification tiers. |
-| v1.3.1 reliability | Clearer execution intent, safer isolation and evidence comparisons. |
-| v1.3.2 handoff | Revision-bound verification-report contracts; generic completion APIs have separate limits. |
-| v1.3.3 hardening | Host-specific hook, MCP and publication repairs. |
-| v1.3.4 maintenance | Transactional run integrity, safer lifecycle and native adapter repairs. |
-| v1.3.5 repairs | Real runtime exercises, bounded hooks, dependency updates and current platform guidance. |
-| v1.4.0 dashboard | Vendored portable dashboard core, authenticated loopback browser UI, two new status-dashboard tools, queue planning and honest capability labels. |
-| v1.4.0 completion | Redesigned project dashboard (dark-first family language, sidebar shell, in-place navigation), per-repo isolation and canonical observe bridge. |
+The release builds on the existing planning, decision-memory and verification
+workflows described below. No speed, token-saving or cost improvement is
+claimed. See the [release notes](RELEASE_NOTES.md) for compatibility and upgrade
+boundaries; historical changes remain in `CHANGELOG.md`.
+
+## Browser dashboard (v1.4.0)
+
+After explicit project initialization, the dashboard provides **Overview,
+Project, Plans, Health, Execution, Git, Evidence and Research** in a collapsible
+sidebar. Contextual Details keep the selected item in view; maps support pan,
+zoom and an expanded modal. Theme and density preferences persist, and
+navigation guards protect unsaved edits.
+
+Execution progress and verification are separate. Token charts, resource
+activity and retained-run comparisons show available records; missing usage
+remains unknown. Health lists package Skills, commands, agents, hooks and MCP
+components without treating that inventory as host activation.
+
+Plans and research expose source revisions and evidence references. A hash
+reference does not preserve an immutable copy of its source or verify a
+finding. Source edits require authentication, the correct native project
+binding and a matching revision; stale edits conflict instead of overwriting
+newer work. Queue edits never start execution.
+
+The service binds to authenticated loopback, and each repository keeps its own
+project state. Browser access, transactional edits, queue planning, context
+copy and observations are package capabilities. Host embedding, chat handoff
+and wake remain unobserved; **HOST READINESS: PENDING** still applies.
+
+The portable dashboard and project cores are pinned in
+`lazybuddy-plugin/shared/dashboard.vendor.json` and
+`lazybuddy-plugin/shared/project.vendor.json`. The
+[documentation index](docs/README.md) covers package architecture and usage.
+
+### Dashboard gallery
+
+Recorded demo data served by the native local dashboard; not a live host-session receipt.
+
+**Overview** — execution and verification progress, recorded activity and the project map.
+
+![LazyBuddy dashboard Overview with recorded demo data](docs/images/dashboard-overview.jpg)
+
+**Plans** — plan records, source context and revision-aware review.
+
+![LazyBuddy dashboard Plans with recorded demo data](docs/images/dashboard-plans.jpg)
+
+**Health** — package component inventory, separate from observed host activity.
+
+![LazyBuddy dashboard Health with recorded demo data](docs/images/dashboard-health.jpg)
 
 ### Just ask, or use a command — both work
 
@@ -91,74 +129,6 @@ Milestones, decision gates, and full state/version semantics are shared
 byte-identically with LazyTrae and LazyQoder (see
 `lazybuddy-plugin/contracts/lazyseries-shared-semantics.v1.json`).
 
-## Browser dashboard (v1.4.0)
-
-LazyBuddy vendors the family's portable dashboard core in
-`lazybuddy-plugin/shared/dashboard/` and pins its bytes in
-`lazybuddy-plugin/shared/dashboard.vendor.json`. This package is the family's
-vendoring source: `scripts/vendor-dashboard.mjs` distributes the tree, and
-`.github/workflows/dashboard-family-drift.yml` is the LazyBuddy-run CI job that
-rejects dashboard drift across the six sibling repositories. The 1.4.0
-persistent project layer is vendored the same way as a second family tree:
-`lazybuddy-plugin/shared/project/` is pinned in
-`lazybuddy-plugin/shared/project.vendor.json` (31 files — the portable runtime
-modules and QA harness; tests, native-identity QA, and fault hooks stay
-Buddy-side by recorded decision), checked with `--family project`. The
-current source tree includes the long-run monitor, research capture, Health
-view and reported-usage telemetry. The dashboard vendor manifest records the
-source tree digest; family synchronization must be checked independently and
-is not implied by this source checkout.
-
-The `status-dashboard` MCP server exposes seven tools: four status views,
-`dashboard_service` (`start`, `status`, `stop`, `open`), `copy_task_context`,
-and `project`. Context copying does not execute or consume work; project
-operations use the typed shared command route.
-The browser dashboard binds literal `127.0.0.1` on an owned loopback port,
-requires an access key stored in a protected credential file, and offers Work,
-Verification, and Plan-edit views with a task inspector, evidence preview, and
-queue planning (create, amend, and reorder queued plans). Transactional edits
-and the independent project queue are available; queue edits never start work,
-and no endpoint dispatches execution.
-
-### The project dashboard UI (as shipped after the completion pass)
-
-After an explicit project init, the served dashboard mounts the project shell
-— a tab-free single surface:
-
-- **Static retractable sidebar**: a fixed column of destinations grouped
-  WORKSPACE (Overview, Project, Plans) and OBSERVATION (Execution, Git,
-  Evidence, Research), retractable to a 56px icon rail
-  (Cmd/Ctrl+B, persisted), with projection-fed count badges on Overview and
-  Plans. Selecting a destination replaces the content **in place**; item
-  navigation (a plan, an evidence record) opens within the content region
-  over a capped in-place history stack with a back affordance in the page
-  header, and a dock inspector opens on the right for details.
-- **Dark-first family design language**: the dashboard defaults to the dark
-  theme (light/dark/system choice persists), on design tokens v2 — the
-  shared family palette and depth system with LazyBuddy's cobalt accent
-  marking identity and wayfinding only; status stays shape + icon + text.
-- **Keyboard map** (the native experience layer, installed on every page):
-  Tab keeps the native ring with an always-visible focus ring; `j`/`k`
-  traverse list scopes with wrap; `/` focuses the first filter input;
-  Escape closes the topmost overlay (dock, legend, dialog) and returns
-  focus to the invoker; segmented controls take Arrow/Home/End;
-  Cmd/Ctrl+1..7 jump to destinations; Cmd/Ctrl+B retracts the sidebar;
-  theme (light/dark/system) and density (compact/regular) persist per
-  browser. Navigation guards protect unsaved edits when you switch
-  destinations.
-- **Per-repo isolation**: each repository's dashboard stores (observations,
-  admission rechecks, shell navigation) live under that repository's own
-  root; the per-repo isolation and foreign-runtime refusal matrix
-  (family-wide test) keeps a foreign runtime's writes out.
-
-Honest capability labels: the browser UI, transactional edits, the project
-queue, context copy, and observations are available in the package; host
-embedding, chat handoff, and wake are unobserved; native host readiness stays
-**pending**. The authoritative service contract — loopback binding,
-authentication, command semantics, and the queue boundary — is
-[shared/dashboard/SERVICE.md](lazybuddy-plugin/shared/dashboard/SERVICE.md),
-with a package-level overview in
-[Dashboard service](docs/reference/dashboard-service.md).
 
 ## Recommended: install with AI help
 
@@ -238,6 +208,9 @@ safe package checks separate from marketplace and connector changes.
 
 ## Package inventory
 
+These counts describe shipped definitions and declarations, not loaded host
+components.
+
 | Surface | Count | Role |
 | --- | ---: | --- |
 | Skills | 14 | Host-facing workflow policies for planning, execution, review, and verification. |
@@ -258,7 +231,7 @@ acceptance evidence. These packages run independently.
 | [LazyQoder](https://github.com/elvinzhao10/LazyQoder) | Qoder CLI / IDE / app |
 | [LazyZCode](https://github.com/elvinzhao10/LazyZCode) | ZCode |
 | [LazyKimi](https://github.com/elvinzhao10/LazyKimi) | Kimi Code CLI · Kimi Work (experimental) |
-| [LazyDeepSeek](https://github.com/elvinzhao10/LazyDeepSeek) | DeepSeek Harness 0.2.0-rc.2 |
+| [LazyDeepSeek](https://github.com/elvinzhao10/LazyDeepSeek) | DeepSeek Harness 0.2.1-rc.3 |
 
 The family shares planning, evidence, decision-memory and completion contracts.
 The shared verification core and the portable dashboard core are vendored
