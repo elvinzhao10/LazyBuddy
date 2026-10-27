@@ -525,10 +525,15 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
     '2026-10-06T00:00:00Z']) {
     assert.ok(q1.textContent.includes(text), `research display includes: ${text}`);
   }
-  assert.ok(q1.textContent.includes('research/notes/q1.md') && q1.textContent.includes('https://example.com/lazyseries/t19-spec'),
-    'sources render (local path and URL both inert text)');
   const q1Local = q1.querySelector('[data-source-artifact-id="artifact:research/notes/q1.md"]');
   assert.ok(q1Local, 'an indexed local source cross-links to its artifact row');
+  assert.equal(q1Local.textContent, 'research/notes/q1.md');
+  const q1External = q1.querySelector('.evidence-finding-sources code');
+  assert.ok(q1External, 'the external source renders as inert code text');
+  assert.equal(new URL(q1External.textContent).href, 'https://example.com/lazyseries/t19-spec',
+    'the complete external URL retains its expected destination');
+  assert.equal(q1.querySelectorAll('.evidence-finding-sources a').length, 0,
+    'research source URLs never become navigable links');
   q1Local.click();
   assert.equal(researchView.getStats().selectedArtifactId, 'artifact:research/notes/q1.md',
     'the research source selects the artifact without leaving the view');

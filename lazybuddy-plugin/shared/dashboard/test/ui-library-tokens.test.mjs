@@ -136,7 +136,7 @@ test('skeletons and reduced motion stay static', async () => {
   for (const body of skeletonRules) assert.doesNotMatch(body, /animation/, 'skeletons never loop or shimmer');
   const reduced = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*?)\n\}/.exec(style)?.[1] ?? '';
   for (const surface of ['.lb-card', '.lb-graph-node', '.lb-inspector']) {
-    assert.match(reduced, new RegExp(surface.replace(/\./g, '\\.')), `${surface} collapses under reduced motion`);
+    assert.ok(reduced.includes(surface), `${surface} collapses under reduced motion`);
   }
 });
 
