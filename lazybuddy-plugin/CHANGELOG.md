@@ -1,5 +1,16 @@
 # LazyBuddy Plugin Changelog
 
+## [1.4.0] - 2026-10-27 — official platform audit
+
+Compare current official release indexes and feature contracts; document host-version observations and the IDE change-list limitation. Package checks do not establish host activation. See the platform audit in the release root.
+
+## [1.4.0] - Vendored dashboard core and authenticated browser service
+
+- Vendor the family's portable dashboard core (`shared/dashboard/`) with a hash-pinned `shared/dashboard.vendor.json`; distribute it with `scripts/vendor-dashboard.mjs` and guard family drift in CI.
+- Add the authenticated loopback browser dashboard (Work, Verification, and Plan-edit views, task inspector, evidence preview, queue planning; queue edits never start work) and two new `status-dashboard` tools: `dashboard_service` and `copy_task_context`.
+- Regenerate the marketplace route contract after the accepted payload changes; keep no-drift plan sync from rewriting state and events on cosmetic or fenced-example edits.
+- State honest capability labels: browser, transactional edits, project queue, context copy, and observations are available; host embedding, chat handoff, and wake are unobserved. See the root release notes.
+
 ## [1.3.5] - Runtime verification and platform clarity
 
 - Execute real runtime-floor exercises and check optional LSP requirements separately.

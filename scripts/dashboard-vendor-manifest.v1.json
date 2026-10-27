@@ -1,0 +1,484 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "https://github.com/elvinzhao10/LazyBuddy",
+    "revision": "7124d4ee4085073ef271ab4cb1b2c7feb0035c8a",
+    "path": "lazybuddy-plugin/shared/dashboard",
+    "treeSha256": "9aa188df1b58f204c481d1001435762e3a005ce5f9708a5e7a618935a5b090cd"
+  },
+  "boundary": {
+    "hostAdapter": "not-included",
+    "siblingRuntime": "unsupported-until-native-adapter",
+    "entrypoints": [
+      "projection.mjs",
+      "command-reducer.mjs",
+      "queue-reducer.mjs",
+      "ui/index.mjs"
+    ]
+  },
+  "license": {
+    "spdx": "MIT",
+    "files": [
+      "LICENSE",
+      "NOTICE",
+      "ui/icons.LICENSE"
+    ]
+  },
+  "files": [
+    {
+      "path": "adapters/host.mjs",
+      "bytes": 2129,
+      "sha256": "58c62a8999096988b0107ff15c5ca48cf331748a3a0197493947689d3d49aa02"
+    },
+    {
+      "path": "adapters/ledger.mjs",
+      "bytes": 1808,
+      "sha256": "9ba3cb082280e54871e0deadf71c4b65e5d5cfc6c19d57e3de70f61b219fea92"
+    },
+    {
+      "path": "adapters/package-health.mjs",
+      "bytes": 6899,
+      "sha256": "bc26b2cd30dedc7e5b8e344cee4f24e4ef4972d09fefcf4cd0a36ad1f2164d8b"
+    },
+    {
+      "path": "adapters/runtime.mjs",
+      "bytes": 2497,
+      "sha256": "0b65f9321895b3d6ef5f162159c34dfeeccff54bb499f4189917cd87d5d41cae"
+    },
+    {
+      "path": "adapters/state.mjs",
+      "bytes": 3609,
+      "sha256": "4d08e017ff7b2796be0ddf7011bd69ac4425ed2d2fb889046cfc538b9a13abb2"
+    },
+    {
+      "path": "adapters/telemetry.mjs",
+      "bytes": 11023,
+      "sha256": "d6a7cdad4d6ea65dffadcd613ef396f8a33b7c5b7655565b041580d60fe3fe7f"
+    },
+    {
+      "path": "command-reducer.mjs",
+      "bytes": 7690,
+      "sha256": "8b7587ac76e8b5ed3709eccb316133ec0ef0b72fa00824e413a17a06a25c9fc8"
+    },
+    {
+      "path": "contracts/lazyseries-dashboard.v1.schema.json",
+      "bytes": 65883,
+      "sha256": "3c018551e3aa336aa4eaeeb4aefa0c310588defb3f0916357097ecd4115791d9"
+    },
+    {
+      "path": "contracts/parse.mjs",
+      "bytes": 4022,
+      "sha256": "278684b98234b60a9366fd7ed8d238f5f92e33edae21f5a8007c07804386dc38"
+    },
+    {
+      "path": "contracts/schema.mjs",
+      "bytes": 8330,
+      "sha256": "1f9e0ca48a2ca47e4b7a750124343a5dd21bc8c6d43c0a60ccc78ffa0d988039"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1067,
+      "sha256": "821850a42ace9f068794ce48afece725cf03489bc8a4ae9f6c094a6d351dd883"
+    },
+    {
+      "path": "NOTICE",
+      "bytes": 459,
+      "sha256": "fedebf0a6a05896ecdd399fd534aa10c4ca4072b97caaedcdbd2f63073fea91c"
+    },
+    {
+      "path": "projection.mjs",
+      "bytes": 8414,
+      "sha256": "b49a1a674f1678e8c8664bdf1194d6491244235a3f153e056bf39dcc5100f314"
+    },
+    {
+      "path": "queue-reducer.mjs",
+      "bytes": 7684,
+      "sha256": "30f25c2ee22173ed890999d2cda7ff8bf84e61b0c09b4e58304449d740165830"
+    },
+    {
+      "path": "revision-compatibility.mjs",
+      "bytes": 2908,
+      "sha256": "ce5c73c74dc6d3cb02398bf32fde7273fa69e278b891b3cc3e8b3c92ab2449ef"
+    },
+    {
+      "path": "ui/architecture-demo.html",
+      "bytes": 2167,
+      "sha256": "e0218ea3721cd466ef1b14ca1dae97495ef1947b550db62c659082133fc98b5e"
+    },
+    {
+      "path": "ui/architecture-model.mjs",
+      "bytes": 21965,
+      "sha256": "8c68fd5905f19d7055289ba7162d2dd6eeeac6dfd67c772803739f2936d968d6"
+    },
+    {
+      "path": "ui/architecture-page.mjs",
+      "bytes": 6981,
+      "sha256": "3a07d03e463c2691134407ed1b8dc8f2d3926f9bca07399e52565c3453da8289"
+    },
+    {
+      "path": "ui/architecture-view.mjs",
+      "bytes": 53338,
+      "sha256": "c813cf7482429ce2b48fd99288a3f06dd05763a677f1241ea9979e66ae69a9b9"
+    },
+    {
+      "path": "ui/architecture.css",
+      "bytes": 12274,
+      "sha256": "411507bf2e1f01b86bd874a189bacadc7e9b72ca3a0521d6d6186b50b22da3d5"
+    },
+    {
+      "path": "ui/asset-manifest.json",
+      "bytes": 4818,
+      "sha256": "c2a80731c22ae0fca1a0619630e0f205821bf10b8ee2d6f66a279458db1486b0"
+    },
+    {
+      "path": "ui/component-demo.html",
+      "bytes": 1768,
+      "sha256": "b4ca48fbe4fce49c164bf4caa2e7875baf6e6515665c1f36bed68a7cef01c8de"
+    },
+    {
+      "path": "ui/component-demo.mjs",
+      "bytes": 7065,
+      "sha256": "c79ce53a5c8da759ef3e210b9c39859147740e3c6fe8aadb9083e92fcef4fa91"
+    },
+    {
+      "path": "ui/components.mjs",
+      "bytes": 69415,
+      "sha256": "2110417e1037b2d6256669650071aed4dda1742a2937c5ee866af7f60dd17ed6"
+    },
+    {
+      "path": "ui/connection.mjs",
+      "bytes": 4800,
+      "sha256": "7cf40e15a23a1c1b878ff7572e42fd8ec1603314a94b01fdf725bd08d4172240"
+    },
+    {
+      "path": "ui/DESIGN.md",
+      "bytes": 26949,
+      "sha256": "b8b9d9af1670ab85f1fb7e710ca00105c8a0eeae577a7c98d26ef0b257972817"
+    },
+    {
+      "path": "ui/document-view.css",
+      "bytes": 7183,
+      "sha256": "acaf9101eb172889f3332dfb7d9b8f65fba972793994ad59ee5f5119dc1db48b"
+    },
+    {
+      "path": "ui/document-view.mjs",
+      "bytes": 4423,
+      "sha256": "170fdf0be1a6a706c6213795c771930ab37b22d9a37baba2fbcab269e5c50b9e"
+    },
+    {
+      "path": "ui/editing.mjs",
+      "bytes": 17983,
+      "sha256": "5ab44e137a1f8a91451b0b1fe31def9f0fc6fbdc3d971f24e537aa37ae71d86b"
+    },
+    {
+      "path": "ui/editor-views.mjs",
+      "bytes": 79438,
+      "sha256": "a210b229d3bb9a72a10db79cf58cd8b4cdaa0d75ef7964383100e5ab1078aea8"
+    },
+    {
+      "path": "ui/editor.css",
+      "bytes": 5714,
+      "sha256": "3c6e5e55f5f1c3c03b05a459211599f35ab2bf4131f64557a02e19a2abd21963"
+    },
+    {
+      "path": "ui/evidence-demo.html",
+      "bytes": 2878,
+      "sha256": "163ad3b6e68cabd57b37361d06bdbf2e5f373d2a66f8fc43635dc09ed442aa3d"
+    },
+    {
+      "path": "ui/evidence-model.mjs",
+      "bytes": 18746,
+      "sha256": "ba11a061f4598283565002b41b961deea885c2c06d5f8c14245f6823c81bbdf2"
+    },
+    {
+      "path": "ui/evidence-page.mjs",
+      "bytes": 6265,
+      "sha256": "27f79b8f45528c6a168c75da15dc1a50f203c7289446c28d2a47bbd98de8681a"
+    },
+    {
+      "path": "ui/evidence-view.mjs",
+      "bytes": 49809,
+      "sha256": "56f399c9ae963affc3476d0f39ed3bdbd7eeac80f2470e48a61da48e83e976f2"
+    },
+    {
+      "path": "ui/evidence.css",
+      "bytes": 8426,
+      "sha256": "dc35ffa14882182d553253395dc553066681caa42e20810285e5299de37a1cb4"
+    },
+    {
+      "path": "ui/execution-demo.html",
+      "bytes": 2117,
+      "sha256": "626874bee440ba17fe572d6cda73d89e1ca2f20591a1f31977b2f8ea2bb75c3f"
+    },
+    {
+      "path": "ui/execution-destination.mjs",
+      "bytes": 3955,
+      "sha256": "b91a18f26eed4c128f16182fd37fc8fd81d42b84ff4d8d53bc5d005a6f569494"
+    },
+    {
+      "path": "ui/execution-model.mjs",
+      "bytes": 22932,
+      "sha256": "415df782a11f6e9aba196803c8872e1f3e733ac9811df132fb1961feea0507eb"
+    },
+    {
+      "path": "ui/execution-page.mjs",
+      "bytes": 4738,
+      "sha256": "4df2656ab45ef993625624a63a4b306018ba7d65649ebfd8efd46540c6757cf4"
+    },
+    {
+      "path": "ui/execution-view.mjs",
+      "bytes": 45606,
+      "sha256": "ad857750de25659a2e0e3a3792907a2ee2ed769a73d835feea11b79e0a80e503"
+    },
+    {
+      "path": "ui/execution.css",
+      "bytes": 8498,
+      "sha256": "b8041e06cc06ee0ba25feb811c3312d9ab1492cf0d9f09e286dab57bde6440d4"
+    },
+    {
+      "path": "ui/git-metrics-demo.html",
+      "bytes": 2090,
+      "sha256": "adfe7acee66d84d03ec814a8e1db9a20056db8961d860bd4b91d17e54f9281e1"
+    },
+    {
+      "path": "ui/git-metrics-model.mjs",
+      "bytes": 23434,
+      "sha256": "efe0a115fadf058ff46feb8d3c2676bfbae793c9239c746fc91a7f2bbabbc884"
+    },
+    {
+      "path": "ui/git-metrics-page.mjs",
+      "bytes": 7772,
+      "sha256": "f171b82174d53f22d1ee43d21cb73d93f00fb768b35b5100ee51a286fa5ea7a3"
+    },
+    {
+      "path": "ui/git-metrics-view.mjs",
+      "bytes": 46038,
+      "sha256": "97804ec542186a083166d399b88bfbe097d95cd0de7174f62c36d04c5a125c04"
+    },
+    {
+      "path": "ui/git-metrics.css",
+      "bytes": 7521,
+      "sha256": "4948237439797c7dbf67b83d8aa4dd93df150d76a030dc7035b03265ea4ba0ba"
+    },
+    {
+      "path": "ui/graph-layout.mjs",
+      "bytes": 3016,
+      "sha256": "c9081bd79dcab9ffea33b2c5a889163c97cd62b1d6d3b577761cfa544c642103"
+    },
+    {
+      "path": "ui/graph-viewport.mjs",
+      "bytes": 16354,
+      "sha256": "451ff1bfa3c897cf2aa1514b9f7adf1ef1bcd3aa8a791427b8b9e35cd02ab2dd"
+    },
+    {
+      "path": "ui/health-demo.html",
+      "bytes": 28576,
+      "sha256": "b51c81ad64b8d44beb0fdeea3058b850312788555217c7c965430889f6ec96e3"
+    },
+    {
+      "path": "ui/health-view.mjs",
+      "bytes": 17614,
+      "sha256": "cb95176ac009697e8ef06af69f83aba626961d506af5f8740e12a1236ef59153"
+    },
+    {
+      "path": "ui/health.css",
+      "bytes": 3699,
+      "sha256": "243f82c9ea192b9dbc8c71afb6edd62a81c089bad7e4e6ad8067082328d2dd29"
+    },
+    {
+      "path": "ui/icons.LICENSE",
+      "bytes": 940,
+      "sha256": "3dd5b07f62318cc4847e40c9176e0e8096a838fec6c399ff4959e6870b9dcbe3"
+    },
+    {
+      "path": "ui/index.html",
+      "bytes": 2933,
+      "sha256": "7e31a4798488052f9142e3921242e9940f9c8fddd3437112d0aa574cb50fb84e"
+    },
+    {
+      "path": "ui/index.mjs",
+      "bytes": 10061,
+      "sha256": "a3e144c5ca66bc0da85adc474079dbb0bb059b8ec73459dea572c9cf5fdef586"
+    },
+    {
+      "path": "ui/inspector-view.mjs",
+      "bytes": 4810,
+      "sha256": "940876698bd4de03eb62992b638cfe0c1c15b6b7cba0e2e068a32e9eea385b33"
+    },
+    {
+      "path": "ui/live-execution-model.mjs",
+      "bytes": 9159,
+      "sha256": "aa464a429bb0a2251d9a0790305fe772aa41e047910ca7f0a0303371a9ea635f"
+    },
+    {
+      "path": "ui/live-project-adapter.mjs",
+      "bytes": 2978,
+      "sha256": "0479a003f6de799f72c5c584dcfa603665baafa5a6461645e816790217338492"
+    },
+    {
+      "path": "ui/live.css",
+      "bytes": 3949,
+      "sha256": "3de5928de9bd5f585fe47cea89bf6566c9b1a1eab2cb5b329f44198fe5934dcc"
+    },
+    {
+      "path": "ui/markdown.mjs",
+      "bytes": 14863,
+      "sha256": "0e36229b8380f439b19dedb693ffc062c20b78948cbbc2b189504ba6659de2da"
+    },
+    {
+      "path": "ui/overview-fixture.mjs",
+      "bytes": 26568,
+      "sha256": "c1d87bbcc8629193dd3f6eb9c05e34eae04bfeab2f8b4652a460e18fd463ce82"
+    },
+    {
+      "path": "ui/overview-runtime-summary.mjs",
+      "bytes": 4456,
+      "sha256": "ec7aa3e5971643b938e494ba1e096a77eb58355b4d0ac05f891f64378bce98c7"
+    },
+    {
+      "path": "ui/overview.css",
+      "bytes": 9076,
+      "sha256": "9abf101abeb3cf80638b8783e429d6a5e995a0d404e5c432e58be684c42e458f"
+    },
+    {
+      "path": "ui/overview.mjs",
+      "bytes": 32866,
+      "sha256": "418b6ba15105c20f7e2409d6e507834d297d40013971dda5266df270b4acf4b9"
+    },
+    {
+      "path": "ui/plans-destination.mjs",
+      "bytes": 12248,
+      "sha256": "aa34531e9c1672ece44f9b3665f8d67494e621f3712fa0bd8679780dc75ffc93"
+    },
+    {
+      "path": "ui/project-destination.mjs",
+      "bytes": 2975,
+      "sha256": "1ea34b1a8b142bfcc611022ea45a979fc613da18ae06d03a027a50168378b1ce"
+    },
+    {
+      "path": "ui/project-fixtures.mjs",
+      "bytes": 22281,
+      "sha256": "bc814ca4e10f830c84e78bdd568431bc59b6e088071a1ba5ed6c2f14d0190432"
+    },
+    {
+      "path": "ui/project-live-views.mjs",
+      "bytes": 5867,
+      "sha256": "aab49f2cc86bd642d1ae4cfd68b09ed65cfde124ff99a1aa6e1ad82f6504a902"
+    },
+    {
+      "path": "ui/project-map-page.mjs",
+      "bytes": 5735,
+      "sha256": "46dcf4d1af0329b7692612bc5e0c821ee15b584227b77d21302fc211cfa209ea"
+    },
+    {
+      "path": "ui/project-map-spike.css",
+      "bytes": 7277,
+      "sha256": "89af8b08b053c40bfa5a3889d5b48bcffad714f13974c79b3b778c7ec952cff5"
+    },
+    {
+      "path": "ui/project-map-spike.html",
+      "bytes": 1950,
+      "sha256": "a6abe71b9b1069f1c8000e18e48adf220a5b264913072c5700c6814c35e6ce9d"
+    },
+    {
+      "path": "ui/project-map-spike.mjs",
+      "bytes": 33346,
+      "sha256": "ca8ac19d71fb6d3435445193a5ed24982093d21255d6aa8986781e0e3ea446bf"
+    },
+    {
+      "path": "ui/project-presentation.mjs",
+      "bytes": 12446,
+      "sha256": "b1e3ec9c3d1267a250f6237f5311758cfb72aa461da7693b9c77e570ee5936de"
+    },
+    {
+      "path": "ui/project-shell-page.mjs",
+      "bytes": 3136,
+      "sha256": "a99e4d0de3bf2f98938035f311751f1a9aa6d660d123b5fc86787484ce193f37"
+    },
+    {
+      "path": "ui/project-shell.css",
+      "bytes": 18404,
+      "sha256": "a3851b1c1f650af702cdf457925d37779471d7c16f73e05d4975d103f71c5a56"
+    },
+    {
+      "path": "ui/project-shell.html",
+      "bytes": 1585,
+      "sha256": "0eaccefc8eed2941b269d4f5239a31dd566304614ff00ec41e07ad7bdff3cbd5"
+    },
+    {
+      "path": "ui/project-shell.mjs",
+      "bytes": 41545,
+      "sha256": "b6711ea8553eeb818cf9e3479e9139dff44bdcadfa97aa8f16336fef1913ee72"
+    },
+    {
+      "path": "ui/project-view-primitives.mjs",
+      "bytes": 2419,
+      "sha256": "402075b89ffbde263564c5d00abee9a980a52c51f4a66e590036fe98a528e977"
+    },
+    {
+      "path": "ui/research-destination.mjs",
+      "bytes": 15530,
+      "sha256": "55bb324a8295875c345defff122d30351e96218a9325605bf5dfc9656207bd65"
+    },
+    {
+      "path": "ui/run-monitor.css",
+      "bytes": 2895,
+      "sha256": "ba4ee49579b3342c7fd8431cda0e7bbce6c8351a40e23db1eb858da8ec7bf608"
+    },
+    {
+      "path": "ui/run-monitor.mjs",
+      "bytes": 12475,
+      "sha256": "6e793b49b0188a4caaabd8a9b78e380b892fe2b56bd6702e2871c2156ccdadc9"
+    },
+    {
+      "path": "ui/showcase.html",
+      "bytes": 6708,
+      "sha256": "b09f635b8abe7a44502c4c187fc5a9173f4745d62a37b877d677b4b0584dc55b"
+    },
+    {
+      "path": "ui/showcase.mjs",
+      "bytes": 32625,
+      "sha256": "a47bc1e7b2d703f9d343dcb44e3a038b824914a846cfd66ac62a20c6a2dc5c92"
+    },
+    {
+      "path": "ui/style.css",
+      "bytes": 30114,
+      "sha256": "c2b18ab5eb38e1125929c51cf81951e496fe4bc4b037d087faa91eef2c2f7e8c"
+    },
+    {
+      "path": "ui/theme-init.js",
+      "bytes": 3106,
+      "sha256": "926b00dc0a1923480dae62e0e6ffbf433608a1341c8645f14cc73143a890a3bc"
+    },
+    {
+      "path": "ui/timeline-model.mjs",
+      "bytes": 8611,
+      "sha256": "6fd20c90dfbf33c79a5bdb4cd726546a88311d78874669ff51d9f6ad6e7c1a1d"
+    },
+    {
+      "path": "ui/timeline.css",
+      "bytes": 4404,
+      "sha256": "656fd365f32ddb3d80aaea35292cd2d6abd8704ef493a0c3ceae772a3733f965"
+    },
+    {
+      "path": "ui/tokens.css",
+      "bytes": 12351,
+      "sha256": "e887deeaf5e3a331831d2f33133ea127452f7f37bd9481ca7b9e7fbd2baca358"
+    },
+    {
+      "path": "ui/verification-view.mjs",
+      "bytes": 4481,
+      "sha256": "82e4b6db03dff02893e38d2fb6055c5cbfa1241eb030f492c23ea0ad96dc2306"
+    },
+    {
+      "path": "ui/views.css",
+      "bytes": 4343,
+      "sha256": "f05174f67e1663a368b0a718f61b4c7457eb66105152217287179c8fb139973e"
+    },
+    {
+      "path": "ui/work-view.mjs",
+      "bytes": 11570,
+      "sha256": "99d8486dbbfbcec78cc9a69c6617f62ba79aee6c0a3b0e72e244f40ebc6dcbea"
+    }
+  ]
+}

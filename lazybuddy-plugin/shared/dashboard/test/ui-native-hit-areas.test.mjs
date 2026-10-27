@@ -1,0 +1,102 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { createMiniDom } from './fixtures/mini-dom.mjs';
+
+// T11 hit-area and tooltip proof. Hit areas: every interactive control keeps
+// a 44px minimum target expressed through the density control tokens
+// (--density-control / --density-control-compact / the frozen --control
+// alias), never magic numbers. Tooltips: status chips and icon-only buttons
+// get a title plus an aria-describedby note in a clipped node.
+
+const dom = createMiniDom();
+globalThis.document = dom.document;
+
+const { installTooltips, statusChip, button, element } = await import('../ui/components.mjs');
+
+async function css(file) { return readFile(new URL(`../ui/${file}`, import.meta.url), 'utf8'); }
+
+const px = value => {
+  const match = /^([\d.]+)rem$/.exec(value.trim());
+  return match ? Number.parseFloat(match[1]) * 16 : null;
+};
+
+test('the density control tokens carry the 44px HIG minimum', async () => {
+  const tokens = await css('tokens.css');
+  const root = /:root\s*\{([\s\S]*?)\n\}/.exec(tokens)?.[1] ?? '';
+  const decl = name => new RegExp(`${name}:\\s*([^;]+);`).exec(root)?.[1] ?? '';
+  assert.equal(px(decl('--density-control')), 44, '--density-control is the 44px minimum target');
+  assert.equal(px(decl('--density-control-compact')), 32, 'compact in-table controls target 32px');
+  assert.equal(decl('--control'), '2.75rem', 'the frozen v1 --control alias stays 44px');
+});
+
+test('interactive controls declare hit areas only through tokens', async () => {
+  const sources = await Promise.all([css('style.css'), css('views.css'), css('live.css'), css('project-shell.css')]);
+  const controlRules = [];
+  for (const source of sources) {
+    for (const rule of source.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (/button|lb-topbar-icon|segmented/.test(rule[1])) controlRules.push([rule[1].trim(), rule[2]]);
+    }
+  }
+  const sizes = controlRules.flatMap(([, body]) => [...body.matchAll(/min-(?:block|inline)-size:\s*([^;]+);/g)].map(match => match[1].trim()));
+  assert.ok(sizes.length >= 4, 'hit-area rules exist');
+  for (const size of sizes) {
+    assert.match(size, /^(?:var\(|auto$|min\(|calc\()/, `control hit areas must be token- or layout-driven, found ${size}`);
+  }
+  assert.match(sources[0], /button,select,input,textarea\s*\{[^}]*min-block-size:\s*var\(--control\)/, 'native controls keep the 44px baseline');
+  assert.match(sources[0], /\.view-switcher button\s*\{[^}]*min-block-size:\s*var\(--density-control\)[^}]*min-inline-size:\s*var\(--density-control\)/, 'segments meet 44px in both axes');
+  assert.match(sources[3], /\.lb-topbar-icon\s*\{[^}]*min-inline-size:\s*var\(--density-control\)/, 'V2-T1: the top-bar icon controls meet the density hit-area floor');
+});
+
+// V2-T3: the on-canvas graph viewport button cluster is gone — pointer pan/
+// zoom, the focused-region keyboard map and fit-on-mount replace it, so no
+// graph-viewport action styling or toolbar markup may resurface.
+test('graph navigation preserves keyboard control and a readable project-map entry point', async () => {
+  const controller = await import('../ui/graph-viewport.mjs');
+  assert.equal(controller.createGraphViewportController({ getRegion: () => null }).controls, undefined,
+    'the controller no longer exposes a controls() toolbar');
+  for (const sheet of ['views.css', 'execution.css', 'architecture.css', 'project-map-spike.css', 'project-shell.css']) {
+    const source = await css(sheet);
+    assert.doesNotMatch(source, /graph-viewport-(action|controls|zoom)/, `${sheet}: no viewport cluster rules remain`);
+  }
+  for (const view of ['project-map-spike.mjs', 'execution-view.mjs', 'architecture-view.mjs']) {
+    const source = await readFile(new URL(`../ui/${view}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\.controls\(\)/, `${view}: no view mounts the cluster`);
+    if (view === 'project-map-spike.mjs') {
+      assert.match(source, /scale: 1, scrollLeft: 0, scrollTop: 0/, 'the project map starts at readable size');
+      for (const label of ['Zoom out', 'Zoom in', '100%', 'Fit']) assert.ok(source.includes(`'${label}'`), `${label} is discoverable`);
+    } else assert.match(source, /fitAnimated\('fit-mount'\)/, `${view}: the graph fits on its first mount`);
+  }
+});
+
+test('status chips gain a title and a described state note exactly once', () => {
+  const chip = statusChip({ state: 'verified', label: 'Verified' });
+  const labeled = element('span');
+  labeled.append(chip);
+  dom.document.body.append(labeled);
+  const tooltips = installTooltips();
+  assert.equal(tooltips.describe(labeled), 1);
+  assert.equal(chip.getAttribute('title'), 'Status verified: Verified');
+  const noteId = chip.getAttribute('aria-describedby');
+  assert.match(noteId, /^native-note-\d+$/);
+  const note = dom.document.body.querySelector(`[id="${noteId}"]`);
+  assert.equal(note.textContent, 'Status verified: Verified');
+  assert.match(note.className, /native-note/, 'the note is the clipped description node');
+
+  assert.equal(tooltips.describe(labeled), 0, 'a second pass never duplicates notes');
+  labeled.remove();
+  note.remove();
+  for (const leftover of dom.document.body.querySelectorAll('.native-note')) leftover.remove();
+});
+
+test('text buttons are left alone: only chips and icon-only buttons are described', () => {
+  const plain = button('Save plan', () => {});
+  const region = element('div');
+  region.append(plain);
+  dom.document.body.append(region);
+  const tooltips = installTooltips();
+  assert.equal(tooltips.describe(region), 0);
+  assert.equal(plain.hasAttribute('aria-describedby'), false);
+  assert.equal(plain.hasAttribute('title'), false);
+  region.remove();
+});

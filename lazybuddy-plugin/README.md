@@ -1,10 +1,10 @@
 # LazyBuddy Plugin
 
-## v1.3.5 package
+## v1.4.0 package
 
-v1.3.5 makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
+v1.4.0 includes the local browser dashboard with a long-run monitor, research capture and Health view. It makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
 
-The current package version is v1.3.5. Package readiness does not establish host readiness.
+The current package version is v1.4.0. Package readiness does not establish host readiness. The `status-dashboard` server declares seven tools, including typed `project` operations; the package declares six MCP servers. The 2026-10-27 platform audit in the release root records documented releases and pending host proof.
 
 ## Durable installation
 
@@ -417,7 +417,7 @@ bash scripts/lazybuddy-tooling.sh lsp-uninstall \
 
 The locked TS/JS provider is `typescript-language-server@5.3.0` with
 `typescript@6.0.3`; it requires Node.js 20 or newer. The locked Python
-provider is `basedpyright@1.39.10`. Missing, unsupported, and incompatible
+provider is `basedpyright@1.40.1`. Missing, unsupported, and incompatible
 providers are non-blocking readiness states. No target manifest, lockfile,
 source file, global path, or host-managed configuration is modified.
 
@@ -428,7 +428,7 @@ cross-file relationship questions. It is disabled by default. LazyBuddy keeps
 `context-graph` available as a clearly labeled grep-based heuristic fallback;
 it is not represented as semantic CodeGraph analysis.
 
-CodeGraph is pinned to `@colbymchenry/codegraph@1.6.0` and can only be
+CodeGraph is pinned to `@colbymchenry/codegraph@1.6.2` and can only be
 provisioned in an explicit empty caller-owned tooling root. The lifecycle does
 not invoke upstream `codegraph install` or `codegraph uninstall`, download a
 fallback platform binary, enable CodeGraph telemetry, or change host MCP

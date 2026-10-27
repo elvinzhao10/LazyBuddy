@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-10-05T17:03:53.968964+00:00",
+  "base_head": "b4c38b5d4fbee28449001b7fc1e0ac1639393150",
+  "command": [
+    "node",
+    "--test",
+    "--test-reporter=tap",
+    "lazybuddy-plugin/shared/project/qa/store-boundary.test.mjs"
+  ],
+  "exit_code": 0,
+  "runtime_node": "v24.19.0",
+  "runtime_python": "3.12.14",
+  "counts": {
+    "tests": 24,
+    "pass": 24,
+    "fail": 0,
+    "skipped": 0
+  },
+  "sources_unchanged_during_gate": true,
+  "tested_source_hashes": {
+    "lazybuddy-plugin/scripts/state/project-dashboard-bridge.py": "8c8448e1b0bbee85fae7271c5fbf28904cf56e62582506aea10059bab4898f2a",
+    "lazybuddy-plugin/shared/project/cli.mjs": "9e86da211bdc8079506144379c31d59d747273a755cc91d1cf0ca1c07361d003",
+    "lazybuddy-plugin/shared/project/contract.mjs": "7d90e407fd989fed8d00fbfa3be00b0903b47afbd47459381bea6027006804d9",
+    "lazybuddy-plugin/shared/project/history.mjs": "b9a524f41f9367bbfe35478d4a7cad00218cff07d02af976309390e0f2fbb851",
+    "lazybuddy-plugin/shared/project/model.mjs": "53199003e776f11edae1ec2c6fccd231cbe0c4e93070445cc4919769d8aa45a2",
+    "lazybuddy-plugin/shared/project/projection.mjs": "184ee9c5057a252a8ea346f62d8484d6874dbac329b74b0fb8e6775c2c0096a3",
+    "lazybuddy-plugin/shared/project/qa/store-boundary.test.mjs": "a3a1917e73b40f9ead8d13645624c4a9ae80df294b217671d588e34e1ffe7b0d",
+    "lazybuddy-plugin/shared/project/qa/helpers.mjs": "ee6bba5c64e73c5e4724e9e4715449585834d484431d4bb04305cab51de303b9",
+    "lazybuddy-plugin/shared/project/qa/fault-hooks/sitecustomize.py": "bb5c2ecadb9ecf68842b83032e6c0e0dd7b2bec5d41cccdfaae8c285ef27ba1e",
+    "lazybuddy-plugin/shared/project/qa/README.md": "65fe7dcf78e20ade7fd2e57daf27d081bf81780b0454f6abd3828c98ba150cdf"
+  },
+  "scope": "post-owner command atomicity and filesystem boundary; pre-owner bootstrap refusal documented"
+}

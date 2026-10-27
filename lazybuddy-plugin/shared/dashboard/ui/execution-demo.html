@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries 1.4.0 nested execution and timeline view (T16). Data is the recorded T09/T02 fixture; no live run is connected.">
+  <title>Nested execution and timeline</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+  <script src="./theme-init.js"></script>
+  <script>
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The execution view could not load. Reload this page to try again. No live run is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./execution.css">
+  <script id="execution-module" type="module" src="./execution-page.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / T16 nested execution and timeline</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Execution — plan, batch, attempt</h1>
+      <p>Drill-down where entering a level changes aggregation. The planned dependency DAG and the actual run timeline are separate panes over one identity set.</p>
+      <p class="fixture-label">Recorded observation fixture · No live run, no scheduler authority, no commands</p>
+      <p id="load-status" role="status">Loading execution fixture…</p>
+      <nav class="cluster" aria-label="Fixture levels"><span class="meta">Level</span></nav>
+    </header>
+    <div id="execution-root" class="stack"></div>
+    <footer>T16 execution view. Execution, verification and editing authority stay with the runtime and command service; nothing here dispatches work.</footer>
+  </main>
+</body>
+</html>

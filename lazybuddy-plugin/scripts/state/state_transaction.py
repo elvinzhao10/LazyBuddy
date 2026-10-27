@@ -70,7 +70,7 @@ def checked_target(run_dir: Path, relative_path: str) -> Path:
 
 
 def read_revision(run_dir: Path) -> int:
-    path = run_dir / REVISION_NAME
+    path = checked_target(run_dir, REVISION_NAME)
     if not path.exists():
         return 0
     try:

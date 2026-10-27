@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v1.3.5)
+# lazybuddy-verify.sh — Master verification runner (v1.4.0)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -380,18 +380,76 @@ run_language_tests() {
         ALL_PASS=false
     else
         result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-node-tests.XXXXXX")"
-        NODE_PHASE_TIMEOUT=$(( VERIFY_TIMEOUT > 270 ? VERIFY_TIMEOUT : 270 ))
-        if "$PYTHON_BIN" "$RUNNER" --label "node_tests" --timeout "$NODE_PHASE_TIMEOUT" --result-file "$result_file" -- \
-            node --test --test-concurrency="$NODE_TEST_CONCURRENCY" "${node_test_paths[@]}"; then
-            NODE_TESTS_RESULT="pass"
-        else
-            status=$?
-            NODE_TESTS_RESULT="fail"
-            ALL_PASS=false
-            print_failure_tail "$result_file"
-            printf 'FAIL: Node tests exited %s\n' "$status" >&2
+        # The node suite grew with v1.3.2; give the phase its own floor. An
+        # explicit user override always wins when it exceeds the floor.
+        NODE_PHASE_TIMEOUT="${LAZYBUDDY_NODE_PHASE_TIMEOUT_SECONDS:-$(( VERIFY_TIMEOUT > 270 ? VERIFY_TIMEOUT : 270 ))}"
+        # The suite resolves ajv (from the locked tooling manifest) through the
+        # same NODE_PATH this script exports. A fresh checkout has no
+        # tooling/node_modules: lazybuddy-tooling.sh install only npm-installs
+        # when host rg/sg providers are missing, so bare worktree runs failed
+        # node_tests while lazybuddy-package-verify.sh (which npm ci's into a
+        # temp root) passed — same commit, different verdict. Bootstrap the
+        # locked manifest on demand, exactly like package-verify, so the phase
+        # is environment-independent; a bootstrap failure fails the phase with
+        # an explicit reason instead of surfacing as per-test
+        # "AJV dependency is not installed" errors.
+        local node_tests_ready=true
+        local node_phase_cmd=(node --test --test-concurrency="$NODE_TEST_CONCURRENCY" "${node_test_paths[@]}")
+        local ajv_entry bootstrap_root=""
+        for ajv_entry in \
+            "${SIX_HOST_PARITY_NODE_MODULES:+${SIX_HOST_PARITY_NODE_MODULES%/}/ajv/dist/2020.js}" \
+            "${PLUGIN_ROOT}/tooling/node_modules/ajv/dist/2020.js" \
+            "${PLUGIN_ROOT}/node_modules/ajv/dist/2020.js"; do
+            if [ -n "$ajv_entry" ] && [ -f "$ajv_entry" ]; then break; fi
+            ajv_entry=""
+        done
+        if [ -z "$ajv_entry" ]; then
+            if ! command -v npm >/dev/null 2>&1; then
+                printf 'FAIL: node_tests require ajv from the locked tooling manifest; no installed candidate exists and npm is unavailable to bootstrap it\n' >&2
+                NODE_TESTS_RESULT="fail"
+                ALL_PASS=false
+                node_tests_ready=false
+            else
+                bootstrap_root="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-node-tooling.XXXXXX")"
+                cp "${PLUGIN_ROOT}/tooling/package.json" "${PLUGIN_ROOT}/tooling/package-lock.json" "${bootstrap_root}/"
+                # The bounded runner's exit code is the sole bootstrap verdict:
+                # policy regressions (v018) substitute a stub runner inside a
+                # fixture copy, so a post-install file guard would see no ajv
+                # even though the phase must simply proceed as scheduled.
+                # Bootstrap keeps the node-phase timeout contract: an explicit
+                # LAZYBUDDY_NODE_TOOLING_BOOTSTRAP_TIMEOUT_SECONDS wins, else a
+                # 180s floor that a global user override can raise, so every
+                # scheduled label honors LAZYBUDDY_VERIFY_TIMEOUT_SECONDS.
+                BOOTSTRAP_TIMEOUT="${LAZYBUDDY_NODE_TOOLING_BOOTSTRAP_TIMEOUT_SECONDS:-$(( VERIFY_TIMEOUT > 180 ? VERIFY_TIMEOUT : 180 ))}"
+                if "$PYTHON_BIN" "$RUNNER" --label "node_tests_tooling_bootstrap" \
+                    --timeout "$BOOTSTRAP_TIMEOUT" \
+                    --result-file "$result_file" -- \
+                    bash -c 'cd "$1" && npm ci --ignore-scripts --no-audit --no-fund' _ "$bootstrap_root" >&2; then
+                    node_phase_cmd=(env "NODE_PATH=${bootstrap_root}/node_modules" "${node_phase_cmd[@]}")
+                else
+                    status=$?
+                    print_failure_tail "$result_file"
+                    printf 'FAIL: node_tests require the locked tooling manifest (ajv) and the on-demand npm ci bootstrap exited %s\n' "$status" >&2
+                    NODE_TESTS_RESULT="fail"
+                    ALL_PASS=false
+                    node_tests_ready=false
+                fi
+            fi
+        fi
+        if [ "$node_tests_ready" = true ]; then
+            if "$PYTHON_BIN" "$RUNNER" --label "node_tests" --timeout "$NODE_PHASE_TIMEOUT" --result-file "$result_file" -- \
+                "${node_phase_cmd[@]}"; then
+                NODE_TESTS_RESULT="pass"
+            else
+                status=$?
+                NODE_TESTS_RESULT="fail"
+                ALL_PASS=false
+                print_failure_tail "$result_file"
+                printf 'FAIL: Node tests exited %s\n' "$status" >&2
+            fi
         fi
         rm -f "$result_file"
+        [ -n "$bootstrap_root" ] && rm -rf "$bootstrap_root"
     fi
 
     result_file="$(mktemp "${TMPDIR:-/tmp}/lazybuddy-python-tests.XXXXXX")"

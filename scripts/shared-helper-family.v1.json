@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "products": [
+    "LazyBuddy",
+    "LazyTrae",
+    "LazyQoder",
+    "LazyZCode",
+    "LazyKimi",
+    "LazyDeepSeek"
+  ],
+  "groups": [
+    {
+      "id": "model-routing-validation",
+      "paths": {
+        "LazyBuddy": "contracts/model-routing-validation.js",
+        "LazyTrae": "contracts/model-routing-validation.js",
+        "LazyQoder": "contracts/model-routing-validation.js",
+        "LazyZCode": "contracts/model-routing-validation.js",
+        "LazyKimi": "contracts/model-routing-validation.js",
+        "LazyDeepSeek": "contracts/model-routing-validation.js"
+      }
+    },
+    {
+      "id": "outcome-evaluation",
+      "paths": {
+        "LazyBuddy": "contracts/outcome-evaluation.js",
+        "LazyTrae": "contracts/outcome-evaluation.js",
+        "LazyQoder": "contracts/outcome-evaluation.js",
+        "LazyZCode": "contracts/outcome-evaluation.js",
+        "LazyKimi": "contracts/outcome-evaluation.js",
+        "LazyDeepSeek": "contracts/outcome-evaluation.js"
+      }
+    },
+    {
+      "id": "runtime-freshness",
+      "paths": {
+        "LazyBuddy": "scripts/runtime-freshness.js",
+        "LazyTrae": "src/lib/runtime-freshness.js",
+        "LazyQoder": "scripts/runtime-freshness.js",
+        "LazyZCode": "scripts/runtime-freshness.js",
+        "LazyKimi": "scripts/runtime-freshness.js",
+        "LazyDeepSeek": "scripts/runtime-freshness.js"
+      }
+    },
+    {
+      "id": "lifecycle-index",
+      "paths": {
+        "LazyBuddy": "scripts/lifecycle/index.js",
+        "LazyTrae": "src/lib/lifecycle/index.js",
+        "LazyQoder": "scripts/lifecycle/index.js",
+        "LazyZCode": "scripts/lifecycle/index.js",
+        "LazyKimi": "scripts/lifecycle/index.js",
+        "LazyDeepSeek": "scripts/lifecycle/index.js"
+      }
+    },
+    {
+      "id": "lifecycle-errors",
+      "paths": {
+        "LazyBuddy": "scripts/lifecycle/errors.js",
+        "LazyTrae": "src/lib/lifecycle/errors.js",
+        "LazyQoder": "scripts/lifecycle/errors.js",
+        "LazyZCode": "scripts/lifecycle/errors.js",
+        "LazyKimi": "scripts/lifecycle/errors.js",
+        "LazyDeepSeek": "scripts/lifecycle/errors.js"
+      }
+    },
+    {
+      "id": "lifecycle-state",
+      "paths": {
+        "LazyBuddy": "scripts/lifecycle/state.js",
+        "LazyTrae": "src/lib/lifecycle/state.js",
+        "LazyQoder": "scripts/lifecycle/state.js",
+        "LazyZCode": "scripts/lifecycle/state.js",
+        "LazyKimi": "scripts/lifecycle/state.js",
+        "LazyDeepSeek": "scripts/lifecycle/state.js"
+      }
+    },
+    {
+      "id": "lifecycle-launcher",
+      "paths": {
+        "LazyBuddy": "scripts/lifecycle/launcher.js",
+        "LazyTrae": "src/lib/lifecycle/launcher.js",
+        "LazyQoder": "scripts/lifecycle/launcher.js",
+        "LazyZCode": "scripts/lifecycle/launcher.js",
+        "LazyKimi": "scripts/lifecycle/launcher.js",
+        "LazyDeepSeek": "scripts/lifecycle/launcher.js"
+      }
+    },
+    {
+      "id": "lifecycle-version",
+      "paths": {
+        "LazyBuddy": "scripts/lifecycle/version.js",
+        "LazyTrae": "src/lib/version.js",
+        "LazyQoder": "scripts/lifecycle/version.js",
+        "LazyZCode": "scripts/lifecycle/version.js",
+        "LazyKimi": "scripts/lifecycle/version.js",
+        "LazyDeepSeek": "scripts/lifecycle/version.js"
+      }
+    },
+    {
+      "id": "floor-runner",
+      "paths": {
+        "LazyBuddy": "scripts/shared/floor-runner.mjs",
+        "LazyTrae": "scripts/shared/floor-runner.mjs",
+        "LazyQoder": "scripts/shared/floor-runner.mjs",
+        "LazyZCode": "scripts/shared/floor-runner.mjs",
+        "LazyKimi": "scripts/shared/floor-runner.mjs",
+        "LazyDeepSeek": "scripts/shared/floor-runner.mjs"
+      }
+    },
+    {
+      "id": "tooling-capability-contract",
+      "paths": {
+        "LazyBuddy": "tooling/lazybuddy_capability_contract.py",
+        "LazyQoder": "tooling/lazyqoder_capability_contract.py",
+        "LazyZCode": "tooling/lazyzcode_capability_contract.py",
+        "LazyKimi": "tooling/lazykimi_capability_contract.py",
+        "LazyDeepSeek": "tooling/lazydeepseek_capability_contract.py"
+      }
+    },
+    {
+      "id": "tooling-detector",
+      "paths": {
+        "LazyBuddy": "tooling/lazybuddy_detector.py",
+        "LazyQoder": "tooling/lazyqoder_detector.py",
+        "LazyZCode": "tooling/lazyzcode_detector.py",
+        "LazyKimi": "tooling/lazykimi_detector.py",
+        "LazyDeepSeek": "tooling/lazydeepseek_detector.py"
+      }
+    },
+    {
+      "id": "tooling-adaptive-fingerprint",
+      "paths": {
+        "LazyBuddy": "tooling/lazybuddy_adaptive_fingerprint.py",
+        "LazyQoder": "tooling/lazyqoder_adaptive_fingerprint.py",
+        "LazyZCode": "tooling/lazyzcode_adaptive_fingerprint.py",
+        "LazyKimi": "tooling/lazykimi_adaptive_fingerprint.py",
+        "LazyDeepSeek": "tooling/lazydeepseek_adaptive_fingerprint.py"
+      }
+    },
+    {
+      "id": "mcp-path-boundary",
+      "paths": {
+        "LazyBuddy": "mcp/path_boundary.py",
+        "LazyQoder": "mcp/path_boundary.py",
+        "LazyZCode": "mcp/path_boundary.py",
+        "LazyKimi": "mcp/path_boundary.py",
+        "LazyDeepSeek": "mcp/path_boundary.py"
+      }
+    },
+    {
+      "id": "mcp-validate-tool",
+      "paths": {
+        "LazyBuddy": "mcp/validate-tool.py",
+        "LazyQoder": "mcp/validate-tool.py",
+        "LazyZCode": "mcp/validate-tool.py",
+        "LazyKimi": "mcp/validate-tool.py",
+        "LazyDeepSeek": "mcp/validate-tool.py"
+      }
+    }
+  ]
+}

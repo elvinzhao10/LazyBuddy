@@ -47,7 +47,7 @@ for run_dir in sorted(glob.glob(os.path.join(runs_dir, '*/'))):
     except (IsADirectoryError, OSError):
         print(json.dumps({'error': 'active_state_unreadable'}), file=sys.stderr)
         raise SystemExit(70)
-    if isinstance(state, dict) and state.get('status') in ('active', 'paused'):
+    if isinstance(state, dict) and state.get('status') in ('active', 'paused', 'created', 'planning', 'executing', 'blocked', 'verifying', 'reviewing'):
         active_run = run_dir
         break
 

@@ -1,0 +1,156 @@
+TAP version 13
+# Subtest: init and repeated read/init preserve pre-existing native authorities
+ok 1 - init and repeated read/init preserve pre-existing native authorities
+  ---
+  duration_ms: 1231.738529
+  type: 'test'
+  ...
+# Subtest: different project identity cannot adopt or replace an existing registry
+ok 2 - different project identity cannot adopt or replace an existing registry
+  ---
+  duration_ms: 660.379416
+  type: 'test'
+  ...
+# Subtest: init refuses corrupt pre-existing registry bytes and preserves caller files
+ok 3 - init refuses corrupt pre-existing registry bytes and preserves caller files
+  ---
+  duration_ms: 184.161382
+  type: 'test'
+  ...
+# Subtest: canonical-root requirement rejects symlink root and symlink ancestor
+ok 4 - canonical-root requirement rejects symlink root and symlink ancestor
+  ---
+  duration_ms: 338.011197
+  type: 'test'
+  ...
+# Subtest: symlink namespace or registry file cannot redirect writes
+ok 5 - symlink namespace or registry file cannot redirect writes
+  ---
+  duration_ms: 1163.821184
+  type: 'test'
+  ...
+# Subtest: unsafe and protected source paths are refused without registry changes
+ok 6 - unsafe and protected source paths are refused without registry changes
+  ---
+  duration_ms: 3826.091108
+  type: 'test'
+  ...
+# Subtest: source target, ancestor, and broken symlinks fail closed
+ok 7 - source target, ancestor, and broken symlinks fail closed
+  ---
+  duration_ms: 1030.059103
+  type: 'test'
+  ...
+# Subtest: hardlinked source cannot expose protected service material
+ok 8 - hardlinked source cannot expose protected service material
+  ---
+  duration_ms: 561.495775
+  type: 'test'
+  ...
+# Subtest: source edits are observations; reads/replay preserve accepted captures and source bytes
+ok 9 - source edits are observations; reads/replay preserve accepted captures and source bytes
+  ---
+  duration_ms: 1606.505924
+  type: 'test'
+  ...
+# Subtest: baseline creation with a stale source digest cannot accept newer text under old provenance
+ok 10 - baseline creation with a stale source digest cannot accept newer text under old provenance
+  ---
+  duration_ms: 964.793809
+  type: 'test'
+  ...
+# Subtest: parallel stale CAS saves exactly one command and no lost update
+ok 11 - parallel stale CAS saves exactly one command and no lost update
+  ---
+  duration_ms: 1034.525255
+  type: 'test'
+  ...
+# BOOTSTRAP_RESIDUAL {"phase":"after_project_mkdir","retry_error":"PROJECT_DIRECTORY_COLLISION"}
+# BOOTSTRAP_RESIDUAL {"phase":"owner_open","retry_error":"INVALID_JSON"}
+# Subtest: parallel replay produces one durable command receipt
+ok 12 - parallel replay produces one durable command receipt
+  ---
+  duration_ms: 870.402546
+  type: 'test'
+  ...
+# Subtest: fault hook refuses a noncanonical fixture-root alias
+ok 13 - fault hook refuses a noncanonical fixture-root alias
+  ---
+  duration_ms: 715.874117
+  type: 'test'
+  ...
+# Subtest: crash before or after atomic state publication leaves one recoverable revision and receipt
+ok 14 - crash before or after atomic state publication leaves one recoverable revision and receipt
+  ---
+  duration_ms: 2594.03049
+  type: 'test'
+  ...
+# Subtest: init crash before or after atomic state publication retries without adopting unrelated files
+ok 15 - init crash before or after atomic state publication retries without adopting unrelated files
+  ---
+  duration_ms: 892.429014
+  type: 'test'
+  ...
+# Subtest: external source edit after reduction is detected before state publication
+ok 16 - external source edit after reduction is detected before state publication
+  ---
+  duration_ms: 602.222609
+  type: 'test'
+  ...
+# Subtest: external state edit after reduction is preserved rather than overwritten
+ok 17 - external state edit after reduction is preserved rather than overwritten
+  ---
+  duration_ms: 597.609968
+  type: 'test'
+  ...
+# Subtest: external store-directory replacement aborts without writing into either replaced store
+ok 18 - external store-directory replacement aborts without writing into either replaced store
+  ---
+  duration_ms: 588.402204
+  type: 'test'
+  ...
+# Subtest: external source replacement by a protected symlink is rejected before publication
+ok 19 - external source replacement by a protected symlink is rejected before publication
+  ---
+  duration_ms: 599.249061
+  type: 'test'
+  ...
+# Subtest: state fsync failure preserves old authority and permits a clean retry
+ok 20 - state fsync failure preserves old authority and permits a clean retry
+  ---
+  duration_ms: 966.473474
+  type: 'test'
+  ...
+# Subtest: initialized registry corruption is preserved and rejected by both init and read
+ok 21 - initialized registry corruption is preserved and rejected by both init and read
+  ---
+  duration_ms: 673.867685
+  type: 'test'
+  ...
+# Subtest: interrupted owner bootstrap is fail-closed and does not alter native state
+ok 22 - interrupted owner bootstrap is fail-closed and does not alter native state
+  ---
+  duration_ms: 661.933748
+  type: 'test'
+  ...
+# Subtest: native run links remain identity references and never mutate native authorities
+ok 23 - native run links remain identity references and never mutate native authorities
+  ---
+  duration_ms: 1773.870958
+  type: 'test'
+  ...
+# Subtest: unknown, corrupted, unbound and unsafe native runs cannot become linked identities
+ok 24 - unknown, corrupted, unbound and unsafe native runs cannot become linked identities
+  ---
+  duration_ms: 3081.304859
+  type: 'test'
+  ...
+1..24
+# tests 24
+# suites 0
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 27314.630264

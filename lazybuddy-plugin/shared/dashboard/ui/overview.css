@@ -1,0 +1,134 @@
+@import './project-map-spike.css';
+@import './run-monitor.css';
+
+.overview-runtime-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(14rem,100%),1fr)); gap: var(--space-3); }
+.overview-runtime-metrics strong { font-size: var(--type-lg-size); font-variant-numeric: var(--numeric); }
+.overview-runtime-metrics p { margin: 0; }
+.overview-operations h2 { margin: 0; }
+.overview-operations .cluster { gap: var(--space-1); }
+.overview-problems li { overflow-wrap: anywhere; }
+
+/* T14 Overview — a scannable dashboard tab, not a document. Hero status card,
+   native attention list, compact metric tiles and the first-class macro map,
+   entirely on the v2 tokens: type rides --type-*, spacing the 8-pt --space-*
+   grid and the density gutters, radii --radius-*, motion --motion-* with
+   --motion-ease. No color literals; the only frozen v1 aliases consumed are
+   the ones with no v2 equivalent (--line --control-edge --hover --selected
+   --state inks through the shared [data-state] plumbing --card-min
+   --inspector). Motion is feedback only; reduced-motion collapses the token
+   durations the few transitions reference. */
+
+.overview-view { display: grid; gap: var(--space-3); }
+/* The grid owns the rhythm; the shared section margins must not double it. */
+.overview-view > section, .overview-view > article, .overview-view > aside,
+.overview-view section > section { margin-block-start: 0; }
+
+/* -- Hero status card ------------------------------------------------- */
+
+.overview-hero { gap: var(--space-2); }
+.overview-hero-title { margin: 0; }
+.overview-hero-identity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-half); margin: 0; max-inline-size: none; }
+.overview-hero-status { gap: var(--space-1); }
+.overview-hero-status h3 { margin: 0; }
+.overview-sentence-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-half); margin: 0; max-inline-size: none; }
+/* Clause chips are primary interactive targets: 44px hit area, chip visuals
+   carried by the statusChip inside, hover as the only extra feedback. */
+.overview-clause { display: inline-flex; align-items: center; min-block-size: var(--density-control);
+  padding: var(--space-half) var(--space-1); border: none; border-radius: var(--radius-full);
+  background: transparent; transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-clause:hover:enabled { background: var(--hover); }
+.overview-clause-note { display: inline-flex; align-items: center; }
+
+/* -- Attention queue (native list) ------------------------------------ */
+
+.overview-attention { gap: var(--space-2); }
+.overview-attention h2, .overview-metrics h2, .overview-map h2, .overview-lifecycle h2 { margin: 0; }
+.overview-attention-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.overview-attention-control { display: grid; gap: var(--space-half); inline-size: 100%; text-align: start;
+  padding: var(--density-gutter); min-block-size: var(--density-control);
+  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md);
+  transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-attention-more > summary { cursor: pointer; min-block-size: var(--control); display: flex; align-items: center; color: var(--muted); }
+.overview-attention-more[open] > summary { margin-block-end: var(--s2); }
+@media (min-width: 64rem) {
+  .overview-attention-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .overview-attention-row { display: flex; min-inline-size: 0; }
+  .overview-attention-control { align-content: start; }
+}
+.overview-attention-control:hover:enabled { background: var(--hover); }
+.overview-attention-title { font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.overview-attention-detail { margin: 0; max-inline-size: none; }
+
+/* -- Plan lifecycle strip (V2-T4 decomposition) ------------------------ */
+/* Three interactive cells — one per declared display group. The count is a
+   tabular numeral; the fill width is the group's real share of declared
+   plans (zero renders an honest empty track). Every cell opens exactly its
+   group's plan records. */
+.overview-lifecycle { gap: var(--space-2); }
+.overview-lifecycle-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.overview-lifecycle-cell { display: grid; gap: var(--space-half); justify-items: start; inline-size: 100%;
+  text-align: start; padding: var(--space-1) var(--space-2);
+  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md);
+  transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-lifecycle-cell:hover:enabled { background: var(--hover); }
+.overview-lifecycle-count { font-size: var(--type-lg-size); line-height: var(--type-lg-lh); font-weight: var(--weight-strong);
+  font-variant-numeric: var(--numeric); }
+.overview-lifecycle-label { font-size: var(--type-sm-size); color: var(--subtle); text-transform: capitalize; }
+.overview-lifecycle-track { inline-size: 100%; block-size: var(--space-half); display: flex; border-radius: var(--radius-full);
+  background: var(--inset); overflow: hidden; }
+.overview-lifecycle-fill { block-size: 100%; border-radius: var(--radius-full); background: var(--state-ink, var(--border)); }
+
+/* -- Metric tiles ------------------------------------------------------ */
+
+.overview-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(var(--card-min), 100%), 1fr)); gap: var(--space-2); }
+.overview-tile { justify-items: start; transition: background-color var(--motion-instant) var(--motion-ease); }
+button.overview-tile { inline-size: 100%; text-align: start; }
+button.overview-tile:hover:enabled { background: var(--hover); }
+.overview-tile-detail { max-inline-size: 100%; }
+/* Micro-bars: proportional geometry from projected values only; the bars are
+   aria-hidden decoration under the visible tabular figure. */
+.overview-microbar { display: flex; inline-size: 100%; block-size: var(--space-half); gap: var(--space-half);
+  border-radius: var(--radius-full); overflow: hidden; }
+.overview-microbar-segment { block-size: 100%; min-inline-size: var(--space-half); background: var(--state-ink, var(--border)); }
+
+/* -- Macro map (first-class) ------------------------------------------- */
+
+.overview-map { gap: var(--space-2); }
+/* The embedding replaces the spike's own breadcrumb head with this section's
+   heading; the selector targets only the direct spike child so the shell's
+   live compaction (which relocates .spike-head into its context disclosure)
+   still shows it there. */
+.overview-map > .project-spike > .spike-head { display: none; }
+
+/* -- Freshness line (V2-T4 decomposition) ------------------------------- */
+/* One compact meta line of observed freshness facts closing the dashboard:
+   revisions, git observation, plan source freshness, stale references. */
+.overview-freshness { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0;
+  max-inline-size: none; padding: var(--space-1) var(--space-2);
+  border: var(--line) solid var(--hairline); border-radius: var(--radius-md); }
+
+/* -- Contributing records (adopted into the shell dock) ---------------- */
+
+.overview-records { align-self: start; position: sticky; inset-block-start: var(--space-2); max-inline-size: var(--inspector); gap: var(--space-2); }
+.overview-records h3 { margin: 0; }
+.overview-records .meta { margin: 0; }
+.overview-record-list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.overview-record { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-half); min-inline-size: 0; }
+.overview-record + .overview-record { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-1); }
+/* A routed record id is the button itself: the identifier stays the label,
+   the route name is the trailing affordance. */
+.overview-record-open { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-half);
+  inline-size: 100%; text-align: start; min-block-size: var(--density-control);
+  padding: var(--space-half) var(--space-1); background: transparent; border-color: transparent;
+  border-radius: var(--radius-sm); transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-record-open:hover:enabled { background: var(--hover); }
+.overview-record-id { font-family: var(--mono); font-size: var(--type-sm-size); overflow-wrap: anywhere; text-align: start; }
+.overview-record-route { flex-shrink: 0; }
+
+/* Narrow: the sticky records rail goes static and full-width; tiles and the
+   attention list already stack through their auto-fit/grid tracks, and the
+   lifecycle strip stacks its cells. */
+@media (max-width: 44rem) {
+  .overview-records { position: static; max-inline-size: none; }
+  .overview-lifecycle-cells { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,9 +1,9 @@
 # Host routes
 
-## Current v1.3.5 route and host status
+## Current v1.4.0 route and host status
 
-This guide is the v1.3.5 documentation boundary for `codebuddy-cli`,
-`codebuddy-ide`, and `workbuddy`; the current package version is v1.3.5.
+This guide is the v1.4.0 documentation boundary for `codebuddy-cli`,
+`codebuddy-ide`, and `workbuddy`; the current package version is v1.4.0.
 Marketplace is the default full-plugin route for CodeBuddy IDE and WorkBuddy.
 The manual Skills/MCP route is recovery-only and mutually exclusive with a
 full-plugin route for one project.
@@ -60,7 +60,12 @@ marketplaces](https://www.codebuddy.ai/docs/cli/plugin-marketplaces),
 [IDE Skills](https://www.codebuddy.ai/docs/ide/Features/Skills), and [IDE MCP
 JSON](https://www.codebuddy.ai/docs/ide/User-guide/MCP). WorkBuddy publicly
 documents its [MCP settings UI](https://www.workbuddy.ai/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/MCP-Guide), not universal
-directory-marketplace compatibility.
+directory-marketplace compatibility. Observed in that WorkBuddy page on
+2026-10-18: MCP servers can use the MCP-standard OAuth authorization flow with
+automatic token refresh and reconnection, and the settings UI offers
+per-server and per-tool enable/disable with connection status. Those OAuth
+facts apply to remote servers; they do not change the six manual local stdio
+connectors of the fallback below, which still carry no OAuth step.
 
 | Host route | Safe package artifact | Required host observation |
 | --- | --- | --- |
@@ -323,5 +328,13 @@ After the approved setup and required fresh session, send:
 validation establish package readiness only. They do not prove plugin
 discovery, marketplace activation, SessionStart, hook execution, a running
 session, or MCP connection. Use the host's own plugin/Skills removal flow and
-remove only connectors the user added. Never scan or guess host paths; report
-package removal separately from the user-observed host result.
+remove only connectors the user added. For CodeBuddy CLI the documented
+removal command, observed in the official plugins reference on 2026-10-18, is
+`codebuddy plugin uninstall lazybuddy@lazybuddy` (aliases `remove`/`rm`) with
+`-s/--scope` (user, project, or local); its default removes the plugin's
+persistent data under `~/.codebuddy/plugins/data/`, while `--keep-data`
+retains it — prefer `--keep-data` unless the user asks for a full wipe, and
+never delete that host-owned directory from the package. Run it as one
+approved host action, then observe the fresh session; a scope flag alone is
+not a removal receipt. Never scan or guess host paths; report package removal
+separately from the user-observed host result.

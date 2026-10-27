@@ -12,7 +12,7 @@
     "structural_search": [
       {
         "command": "sg",
-        "fallback_package": "@ast-grep/cli@0.45.3",
+        "fallback_package": "@ast-grep/cli@0.50.0",
         "provider_order": ["host", "owned"]
       }
     ],
@@ -30,14 +30,14 @@
         "source_markers": ["py", "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"],
         "command": "basedpyright-langserver",
         "arguments": ["--stdio"],
-        "fallback_packages": ["basedpyright@1.39.10"],
+        "fallback_packages": ["basedpyright@1.40.1"],
         "provider_order": ["project", "host", "owned"]
       }
     ],
     "architecture_exploration": [
       {
         "command": "codegraph",
-        "fallback_package": "@colbymchenry/codegraph@1.6.0",
+        "fallback_package": "@colbymchenry/codegraph@1.6.2",
         "provider_order": ["owned"],
         "activation": "explicit",
         "recommend_when": {

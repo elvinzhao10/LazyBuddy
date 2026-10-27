@@ -1,0 +1,319 @@
+@import './tokens.css';
+/* ======================================================================
+   Shared component styles. Migrated to the v2 token names (T12): spacing
+   rides the --space-* 8-pt grid, type the --type-* scale, radii
+   --radius-*, shadows the --elevation-* ladder, motion --motion-*.
+   v1 aliases that still have NO v2 equivalent and therefore remain in
+   shared CSS (and in per-view CSS until T14–T19 migrate them):
+     --hover --selected --focus --control-edge --primary-hover
+     --pressed-opacity --neutral-ink --neutral-fill --stale-ink
+     --stale-fill --line --control --icon --sans --mono --content
+     --measure --card-min --inspector
+   ====================================================================== */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: var(--weight-regular) var(--type-md-size)/var(--type-md-lh) var(--sans); }
+main { max-inline-size: var(--content); margin-inline: auto; padding: var(--space-4); container-type: inline-size; }
+h1,h2,h3,p { margin: 0; }
+h1 { font-size: var(--type-xl-size); line-height: var(--type-xl-lh); }
+h2,h3 { font-size: var(--type-lg-size); line-height: var(--type-lg-lh); font-weight: var(--weight-strong); }
+p { max-inline-size: var(--measure); }
+small,.meta { font-size: var(--type-sm-size); color: var(--subtle); }
+code { font-family: var(--mono); }
+button,input,textarea,select { font: inherit; color: inherit; }
+button,select,input,textarea { min-block-size: var(--control); border: var(--line) solid var(--control-edge); border-radius: var(--radius-sm); background: var(--surface); padding: var(--space-1) var(--space-2); max-inline-size: 100%; }
+button { cursor: pointer; transition: background-color var(--motion-instant) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease); }
+button:hover:enabled { background: var(--hover); }
+button:active:enabled { opacity: var(--pressed-opacity); }
+button:disabled { cursor: not-allowed; color: var(--subtle); background: var(--neutral-fill); }
+button.primary { background: var(--text); color: var(--surface); }
+button.primary:hover:enabled { background: var(--primary-hover); }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+input,textarea { inline-size: 100%; min-inline-size: 0; }
+select { min-inline-size: 0; }
+textarea { resize: vertical; }
+label { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--space-1); min-inline-size: 0; }
+section { margin-block-start: var(--space-6); }
+section > header { display: grid; gap: var(--space-1); margin-block-end: var(--space-2); }
+.stack { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--space-2); min-inline-size: 0; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.spread { justify-content: space-between; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(var(--card-min),100%),1fr)); gap: var(--space-2); }
+.panel { background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); min-inline-size: 0; box-shadow: var(--elevation-1); }
+.status { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-half) var(--space-1); border-radius: var(--radius-full); font-size: var(--type-sm-size); font-weight: var(--weight-strong); color: var(--neutral-ink); background: var(--neutral-fill); max-inline-size: 100%; }
+.status svg,.selection svg { inline-size: var(--icon); block-size: var(--icon); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+[data-state='active'] { --state-ink: var(--info); --state-fill: var(--info-bg); }
+[data-state='verified'] { --state-ink: var(--success); --state-fill: var(--success-bg); }
+[data-state='attention'] { --state-ink: var(--warn); --state-fill: var(--warn-bg); }
+[data-state='failed'] { --state-ink: var(--danger); --state-fill: var(--danger-bg); }
+[data-state='stale'] { --state-ink: var(--stale-ink); --state-fill: var(--stale-fill); }
+.status[data-state] { color: var(--state-ink,var(--neutral-ink)); background: var(--state-fill,var(--neutral-fill)); }
+/* Status is never color-only: every kind pairs its distinct glyph with a
+   distinct border treatment (neutral hairline outline, active ink outline,
+   verified sealed double edge, attention weighted baseline, failed heavy
+   frame, stale dashed edge, unavailable hollow dashed chip). */
+.status[data-state='neutral'] { border: var(--line) solid var(--hairline); }
+.status[data-state='active'] { border-color: currentColor; }
+.status[data-state='verified'] { border: calc(var(--line) * 3) double currentColor; }
+.status[data-state='attention'] { border: var(--line) solid currentColor; border-block-end-width: calc(var(--line) * 2); }
+.status[data-state='failed'] { border: calc(var(--line) * 2) solid currentColor; }
+.status[data-state='stale'] { border: var(--line) dashed currentColor; }
+.status[data-state='unavailable'] { background: transparent; border: var(--line) dashed var(--border); }
+.task { display: grid; gap: var(--space-1); inline-size: 100%; text-align: start; padding: var(--space-2); }
+.task[aria-pressed='true'] { background: var(--selected); }
+.selection { display: none; align-items: center; gap: var(--space-1); }
+.task[aria-pressed='true'] .selection { display: inline-flex; }
+.task-title { font-weight: var(--weight-strong); }
+.notice { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--space-1); }
+.notice h3 { font-size: var(--type-md-size); }
+.graph, .lb-relations { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-2); align-items: center; }
+/* V2-T9 daisyUI one-class-one-meaning: `.lb-relations` is the canonical name
+   for the three-column relation layout (one class, one meaning — "graph"
+   says nothing about columns); the legacy `.graph` name stays as an alias. */
+.graph-lane { display: grid; gap: var(--space-1); }
+.relation { color: var(--subtle); font-size: var(--type-sm-size); }
+.inventory { border-block-start: var(--line) solid var(--border); padding-block-start: var(--space-2); }
+.queue { padding-inline-start: var(--space-3); }
+.queue li { padding: var(--space-1) 0; }
+.queue li + li { border-block-start: var(--line) solid var(--border); }
+.safe-text,button,p,h1,h2,h3,label,li,small { overflow-wrap: anywhere; }
+dialog { margin-inline-start: auto; margin-inline-end: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector),calc(100% - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); grid-template-rows: auto minmax(0,1fr); overflow: hidden; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--edge-highlight), var(--elevation-3); }
+.inspector-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+dialog::backdrop { background: var(--backdrop); }
+dialog:not([open]) { display: none; }
+dialog header { margin-block-end: var(--space-3); }
+.fixture-label { font-weight: var(--weight-strong); }
+[role='status'] { min-block-size: var(--control); }
+footer { margin-block: var(--space-6); color: var(--subtle); }
+@container (max-width: 44rem) {
+  .graph, .lb-relations { grid-template-columns: minmax(0,1fr); }
+  .graph-lane { gap: var(--space-2); }
+  .graph .relation::before, .lb-relations .relation::before { content: '↓ '; }
+}
+@media (max-width: 44rem) {
+  :root { --body: 1.0625rem; --caption: .9375rem; }
+  main { padding: var(--space-2); }
+  .panel { padding: var(--space-2); }
+  dialog { margin: 0; inline-size: 100%; max-inline-size: 100%; block-size: 100dvh; max-block-size: 100dvh; border-radius: 0; padding: max(var(--space-2),env(safe-area-inset-top)) var(--space-2) max(var(--space-2),env(safe-area-inset-bottom)); }
+}
+
+/* ======================================================================
+   T11 native platform experience layer (see components.mjs header).
+   Every value below comes from tokens.css v2 — no literals. Hit areas
+   use the density control tokens (44px regular / 32px compact-table);
+   motion durations reference --motion-* so prefers-reduced-motion
+   collapses them, and the trailing media block disables the remaining
+   non-essential transitions outright. */
+
+:root { --density-gutter: var(--density-regular); }
+:root[data-density='compact'] { --density-gutter: var(--density-compact); }
+
+/* Segmented controls: inset track, one raised current segment (the v1
+   .view-switcher rules in views.css kept the current fill). Segments are
+   primary controls: 44px block and inline hit areas via tokens.
+   V2-T9 daisyUI one-class-one-meaning: `.lb-segmented` is the canonical
+   component class; `.view-switcher` remains as a pure alias so existing
+   view wiring never breaks. shadcn calm default: the current segment is
+   the one raised surface on the track (the legacy --selected fill override
+   in views.css is retired). */
+.lb-segmented, .view-switcher { display: inline-flex; align-items: stretch; gap: var(--space-half); padding: var(--space-half); background: var(--inset); border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); }
+.lb-segmented button, .view-switcher button { min-block-size: var(--density-control); min-inline-size: var(--density-control); padding-inline: var(--space-2); background: transparent; border-color: transparent; transition: background-color var(--motion-instant) var(--motion-ease), box-shadow var(--motion-instant) var(--motion-ease); }
+.lb-segmented button[aria-pressed='true'], .view-switcher button[aria-pressed='true'] { background: var(--surface); border-color: var(--border); box-shadow: var(--elevation-1); font-weight: var(--weight-strong); }
+/* the focused current segment keeps BOTH its raised state and the keyboard ring */
+.lb-segmented button[aria-pressed='true']:focus-visible, .view-switcher button[aria-pressed='true']:focus-visible { box-shadow: var(--elevation-1), var(--focus-ring); }
+
+/* Overlay panels: elevated transient surfaces (elevation ladder), eased
+   entrance through the motion tokens. V2-T9 shadcn border/shadow rhythm:
+   the quiet 1px inset top highlight rides every elevated overlay edge
+   (--edge-highlight) ahead of its soft shadow step. */
+.native-overlay { position: fixed; inset-block-end: var(--space-4); inset-inline-end: var(--space-4); z-index: 60; display: grid; gap: var(--density-gutter); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); overflow-y: auto; overscroll-behavior: contain; background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--edge-highlight), var(--elevation-3); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+.native-overlay[hidden] { display: none; }
+
+/* Clipped description notes (aria-describedby targets) and the dedicated
+   polite announcer for layer messages. Never visually rendered. The 1px
+   clip geometry is the standard sr-only pattern, not a spacing value. */
+.native-note, .native-announcer { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ======================================================================
+   T12 shared component library (components.mjs). Every value resolves to
+   a tokens.css v2 name; the only literals are the sr-only clip geometry
+   above and skeleton line proportions (percentages of the container). */
+
+/* Density-aware component paddings: cards/tables/lists shrink with the
+   compact density; primary controls never do (T11 rule). */
+:root { --lb-card-pad: var(--density-regular); --lb-table-pad-block: var(--space-2); }
+:root[data-density='compact'] { --lb-card-pad: var(--density-compact); --lb-table-pad-block: var(--space-1); }
+
+/* Cards: one padding from the density grid; T20-RF resting cards lift on
+   the first elevation step (hairline border + soft shadow), raised cards
+   lift one step further. */
+.lb-card { display: grid; gap: var(--space-2); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); min-inline-size: 0; box-shadow: var(--elevation-1); transition: box-shadow var(--motion-instant) var(--motion-ease); }
+.lb-card[data-elevation='raised'] { box-shadow: var(--edge-highlight), var(--elevation-2); }
+/* V2-T9 Mantine factory hooks: interactive factory cards (createCard with
+   onSelect) are one control — calm hover, the quiet hairline edge carries
+   the resting outline, the accent only ever marks selection intent. */
+.lb-card[data-interactive='true'] { cursor: pointer; }
+.lb-card[data-interactive='true']:hover { background: var(--hover); }
+.lb-card[data-selected='true'] { border-color: var(--product-accent); box-shadow: var(--edge-highlight), var(--elevation-1); }
+.lb-card-head { display: grid; gap: var(--space-half); }
+.lb-card-title { margin: 0; font-size: var(--type-md-size); line-height: var(--type-md-lh); font-weight: var(--weight-strong); }
+.lb-card-meta { margin: 0; }
+.lb-card-body { display: grid; gap: var(--space-2); min-inline-size: 0; }
+.lb-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
+
+/* Data tables: sticky header on the elevated surface, hairline row rules,
+   no zebra striping, tabular numerals on numeric columns. */
+.lb-table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); overscroll-behavior: contain; }
+.lb-table { inline-size: 100%; border-collapse: collapse; }
+.lb-table caption { text-align: start; padding: var(--lb-table-pad-block) var(--space-2); }
+/* V2-T9 shadcn small-caps section labels: table captions and sidebar group
+   labels render as uppercase micro-labels with the caps tracking metric. */
+.lb-table caption, .lb-sidebar-group-label { text-transform: uppercase; letter-spacing: var(--tracking-caps); font-weight: var(--weight-strong); }
+.lb-table th,.lb-table td { padding: var(--lb-table-pad-block) var(--space-2); border-block-end: var(--line) solid var(--hairline); text-align: start; vertical-align: top; }
+.lb-table thead th { position: sticky; inset-block-start: 0; background: var(--elevated); z-index: 1; font-size: var(--type-xs-size); line-height: var(--type-xs-lh); }
+.lb-table [data-numeric='true'] { font-variant-numeric: var(--numeric); text-align: end; }
+.lb-table tbody tr:last-child td { border-block-end: none; }
+
+/* Row lists: hairline separators, no zebra, density-aware breathing. */
+.lb-rows { display: grid; margin: 0; padding: 0; list-style: none; }
+.lb-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--lb-table-pad-block) 0; }
+.lb-row + .lb-row { border-block-start: var(--line) solid var(--hairline); }
+.lb-row-main { display: grid; gap: var(--space-half); min-inline-size: 0; }
+.lb-row-title { font-weight: var(--weight-strong); }
+
+/* Form fields: label + control + help + inline error slots. Invalid fields
+   carry the danger edge and their message is wired via aria. */
+.lb-field { gap: var(--space-half); }
+.lb-field-label { font-size: var(--type-sm-size); color: var(--subtle); }
+.lb-field-label[data-required='true']::after { content: ' · required'; color: var(--subtle); }
+.lb-field-help { order: 5; }
+.lb-field-error { order: 6; color: var(--danger); font-size: var(--type-sm-size); }
+.lb-field[data-invalid='true'] input, .lb-field[data-invalid='true'] textarea { border-color: var(--danger); }
+.lb-field input[aria-invalid='true'] { border-color: var(--danger); }
+
+/* Destructive actions: danger ink and edge; the undo affordance swaps to
+   the attention pair while the bounded window is open. */
+.lb-destructive { color: var(--danger); border-color: var(--danger); }
+.lb-destructive:hover:enabled { background: var(--danger-bg); color: var(--danger); }
+.lb-destructive[data-undo='true'] { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+
+/* Graph nodes: state-driven size and border. Selected is the only place
+   the product accent appears on a node (selection intent, DESIGN.md §1);
+   running nodes lift one elevation step and gain breathing room. */
+.lb-graph-node { display: grid; gap: var(--space-half); inline-size: 100%; text-align: start; padding: var(--space-2); background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-md); transition: box-shadow var(--motion-instant) var(--motion-ease); }
+.lb-graph-node:hover:enabled { background: var(--hover); }
+.lb-graph-node[data-state='active'] { padding: calc(var(--space-2) + var(--space-half)); box-shadow: var(--elevation-1); }
+.lb-graph-node[data-state='attention'] { border-color: var(--warn); }
+.lb-graph-node[data-state='failed'] { border-color: var(--danger); }
+.lb-graph-node[data-state='stale'] { border-style: dashed; }
+.lb-graph-node[data-state='unavailable'] { border-style: dashed; background: transparent; }
+.lb-graph-node[aria-pressed='true'] { border-color: var(--product-accent); box-shadow: var(--elevation-1); }
+.lb-graph-node-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); min-inline-size: 0; }
+.lb-graph-node-title { font-weight: var(--weight-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-graph-node-detail { text-align: start; }
+
+/* Timeline swimlanes: one shared percentage axis, one track row per lane.
+   Overlap-honest: overlapping intervals stack into sublanes (each track
+   grows by --lb-lanes), so no bar ever paints over another. */
+.lb-timeline { display: grid; gap: var(--space-1); }
+.lb-axis { display: grid; grid-template-columns: var(--lane-label) minmax(0,1fr); gap: var(--space-2); align-items: center; }
+.lb-axis-ticks { display: flex; justify-content: space-between; border-block-end: var(--line) solid var(--hairline); padding-block-end: var(--space-half); }
+.lb-lane { display: grid; grid-template-columns: var(--lane-label) minmax(0,1fr); gap: var(--space-2); align-items: center; }
+.lb-lane-label { display: flex; min-inline-size: 0; }
+.lb-track { --lb-lane-size: calc(var(--density-control-compact) + var(--space-half)); position: relative; block-size: calc(var(--lb-lanes, 1) * var(--lb-lane-size) + (var(--lb-lanes, 1) - 1) * var(--space-half)); background: var(--inset); border-radius: var(--radius-sm); }
+.lb-interval { position: absolute; inset-block-start: calc(var(--lb-lane-index, 0) * (var(--lb-lane-size, 0px) + var(--space-half))); block-size: var(--lb-lane-size, calc(var(--density-control-compact) + var(--space-half))); display: inline-flex; align-items: center; overflow: hidden; padding-inline: var(--space-half); border-radius: var(--radius-xs); border: var(--line) solid var(--state-ink, var(--control-edge)); background: var(--state-fill, var(--neutral-fill)); color: var(--state-ink, var(--neutral-ink)); font-size: var(--type-xs-size); line-height: var(--type-xs-lh); white-space: nowrap; text-overflow: ellipsis; }
+
+/* Inspector panel: header/content/footer side overlay at elevation-2.
+   V2-T9: edge-highlight bevel ahead of the shadow (border/shadow rhythm). */
+.lb-inspector { position: fixed; inset-block: var(--space-4); inset-inline-end: var(--space-4); z-index: 50; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); max-block-size: calc(100dvh - var(--space-4)); background: var(--elevated); color: var(--text); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--edge-highlight), var(--elevation-2); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+.lb-inspector[hidden] { display: none; }
+.lb-inspector-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+.lb-inspector-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
+
+/* Skeletons: static placeholders. No shimmer loop by the no-looping-
+   animation rule; the loading state is announced, not animated. */
+.lb-skeleton { display: grid; gap: var(--space-1); }
+.lb-skeleton-line { display: block; block-size: var(--type-md-size); border-radius: var(--radius-xs); background: var(--inset); }
+.lb-skeleton-line:nth-child(2n) { background: var(--hairline); }
+.lb-skeleton-line[data-line='0'] { inline-size: 72%; }
+.lb-skeleton-line[data-line='1'] { inline-size: 94%; }
+.lb-skeleton-line[data-line='2'] { inline-size: 58%; }
+
+/* Empty states: icon + title + one detail line + optional action. */
+.lb-empty { display: grid; justify-items: center; gap: var(--space-1); padding: var(--space-4) var(--space-2); text-align: center; border: var(--line) solid var(--hairline); border-radius: var(--radius-md); }
+.lb-empty svg { inline-size: calc(var(--icon) * 2); block-size: calc(var(--icon) * 2); fill: none; stroke: var(--subtle); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.lb-empty-title { font-size: var(--type-md-size); }
+.lb-empty-detail { max-inline-size: var(--measure); }
+
+/* Metric tiles: tabular value, caption label, coverage chip; the
+   unavailable variant is hollow, never a zero or fabricated value. */
+.lb-metric { display: grid; justify-items: start; gap: var(--space-half); padding: var(--lb-card-pad); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-1); min-inline-size: 0; }
+.lb-metric-value { font-size: var(--type-lg-size); line-height: var(--type-lg-lh); font-weight: var(--weight-strong); font-variant-numeric: var(--numeric); }
+.lb-metric-label { max-inline-size: 100%; }
+.lb-metric[data-unavailable='true'] { border-style: dashed; }
+.lb-metric[data-unavailable='true'] .lb-metric-value { color: var(--subtle); }
+
+/* App shell (T12 addendum): sidebar rail, tab strip, right dock. The rail is
+   240px expanded and collapses to a 56px icon rail; tabs live on an inset
+   track with one raised active tab; the dock is the elevation-2 right
+   surface. Every size resolves through tokens — the rail and icon-rail
+   widths are layout constants expressed as calc() of spacing tokens. */
+:root { --lb-rail: calc(var(--space-1) * 30); --lb-rail-icon: calc(var(--space-1) * 7); }
+.lb-shell-demo { block-size: calc(var(--space-1) * 74); min-block-size: var(--space-7); border: var(--line) solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.lb-shell { display: grid; grid-template-columns: auto minmax(0, 1fr); min-inline-size: 0; }
+.lb-shell-main { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--space-2); padding: var(--space-2); min-inline-size: 0; overflow: hidden; }
+.lb-sidebar { display: grid; grid-template-rows: auto auto minmax(0,1fr) auto auto; gap: var(--space-2); inline-size: var(--lb-rail); padding: var(--space-2); background: var(--surface); border: var(--line) solid var(--border); border-start-end-radius: var(--radius-md); border-end-end-radius: var(--radius-md); transition: inline-size var(--motion-base) var(--motion-ease); }
+.lb-sidebar[data-collapsed='true'] { inline-size: var(--lb-rail-icon); }
+.lb-sidebar-collapse { justify-self: end; min-inline-size: var(--density-control-compact); min-block-size: var(--density-control-compact); padding: 0; background: transparent; border-color: transparent; }
+.lb-sidebar-identity { display: grid; gap: var(--space-half); justify-items: start; padding-inline: var(--space-half); }
+.lb-sidebar-product { padding: var(--space-half) var(--space-1); border-radius: var(--radius-xs); background: var(--product-accent-soft); color: var(--product-accent); font-size: var(--type-sm-size); font-weight: var(--weight-strong); }
+.lb-sidebar-runtime { max-inline-size: 100%; overflow-wrap: anywhere; }
+.lb-sidebar-destinations { display: grid; gap: var(--space-half); margin: 0; padding: 0; list-style: none; }
+/* T20-RF nav rows: full pill radius, 18px destination glyphs, an ellipsized
+   label and an optional projection-fed count badge on the trailing edge. */
+.lb-sidebar-destination { display: flex; align-items: center; gap: var(--space-1); inline-size: 100%; min-block-size: var(--density-control); text-align: start; padding: var(--space-half) var(--space-1); background: transparent; border-color: transparent; border-radius: var(--radius-full); transition: background-color var(--motion-instant) var(--motion-ease); }
+.lb-sidebar-destination svg { inline-size: var(--icon-nav); block-size: var(--icon-nav); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.lb-sidebar-destination-label { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-sidebar-badge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-inline-size: var(--badge-min); padding-inline: var(--space-half); border-radius: var(--radius-full); background: var(--neutral-fill); color: var(--neutral-ink); font-size: var(--type-xs-size); line-height: var(--type-xs-lh); font-weight: var(--weight-strong); font-variant-numeric: var(--numeric); }
+.lb-sidebar-destination:hover:enabled { background: var(--hover); }
+.lb-sidebar-destination[aria-current='page'] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 2px 0 0 0 var(--accent); font-weight: var(--weight-strong); }
+.lb-sidebar-destination[aria-current='page'] .lb-sidebar-badge { background: var(--accent); color: var(--accent-contrast); }
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-destination { justify-content: center; padding-inline: 0; }
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-destination-label,
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-badge,
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-group-label,
+.lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
+.lb-sidebar-collapse svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lb-sidebar-tree { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
+.lb-sidebar-footer { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
+
+/* Tabs: horizontal strip on the inset track; the active tab is the one
+   raised surface (hairline edge + elevation-1). Closable tabs carry a
+   compact 32px close target; pinned tabs render no close control. */
+.lb-tabbed { display: grid; grid-template-rows: auto minmax(0,1fr); min-inline-size: 0; }
+.lb-tabs { display: flex; align-items: stretch; gap: var(--space-half); padding: var(--space-half); background: var(--inset); border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); overflow-x: auto; overscroll-behavior-x: contain; }
+.lb-tab { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: var(--density-control); padding-inline: var(--space-2); border-radius: var(--radius-xs); background: transparent; cursor: pointer; }
+.lb-tab:focus-visible { box-shadow: var(--focus-ring); }
+.lb-tab[aria-selected='true'] { background: var(--surface); border: var(--line) solid var(--hairline); box-shadow: var(--elevation-1); }
+.lb-tab[aria-selected='true']:focus-visible { box-shadow: var(--elevation-1), var(--focus-ring); }
+.lb-tab-label { font-size: var(--type-sm-size); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-tab-pinned .lb-tab-label { font-weight: var(--weight-strong); }
+.lb-tab-close { min-inline-size: var(--density-control-compact); min-block-size: var(--density-control-compact); padding: 0; background: transparent; border-color: transparent; }
+.lb-tabpanels { min-block-size: 0; }
+.lb-tabpanel { min-inline-size: 0; }
+.lb-tabpanel[hidden] { display: none; }
+
+/* Right dock: full-height elevation-2 surface, Escape + focus-return ride
+   the same overlay stack contract as the inspector panel. V2-T9: the
+   edge-highlight bevel rides the fixed edge (the V2-T4 floating treatment
+   in project-shell.css layers the elevation-3 radius on top of this base). */
+.lb-dock { position: fixed; inset-block: 0; inset-inline-end: 0; z-index: 50; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: var(--space-2); padding: var(--space-3); inline-size: min(var(--inspector), calc(100vw - var(--space-4))); background: var(--elevated); color: var(--text); border-inline-start: var(--line) solid var(--border); box-shadow: var(--edge-highlight), var(--elevation-2); transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
+.lb-dock[hidden] { display: none; }
+.lb-dock-body { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+.lb-dock-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--space-2); }
+
+/* Reduced motion: the token layer already collapses every --motion-*
+   duration this section consumes; this block also switches off the
+   non-essential transitions wholesale so nothing animates. */
+@media (prefers-reduced-motion: reduce) {
+  button, .view-switcher button, .native-overlay, .lb-card, .lb-graph-node, .lb-inspector, .lb-sidebar, .lb-dock { transition: none; }
+}

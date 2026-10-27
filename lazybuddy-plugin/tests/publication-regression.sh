@@ -140,6 +140,14 @@ copy_publication_fixture() {
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/README.md" "$fixture_root/lazybuddy-plugin/README.md"
     mkdir -p "$fixture_root/lazybuddy-plugin/docs"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/docs/model-routing.md" "$fixture_root/lazybuddy-plugin/docs/model-routing.md"
+    mkdir -p "$fixture_root/lazybuddy-plugin/shared/dashboard"
+    cp "$REPOSITORY_ROOT/lazybuddy-plugin/shared/dashboard/SERVICE.md" "$fixture_root/lazybuddy-plugin/shared/dashboard/SERVICE.md"
+    mkdir -p "$fixture_root/lazybuddy-plugin/shared/project/test" "$fixture_root/lazybuddy-plugin/shared/project/qa"
+    cp "$REPOSITORY_ROOT/lazybuddy-plugin/shared/project/README.md" "$fixture_root/lazybuddy-plugin/shared/project/README.md"
+    cp "$REPOSITORY_ROOT/lazybuddy-plugin/shared/project/test/"{project-model.test.mjs,project-adversarial.test.mjs,project-cli.test.mjs} \
+        "$fixture_root/lazybuddy-plugin/shared/project/test/"
+    cp "$REPOSITORY_ROOT/lazybuddy-plugin/shared/project/qa/"{native-identity.mjs,README.md} \
+        "$fixture_root/lazybuddy-plugin/shared/project/qa/"
     mkdir -p "$fixture_root/lazybuddy-plugin/contracts"
     cp "$REPOSITORY_ROOT/lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json" \
         "$fixture_root/lazybuddy-plugin/contracts/adaptive-harness-contract.v1.json"

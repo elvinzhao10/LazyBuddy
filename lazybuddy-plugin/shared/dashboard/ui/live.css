@@ -1,0 +1,41 @@
+.live-shell { max-inline-size: var(--content); margin-inline: auto; padding: var(--s6); }
+#connect-form[hidden],#view-tabs[hidden],#run-dashboard[hidden],#work-root[hidden],#verification-root[hidden],#editing-root[hidden] { display: none !important; }
+.live-header { margin-block-end: var(--s6); }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header { display: none !important; }
+.lb-topbar .shell-connection-status { min-block-size: 0; margin: 0; font-size: var(--caption); line-height: var(--type-sm-lh); color: var(--muted); }
+@media (max-width: 48rem) {
+  .lb-topbar-lead:has(.shell-connection-status) { display: grid; grid-template-columns: minmax(0,1fr); gap: 0; }
+  .lb-topbar-lead:has(.shell-connection-status) .lb-topbar-title { display: none; }
+  .lb-topbar-lead:has(.shell-connection-status) .lb-topbar-badge { padding-block: 0; line-height: var(--type-sm-lh); }
+  .shell-connection-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.connect-form { max-inline-size: 32rem; }
+[data-testid='connection-status'] { color: var(--muted); font-weight: var(--strong); }
+[data-testid='connection-status'][data-state='verified'] { color: var(--verified-ink); }
+[data-testid='connection-status'][data-state='failed'],[data-testid='connection-status'][data-state='attention'] { color: var(--failed-ink); }
+.planning-editor { max-inline-size: 64rem; }
+.editor-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(15rem,100%),1fr)); gap: var(--s4); }
+.edit-status { padding: var(--s3); background: var(--neutral-fill); border-radius: var(--radius-control); }
+.queue-edit-list { display: grid; gap: var(--s3); padding-inline-start: var(--s5); }
+.evidence-preview pre { max-block-size: 50dvh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.live-shell > #project-root:empty { display: none; }
+/* T11 experience layer: the density segmented control mounts beside the
+   theme select in the header cluster; keep header controls on one row. */
+.live-header .cluster .view-switcher { flex: 0 0 auto; }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header h1 { display: none; }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header { margin-block-end: var(--s2); gap: var(--s2); }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header { display: flex; align-items: center; justify-content: space-between; }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header > .cluster { flex: 1 1 auto; }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header > .cluster > .meta { display: none; }
+/* T20a app frame: once the shell initializes, the dashboard host becomes a
+   full-height column so the static sidebar and the single scrolling content
+   surface own the layout. The pre-init state (no initialized record) keeps
+   the padded page-flow baseline. */
+.live-shell:has(.project-shell[data-initialized='true']) { max-inline-size: none; padding: 0; display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; overflow: hidden; }
+.live-shell:has(.project-shell[data-initialized='true']) > .live-header { padding: var(--s2) var(--s4); border-block-end: var(--line) solid var(--border); margin-block-end: 0; background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); }
+.live-shell:has(.project-shell[data-initialized='true']) > #project-root { flex: 1 1 auto; min-block-size: 0; display: grid; }
+.live-shell:has(.project-shell[data-initialized='true']) > #run-dashboard { padding: var(--s4); }
+#run-dashboard { margin-block-start: 0; }
+@media (max-width: 44rem) { .live-shell { padding: var(--s4); } .live-header nav button { flex: 1 1 8rem; }
+  .live-shell:has(.project-shell[data-initialized='true']) { padding: 0; }
+  .live-shell:has(.project-shell[data-initialized='true']) > .live-header { padding: var(--s2); } }

@@ -1,0 +1,110 @@
+@import './style.css';
+@import './timeline.css';
+
+/* T16 nested execution view — existing design tokens only; no new status colors.
+   Motion: one token-based border-color fade on node hover (frozen --fast/--ease,
+   collapsed to 0ms under prefers-reduced-motion by tokens.css) plus the shared
+   button opacity fade from style.css. No animation/keyframes. */
+
+.execution-view { container-type: inline-size; }
+.execution-head .cluster { flex-wrap: wrap; }
+.execution-subtitle { margin: 0; }
+.execution-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); max-inline-size: none; }
+.execution-clause { min-block-size: auto; padding: var(--s1) var(--s2); border-radius: var(--radius-pill); border: var(--line) solid var(--border); background: var(--surface); font-size: var(--caption); }
+.execution-clause[aria-pressed='true'] { background: var(--selected); }
+.execution-status { min-block-size: var(--control); display: flex; align-items: center; }
+.execution-toolbar { justify-content: space-between; }
+.execution-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
+.execution-legend li { display: inline-flex; align-items: center; gap: var(--s2); }
+.execution-legend li::before { content: ''; inline-size: var(--s5); block-size: 0; border-block-start: 2px solid var(--muted); }
+.execution-legend .edge-gate::before { border-block-start-style: dashed; border-block-start-color: var(--active-ink); }
+.execution-legend .edge-history::before { border-block-start-style: dotted; border-block-start-color: var(--stale-ink); }
+
+.execution-graph-wrap { display: grid; gap: var(--s2); min-inline-size: 0; }
+.execution-graph-viewport { min-block-size: 22rem; max-block-size: min(70dvb, 48rem); overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; cursor: grab; }
+.execution-graph-viewport.is-panning { cursor: grabbing; user-select: none; }
+.execution-graph { display: block; max-inline-size: none; }
+.execution-graph-viewport:focus-visible, .execution-timeline-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+.execution-graph foreignObject { overflow: visible; }
+.execution-graph path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.execution-graph path[data-kind='gate'] { stroke-dasharray: 6 4; stroke: var(--active-ink); }
+.execution-graph path[data-kind='history'] { stroke-dasharray: 2 4; stroke: var(--stale-ink); }
+
+.execution-node { display: grid; gap: var(--s2); inline-size: 100%; block-size: 100%; overflow: hidden; text-align: start;
+  padding: var(--s3); background: var(--surface); border: var(--line) solid var(--control-edge); border-radius: var(--radius-card); cursor: pointer;
+  transition: border-color var(--fast) var(--ease); }
+.execution-node:hover { background: var(--hover); }
+.execution-node[aria-pressed='true'] { background: var(--selected); }
+.execution-node.kind-verifier { border-block-start: 3px solid var(--active-ink); }
+.execution-node.kind-join { border-block-start: 3px solid var(--attention-ink); }
+.execution-node.kind-attempt { border-style: dashed; }
+
+/* Glance state (T16): the same state language as the T12 graph-node library,
+   expressed as edge treatments that hold inside fixed-measured SVG card boxes —
+   running lifts and gains the active edge, blocked warns with a weighted
+   baseline, failed frames heavy, stale and unavailable go dashed, verified
+   seals with a double edge. Distinct before any text is read. */
+.execution-node[data-state='active'] { border: calc(var(--line) * 2) solid var(--active-ink); box-shadow: var(--elevation-1); }
+.execution-node[data-state='attention'] { border-color: var(--attention-ink); border-block-end-width: calc(var(--line) * 2); }
+.execution-node[data-state='failed'] { border: calc(var(--line) * 2) solid var(--failed-ink); }
+.execution-node[data-state='stale'] { border-style: dashed; border-color: var(--stale-ink); }
+.execution-node[data-state='verified'] { border: calc(var(--line) * 3) double var(--verified-ink); }
+.execution-node[data-state='unavailable'] { border-style: dashed; background: transparent; }
+.execution-identity { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+.execution-identity code { font-size: var(--caption); color: var(--muted); overflow-wrap: anywhere; }
+.execution-badges { display: flex; flex-wrap: wrap; gap: var(--s1); justify-self: end; }
+.execution-badges .status { font-size: var(--caption); }
+.execution-title { font-weight: var(--strong); line-height: 21px; overflow-wrap: anywhere; max-block-size: calc(5 * 21px); overflow: hidden; }
+.execution-chiprow { display: grid; grid-template-columns: 4.75rem minmax(0, 1fr); gap: var(--s2); align-items: start; }
+.execution-chiprow .meta { font-size: var(--caption); }
+.execution-chiprow .status { min-inline-size: 0; overflow-wrap: anywhere; white-space: normal; }
+.execution-summary { overflow-wrap: anywhere; }
+.execution-toggle { min-block-size: auto; padding: var(--s1) var(--s2); font-size: var(--caption); inline-size: fit-content; }
+
+.execution-list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.execution-list[hidden] { display: none; }
+.execution-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s3); align-items: center;
+  padding: var(--s3); background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
+/* The same glance language as the graph cards: one state edge on the row's
+   start side (colors carry no meaning alone — the chips beside them always
+   repeat the state as glyph + text). */
+.execution-row[data-state='active'] { border-inline-start: calc(var(--line) * 3) solid var(--active-ink); }
+.execution-row[data-state='attention'] { border-inline-start: calc(var(--line) * 3) solid var(--attention-ink); }
+.execution-row[data-state='failed'] { border-inline-start: calc(var(--line) * 3) solid var(--failed-ink); }
+.execution-row[data-state='stale'] { border-inline-start: calc(var(--line) * 3) dashed var(--stale-ink); }
+.execution-row[data-state='verified'] { border-inline-start: calc(var(--line) * 3) double var(--verified-ink); }
+.execution-row[data-state='unavailable'] { border-inline-start: calc(var(--line) * 3) dashed var(--border); }
+.execution-row[aria-level='2'] { margin-inline-start: var(--s5); }
+.execution-row[aria-level='3'] { margin-inline-start: var(--s7); }
+.execution-row[aria-level='4'] { margin-inline-start: var(--s8); }
+.execution-row-control { inline-size: 100%; text-align: start; overflow-wrap: anywhere; }
+.execution-row .execution-summary { grid-column: 1 / -1; }
+.execution-row .execution-toggle { grid-column: 1 / -1; justify-self: start; }
+
+.execution-inspector { align-self: start; }
+.execution-inspector h3, .execution-inspector h4 { margin: 0; }
+.execution-inspector h4 { font-size: var(--body); }
+.execution-inspector code { overflow-wrap: anywhere; }
+.execution-inspector section { margin: 0; display: grid; gap: var(--s2); padding-block-start: var(--s3); border-block-start: var(--line) solid var(--border); }
+.execution-reason { margin: 0; }
+.execution-action { justify-self: start; }
+.execution-graph-wrap[hidden] { display: none; }
+
+/* Attempt/verifier drill-down dock content. The dock surface itself is the T12
+   createDockPanel frame (.lb-dock, elevation-2, Escape + focus return). */
+.execution-dock { display: grid; gap: var(--s2); }
+.execution-dock-id { overflow-wrap: anywhere; }
+.execution-dock section { margin: 0; display: grid; gap: var(--s1); padding-block-start: var(--s2); border-block-start: var(--line) solid var(--border); }
+.execution-dock h4 { margin: 0; font-size: var(--body); }
+.execution-dock-step-toggle { text-align: start; overflow-wrap: anywhere; }
+.execution-dock-step-toggle::before { content: '▸ '; color: var(--muted); }
+.execution-dock-step-toggle[aria-expanded='true']::before { content: '▾ '; }
+.execution-dock-detail { padding-inline-start: var(--s3); border-inline-start: var(--line) solid var(--border); }
+.execution-dock-detail[hidden] { display: none; }
+
+@container (max-width: 44rem) {
+  .execution-graph-wrap { display: none; }
+  .execution-list[hidden] { display: grid; }
+  .execution-toolbar .view-switcher { display: none; }
+  .execution-row { grid-template-columns: minmax(0, 1fr); }
+}

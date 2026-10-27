@@ -1,0 +1,56 @@
+@import './style.css';
+
+/* Shared view composition styles, migrated to the v2 token names (T12).
+   Spacing rides --space-*, hairline rules --hairline, radii --radius-*,
+   sticky rails --elevated. The v1 aliases with no v2 equivalent that
+   remain here: --hover --selected --focus --control-edge --neutral-ink
+   --neutral-fill --stale-ink --stale-fill --line --icon. */
+
+.work-view { container-type: inline-size; }
+.context-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.now-line { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: var(--space-2); }
+.attention-list { display: grid; gap: var(--space-2); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.attention-list li { display: grid; grid-template-columns: minmax(10rem,.45fr) minmax(0,1fr); gap: var(--space-2); align-items: center; }
+.attention-list button { inline-size: 100%; text-align: start; }
+.work-body { min-inline-size: 0; }
+/* V2-T9: the legacy current-segment fill override is RETIRED — the shared
+   .lb-segmented/.view-switcher track in style.css owns the whole treatment
+   (inset track, one raised current segment, the calm shadcn-style default).
+   A second fill here gave the same control two competing sources of truth. */
+.graph-viewport { min-block-size: 25rem; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); overscroll-behavior: contain; }
+.work-graph { display: block; max-inline-size: none; }
+.graph-edges path { fill: none; stroke: var(--subtle); stroke-width: 1.5; }
+.work-graph foreignObject { overflow: visible; }
+.work-graph .task { block-size: 100%; background: var(--surface); border: var(--line) solid var(--control-edge); }
+.work-graph .task:hover { background: var(--hover); }
+.task-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(var(--card-min),100%),1fr)); gap: var(--density-gutter); }
+.task-list .task { border: var(--line) solid var(--control-edge); border-radius: var(--radius-md); box-shadow: var(--elevation-1); }
+.next-panel .queue { margin: 0; }
+.verification-view { display: grid; gap: var(--space-2); }
+.table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); }
+.verification-table { inline-size: 100%; min-inline-size: var(--table-min-inline); border-collapse: collapse; }
+.verification-table th,.verification-table td { padding: var(--lb-table-pad-block) var(--space-2); border-block-end: var(--line) solid var(--hairline); text-align: start; vertical-align: top; }
+.verification-table thead th { position: sticky; inset-block-start: 0; background: var(--elevated); z-index: 1; }
+.verification-table tbody th { inline-size: 34%; font-weight: var(--weight-regular); }
+.table-select { display: block; inline-size: 100%; text-align: start; background: transparent; border-color: transparent; min-block-size: auto; padding: var(--space-half); font-weight: var(--weight-strong); }
+.verification-table th > .meta { display: block; margin: var(--space-half); }
+.mono { font-family: var(--mono); font-size: var(--type-sm-size); }
+.evidence-list { display: grid; gap: var(--space-1); margin: 0; padding-inline-start: var(--space-3); }
+.evidence-list li { min-inline-size: 0; }
+.evidence-list a { color: var(--focus); overflow-wrap: anywhere; }
+.evidence-list .meta { display: block; }
+.inspector-states { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-2); }
+.inspector-blocker { padding: var(--space-2); background: var(--warn-bg); color: var(--warn); border-radius: var(--radius-sm); }
+.criterion-card,.attempt-card { padding: var(--space-2); border: var(--line) solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elevation-1); }
+
+@container (max-width: 44rem) {
+  .graph-viewport { display: none; }
+  .task-list[hidden] { display: grid; }
+  .view-switcher, .lb-segmented { display: none; }
+  .now-line,.attention-list li { grid-template-columns: minmax(0,1fr); }
+}
+
+@media (max-width: 44rem) {
+  .context-bar { align-items: flex-start; flex-direction: column; }
+  .inspector-states { grid-template-columns: minmax(0,1fr); }
+}

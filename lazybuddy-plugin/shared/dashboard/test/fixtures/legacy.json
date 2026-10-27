@@ -1,0 +1,1 @@
+{"project_id":"project:fixture","run_id":"run-1","revision":3,"plan_revision":1,"state":{"schema_version":"2","run_id":"run-1","tasks":[{"id":"task-1","title":"Legacy completed task","status":"done","depends_on":[]},{"id":"task-2","title":"Dependent pending task","status":"pending","depends_on":["task-1"]}]},"sources":[]}
