@@ -23,8 +23,8 @@ For the separate host-owned model-selection boundary, see the plugin's
 
 The local foundation can use pinned ripgrep, ast-grep, and an LSP provider in a
 private, receipt-owned tooling root. JavaScript/TypeScript uses
-`typescript-language-server@5.3.0` with `typescript@5.9.3`; Python uses
-`basedpyright@1.39.9`. The LSP bridge offers only advertised read-only
+`typescript-language-server@5.3.0` with `typescript@6.0.3`; Python uses
+`basedpyright@1.40.1`. The LSP bridge offers only advertised read-only
 operations such as definitions, references, symbols, hover/type information,
 and diagnostics—never rename.
 
