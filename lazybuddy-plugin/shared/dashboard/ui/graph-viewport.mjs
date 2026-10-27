@@ -256,17 +256,39 @@ export function createGraphViewportController({
   }
 
   function bind(region, svg, layoutWidth, layoutHeight) {
+    if (drag && drag.region !== region) {
+      drag.region?.releasePointerCapture?.(drag.pointerId); drag.region?.classList.remove('is-panning'); drag = null; stopAnimation();
+    }
     svg.dataset.layoutWidth = String(layoutWidth);
     svg.dataset.layoutHeight = String(layoutHeight);
+    region.addEventListener('wheel', event => {
+      if (!event.ctrlKey && !event.metaKey && !event.shiftKey) { stopAnimation(); return; }
+      event.preventDefault();
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? region.clientWidth : 1;
+        panBy((event.deltaY || event.deltaX || 0) * unit, 0, 'wheel-pan'); return;
+      }
+      const previous = capture();
+      const bounds = region.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+      const x = finite(event.clientX, bounds.left) - bounds.left;
+      const y = finite(event.clientY, bounds.top) - bounds.top;
+      const delta = finite(event.deltaY, 0) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? region.clientHeight : 1);
+      const scale = clamp(previous.scale * Math.exp(-delta * 0.002), SCALE_MIN, SCALE_MAX);
+      const ratio = scale / previous.scale;
+      setViewport({ scale, scrollLeft: (previous.scrollLeft + x) * ratio - x,
+        scrollTop: (previous.scrollTop + y) * ratio - y }, 'pointer-zoom');
+    }, { passive: false });
     region.addEventListener('scroll', () => {
       capture();
       onChange?.({ ...state, reason: 'scroll' });
     });
     region.addEventListener('pointerdown', event => {
-      if ((event.button ?? 0) !== 0 || isInteractiveTarget(event.target, region)) return;
+      const button = event.button ?? 0;
+      if (![0, 1].includes(button) || (button === 0 && isInteractiveTarget(event.target, region))) return;
+      if (button === 1) event.preventDefault();
       stopAnimation();
       const current = capture();
-      drag = { pointerId: event.pointerId, x: finite(event.clientX, 0), y: finite(event.clientY, 0),
+      drag = { region, pointerId: event.pointerId, x: finite(event.clientX, 0), y: finite(event.clientY, 0),
         scrollLeft: current.scrollLeft, scrollTop: current.scrollTop, moved: false,
         lastX: finite(event.clientX, 0), lastY: finite(event.clientY, 0), lastT: now() };
       region.classList.add('is-panning');
@@ -299,7 +321,10 @@ export function createGraphViewportController({
       if (moved) startInertia(velocityX, velocityY);
     };
     region.addEventListener('pointerup', endDrag);
-    region.addEventListener('pointercancel', endDrag);
+    region.addEventListener('pointercancel', event => {
+      if (!drag || (drag.pointerId != null && event.pointerId !== drag.pointerId)) return;
+      region.releasePointerCapture?.(event.pointerId); region.classList.remove('is-panning'); drag = null; stopAnimation();
+    });
     region.addEventListener('keydown', event => {
       if (event.target !== region) return;
       const actions = {

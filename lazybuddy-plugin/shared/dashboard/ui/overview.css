@@ -1,4 +1,12 @@
 @import './project-map-spike.css';
+@import './run-monitor.css';
+
+.overview-runtime-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(14rem,100%),1fr)); gap: var(--space-3); }
+.overview-runtime-metrics strong { font-size: var(--type-lg-size); font-variant-numeric: var(--numeric); }
+.overview-runtime-metrics p { margin: 0; }
+.overview-operations h2 { margin: 0; }
+.overview-operations .cluster { gap: var(--space-1); }
+.overview-problems li { overflow-wrap: anywhere; }
 
 /* T14 Overview — a scannable dashboard tab, not a document. Hero status card,
    native attention list, compact metric tiles and the first-class macro map,
@@ -39,11 +47,14 @@
 .overview-attention-control { display: grid; gap: var(--space-half); inline-size: 100%; text-align: start;
   padding: var(--density-gutter); min-block-size: var(--density-control);
   background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md);
-  /* The leading edge encodes the item state through the shared state inks;
-     it is emphasis, not the interactive boundary (that is the control-edge
-     border on the remaining sides). */
-  border-inline-start: calc(var(--line) * 3) solid var(--state-ink, var(--border));
   transition: background-color var(--motion-instant) var(--motion-ease); }
+.overview-attention-more > summary { cursor: pointer; min-block-size: var(--control); display: flex; align-items: center; color: var(--muted); }
+.overview-attention-more[open] > summary { margin-block-end: var(--s2); }
+@media (min-width: 64rem) {
+  .overview-attention-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .overview-attention-row { display: flex; min-inline-size: 0; }
+  .overview-attention-control { align-content: start; }
+}
 .overview-attention-control:hover:enabled { background: var(--hover); }
 .overview-attention-title { font-weight: var(--weight-strong); overflow-wrap: anywhere; }
 .overview-attention-detail { margin: 0; max-inline-size: none; }

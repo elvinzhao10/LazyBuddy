@@ -8,11 +8,54 @@ const dom = createMiniDom();
 globalThis.document = dom.document;
 
 const { attemptFixture, batchFixture, planFixture, projectMapFixture } = await import('../ui/project-fixtures.mjs');
-const { CARD, listModel, measureNodeCard, presentationModel, layoutProjectGraph, wrapLabel, SpikePresentationError, NODE_KINDS } = await import('../ui/project-presentation.mjs');
 const { createProjectMapSpike } = await import('../ui/project-map-spike.mjs');
+function settle() { return new Promise(resolve => setTimeout(resolve, 0)); }
+const { CARD, listModel, measureNodeCard, presentationModel, layoutProjectGraph, wrapLabel, SpikePresentationError, NODE_KINDS } = await import('../ui/project-presentation.mjs');
+
+test('macro composition follows hierarchy, centers branches and packs disconnected nodes without collisions', () => {
+  const fixture = { viewId: 'organic', docId: 'project:organic', level: 'project', title: 'Composition', subtitle: '',
+    nodes: [{ id: 'feature', kind: 'feature-area', title: 'Product area', summary: '' },
+      ...['a', 'b', 'c'].map(id => ({ id, kind: 'plan', title: `Plan ${id}`, summary: '' }))],
+    edges: ['a', 'b', 'c'].map(to => ({ from: 'feature', to, kind: 'group', label: 'Declared membership' })) };
+  const layout = layoutProjectGraph(presentationModel(fixture));
+  const parent = layout.nodes.find(node => node.id === 'feature');
+  assert.ok(parent.y > CARD.canvasPadding, 'the parent is centered on its taller branch');
+  for (const node of layout.nodes.filter(node => node.id !== 'feature')) assert.ok(node.x > parent.x);
+  const independent = { ...fixture, edges: [], nodes: Array.from({ length: 9 }, (_, index) => ({ id: `plan:${index}`, kind: 'plan', title: `Plan ${index}`, summary: '' })) };
+  const packed = layoutProjectGraph(presentationModel(independent));
+  assert.equal(new Set(packed.nodes.map(node => node.x)).size, 3);
+  for (const a of packed.nodes) for (const b of packed.nodes) if (a.id !== b.id) {
+    assert.ok(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y, `${a.id} overlaps ${b.id}`);
+  }
+  assert.deepEqual(layoutProjectGraph(presentationModel(independent)), packed);
+});
+
+test('expanded map keeps one component through polling, restores on Escape and returns to details on user selection', async () => {
+  const create = document.createElement;
+  document.createElement = function (tag) {
+    const node = create.call(document, tag);
+    if (tag === 'dialog') { node.showModal = () => node.setAttribute('open', ''); node.close = () => node.removeAttribute('open'); }
+    return node;
+  };
+  try {
+    const view = createProjectMapSpike({ fixture: projectMapFixture() });
+    const home = document.createElement('div'); home.append(view.element); document.body.append(home); await settle();
+    const expand = view.element.querySelector('[data-expand-map]'); expand.click();
+    const dialog = document.querySelector('dialog[open]'); assert.ok(dialog);
+    assert.equal(view.element.parentNode, dialog);
+    view.applyUpdate(projectMapFixture()); await settle();
+    view.select('plan:search', { inspect: false });
+    assert.equal(view.element.parentNode, dialog, 'automatic selection restoration cannot close the dialog');
+    dialog.dispatchEvent({ type: 'keydown', key: 'Escape' });
+    assert.equal(view.element.parentNode, home); assert.equal(document.activeElement, expand);
+    expand.click(); view.select('plan:search');
+    assert.equal(view.element.parentNode, home, 'user selection returns to the regular details surface');
+    assert.equal(document.querySelector('dialog[open]'), null);
+    home.remove();
+  } finally { document.createElement = create; }
+});
 const { statusChip } = await import('../ui/components.mjs');
 
-const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const UI = new URL('../ui/', import.meta.url);
 
 function controlledScheduler() {
@@ -215,7 +258,13 @@ test('pointer selection, viewport controls and polling updates preserve the grap
   viewport.clientHeight = 400;
   view.setViewport({ scale: 1.5, scrollLeft: 120, scrollTop: 80 }, 'test');
   assert.deepEqual(view.getStats().viewport, { scale: 1.5, scrollLeft: 120, scrollTop: 80 });
-  assert.equal(view.element.querySelector('.graph-viewport-controls'), null, 'V2-T3: no viewport button cluster renders');
+  const controls = view.element.querySelector('.spike-viewport-controls');
+  assert.ok(controls, 'graph navigation is discoverable without keyboard knowledge');
+  const actualSize = controls.querySelector('[data-zoom-readout]');
+  assert.equal(actualSize.textContent, '150%', 'the readout reflects the actual viewport zoom');
+  actualSize.click();
+  assert.equal(view.getStats().viewport.scale, 1, 'actual-size restores readable graph labels');
+  view.setViewport({ scale: 1.5, scrollLeft: 120, scrollTop: 80 }, 'test');
   viewport.focus();
   viewport.dispatchEvent({ type: 'keydown', key: '-' });
   assert.equal(view.getStats().viewport.scale, 1.25, 'keyboard zoom-out replaces the removed cluster control');

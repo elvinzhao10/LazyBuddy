@@ -13,6 +13,7 @@ import { readFile, lstat, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectPackageInventory } from './package-health.mjs';
 
 export const HEALTH_SNAPSHOT_SCHEMA = 'lazybuddy/plugin-health@1';
 export const HEALTH_COLLECTOR = 'dashboard/adapters/health@1';
@@ -488,5 +489,6 @@ export async function collectProjectHealth(options = {}, actor) {
     subject: { plugin: 'lazybuddy', root: pluginRoot },
     summary,
     sections,
+    inventory: await collectPackageInventory({ pluginRoot, runtime: 'LazyBuddy' }),
   };
 }

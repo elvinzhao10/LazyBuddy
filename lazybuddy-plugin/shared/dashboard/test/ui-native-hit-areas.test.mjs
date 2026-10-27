@@ -51,7 +51,7 @@ test('interactive controls declare hit areas only through tokens', async () => {
 // V2-T3: the on-canvas graph viewport button cluster is gone — pointer pan/
 // zoom, the focused-region keyboard map and fit-on-mount replace it, so no
 // graph-viewport action styling or toolbar markup may resurface.
-test('the graph viewport button cluster is gone from controller, views and CSS (V2-T3)', async () => {
+test('graph navigation preserves keyboard control and a readable project-map entry point', async () => {
   const controller = await import('../ui/graph-viewport.mjs');
   assert.equal(controller.createGraphViewportController({ getRegion: () => null }).controls, undefined,
     'the controller no longer exposes a controls() toolbar');
@@ -62,7 +62,10 @@ test('the graph viewport button cluster is gone from controller, views and CSS (
   for (const view of ['project-map-spike.mjs', 'execution-view.mjs', 'architecture-view.mjs']) {
     const source = await readFile(new URL(`../ui/${view}`, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /\.controls\(\)/, `${view}: no view mounts the cluster`);
-    assert.match(source, /fitAnimated\('fit-mount'\)/, `${view}: the graph fits on its first mount`);
+    if (view === 'project-map-spike.mjs') {
+      assert.match(source, /scale: 1, scrollLeft: 0, scrollTop: 0/, 'the project map starts at readable size');
+      for (const label of ['Zoom out', 'Zoom in', '100%', 'Fit']) assert.ok(source.includes(`'${label}'`), `${label} is discoverable`);
+    } else assert.match(source, /fitAnimated\('fit-mount'\)/, `${view}: the graph fits on its first mount`);
   }
 });
 

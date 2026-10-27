@@ -96,7 +96,7 @@ function disabledAction(label, reason, action) {
   return wrap;
 }
 
-export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler = defaultScheduler, planProvider, callbacks = {} }) {
+export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler = defaultScheduler, planProvider, callbacks = {}, inspectorContent = null }) {
   let currentFixture = structuredClone(fixture);
   let collapsed = new Set(currentFixture.nodes.filter(node => node.collapsed).map(node => node.id));
   let selectedId = null;
@@ -113,6 +113,16 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   const root = element('section', 'project-spike stack');
   root.dataset.testid = 'project-spike';
   root.dataset.level = fixture.level;
+  let expandedDialog = null; let homeMarker = null; let expandControl = null;
+
+  function closeExpandedMap() {
+    if (!expandedDialog) return;
+    const dialog = expandedDialog; expandedDialog = null;
+    if (homeMarker?.parentNode) homeMarker.parentNode.insertBefore(root, homeMarker);
+    homeMarker?.remove(); homeMarker = null;
+    root.dataset.expanded = 'false'; dialog.close?.(); dialog.remove();
+    if (expandControl) { expandControl.textContent = 'Expand map'; expandControl.focus(); }
+  }
 
   const status = element('p', 'meta spike-status', 'Preparing first layout');
   status.dataset.testid = 'spike-status';
@@ -123,11 +133,20 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   inspector.tabIndex = 0;
   inspector.setAttribute('role', 'region');
   inspector.setAttribute('aria-label', 'Contextual inspector');
-  let graphMounted = false; // V2-T3: the graph fits on its FIRST mount only
+  let graphMounted = false;
+  let refreshMapSearch = () => {};
   const graphViewport = createGraphViewportController({
     getRegion: () => root.querySelector('.spike-graph-viewport'),
     getSvg: () => root.querySelector('.spike-graph'),
-    onChange: event => callbacks.onViewportChange?.(event),
+    onChange: event => {
+      const readout = root.querySelector('[data-zoom-readout]');
+      if (readout) {
+        const label = `${Math.round(event.scale * 100)}%`;
+        if (readout.textContent !== label) readout.textContent = label;
+        readout.setAttribute('aria-label', `Zoom ${label}; reset to 100%`);
+      }
+      callbacks.onViewportChange?.(event);
+    },
   });
 
   function nodeById(id) {
@@ -135,6 +154,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   }
 
   function updateStatus() {
+    refreshMapSearch();
     const parts = [];
     if (layoutError) parts.push(`Layout failed (${layoutError.code ?? 'ERROR'}) · last valid view retained · equivalent list shown`);
     else if (pendingCount > 0) parts.push(`Layout pending for revision ${viewRevision} · previous view retained`);
@@ -235,7 +255,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     const body = root.querySelector('.spike-body');
     body.prepend(wrap);
     graphViewport.bind(region, svg, appliedLayout.width, appliedLayout.height);
-    if (!graphMounted) { graphMounted = true; graphViewport.fitAnimated('fit-mount'); }
+    if (!graphMounted) { graphMounted = true; graphViewport.setViewport({ scale: 1, scrollLeft: 0, scrollTop: 0 }, 'readable-mount'); }
     if (focusedId) region.querySelector(`.spike-node[data-node-id="${focusedId}"]`)?.focus();
   }
 
@@ -254,7 +274,8 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     if (!body.contains(list)) body.append(list);
   }
 
-  function select(nodeId) {
+  function select(nodeId, { inspect = true } = {}) {
+    if (inspect) closeExpandedMap();
     selectedId = nodeId;
     for (const node of root.querySelectorAll('.spike-node, .spike-row-control')) {
       node.setAttribute('aria-pressed', String(node.dataset.nodeId === nodeId));
@@ -272,6 +293,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   function renderInspector() {
     const node = selectedId ? nodeById(selectedId) : null;
     inspector.replaceChildren();
+    if (node && inspectorContent) { inspector.append(inspectorContent(node)); return; }
     if (!node) {
       inspector.append(element('h3', '', 'Inspector'), element('p', 'meta', 'Select a node to inspect its summary, source, changes and evidence. States come from the fixture only.'));
       return;
@@ -330,6 +352,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   // twin of layoutProjectGraph's placement pass over the same model — the
   // result must equal a full relayout of the edited fixture byte for byte.
   function applyRenameIncrementally(nodeId) {
+    if (appliedModel?.level === 'project') return false;
     if (!appliedLayout || !appliedModel || layoutError || pendingCount > 0) return false;
     const modelNode = appliedModel.byId.get(nodeId);
     if (!modelNode) return false;
@@ -377,6 +400,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   }
 
   function setMode(nextMode) {
+    root.dataset.mode = nextMode;
     currentMode = nextMode === 'list' ? 'list' : 'graph';
     const graphWrap = root.querySelector('.spike-graph-wrap');
     if (graphWrap) graphWrap.hidden = currentMode === 'list';
@@ -410,7 +434,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
   function focusNode(nodeId) {
     const selector = currentMode === 'list' ? `.spike-row-control[data-node-id="${nodeId}"]` : `.spike-node[data-node-id="${nodeId}"]`;
     const target = root.querySelector(selector);
-    if (target) target.focus();
+    if (target) { target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); target.focus(); }
     return Boolean(target);
   }
 
@@ -543,6 +567,61 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
       modeSwitcher.append(control);
     }
     toolbar.append(modeSwitcher);
+    const viewportControls = element('div', 'cluster spike-viewport-controls');
+    viewportControls.setAttribute('role', 'group');
+    viewportControls.setAttribute('aria-label', 'Graph zoom');
+    for (const [label, action] of [
+      ['Zoom out', () => graphViewport.zoomByAnimated(-0.25)],
+      ['100%', () => graphViewport.setViewport({ scale: 1 }, 'actual-size')],
+      ['Zoom in', () => graphViewport.zoomByAnimated(0.25)],
+      ['Fit', () => graphViewport.fitAnimated()],
+    ]) {
+      const control = button(label, action);
+      if (label === '100%') { control.dataset.zoomReadout = 'true'; control.setAttribute('aria-label', 'Reset zoom to 100%'); }
+      viewportControls.append(control);
+    }
+    toolbar.append(viewportControls);
+    const expand = button('Expand map', () => {
+      if (expandedDialog) { closeExpandedMap(); return; }
+      const dialog = element('dialog', 'spike-expanded-dialog');
+      if (typeof dialog.showModal !== 'function') { status.textContent = 'Expanded map is unavailable in this browser. Pan and zoom remain available.'; return; }
+      dialog.setAttribute('aria-label', 'Expanded macro map');
+      const product = root.closest?.('[data-product]')?.dataset.product;
+      if (product) dialog.dataset.product = product;
+      homeMarker = document.createTextNode(''); root.parentNode.insertBefore(homeMarker, root);
+      expandedDialog = dialog;
+      dialog.addEventListener('cancel', event => { event.preventDefault(); closeExpandedMap(); });
+      dialog.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeExpandedMap(); }
+      });
+      dialog.addEventListener('close', () => { if (expandedDialog === dialog) closeExpandedMap(); });
+      try {
+        document.body.append(dialog); dialog.append(root); root.dataset.expanded = 'true';
+        dialog.showModal(); expand.textContent = 'Exit expanded map'; expand.focus();
+      } catch { closeExpandedMap(); status.textContent = 'The browser could not expand the map. Pan and zoom remain available.'; }
+    });
+    expandControl = expand;
+    expand.dataset.expandMap = 'true';
+    toolbar.append(expand);
+    const searchLabel = element('label', 'spike-map-search', 'Find a node');
+    const search = element('input', ''); search.type = 'search'; search.placeholder = 'Title or ID';
+    const searchCount = element('span', 'meta'); searchCount.setAttribute('role', 'status');
+    let matchIndex = -1;
+    const matches = () => (appliedModel?.nodes ?? []).filter(node => `${node.title} ${node.id}`.toLocaleLowerCase().includes(search.value.trim().toLocaleLowerCase()));
+    const nextMatch = button('Next match', () => {
+      const found = matches(); if (!search.value.trim() || !found.length) return;
+      matchIndex = (matchIndex + 1) % found.length; select(found[matchIndex].id); focusNode(found[matchIndex].id);
+    });
+    refreshMapSearch = () => {
+      const count = search.value.trim() ? matches().length : 0;
+      nextMatch.disabled = !count; searchCount.textContent = search.value.trim() ? `${count} matching node${count === 1 ? '' : 's'}` : '';
+    };
+    search.addEventListener('input', () => { matchIndex = -1; refreshMapSearch(); });
+    search.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); nextMatch.click(); } });
+    searchLabel.append(search); toolbar.append(searchLabel, nextMatch, searchCount); refreshMapSearch();
+    const gestureHint = element('p', 'meta spike-gesture-hint', 'Drag background to pan · scroll to explore · Shift-scroll sideways · Ctrl/⌘-scroll to zoom · arrows, +/− and 0 on the focused map');
+    toolbar.append(gestureHint);
+    toolbar.append(element('p', 'meta spike-expanded-hint', 'Select a node to return to its Details panel. Escape leaves the expanded map.'));
     const legend = element('ul', 'cluster spike-legend');
     legend.setAttribute('aria-label', 'Edge kinds');
     for (const [kind, label] of EDGE_LEGEND) {
@@ -567,6 +646,7 @@ export function createProjectMapSpike({ fixture, mode = 'graph', layoutScheduler
     focusNode,
     showFixture,
     applyUpdate,
+    closeExpandedMap,
     renameNode,
     toggleGroup,
     setMode,

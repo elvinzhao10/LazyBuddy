@@ -150,7 +150,7 @@ export function overviewFixture(bundle) {
     const children = gateCheckChildren(plan, readiness);
     addNode({
       id: plan.id, kind: 'plan',
-      title: plan.preparation ? `${plan.title} (${plan.preparation})` : plan.title,
+      title: plan.preparation && !plan.title.endsWith(` (${plan.preparation})`) ? `${plan.title} (${plan.preparation})` : plan.title,
       summary: `Lifecycle: ${plan.declared_lifecycle}. ${plan.stale_item_ids?.length ? `${plan.stale_item_ids.length} baseline references stale.` : `Baseline references ${plan.baseline_reference_status}.`}`,
       execution: plan.declared_lifecycle === 'active' ? chip('active', 'Lifecycle: active')
         : plan.declared_lifecycle === 'paused' ? chip('attention', 'Lifecycle: paused (reason recorded)')
@@ -207,7 +207,7 @@ export function overviewFixture(bundle) {
   }
 
   const activePlanIds = plansByGroup.active.map(plan => plan.id);
-  const blockingPlans = snapshot.plans.filter(plan => plan.stale_item_ids?.length
+  const blockingPlans = plansByGroup.active.filter(plan => plan.stale_item_ids?.length
     || (readiness[plan.id]?.criteria?.required ?? 0) > (readiness[plan.id]?.criteria?.satisfied ?? 0));
   const changedPaths = gitChangedPathCount(bundle.git);
   const currentWorktree = gitCurrentWorktree(bundle.git);
@@ -248,7 +248,7 @@ export function overviewFixture(bundle) {
   const usageTotals = usage?.totals ?? {};
   const inputTokens = usageTotals.input_tokens ?? null;
   const outputTokens = usageTotals.output_tokens ?? null;
-  const totalTokens = inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0);
+  const totalTokens = usage?.total_tokens ?? (inputTokens == null && outputTokens == null ? null : (inputTokens ?? 0) + (outputTokens ?? 0));
   const time = bundle.time;
 
   // V2-T4 structured micro-bar vocabulary (derived, never invented): a bar
@@ -297,7 +297,7 @@ export function overviewFixture(bundle) {
       coverage: snapshot.summary.unassigned_item_ids.length ? 'accepted items with no contributing plan' : 'none unassigned (exact zero)',
       chip: snapshot.summary.unassigned_item_ids.length ? { state: 'attention', label: `${snapshot.summary.unassigned_item_ids.length} unassigned` } : { state: 'neutral', label: 'none unassigned' },
       records: snapshot.summary.unassigned_item_ids },
-    { id: 'metric:usage', label: 'Tokens', value: usage ? `${totalTokens}` : null,
+    { id: 'metric:usage', label: 'Tokens', value: totalTokens == null ? null : `${totalTokens}`,
       detail: usage ? `${usage.coverage.requests_with_usage} of ${usage.coverage.distinct_request_ids} requests reported` : 'usage not projected',
       coverage: usage ? 'declared subsets never add to totals' : 'usage not projected',
       records: usage ? usage.requests.map(request => request.request_id) : [],
@@ -351,6 +351,7 @@ export function overviewFixture(bundle) {
   }
   for (const [planId, assessment] of Object.entries(readiness)) {
     if (!assessment?.blockers?.length) continue;
+    if (plansByGroup.historical.some(plan => plan.id === planId)) continue;
     attentionQueue.push({ id: `queue:readiness:${planId}`, kind: 'blocked-readiness', state: 'attention', chipLabel: 'Readiness blocked',
       title: `Readiness blocked — ${planId}`,
       detail: assessment.blockers.map(blocker => blocker.code).join(', '),

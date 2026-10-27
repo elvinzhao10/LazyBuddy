@@ -9,6 +9,17 @@ globalThis.document = dom.document;
 const { createDocumentView } = await import('../ui/document-view.mjs');
 const { parseMarkdown, renderMarkdown, safeMarkdownHref } = await import('../ui/markdown.mjs');
 
+test('embedded documents preserve source and anchors while respecting the shell heading hierarchy', () => {
+  const source = '# Original title\n\n## Requirement\n\nOriginal text.';
+  const view = createDocumentView({ markdown: source, headingOffset: 2 });
+  assert.equal(view.element.querySelector('article h1'), null);
+  assert.equal(view.element.querySelector('article h3').textContent, 'Original title');
+  const expected = renderMarkdown(source).element.querySelector('h1').id;
+  assert.equal(view.element.querySelector('article h3').id, expected, 'deep links remain stable');
+  view.setMode('source');
+  assert.equal(view.element.querySelector('.document-source code').textContent, source);
+});
+
 const LONG_PLAN = `# LazySeries 1.4 delivery plan
 
 This original paragraph contains **strong context**, an [external reference](https://example.com/spec), and a path with an unbroken value abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz.

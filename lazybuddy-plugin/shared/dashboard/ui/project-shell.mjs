@@ -106,7 +106,7 @@ function writeStored(key, value) {
   try { globalThis.sessionStorage?.setItem?.(key, JSON.stringify(value)); } catch { /* same degradation */ }
 }
 
-export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {}, views = {}, viewport = null }) {
+export function createProjectShell({ projectionProvider, product = { name: 'LazySeries' }, callbacks = {}, views = {}, viewport = null, statusElement = null }) {
   if (typeof projectionProvider !== 'function') throw new TypeError('projectionProvider is required');
   // V2-T2 collapse state model. The reported regression: the <=48rem rail
   // retraction was CSS-only, invisible to the state model — at narrow widths
@@ -117,8 +117,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   // OR of both, every state change re-syncs the top-bar control, and only
   // the user choice ever persists.
   const narrowQuery = viewport ?? (() => { try { return globalThis.matchMedia?.('(max-width: 48rem)') ?? null; } catch { return null; } })();
+  const detailQuery = (() => { try { return globalThis.matchMedia?.('(max-width: 74.99rem)') ?? narrowQuery; } catch { return narrowQuery; } })();
   let userCollapsed = false;
   let narrowRetract = Boolean(narrowQuery?.matches);
+  let narrowExpanded = false;
   const root = element('section', 'project-shell stack');
   root.dataset.testid = 'project-shell';
   root.dataset.live = String(Object.keys(views).length > 0);
@@ -134,6 +136,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   let collapseControl = null; // the V2-T1 top-bar home of the rail collapse control
   let dockInspectorRegion = null;
   let dockRecordsRegion = null;
+  let dockHelpRegion = null;
+  let agentContext = null;
+  let detailContext = null;
+  let restoringOverview = false;
   let topBar = null;
   let barTitle = null;
   let pageHead = null;
@@ -149,7 +155,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   // re-syncs the top-bar control, the row tooltips and the root density.
   function applyRailState() {
     if (!sidebar) return;
-    sidebar.setCollapsed(userCollapsed || narrowRetract, { notify: false });
+    sidebar.setCollapsed(userCollapsed || (narrowRetract && !narrowExpanded), { notify: false });
   }
 
   // Live-shell overview compaction (T20, rebuilt for the T14 structure): with
@@ -158,10 +164,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   // metric tiles and the macro map lead the destination. Compaction only
   // re-parents nodes — every clause, tile and record control keeps its route.
   function compactLiveOverview(node) {
-    if (!Object.keys(views).length || !node || node.dataset.liveCompact === 'true') return;
+    if (!node) return;
     node.dataset.liveCompact = 'true';
-    const details = element('details', 'panel overview-context stack');
-    details.append(element('summary', '', 'Project context, coverage and attention'));
+    const details = node.querySelector('.overview-context') ?? element('details', 'panel overview-context stack');
+    details.replaceChildren(element('summary', '', 'Project context, coverage and attention'));
     // The hero identity chips duplicate the shell header's context line
     // (project, repository, runtime, branch); they ride the disclosure.
     node.querySelector('.overview-hero-identity')?.remove();
@@ -176,7 +182,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     // Beyond the first, unavailable clause chips ride the disclosure: the
     // first stays visible so the honest unprojected signal never disappears.
     const unavailableClauses = [...node.querySelectorAll('.overview-clause-note[data-unavailable="true"]')];
-    for (const clause of unavailableClauses.slice(1)) details.append(clause);
+    const hasMonitor = Boolean(node.querySelector('.monitor-progress'));
+    for (const clause of unavailableClauses.slice(hasMonitor ? 0 : 1)) details.append(clause);
+    const hero = node.querySelector('.overview-hero');
+    if (hero) hero.hidden = hasMonitor && !node.querySelector('.overview-sentence-line .overview-clause');
     // Metric tiles beyond the first four ride the disclosure in a tile grid
     // of their own; the buttons keep their contributing-records routes.
     const tiles = [...node.querySelectorAll('.overview-tile')];
@@ -193,7 +202,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     const layoutStatus = node.querySelector('.spike-status');
     if (layoutStatus && toolbar) toolbar.prepend(layoutStatus);
     const legend = node.querySelector('.spike-legend');
-    if (legend && toolbar) {
+    if (legend && toolbar && !legend.parentNode?.classList.contains('spike-legend-details')) {
       const legendDetails = element('details', 'spike-legend-details');
       legendDetails.append(element('summary', '', 'Edge legend'), legend);
       toolbar.append(legendDetails);
@@ -221,10 +230,13 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   }
 
   function renderContextLine(fixture) {
-    const context = element('p', 'meta shell-context cluster');
+    const context = element('details', 'meta shell-context');
     context.dataset.testid = 'shell-context';
+    const summary = element('summary', 'shell-context-summary');
     const name = element('strong', '', bundle.project_name ?? bundle.snapshot.project_id);
     name.dataset.testid = 'shell-title';
+    summary.append(element('span', '', `${bundle.project_name ?? bundle.snapshot.project_id} · ${fixture.context?.branch ?? 'branch unavailable'} · revision ${fixture.projection.revision}`));
+    context.append(summary);
     context.append(name, document.createTextNode(` · ${fixture.projection.repository_key} · ${fixture.projection.runtime}`));
     if (fixture.context) {
       context.append(document.createTextNode(` · branch ${fixture.context.branch ?? 'unknown'} @ ${(fixture.context.head ?? '').slice(0, 12) || 'head not reported'}`));
@@ -289,10 +301,15 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   }
 
   function renderLocation(next) {
+    dock?.close('navigation');
+    detailContext = null;
+    syncDetailContent();
     location = next;
     activeDestination = next.destination;
     renderPageHead();
     contentRegion.replaceChildren(surfaceFor(next));
+    const main = frame?.querySelector('.lb-shell-main');
+    if (main) main.scrollTop = 0;
     sidebar?.navigate(next.destination);
     if (next.item) next.item.enter?.();
     else viewFor(next.destination)?.activate?.();
@@ -349,6 +366,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
 
   function selectDestination(id, { push = true } = {}) {
     if (!PROJECT_DESTINATIONS.some(destination => destination.id === id)) return false;
+    if (id !== 'overview') overview?.closeExpandedMap?.();
     navigate({ destination: id, item: null }, { push });
     return true;
   }
@@ -476,6 +494,36 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     if (open) root.setAttribute('data-dock-open', 'true');
     else root.removeAttribute('data-dock-open');
     dockTrigger?.setAttribute('aria-pressed', String(open));
+    dockTrigger?.setAttribute('aria-expanded', String(open));
+    const modal = open && Boolean(detailQuery?.matches);
+    dock?.setModal(modal);
+    if (sidebar) sidebar.element.inert = modal;
+    const main = frame?.querySelector('.lb-shell-main');
+    if (main) main.inert = modal;
+    if (topBar) topBar.inert = modal;
+  }
+
+  function syncDetailContent() {
+    if (!dock) return;
+    dockInspectorRegion.hidden = detailContext?.kind !== 'node';
+    dockRecordsRegion.hidden = detailContext?.kind !== 'records';
+    dockHelpRegion.hidden = Boolean(detailContext);
+    dock.setTitle(detailContext?.title ? `Details · ${detailContext.title}` : 'Details');
+    if (agentContext) agentContext.value = detailContext
+      ? `Project: ${bundle.snapshot.project_id}\nRuntime: ${bundle.snapshot.runtime}\nProject revision: ${bundle.snapshot.revision}\nSelected: ${detailContext.id}\nTitle: ${detailContext.title}\nPlease inspect this item, its blockers and applicable evidence before proposing a change.` : '';
+    const contextSection = agentContext?.parentNode?.parentNode;
+    if (contextSection) contextSection.hidden = !detailContext;
+    const copyFeedback = contextSection?.querySelector('[role="status"]');
+    if (copyFeedback) copyFeedback.textContent = '';
+  }
+
+  function showDetails(context) {
+    detailContext = context;
+    syncDetailContent();
+    if (restoringOverview) return;
+    const trigger = overview?.element?.contains?.(globalThis.document?.activeElement) ? globalThis.document.activeElement : null;
+    dock.open(trigger, { focus: Boolean(detailQuery?.matches) });
+    if (context.kind === 'node' && !detailQuery?.matches) overview.focusNode(context.id);
   }
 
   // T20-RF sidebar count badges: the projection feeds the attention queue
@@ -524,23 +572,24 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     barTitle.dataset.testid = 'shell-bar-title';
     barTitle.textContent = withChrome ? DESTINATION_LABEL(activeDestination) : 'No initialized project';
     lead.append(badge, barTitle);
+    if (statusElement) { statusElement.classList.add('shell-connection-status'); lead.append(statusElement); }
     const actions = element('div', 'cluster lb-topbar-actions');
     actions.append(createThemeToggle().element);
     if (withChrome) {
-      dockTrigger = button('', () => dock.toggle(dockTrigger)); // open/close both sync the chrome through onOpen/onClose
-      dockTrigger.className = 'lb-topbar-icon';
+      dockTrigger = button('Details', () => { syncDetailContent(); dock.toggle(dockTrigger); });
+      dockTrigger.className = 'lb-topbar-details';
       dockTrigger.dataset.testid = 'shell-dock-trigger';
       dockTrigger.setAttribute('aria-pressed', String(dock?.isOpen?.() ?? false));
-      dockTrigger.setAttribute('aria-label', 'Toggle the contextual inspector dock');
-      dockTrigger.title = 'Toggle the contextual inspector dock';
-      dockTrigger.append(sidebarActionIcon('dock')); // panel-style glyph: the inspector dock surface
+      dockTrigger.setAttribute('aria-label', 'Details');
+      dockTrigger.title = 'Show or hide details for the selected item';
+      dockTrigger.prepend(sidebarActionIcon('dock'));
       collapseControl = button('', null); // sidebarNav wires the click to its toggle
       collapseControl.className = 'lb-topbar-icon lb-topbar-collapse';
       collapseControl.dataset.testid = 'shell-collapse';
       collapseControl.setAttribute('aria-label', 'Collapse sidebar');
       collapseControl.setAttribute('aria-expanded', 'true');
       collapseControl.append(sidebarActionIcon('collapse-left'));
-      actions.append(dockTrigger, collapseControl);
+      actions.append(dockTrigger);
     }
     bar.append(lead, actions);
     topBar = bar;
@@ -549,19 +598,22 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
 
   function createOverview(next) {
     const nextOverview = createOverviewView({ bundle: next, callbacks: {
+      onNavigateDestination: destination => {
+        selectDestination(destination);
+        if (activeDestination === 'project') views.project?.openEditor?.();
+      },
       onNodeSelect: event => {
         callbacks.onNodeSelect?.(event);
-        const trigger = overview?.element?.contains?.(globalThis.document?.activeElement)
-          ? globalThis.document.activeElement : null;
-        dock?.open(trigger);
+        if (restoringOverview && detailContext?.kind !== 'node') return;
+        const fixture = nextOverview.getFixture();
+        const node = fixture.nodes.flatMap(node => [node, ...(node.children ?? [])]).find(node => node.id === event.nodeId);
+        showDetails({ kind: 'node', id: event.nodeId, title: node?.title ?? event.nodeId });
       },
       onNodeDrill: event => callbacks.onPlanDrill?.(event),
       onMapViewportChange: event => callbacks.onMapViewportChange?.(event),
       onRecordsOpened: event => {
         callbacks.onRecordsOpened?.(event);
-        const trigger = overview?.element?.contains?.(globalThis.document?.activeElement)
-          ? globalThis.document.activeElement : null;
-        dock?.open(trigger);
+        showDetails({ kind: 'records', id: event.id, title: event.title ?? event.id });
       },
     } });
     compactLiveOverview(nextOverview.element);
@@ -574,9 +626,29 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     dockRecordsRegion = element('div', 'stack shell-dock-section');
     dockRecordsRegion.dataset.testid = 'dock-records-region';
     const dockBody = element('div', 'stack');
-    dockBody.append(dockInspectorRegion, dockRecordsRegion);
-    dock = createDockPanel({ title: 'Contextual inspector', content: dockBody,
-      footer: element('p', 'meta', 'Escape collapses the dock; focus returns to the invoking control.'),
+    dockHelpRegion = element('section', 'stack');
+    dockHelpRegion.append(element('h3', '', 'Inspect without losing your place'),
+      element('p', '', 'Select a graph item to see its status, source and dependencies. Select a metric or blocker to see the records behind it.'),
+      element('p', 'meta', 'Use Open plan for requirements and linked runs. Copy agent context to discuss the selection in your existing chat. Changes and execution stay with your connected runtime.'));
+    const contextSection = element('details', 'stack shell-agent-context');
+    contextSection.append(element('summary', '', 'Discuss with your agent'));
+    const label = element('label', 'stack', 'Context for your agent');
+    agentContext = element('textarea'); agentContext.readOnly = true; agentContext.rows = 6;
+    label.append(agentContext);
+    const copyStatus = element('p', 'meta'); copyStatus.setAttribute('role', 'status');
+    const copy = button('Copy agent context', async () => {
+      try {
+        if (!globalThis.navigator?.clipboard?.writeText) throw new Error('unavailable');
+        await globalThis.navigator.clipboard.writeText(agentContext.value);
+        copyStatus.textContent = 'Copied. Paste into your existing agent chat; nothing was sent.';
+      } catch { copyStatus.textContent = 'Select and copy the context above, then paste it into your agent chat.'; agentContext.focus(); agentContext.select?.(); }
+    });
+    contextSection.append(label, copy, copyStatus);
+    dockBody.append(dockHelpRegion, dockInspectorRegion, dockRecordsRegion, contextSection);
+    dock = createDockPanel({ title: 'Details', content: dockBody, closeLabel: 'Close details', trapFocus: false,
+      fallbackFocus: () => dockTrigger,
+      description: 'Details for the selected item. Escape closes the panel and returns focus to its opener.',
+      footer: element('p', 'meta', 'Select another item to compare. Esc closes details.'),
       persistKey: DOCK_STORAGE_KEY,
       onOpen: () => syncDockChrome(),
       onClose: () => syncDockChrome() });
@@ -592,15 +664,18 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
       groups, identityPosition: 'footer',
       current: activeDestination,
       collapseControl,
-      footer: element('p', 'meta shell-footer-note', 'Destinations project the record; authority stays with the runtime.'),
       onNavigate: id => selectDestination(id),
       // A notify is a user-driven toggle (control click or Cmd/Ctrl+B): it
       // records the explicit choice and persists it; restore and auto-retract
       // go through applyRailState (notify: false) and persist nothing extra.
-      onCollapse: value => { userCollapsed = value; applyRailState(); persistNav(); } });
+      onCollapse: value => { userCollapsed = value; narrowExpanded = narrowRetract && !value; applyRailState(); persistNav(); } });
     // V2-T4: the health row carries the pulse glyph (the library's fallback
     // icon vocabulary is out of scope for this task; the swap is presentational).
     sidebar.element.querySelector('.lb-sidebar-destination[data-destination="health"] svg')?.replaceChildren(pulseGlyph());
+    sidebar.element.querySelector('.lb-sidebar-footer')?.remove();
+    const sidebarHead = element('header', 'cluster spread shell-sidebar-head');
+    sidebarHead.append(element('span', 'meta shell-sidebar-label', 'Navigation'), collapseControl);
+    sidebar.element.prepend(sidebarHead);
 
     pageHead = element('header', 'shell-page-head stack');
     pageHead.dataset.testid = 'shell-page-head';
@@ -610,9 +685,11 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     main.append(pageHead, contentRegion);
     frame = element('div', 'lb-shell');
     frame.dataset.testid = 'shell-frame';
-    frame.append(sidebar.element, main);
-    root.replaceChildren(bar, frame, dock.element);
+    frame.append(sidebar.element, main, dock.element);
+    root.replaceChildren(bar, frame);
     root.dataset.initialized = 'true';
+    dock.close();
+    syncDetailContent();
     syncDockChrome(); // a session-restored open dock announces itself to the chrome
     adoptDockRegions(overview);
     suppressThemeControl();
@@ -624,6 +701,8 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   }
 
   function teardownFrame() {
+    dock?.close('teardown');
+    detailContext = null;
     globalThis.document?.removeEventListener?.('keydown', handleDestinationShortcut);
     releaseThemeControl();
     frame = null; sidebar = null; dock = null; dockTrigger = null; collapseControl = null;
@@ -637,16 +716,24 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
     // new projection arrives; only the data changes, never the user's place —
     // and never the location, the back stack or the dock.
     const previous = overview?.getStats() ?? null;
-    const superseded = overview;
-    const next = createOverview(bundle);
-    adoptDockRegions(next);
-    if (location?.destination === 'overview' && !location.item) contentRegion.replaceChildren(next.element);
-    overview = next;
-    superseded?.dispose?.(); // T22: the swapped-out render takes its clipped notes with it
+    const previousRecords = overview?.getOpenRecords?.();
+    overview.applyBundleUpdate(bundle);
+    compactLiveOverview(overview.element);
+    overview.pruneNotes();
     renderPageHead(); // the context line carries the fresh projection identity
     syncSidebarCounts(); // count badges follow the fresh projection, never stale
-    if (previous?.map?.mode) overview.setMode(previous.map.mode);
-    if (previous?.selectedNodeId) overview.select(previous.selectedNodeId);
+    restoringOverview = true;
+    try {
+      const nodes = overview.getFixture().nodes.flatMap(node => [node, ...(node.children ?? [])]);
+      if (previous?.selectedNodeId && nodes.some(node => node.id === previous.selectedNodeId)) overview.select(previous.selectedNodeId, { inspect: false });
+      else if (detailContext?.kind === 'node') { detailContext = null; dock.close('selection-removed'); }
+      if (previousRecords && detailContext?.kind === 'records') {
+        const current = overview.restoreRecords(previousRecords);
+        if (current) detailContext.title = current.title;
+        else { detailContext = null; dock.close('record-removed'); }
+      }
+      syncDetailContent();
+    } finally { restoringOverview = false; }
   }
 
   function update() {
@@ -674,6 +761,7 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   // never lose the narrow fact.
   narrowQuery?.addEventListener?.('change', () => {
     narrowRetract = Boolean(narrowQuery.matches);
+    narrowExpanded = false;
     applyRailState();
   });
   // V2-T4: the narrow-only scrim dismisses the floating dock. The scrim is
@@ -681,9 +769,10 @@ export function createProjectShell({ projectionProvider, product = { name: 'Lazy
   // on the dock or any real content bubble past this guard. Registered once
   // per shell (not per frame), so teardown/rebuild cycles never stack it.
   root.addEventListener('click', event => {
-    if (event.target !== root || !dock?.isOpen?.() || !narrowQuery?.matches) return;
+    if (event.target !== root || !dock?.isOpen?.() || !detailQuery?.matches) return;
     dock.close('scrim');
   });
+  detailQuery?.addEventListener?.('change', syncDockChrome);
   return {
     element: root,
     update,

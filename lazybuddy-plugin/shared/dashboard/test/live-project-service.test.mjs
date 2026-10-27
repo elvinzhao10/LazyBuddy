@@ -28,6 +28,32 @@ test('authenticated project routes read native state and registered Markdown thr
     await writeFile(join(f.root, '.omo/plans/live.md'), markdown);
     await writeFile(join(f.root, '.omo/plans/nested.md'), '# Nested identity\n');
     assert.equal((await projectCall(f.root, 'init')).code, 0);
+    assert.equal((await http(f.live.url, '/api/project/telemetry')).status, 401);
+    const telemetry = await f.request('/api/project/telemetry');
+    assert.equal(telemetry.status, 200);
+    assert.equal(telemetry.value.schema, 'lazyseries/runtime-telemetry@1');
+    assert.equal(telemetry.value.project_id, 'project:b1');
+    assert.equal(telemetry.value.run_id, f.options.runId);
+    assert.equal(telemetry.value.usage, null, 'absence of structured usage is not a zero token claim');
+    const usageRecord = { id: 'usage:recorded', request_id: 'request:recorded', kind: 'final-value',
+      observed_at: '2026-10-26T12:00:00Z', usage: { input_tokens: 123, output_tokens: 21, cached_input: 80 }, status: 'completed' };
+    const recordedUsage = await processCall(['bash', join(plugin, 'scripts/state/append-event.sh'), f.options.runId, 'provider_usage',
+      JSON.stringify({ usage_record: usageRecord })], '', { CWD: f.root });
+    assert.equal(recordedUsage.code, 0, recordedUsage.stderr);
+    const usageResponse = await f.request('/api/project/telemetry');
+    assert.equal(usageResponse.status, 200);
+    assert.equal(usageResponse.value.usage.total_tokens, 144, 'native event capture supplies provider usage without double counting cached tokens');
+    await mkdir(join(f.root, '.lazybuddy/state/telemetry'), { recursive: true });
+    const costPath = join(f.root, '.lazybuddy/state/telemetry/cost-outcomes.json');
+    await writeFile(costPath, JSON.stringify({ schema_version: 'lazyseries.cost-outcome-store.v1', completed: [{ schema_version: 'lazyseries.cost-outcome.v1',
+      run_id: 'cost:fixture', route: 'direct', measurement_scope: 'fixture-validation', elapsed_ms: 200, tool_invocations: 3, agent_invocations: 1,
+      evidence_bytes: 20, reruns: 0, rework_count: 0 }] }));
+    const cost = (await f.request('/api/project/telemetry')).value.cost_history;
+    assert.equal(cost.state, 'observed'); assert.equal(cost.records[0].measurement_scope, 'fixture-validation');
+    await unlink(costPath); await symlink(join(f.root, 'proof.txt'), costPath);
+    const linkedCost = (await f.request('/api/project/telemetry')).value.cost_history;
+    assert.equal(linkedCost.state, 'unavailable'); assert.equal(linkedCost.code, 'COST_HISTORY_UNREADABLE');
+    await unlink(costPath);
     const registered = await projectCall(f.root, 'command', { schema_version: 1, command_id: 'register:live',
       project_id: 'project:b1', expected_revision: 0, operation: 'register_source',
       payload: { id: 'source:live', path: '.omo/plans/live.md', role: 'plan' } });

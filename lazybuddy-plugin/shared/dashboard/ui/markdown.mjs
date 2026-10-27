@@ -305,14 +305,15 @@ function renderList(block) {
 }
 
 /** Render parsed Markdown as a safe DOM article and return its outline. */
-export function renderMarkdown(markdown, { mermaidRenderer = null } = {}) {
+export function renderMarkdown(markdown, { mermaidRenderer = null, headingOffset = 0 } = {}) {
+  if (!Number.isInteger(headingOffset) || headingOffset < 0 || headingOffset > 5) throw new TypeError('Invalid heading offset');
   const parsed = parseMarkdown(markdown);
   const article = document.createElement('article');
   article.className = 'markdown-document';
   for (const block of parsed.blocks) {
     let node;
     if (block.kind === 'heading') {
-      node = document.createElement(`h${block.level}`); node.id = block.id; appendInline(node, block.text);
+      node = document.createElement(`h${Math.min(6, block.level + headingOffset)}`); node.id = block.id; appendInline(node, block.text);
     } else if (block.kind === 'paragraph') {
       node = document.createElement('p'); appendInline(node, block.text);
     } else if (block.kind === 'quote') {

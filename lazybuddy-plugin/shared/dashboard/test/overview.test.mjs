@@ -30,6 +30,45 @@ const { createProjectShell, PROJECT_DESTINATIONS } = await import('../ui/project
 const { installFocusSystem, STATUS_STATES } = await import('../ui/components.mjs');
 
 const CREATED_AT = '2026-10-05T15:00:00.000Z';
+
+test('runtime problems appear in Attention and navigate directly to their relevant control surface', () => {
+  const destinations = [];
+  const attention = createAttentionList({ fixture: { attentionQueue: [] }, ownNote() {},
+    openRecords() { throw new Error('runtime problems have a direct route'); },
+    runtimeProblems: [{ id: 'source:missing', title: 'plan.md', detail: 'Registered source missing', destination: 'project' }],
+    onNavigate: destination => destinations.push(destination) });
+  assert.doesNotMatch(attention.textContent, /Nothing needs attention/);
+  assert.match(attention.textContent, /Registered source missing/);
+  attention.querySelector('button').click(); assert.deepEqual(destinations, ['project']);
+});
+
+test('attention disclosure retains every record route while limiting initial choices', () => {
+  const opened = [];
+  const fixture = { attentionQueue: Array.from({ length: 5 }, (_, index) => ({
+    id: `queue:${index}`, title: `Plan ${index}`, kind: 'blocked-readiness', state: 'attention',
+    detail: index === 4 ? 'NEW_REASON_CODE' : 'GATE_BLOCKED, CRITERIA_UNSATISFIED', records: [`plan:${index}`],
+  })) };
+  const attention = createAttentionList({ fixture, ownNote() {}, openRecords: record => opened.push(record) });
+  assert.equal(attention.querySelector('[data-testid="overview-attention-list"]').querySelectorAll('button').length, 3);
+  assert.equal(attention.querySelector('summary').textContent, 'Show 2 more attention items');
+  assert.equal(attention.querySelector('details').querySelectorAll('button').length, 2);
+  for (const control of attention.querySelectorAll('button')) control.click();
+  assert.deepEqual(opened.map(record => record.records[0]), fixture.attentionQueue.map(item => item.records[0]));
+  assert.match(attention.textContent, /A prerequisite verification gate has not passed/);
+  assert.match(attention.textContent, /NEW_REASON_CODE/, 'unknown reasons remain visible');
+});
+
+test('historical execution readiness never crowds the actionable attention queue', () => {
+  const next = structuredClone(bundle);
+  next.readiness['plan:foundation'] = { ...next.readiness['plan:foundation'], blockers: [{ code: 'NATIVE_RUN_NOT_LINKED' }] };
+  const fixture = overviewFixture(next);
+  assert.ok(!fixture.attentionQueue.some(item => item.id === 'queue:readiness:plan:foundation'));
+  assert.ok(fixture.nodes.some(node => node.id === 'plan:foundation'), 'history remains available in the map');
+  assert.ok(fixture.statusSentence.clauses.filter(clause => clause.id.startsWith('clause:gate:')).every(clause => clause.ref === 'plan:search'), 'the current status describes active work');
+  const draft = next.snapshot.plans.find(plan => plan.id === 'plan:collaboration');
+  draft.title = `Collaboration (${draft.preparation})`;
+  assert.equal(overviewFixture(next).nodes.find(node => node.id === draft.id).title, draft.title, 'preparation is labeled once');
+});
 const PROJECT_ID = 'project:offline-notebook';
 const hash = seed => createHash('sha256').update(seed).digest('hex');
 
@@ -165,6 +204,17 @@ function buildRealProjectionBundle() {
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const bundle = buildRealProjectionBundle();
 
+test('unchanged telemetry retains controls and changed resource counts retain disclosure focus and open state', () => {
+  const telemetry = { observed_at: '2026-10-27T12:00:00Z', monitor: { available: false, trace: [], trace_total: 0 } };
+  const view = createOverviewView({ bundle: { ...bundle, telemetry } }); document.body.append(view.element);
+  const original = view.element.querySelector('.monitor-trace'); original.open = true; original.querySelector('summary').focus();
+  view.applyBundleUpdate({ ...bundle, telemetry: { ...telemetry, observed_at: '2026-10-27T12:00:05Z' } });
+  assert.equal(view.element.querySelector('.monitor-trace'), original);
+  view.applyBundleUpdate({ ...bundle, telemetry: { ...telemetry, monitor: { ...telemetry.monitor, trace_total: 1 } } });
+  const current = view.element.querySelector('.monitor-trace'); assert.notEqual(current, original); assert.equal(current.open, true);
+  assert.equal(document.activeElement, current.querySelector('summary'));
+});
+
 // The mini-dom selector engine cannot parse digit-bearing tags (h1..h6) or
 // ^= attribute operators, so heading audits walk the tree by tagName.
 function walk(node, visit) {
@@ -250,7 +300,7 @@ test('the overview renders as a scannable dashboard: hero card, native attention
   // strip section between Attention and Metrics.
   const headings = headingsIn(root);
   assert.equal(headings.filter(node => node.tagName === 'H1').length, 0, 'the view itself promotes nothing to h1');
-  assert.deepEqual(headings.filter(node => node.tagName === 'H2').map(node => node.textContent), ['Offline notebook', 'Attention', 'Plan lifecycle', 'Metrics', 'Macro map']);
+  assert.deepEqual(headings.filter(node => node.tagName === 'H2').map(node => node.textContent), ['Offline notebook', 'Attention', 'Run monitor', 'Macro map', 'Harness activity', 'Plan lifecycle', 'Metrics']);
   let rank = 1;
   for (const node of headings) {
     const next = Number(node.tagName[1]);
@@ -664,7 +714,7 @@ test('a polling bundle swap keeps the map selection, the mode, the tabs and the 
   assert.equal(stats.activeTab, 'overview', 'the selected tab survives');
   assert.equal(stats.overview.selectedNodeId, 'plan:search', 'the map selection survives');
   assert.equal(stats.dockOpen, true, 'the dock stays open across the refresh');
-  assert.notEqual(shell.element.querySelector('[data-testid="overview-view"]'), overviewBefore, 'the overview itself is the fresh projection');
+  assert.equal(shell.element.querySelector('[data-testid="overview-view"]'), overviewBefore, 'polling updates the overview without replacing its interactive map');
   assert.match(shell.element.querySelector('[data-testid="shell-title"]').textContent, /refreshed/, 'the header reflects the new projection');
 });
 
@@ -679,6 +729,25 @@ test('the empty attention queue renders an actionable empty state', async () => 
   assert.ok(empty, 'the native empty state renders');
   assert.ok(empty.querySelector('.lb-empty-title').textContent.length > 0, 'it says what will fill the view');
   assert.ok(empty.querySelector('.lb-empty-detail').textContent.includes('proposals'), 'and how that happens');
+});
+
+test('live bundle refresh retains the map element, search focus, pan and zoom while applying fresh records', async () => {
+  const view = createOverviewView({ bundle });
+  document.body.append(view.element); await settle();
+  const map = view.element.querySelector('.project-spike');
+  const viewport = view.element.querySelector('.spike-graph-viewport');
+  const search = view.element.querySelector('.spike-map-search input');
+  search.value = 'search'; search.dispatchEvent({ type: 'input' }); search.focus();
+  view.setViewport({ scale: 1.5, scrollLeft: 180, scrollTop: 120 });
+  const refreshed = { ...bundle, snapshot: { ...bundle.snapshot, revision: bundle.snapshot.revision + 1 } };
+  view.applyBundleUpdate(refreshed); await settle();
+  assert.equal(view.element.querySelector('.project-spike'), map, 'the fullscreen target remains mounted');
+  assert.equal(view.element.querySelector('.spike-graph-viewport'), viewport, 'a revision-only poll cannot interrupt an active drag');
+  assert.equal(view.element.querySelector('.spike-map-search input'), search);
+  assert.equal(document.activeElement, search); assert.equal(search.value, 'search');
+  assert.deepEqual(view.getStats().map.viewport, { scale: 1.5, scrollLeft: 180, scrollTop: 120 });
+  assert.equal(view.getFixture().projection.revision, refreshed.snapshot.revision);
+  view.dispose(); view.element.remove();
 });
 
 test('reconciliation adoption states surface in the attention queue — a source save never reads as consumed (§14 step 6, V2-T8)', async () => {

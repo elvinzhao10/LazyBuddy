@@ -141,6 +141,30 @@ test('pre-init stays the IO-2 baseline: no frame, the same self-explaining notic
     'the pre-init explanation stays byte-identical to the baseline');
 });
 
+test('the live connection status retains its identity in the compact shell bar', async () => {
+  storage.clear();
+  const status = document.createElement('p'); status.textContent = 'Connected';
+  const holder = { bundle: overviewBundle(project) };
+  const shell = createProjectShell({ projectionProvider: () => holder.bundle, statusElement: status });
+  assert.equal(shell.element.querySelector('.lb-topbar .shell-connection-status') === status, true);
+  status.textContent = 'Disconnected';
+  assert.match(shell.element.querySelector('.lb-topbar').textContent, /Disconnected/);
+  holder.bundle = null; shell.update(); shell.element.remove();
+});
+
+test('explicit destination navigation starts at the top while polling retains the reading position', async () => {
+  storage.clear();
+  const { shell, state } = mountShell(); await settle();
+  const main = shell.element.querySelector('.lb-shell-main');
+  main.scrollTop = 800;
+  shell.selectDestination('plans');
+  assert.equal(main.scrollTop, 0);
+  main.scrollTop = 500;
+  state.bundle = structuredClone(state.bundle); state.bundle.snapshot.revision += 1;
+  shell.update(); await settle();
+  assert.equal(main.scrollTop, 500);
+});
+
 test('the frame mounts after init: grouped static sidebar, one content surface, no tab strip, hidden dock', async () => {
   storage.clear();
   const { shell } = mountShell();
@@ -185,7 +209,63 @@ test('the frame mounts after init: grouped static sidebar, one content surface, 
     'the records region migrated into the dock, not inline');
   assert.equal(root.querySelector('[data-testid="overview-view"] [data-testid="overview-records"]'), null,
     'no inline contributing-records region remains in the overview');
-  assert.ok(root.querySelector('.lb-sidebar-footer .lb-sidebar-product'), 'the product badge lives in the identity footer');
+  assert.equal(root.querySelector('.lb-sidebar-footer'), null, 'the redundant identity footer is removed');
+  assert.ok(root.querySelector('.lb-sidebar [data-testid="shell-collapse"]'), 'navigation owns its retract control');
+});
+
+test('node details contain projected information and remain dismissed through polling', async () => {
+  storage.clear();
+  const { shell, state } = mountShell(); await settle();
+  const root = shellRoot(shell);
+  const node = root.querySelector('.spike-node[data-node-id="plan:shell"]');
+  node.focus(); node.click();
+  const panel = root.querySelector('[data-testid="dock-panel"]');
+  assert.match(panel.textContent, /Registered source/);
+  assert.equal(panel.querySelector('[data-testid="spike-rename"]'), null, 'prototype mutation controls do not belong to real project details');
+  assert.equal(root.querySelector('[data-testid="dock-records-region"]').hidden, true);
+  const feedback = root.querySelector('.shell-agent-context [role="status"]');
+  feedback.textContent = 'Copied'; node.click();
+  assert.equal(feedback.textContent, '', 'a new selection cannot retain stale clipboard success');
+  assert.equal(root.querySelector('.lb-shell-main').inert, false, 'wide details leave the workspace interactive');
+  node.getClientRects = () => [];
+  root.querySelector('[data-testid="dock-panel-close"]').click();
+  assert.equal(document.activeElement === root.querySelector('[data-testid="shell-dock-trigger"]'), true, 'a hidden opener returns focus to Details');
+  state.bundle = structuredClone(state.bundle); state.bundle.snapshot.revision += 1; shell.update(); await settle();
+  assert.equal(shell.getStats().dockOpen, false, 'polling cannot reopen dismissed details');
+  assert.equal(shell.getStats().overview.selectedNodeId, 'plan:shell', 'the selected graph item survives');
+});
+
+test('record details retain their contributing records across polling and close on navigation', async () => {
+  storage.clear();
+  const { shell, state } = mountShell(); await settle();
+  const root = shellRoot(shell);
+  root.querySelector('[data-metric-id]').click();
+  const before = root.querySelector('[data-testid="overview-records"]').textContent;
+  assert.equal(root.querySelector('[data-testid="dock-inspector-region"]').hidden, true, 'no stale node inspector accompanies a metric');
+  state.bundle = structuredClone(state.bundle); state.bundle.snapshot.revision += 1; shell.update(); await settle();
+  assert.equal(root.querySelector('[data-testid="overview-records"]').textContent, before);
+  assert.equal(shell.getStats().dockOpen, true);
+  assert.match(root.querySelector('.shell-agent-context textarea').value, /Project revision: 4/);
+  shell.selectDestination('plans');
+  assert.equal(shell.getStats().dockOpen, false, 'unrelated destinations do not retain overview details');
+});
+
+test('narrow details contain focus and release the workspace on Escape', async () => {
+  storage.clear();
+  const viewport = viewportQuery(true);
+  const { shell } = mountShell({ viewport: viewport.query }); await settle();
+  const detach = installFocusSystem({ root: dom.document });
+  try {
+    const root = shellRoot(shell); const trigger = root.querySelector('[data-testid="shell-dock-trigger"]');
+    trigger.focus(); trigger.click();
+    const panel = root.querySelector('[data-testid="dock-panel"]');
+    assert.equal(panel.getAttribute('role'), 'dialog');
+    assert.equal(panel.getAttribute('aria-modal'), 'true');
+    assert.equal(root.querySelector('.lb-shell-main').inert, true);
+    dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
+    assert.equal(root.querySelector('.lb-shell-main').inert, false);
+    assert.equal(document.activeElement === trigger, true);
+  } finally { detach.detach(); }
 });
 
 // V2-T1: the stacked header collapses into ONE compact icon top bar rendered
@@ -214,8 +294,9 @@ test('the V2-T1 compact icon top bar replaces the stacked header', async () => {
   const dockTriggerInBar = bar.querySelector('[data-testid="shell-dock-trigger"]');
   assert.ok(dockTriggerInBar, 'the dock trigger icon renders in the bar');
   assert.equal(root.querySelector('.lb-shell [data-testid="shell-dock-trigger"]'), null, 'the page head no longer carries the dock trigger');
-  const collapse = bar.querySelector('[data-testid="shell-collapse"]');
-  assert.ok(collapse, 'the rail collapse control is relocated into the bar');
+  const collapse = root.querySelector('.lb-sidebar [data-testid="shell-collapse"]');
+  assert.ok(collapse, 'the rail collapse control stays inside the sidebar');
+  assert.equal(bar.querySelector('[data-testid="shell-collapse"]'), null, 'no out-of-context retract button remains');
   assert.equal(root.querySelector('.lb-sidebar .lb-sidebar-collapse'), null, 'the rail itself carries no collapse control');
   assert.equal(collapse.getAttribute('aria-expanded'), 'true');
   assert.equal(root.querySelectorAll('[aria-label="Density"]').length, 0, 'no density segmented control mounts anywhere in the shell');
@@ -374,7 +455,7 @@ test('collapse matrix: button, Cmd+B, Ctrl+B, reload restore, <=48rem auto-retra
   // A user toggle while narrow records the choice for the wide return only:
   narrow.set(true);
   shellRoot(current.shell).querySelector('[data-testid="shell-collapse"]').click();
-  assert.deepEqual(railState(current.shell), { rail: 'true', control: 'false' }, 'the rail stays retracted while narrow — the control is honest, never a dead flip');
+  assert.deepEqual(railState(current.shell), { rail: 'false', control: 'true' }, 'Expand visibly opens navigation even in a narrow panel');
   assert.equal(storedChoice(), false, 'the toggle while narrow records the explicit expand choice');
   narrow.set(false);
   assert.deepEqual(railState(current.shell), { rail: 'false', control: 'true' }, 'the recorded choice applies once wide');
@@ -562,7 +643,7 @@ test('the dock opens on selection, Escape closes it, focus returns to the invoki
 // SAME untouched node across open/close — opening the dock can never resize
 // it. 380–420px width clamp, capped height, elevation-3, rounded, and the
 // scrim exists ONLY inside the narrow media block.
-test('the dock is a floating overlay: main-view geometry never changes on open/close (V2-T4)', async () => {
+test('details join the wide frame and use a bounded drawer in narrower layouts', async () => {
   storage.clear();
   const detach = installFocusSystem({ root: dom.document });
   try {
@@ -573,8 +654,8 @@ test('the dock is a floating overlay: main-view geometry never changes on open/c
   const main = root.querySelector('.lb-shell-main');
   const frame = root.querySelector('[data-testid="shell-frame"]');
   assert.ok(main && frame, 'the frame and the main surface render');
-  assert.equal(dock.parentNode, root, 'the dock is a direct child of the shell root, not of the frame grid');
-  assert.equal(frame.contains(dock), false, 'the dock never occupies a frame grid track');
+  assert.equal(dock.parentNode === frame, true, 'the panel belongs to the same workspace frame');
+  assert.equal(frame.contains(dock), true, 'the panel can occupy its own grid track');
   assert.equal(main.contains(dock), false, 'the dock never lives inside the main content surface');
 
   const mainIdentity = () => ({ node: main, className: main.className, style: main.getAttribute('style'), parent: main.parentNode });
@@ -603,18 +684,14 @@ test('the dock is a floating overlay: main-view geometry never changes on open/c
   // The floating treatment: 380–420px clamp, capped height, rounded, elevation-3.
   const overlayRule = /\.project-shell \.lb-dock\s*\{[^}]*\}/.exec(shellCss)?.[0] ?? '';
   assert.ok(overlayRule, 'the floating overlay rule exists');
-  const clamp = /clamp\(([\d.]+)rem,\s*([\d.]+)rem,\s*([\d.]+)rem\)/.exec(overlayRule);
-  assert.ok(clamp, 'the overlay width is a token-friendly clamp');
-  const [minPx, prefPx, maxPx] = [clamp[1], clamp[2], clamp[3]].map(rem => Number(rem) * 16);
-  assert.ok(minPx >= 380 && maxPx <= 420, `the floating panel stays in the 380–420px band (${minPx}..${maxPx})`);
-  assert.ok(minPx <= prefPx && prefPx <= maxPx, 'the preferred width sits inside the clamp');
+  assert.match(overlayRule, /inline-size:\s*min\(var\(--inspector\),100%\)/, 'the drawer fits its host width');
   assert.match(overlayRule, /max-block-size:\s*calc\(100dvh/, 'the panel height is capped');
-  assert.match(overlayRule, /border-radius:\s*var\(--radius-lg\)/, 'the panel is rounded');
+  assert.match(overlayRule, /border-radius:\s*0/, 'the drawer aligns to the workspace edge');
   assert.match(overlayRule, /box-shadow:\s*var\(--elevation-3\)/, 'the panel floats at elevation-3');
   // The frame grid is static: two tracks, never dock-dependent.
   const frameRule = /\.lb-shell\s*\{[^}]*\}/.exec(styleCss)?.[0] ?? '';
   assert.match(frameRule, /grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)/, 'the frame keeps its static sidebar+main tracks');
-  assert.doesNotMatch(shellCss + styleCss, /data-dock-open[^{]*\{[^}]*grid-template-columns/, 'no rule ever re-grids the frame on dock state');
+  assert.match(shellCss, /data-dock-open[^{]*\{[^}]*grid-template-columns/, 'wide details reserve space rather than obscuring the workspace');
   // The scrim is narrow-only: the ::after rule must live INSIDE the <=48rem
   // block — its nearest enclosing @media header is the narrow query, it
   // appears exactly once (no unscoped duplicate), and no wide carve-out
@@ -624,10 +701,12 @@ test('the dock is a floating overlay: main-view geometry never changes on open/c
   assert.equal((shellCss.match(/\[data-dock-open='true'\]::after/g) ?? []).length, 1, 'exactly one scrim rule');
   const enclosing = shellCss.slice(0, scrimAt).lastIndexOf('@media');
   assert.ok(enclosing !== -1, 'the scrim lives inside a media block');
-  assert.ok(shellCss.slice(enclosing).startsWith('@media (max-width: 48rem)'),
+  assert.ok(shellCss.slice(enclosing).startsWith('@media (max-width: 74.99rem)'),
     'the scrim rule exists only inside the narrow media block');
   assert.match(shellCss.slice(scrimAt, shellCss.indexOf('}', scrimAt)), /background:\s*var\(--backdrop\)/, 'the scrim rides the modal backdrop token');
-  assert.equal(shellCss.indexOf('@media (min-width'), -1, 'no wide-viewport scrim carve-out exists');
+  for (const block of shellCss.split('@media (min-width').slice(1)) {
+    assert.doesNotMatch(block.split('@media')[0], /\[data-dock-open='true'\]::after/, 'wide layout rules never define a scrim');
+  }
   } finally {
     detach.detach();
   }
@@ -636,7 +715,7 @@ test('the dock is a floating overlay: main-view geometry never changes on open/c
 // V2-T4 session persistence (stale_state): the open state survives a
 // reload-shaped remount under its own storage key, and the restored dock
 // never steals focus at mount.
-test('the dock open state persists per session and restores without stealing focus (stale_state)', async () => {
+test('a reload closes a persisted dock when its selected record was not restored (stale_state)', async () => {
   storage.clear();
   const detach = installFocusSystem({ root: dom.document });
   try {
@@ -656,14 +735,15 @@ test('the dock open state persists per session and restores without stealing foc
     const reloaded = createProjectShell({ projectionProvider: () => reloadedState.bundle, product: { name: 'LazyBuddy' } });
     dom.document.body.append(reloaded.element); mounted[0] = { state: reloadedState, shell: reloaded };
     await settle();
-    assert.equal(reloaded.getStats().dockOpen, true, 'the persisted open state restores after the reload');
-    assert.equal(reloaded.element.querySelector('[data-testid="dock-panel"]').hidden, false);
-    assert.equal(reloaded.element.querySelector('[data-testid="shell-dock-trigger"]').getAttribute('aria-pressed'), 'true',
-      'the trigger stays honest about the restored open dock');
-    assert.equal(reloaded.element.getAttribute('data-dock-open'), 'true', 'the scrim attribute follows the restored state');
+    assert.equal(reloaded.getStats().dockOpen, false, 'no empty inspector obscures the dashboard after reload');
+    assert.equal(reloaded.element.querySelector('[data-testid="dock-panel"]').hidden, true);
+    assert.equal(reloaded.element.querySelector('[data-testid="shell-dock-trigger"]').getAttribute('aria-pressed'), 'false',
+      'the trigger reflects the closed dock');
+    assert.notEqual(reloaded.element.getAttribute('data-dock-open'), 'true', 'no scrim remains');
     assert.equal(dom.document.activeElement, focusBeforeRemount, 'the restored dock never moves focus at mount');
     assert.notEqual(dom.document.activeElement, reloaded.element.querySelector('[data-testid="dock-panel-close"]'),
       'the restore path does not focus the dock close control');
+    reloaded.element.querySelector('[data-testid="shell-dock-trigger"]').click();
     dom.document.dispatchEvent({ type: 'keydown', key: 'Escape', bubbles: true });
     assert.equal(reloaded.getStats().dockOpen, false, 'Escape still closes the restored dock through the overlay stack');
     assert.equal(storage.get('lazybuddy-shell-dock-open'), 'false');
@@ -834,7 +914,7 @@ test('navigation state survives a reload-shaped remount through session storage 
   assert.equal(reloaded.element.querySelector('[data-testid="shell-content"]').children.length, 1, 'one surface, no residue');
 });
 
-test('polling refresh swaps the overview in place and never resets the location, the stack or the dock', async () => {
+test('polling refresh updates the overview in place and never resets the location, the stack or the dock', async () => {
   storage.clear();
   const { views } = stubViews();
   const { shell, state } = mountShell({ views });
@@ -855,7 +935,7 @@ test('polling refresh swaps the overview in place and never resets the location,
   shell.selectDestination('overview');
   const overviewAfter = shellRoot(shell).querySelector('[data-testid="overview-view"]');
   assert.ok(overviewAfter, 'visiting the destination mounts the fresh projection');
-  assert.notEqual(overviewAfter, overviewBefore, 'the overview view itself is the fresh projection');
+  assert.equal(overviewAfter, overviewBefore, 'the overview retains its interactive map while applying fresh data');
   shell.openPlan('plan:shell'); // the persisted location for the rebuild below
 
   // Losing the record tears the frame down; regaining it rebuilds with the

@@ -39,6 +39,126 @@ const project = {
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+test('research search and capture drafts survive polls; revision-checked failure retains the draft and success preserves newer edits', async () => {
+  let received; let accept;
+  const live = createLiveProjectViews({ project, adapter: {
+    source: async id => ({ path: id, content: '# Original' }), detail: async () => { throw new Error('unused'); },
+    command: async value => { received = value; return new Promise(resolve => { accept = resolve; }); },
+    assessTransition: async () => ({ allowed: false, reasons: [] })
+  } });
+  const root = live.views.research.element; document.body.append(root); await tick();
+  const search = root.querySelector('input[type="search"]'); search.value = 'native context'; search.dispatchEvent({ type: 'input' });
+  assert.equal(root.querySelectorAll('[data-research-id]').length, 1);
+  const form = root.querySelector('form'); const inputs = [...form.querySelectorAll('input,textarea')];
+  inputs[0].value = 'How to resume?'; inputs[1].value = 'research/live.md'; inputs[2].value = 'Retain exact artifacts.';
+  live.update({ ...project, revision: 4 }); assert.equal(inputs[0].value, 'How to resume?'); assert.equal(search.value, 'native context');
+  form.dispatchEvent({ type: 'submit', preventDefault() {} });
+  assert.equal(received.expected_revision, 4); assert.equal(received.operation, 'record_research_findings');
+  accept({ receipt: { status: 'conflict', reason: 'REVISION_CONFLICT' } }); await tick();
+  assert.equal(inputs[2].value, 'Retain exact artifacts.'); assert.match(form.textContent, /REVISION_CONFLICT/);
+  form.dispatchEvent({ type: 'submit', preventDefault() {} }); inputs[2].value = 'New draft while saving';
+  accept({ receipt: { status: 'saved' } }); await tick();
+  assert.equal(inputs[2].value, 'New draft while saving'); assert.equal(inputs[0].value, '');
+  search.value = 'no-match'; search.dispatchEvent({ type: 'input' });
+  assert.match(root.textContent, /No research matches/);
+});
+
+test('research can register a captured source hash and keeps web references inert until explicitly opened', async () => {
+  let command;
+  const snapshot = { ...project, artifacts: [], research: [{ ...project.research[0], sources: ['research/live.md', 'https://example.org/research'] }] };
+  const live = createLiveProjectViews({ project: snapshot, adapter: {
+    source: async id => ({ path: id, content: '# Source', sha256: 'c'.repeat(64) }),
+    command: async value => { command = value; return { receipt: { status: 'saved' } }; },
+    detail: async () => { throw new Error('unused'); }, assessTransition: async () => ({ allowed: false, reasons: [] })
+  } });
+  await tick(); const root = live.views.research.element;
+  const register = [...root.querySelectorAll('button')].find(button => button.textContent === 'Register evidence reference');
+  register.click(); await tick();
+  assert.equal(command.operation, 'artifact.register'); assert.equal(command.expected_revision, 3);
+  assert.equal(command.payload.path, 'research/live.md'); assert.equal(command.payload.sha256, 'c'.repeat(64));
+  assert.match(root.textContent, /Evidence reference registered/);
+  const link = [...root.querySelectorAll('a')].find(link => link.textContent === 'Open web source');
+  assert.equal(link.href, 'https://example.org/research'); assert.equal(link.rel, 'noopener noreferrer');
+});
+
+function browsingFixture(source) {
+  const second = { ...project.plans[0], id: 'plan:archive', title: 'Archived delivery', declared_lifecycle: 'completed',
+    source: { source_id: 'source:research', sha256: 'c'.repeat(64), anchor_id: 'document' } };
+  const snapshot = { ...project, plans: [...project.plans, second] };
+  const live = createLiveProjectViews({ project: snapshot, adapter: {
+    source: source ?? (async id => ({ path: id, content: `# Original ${id}` })),
+    command: async () => { throw new Error('not used'); },
+    assessTransition: async () => ({ allowed: false, reasons: [] }),
+    detail: async () => { throw new Error('not used'); },
+  } });
+  return { live, snapshot, plans: live.views.plans.element };
+}
+
+test('plan filters search native title, id and source path while retaining the selected document and input focus through polling', async () => {
+  const { live, snapshot, plans } = browsingFixture(); await tick();
+  const search = plans.querySelector('input[type="search"]');
+  const lifecycle = plans.querySelector('select');
+  const count = plans.querySelector('[role="status"]');
+  const original = plans.querySelector('[data-testid="document-view"]');
+  const resultIds = () => [...plans.querySelectorAll('[data-plan-id]')].map(control => control.dataset.planId);
+  for (const query of ['ARCHIVED DELIVERY', 'plan:archive', 'research/live.md']) {
+    search.value = query; search.dispatchEvent({ type: 'input' });
+    assert.deepEqual(resultIds(), ['plan:archive']); assert.equal(count.textContent, '1 of 2 plans');
+    assert.equal(plans.querySelector('[data-testid="document-view"]'), original);
+  }
+  lifecycle.value = 'active'; lifecycle.dispatchEvent({ type: 'change' });
+  assert.equal(resultIds().length, 0); assert.match(plans.textContent, /No plans match/);
+  search.focus(); live.update({ ...snapshot, revision: 4 }); await tick();
+  assert.equal(plans.querySelector('input[type="search"]'), search);
+  assert.equal(document.activeElement, search); assert.equal(search.value, 'research/live.md');
+  assert.equal(lifecycle.value, 'active'); assert.equal(plans.querySelector('[data-testid="document-view"]'), original);
+  const clear = plans.querySelector('.plan-filters button'); clear.click();
+  assert.deepEqual(resultIds(), ['plan:live', 'plan:archive']); assert.equal(document.activeElement, search);
+  assert.equal(clear.hidden, true);
+});
+
+test('source responses never steal focus or replace a newer cached plan selection', async () => {
+  let complete;
+  const { plans } = browsingFixture(async id => id === 'source:research'
+    ? new Promise(resolve => { complete = resolve; }) : { path: id, content: '# First source' });
+  await tick();
+  plans.querySelector('[data-plan-id="plan:archive"]').click();
+  const selected = plans.querySelector('[data-plan-id="plan:archive"]');
+  assert.equal(document.activeElement, selected, 'focus moves to the replacement index control immediately');
+  const search = plans.querySelector('input'); search.focus();
+  complete({ path: 'research/live.md', content: '# Second source' }); await tick();
+  assert.equal(document.activeElement, search, 'the completed read does not move focus from search');
+  plans.querySelector('[data-plan-id="plan:live"]').click(); await tick();
+  plans.querySelector('[data-plan-id="plan:archive"]').click();
+  plans.querySelector('[data-plan-id="plan:live"]').click(); await tick();
+  complete({ path: 'research/live.md', content: '# Delayed obsolete source' }); await tick();
+  assert.match(plans.querySelector('.plan-detail').textContent, /First source/);
+  assert.doesNotMatch(plans.querySelector('.plan-detail').textContent, /Delayed obsolete/);
+});
+
+test('a failed registered source read can retry in place and clears busy feedback on success', async () => {
+  let calls = 0;
+  const { plans } = browsingFixture(async id => {
+    calls += 1; if (calls === 1) throw new Error('Temporarily missing');
+    return { path: id, content: '# Recovered original' };
+  });
+  await tick();
+  assert.match(plans.textContent, /Temporarily missing/);
+  const retry = plans.querySelector('[data-action="retry-plan-source"]'); assert.ok(retry); retry.click();
+  await tick();
+  assert.match(plans.textContent, /Recovered original/);
+  assert.equal(plans.querySelector('[data-action="retry-plan-source"]'), null);
+  assert.equal(plans.querySelector('.plan-document-host').getAttribute('aria-busy'), 'false');
+});
+
+test('project summary figures refresh from the current native projection', async () => {
+  const { live, snapshot } = browsingFixture(); await tick();
+  const summary = live.views.project.element.querySelector('.project-summary');
+  assert.equal(summary.querySelector('strong').textContent, '1');
+  live.update({ ...snapshot, revision: 4, summary: { ...snapshot.summary, accepted_features: 7, plan_count: 2 } });
+  assert.deepEqual([...summary.querySelectorAll('strong')].map(value => value.textContent), ['7', '0', '0', '0', '2']);
+});
+
 const runSnapshot = {
   schema_version: 1, project_id: 'project:live', run_id: 'run-live', revision: 7, plan_revision: 1,
   tasks: [{ id: 'T1', title: 'Run the live task', scope: 'Exercise the native task and attempt projection',

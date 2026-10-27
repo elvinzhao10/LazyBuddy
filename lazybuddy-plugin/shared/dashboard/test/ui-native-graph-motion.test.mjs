@@ -14,6 +14,35 @@ globalThis.document = dom.document;
 
 const { createGraphViewportController, GRAPH_INERTIA_LIMITS, GRAPH_VIEWPORT_LIMITS } = await import('../ui/graph-viewport.mjs');
 
+test('modified wheel zoom anchors to the pointer and shift-wheel pans without changing zoom', () => {
+  const { region, svg } = regionFixture();
+  const controller = createGraphViewportController({ getRegion: () => region, getSvg: () => svg, reducedMotion: () => true });
+  controller.bind(region, svg, 1200, 800); controller.setViewport({ scale: 1, scrollLeft: 200, scrollTop: 100 });
+  region.dispatchEvent({ type: 'wheel', ctrlKey: true, deltaY: -100, clientX: 100, clientY: 80 });
+  const result = controller.getState();
+  assert.ok(Math.abs(result.scrollLeft - (300 * result.scale - 100)) < 0.001);
+  assert.ok(Math.abs(result.scrollTop - (180 * result.scale - 80)) < 0.001);
+  region.dispatchEvent({ type: 'wheel', shiftKey: true, deltaY: 80 });
+  assert.equal(controller.getState().scale, result.scale);
+  assert.equal(controller.getState().scrollLeft, result.scrollLeft + 80);
+  region.remove();
+});
+
+test('cancelled drags and polling rebinds release pointer panning without inertia', () => {
+  const clock = frameClock(); let current = regionFixture();
+  const controller = createGraphViewportController({ getRegion: () => current.region, getSvg: () => current.svg,
+    now: clock.now, requestFrame: clock.requestFrame, cancelFrame: clock.cancelFrame });
+  controller.bind(current.region, current.svg, 1200, 800);
+  current.region.dispatchEvent({ type: 'pointerdown', pointerId: 1, button: 1, clientX: 100, clientY: 100 });
+  clock.advance(16); current.region.dispatchEvent({ type: 'pointermove', pointerId: 1, clientX: 20, clientY: 20 });
+  current.region.dispatchEvent({ type: 'pointercancel', pointerId: 1 });
+  assert.equal(clock.pendingCount(), 0); assert.equal(current.region.classList.contains('is-panning'), false);
+  current.region.dispatchEvent({ type: 'pointerdown', pointerId: 2, clientX: 100, clientY: 100 });
+  const old = current; current = regionFixture(); controller.bind(current.region, current.svg, 1200, 800);
+  assert.equal(old.region.classList.contains('is-panning'), false);
+  old.region.remove(); current.region.remove();
+});
+
 function frameClock() {
   let now = 0;
   const pending = [];

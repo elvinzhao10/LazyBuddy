@@ -14,6 +14,7 @@ import { evidenceFixture } from './ui/evidence-model.mjs';
 import { gitDetailModel, metricsDetailModel } from './ui/git-metrics-model.mjs';
 import { readProjectObservations, recordProjectObservations } from './adapters/observations.mjs';
 import { collectProjectHealth } from './adapters/health.mjs';
+import { runtimeTelemetry, attachCostHistory } from './adapters/telemetry.mjs';
 import { assertAdmissionForTransition, recheckProjectAdmission } from './adapters/admission.mjs';
 const packageMetadata = createRequire(import.meta.url)('../../tooling/package.json');
 
@@ -44,6 +45,14 @@ export const buddyAuthority = Object.freeze({
     { projectRoot: options.projectRoot, projectId: options.projectId }, actor, request),
   readProjectObservations: options => readProjectObservations(options),
   readProjectHealth: (options, actor) => collectProjectHealth(options, actor),
+  readProjectTelemetry: async (options, actor) => {
+    const project = await readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor });
+    let run = null; let error = null;
+    try { if (options.runId) run = buddyAuthority.project(await readInput(options)); }
+    catch (failure) { if (failure.code !== 'RUN_NOT_BOUND') error = failure.code ?? 'RUN_READ_FAILED'; }
+    return attachCostHistory(runtimeTelemetry(project, run, error), { runtime: 'LazyBuddy',
+      readFile: (reference, limit) => safeRead(options.projectRoot, reference, limit) });
+  },
   recordProjectObservations: (options, actor, records) => recordProjectObservations(options, records),
   readProjectArchitecture: async (options, actor) => architectureFixture({
     snapshot: await readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor }),

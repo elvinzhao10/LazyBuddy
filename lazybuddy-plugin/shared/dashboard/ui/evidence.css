@@ -121,6 +121,7 @@ button.evidence-version-chip:hover:enabled { background: var(--hover); }
   /* The shared .cluster wraps; in column direction a wrapped item lands in a
      second column to the right and overflows the narrow viewport, so the
      toolbar stacks strictly in one column here. */
-  .evidence-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
-  .evidence-filter-field { max-inline-size: none; }
+  .evidence-view .evidence-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
+  .evidence-filter-field { max-inline-size: none; flex: 0 0 auto; }
+  .evidence-legend { flex: 0 0 auto; }
 }

@@ -22,6 +22,8 @@
 // projection carries a real ratio or comparison (no invented data), and every
 // count renders as a tabular numeral.
 import { announce, button, element, emptyState, statusChip } from './components.mjs';
+import { createOverviewRuntimeSummary } from './overview-runtime-summary.mjs';
+import { createRunMonitor } from './run-monitor.mjs';
 import { createProjectMapSpike } from './project-map-spike.mjs';
 import { overviewFixture } from './overview-fixture.mjs';
 
@@ -161,13 +163,15 @@ export function createStatusHero({ fixture, ownNote, openClause }) {
 
 // Component 2 — attention list: the native queue whose rows open their
 // contributing records in the dock.
-export function createAttentionList({ fixture, ownNote, openRecords }) {
+export function createAttentionList({ fixture, ownNote, openRecords, runtimeProblems = [], onNavigate }) {
+  const queue = [...fixture.attentionQueue, ...runtimeProblems.map(problem => ({ id: `runtime:${problem.id}`, title: problem.title,
+    detail: problem.detail, state: 'attention', chipLabel: 'Runtime', records: [problem.id], destination: problem.destination }))];
   const attention = element('section', 'overview-attention stack');
   attention.dataset.testid = 'overview-queue';
   const heading = element('h2', '', 'Attention');
   ownNote(heading, 'Pending proposals, open reconciliations, stale baseline references and blocked readiness gate execution; items resolve only through the shared authority, never in this view.');
   attention.append(heading);
-  if (!fixture.attentionQueue.length) {
+  if (!queue.length) {
     attention.append(emptyState({ icon: 'inbox', title: 'Nothing needs attention',
       detail: 'No pending proposals, open reconciliations, stale baseline references or blocked readiness in the projected records. New items arrive when baseline or readiness records change.' }));
     return attention;
@@ -176,22 +180,34 @@ export function createAttentionList({ fixture, ownNote, openRecords }) {
   list.dataset.testid = 'overview-attention-list';
   list.dataset.nativeList = 'true'; // j/k traversal through the T11 focus layer
   list.setAttribute('aria-label', 'Attention queue');
-  for (const item of fixture.attentionQueue) {
+  const remaining = element('details', 'overview-attention-more');
+  const remainingCount = Math.max(0, queue.length - 3);
+  remaining.append(element('summary', '', `Show ${remainingCount} more attention item${remainingCount === 1 ? '' : 's'}`));
+  const moreList = element('ul', 'overview-attention-list');
+  moreList.setAttribute('aria-label', 'More attention items');
+  const readinessReasons = {
+    NATIVE_RUN_NOT_LINKED: 'Link a native run to observe execution.',
+    GATE_BLOCKED: 'A prerequisite verification gate has not passed.',
+    CRITERIA_UNSATISFIED: 'Required verification criteria remain unsatisfied.',
+  };
+  for (const [index, item] of queue.entries()) {
     const entry = element('li', 'overview-attention-row');
     entry.dataset.queueId = item.id;
-    const control = button('', () => openRecords({ id: item.id, title: item.title, note: item.detail, records: item.records }));
+    const control = button('', () => item.destination ? onNavigate?.(item.destination)
+      : openRecords({ id: item.id, title: item.title, note: item.detail, records: item.records }));
     control.className = 'overview-attention-control';
     control.dataset.queueId = item.id;
     control.dataset.records = item.records.join(',');
     control.dataset.state = item.state;
-    control.setAttribute('aria-label', `${item.title} — open contributing records`);
+    control.setAttribute('aria-label', item.destination ? `${item.title} — inspect in ${item.destination}` : `${item.title} — open contributing records`);
     control.append(statusChip({ state: item.state, label: item.chipLabel ?? item.kind }),
       element('span', 'overview-attention-title', item.title),
-      element('span', 'meta overview-attention-detail', item.detail));
+      element('span', 'meta overview-attention-detail', String(item.detail ?? '').split(', ').map(reason => readinessReasons[reason] ?? reason).join(' ')));
     entry.append(control);
-    list.append(entry);
+    (index < 3 ? list : moreList).append(entry);
   }
   attention.append(list);
+  if (queue.length > 3) { remaining.append(moreList); attention.append(remaining); }
   return attention;
 }
 
@@ -330,9 +346,39 @@ export function createFreshnessLine({ fixture, ownNote }) {
 }
 
 export function createOverviewView({ bundle, callbacks = {} }) {
-  const fixture = overviewFixture(bundle);
+  const monitorState = {};
+  let fixture = overviewFixture(bundle);
   const mapFixture = { ...fixture, statement: undefined, metrics: undefined, attentionQueue: undefined, statusSentence: undefined, context: undefined, projection: undefined, lifecycle: undefined, freshness: undefined };
-  const spike = createProjectMapSpike({ fixture: mapFixture, callbacks: {
+  let mapFingerprint = JSON.stringify(mapFixture);
+  const spike = createProjectMapSpike({ fixture: mapFixture, inspectorContent: node => {
+    const detail = element('div', 'stack overview-node-detail');
+    detail.append(element('h3', '', node.title), element('code', 'meta', node.id));
+    for (const [label, value] of [['Execution', node.execution], ['Verification', node.verification]]) {
+      const row = element('div', 'cluster');
+      row.append(element('span', 'meta', label), statusChip(value)); detail.append(row);
+    }
+    detail.append(element('p', '', node.summary ?? 'No summary recorded.'));
+    const planId = node.kind === 'plan' ? node.id : node.id.split('#')[0];
+    const plan = bundle.snapshot.plans.find(entry => entry.id === planId);
+    const item = bundle.snapshot.items.find(entry => entry.id === node.id);
+    const source = plan?.source ?? item?.source;
+    if (source) {
+      const section = element('section', 'stack');
+      const record = bundle.snapshot.sources?.find(entry => entry.id === source.source_id);
+      section.append(element('h4', '', 'Registered source'), element('code', 'meta', record?.path ?? source.source_id),
+        element('p', 'meta', `Source ${plan?.source_freshness ?? item?.source_freshness ?? 'unavailable'} · revision ${plan?.revision ?? item?.revision ?? 'unavailable'}`));
+      detail.append(section);
+    }
+    const edges = fixture.edges.filter(edge => edge.from === node.id || edge.to === node.id);
+    if (edges.length) {
+      const section = element('section', 'stack'); section.append(element('h4', '', 'Dependencies and relationships'));
+      for (const edge of edges) section.append(element('p', 'meta', `${edge.from} → ${edge.to} · ${edge.label}`));
+      detail.append(section);
+    }
+    if (plan) detail.append(button('Open plan', () => callbacks.onNodeDrill?.({ nodeId: plan.id })));
+    detail.append(element('p', 'meta', 'Selection does not run an agent or change verification. Open the plan to inspect its requirements and linked runs.'));
+    return detail;
+  }, callbacks: {
     onSelect: event => callbacks.onNodeSelect?.(event),
     onDrill: event => callbacks.onNodeDrill?.(event),
     onViewportChange: event => callbacks.onMapViewportChange?.(event),
@@ -342,9 +388,9 @@ export function createOverviewView({ bundle, callbacks = {} }) {
   // tracked so the view can take them with it — a polling refresh that swaps
   // the overview must not leave the previous render's notes behind (they
   // would otherwise accumulate on every tick for the life of the page).
-  const ownedNotes = [];
+  const ownedNotes = new Map();
   let recordsNote = null;
-  const ownNote = (subject, text) => { const created = explain(subject, text); if (created) ownedNotes.push(created); return created; };
+  const ownNote = (subject, text) => { const created = explain(subject, text); if (created) ownedNotes.set(subject, created); return created; };
 
   const root = element('section', 'overview-view stack');
   root.dataset.testid = 'overview-view';
@@ -356,6 +402,7 @@ export function createOverviewView({ bundle, callbacks = {} }) {
   recordsPanel.setAttribute('role', 'region');
   recordsPanel.setAttribute('aria-label', 'Contributing records');
   let openRecordsId = null;
+  let openRecordsSelection = null;
 
   const spikeApi = {
     selectAndFocus(nodeId, { afterRender = false } = {}) {
@@ -378,8 +425,9 @@ export function createOverviewView({ bundle, callbacks = {} }) {
     expandGroup: spikeApi.expandGroup,
   });
 
-  function openRecords({ id, title, note, records }) {
+  function openRecords({ id, title, note, records }, { notify = true } = {}) {
     openRecordsId = id;
+    openRecordsSelection = structuredClone({ id, title, note, records });
     recordsPanel.replaceChildren();
     recordsPanel.append(element('h3', '', 'Contributing records'));
     const heading = element('p', 'meta overview-records-title', title ?? id);
@@ -420,13 +468,15 @@ export function createOverviewView({ bundle, callbacks = {} }) {
       list.append(item);
     }
     recordsPanel.append(list);
-    callbacks.onRecordsOpened?.({ id, records });
-    announce(`${title ?? id}: ${records.length} contributing record${records.length === 1 ? '' : 's'} listed.`);
+    if (notify) {
+      callbacks.onRecordsOpened?.({ id, title, records });
+      announce(`${title ?? id}: ${records.length} contributing record${records.length === 1 ? '' : 's'} listed.`);
+    }
   }
 
   function openClause(clause) {
-    openRecords({ id: clause.id, title: clause.text, note: 'Status sentence clause — traceable summary, not a health score.', records: clause.records });
     if (clause.ref) spikeApi.selectAndFocus(clause.ref);
+    openRecords({ id: clause.id, title: clause.text, note: 'Status sentence clause — traceable summary, not a health score.', records: clause.records });
     callbacks.onClauseOpened?.(clause);
   }
 
@@ -434,14 +484,19 @@ export function createOverviewView({ bundle, callbacks = {} }) {
   // attention list, plan-lifecycle strip, coverage tiles, macro map, then
   // the freshness line. The records panel rides last; the shell adopts it
   // into the floating inspector dock.
-  root.append(
-    createStatusHero({ fixture, ownNote, openClause }),
-    createAttentionList({ fixture, ownNote, openRecords }),
-    createPlanLifecycleStrip({ fixture, ownNote, openRecords }),
-    createCoverageTiles({ fixture, ownNote, openRecords }),
-    createMacroMapSection({ spike, ownNote }),
-    createFreshnessLine({ fixture, ownNote }),
-  );
+  const macroSection = createMacroMapSection({ spike, ownNote });
+  const sectionBuilders = [
+    () => createStatusHero({ fixture, ownNote, openClause }),
+    () => createAttentionList({ fixture, ownNote, openRecords, runtimeProblems: bundle.telemetry?.problems ?? [], onNavigate: callbacks.onNavigateDestination }),
+    () => createRunMonitor({ telemetry: bundle.telemetry, onNavigate: callbacks.onNavigateDestination, state: monitorState }),
+    () => macroSection,
+    () => createOverviewRuntimeSummary({ telemetry: bundle.telemetry, onNavigate: callbacks.onNavigateDestination }),
+    () => createPlanLifecycleStrip({ fixture, ownNote, openRecords }),
+    () => createCoverageTiles({ fixture, ownNote, openRecords }),
+    () => createFreshnessLine({ fixture, ownNote }),
+  ];
+  const sections = sectionBuilders.map(build => build());
+  root.append(...sections);
 
   recordsPanel.append(element('h3', '', 'Contributing records'));
   const hint = element('p', 'meta overview-records-hint', 'Select a metric, clause or attention item to list the records behind it.');
@@ -449,20 +504,64 @@ export function createOverviewView({ bundle, callbacks = {} }) {
   recordsPanel.append(hint);
   root.append(recordsPanel);
 
+  function pruneNotes() {
+    for (const [subject, note] of ownedNotes) if (!root.contains(subject) && !recordsPanel.contains(subject)) {
+      note.remove?.(); ownedNotes.delete(subject);
+    }
+  }
+
   return {
     element: root,
-    select: nodeId => spike.select(nodeId),
+    select: (nodeId, options) => spike.select(nodeId, options),
+    closeExpandedMap: () => spike.closeExpandedMap(),
     focusNode: nodeId => spike.focusNode(nodeId),
     toggleGroup: nodeId => spike.toggleGroup(nodeId),
     setMode: mode => spike.setMode(mode),
     setViewport: (viewport, reason) => spike.setViewport(viewport, reason),
     fitViewport: () => spike.fitViewport(),
     applyMapUpdate: nextMapFixture => spike.applyUpdate(nextMapFixture),
+    applyBundleUpdate(nextBundle) {
+      const nextFixture = overviewFixture(nextBundle);
+      const telemetryKey = value => JSON.stringify(value ? { ...value, observed_at: undefined } : null);
+      const sameTelemetry = telemetryKey(bundle.telemetry) === telemetryKey(nextBundle.telemetry);
+      bundle = nextBundle; fixture = nextFixture; root.dataset.docId = fixture.docId;
+      const nextMap = { ...fixture, statement: undefined, metrics: undefined, attentionQueue: undefined,
+        statusSentence: undefined, context: undefined, projection: undefined, lifecycle: undefined, freshness: undefined };
+      const nextFingerprint = JSON.stringify(nextMap);
+      if (nextFingerprint !== mapFingerprint) { mapFingerprint = nextFingerprint; spike.applyUpdate(nextMap); }
+      for (const [index, build] of sectionBuilders.entries()) {
+        if (sections[index] === macroSection) continue;
+        if (sameTelemetry && (sections[index].classList.contains('run-monitor') || sections[index].classList.contains('overview-operations'))) continue;
+        const previous = sections[index]; const next = build();
+        const focused = previous.contains(document.activeElement) ? document.activeElement : null;
+        const disclosures = [...previous.querySelectorAll('details')].map(entry => entry.open);
+        [...next.querySelectorAll('details')].forEach((entry, position) => { if (disclosures[position] !== undefined) entry.open = disclosures[position]; });
+        root.insertBefore(next, previous); previous.remove(); sections[index] = next;
+        if (focused) {
+          const replacement = [...next.querySelectorAll('button,input,select,summary,a,[tabindex]')].find(control => control.getAttribute('aria-label')
+            ? control.getAttribute('aria-label') === focused.getAttribute('aria-label') : control.textContent === focused.textContent);
+          replacement?.focus();
+          if (replacement?.type === 'search' && focused.selectionStart !== null) replacement.setSelectionRange?.(focused.selectionStart, focused.selectionEnd);
+        }
+      }
+      pruneNotes();
+    },
+    pruneNotes,
     openRecords,
+    getOpenRecords: () => openRecordsSelection ? structuredClone(openRecordsSelection) : null,
+    restoreRecords(selection) {
+      const entry = [...fixture.metrics, ...fixture.attentionQueue, ...fixture.statusSentence.clauses].find(entry => entry.id === selection.id);
+      const group = selection.id.startsWith('lifecycle:') ? fixture.lifecycle[selection.id.slice('lifecycle:'.length)] : null;
+      if (!entry && !group) return null;
+      const current = { id: selection.id, title: entry?.title ?? entry?.label ?? entry?.text ?? selection.title,
+        note: entry?.detail ?? entry?.coverage ?? selection.note, records: entry?.records ?? group.records };
+      openRecords(current, { notify: false });
+      return current;
+    },
     // T22: retires this render's clipped notes when the view is dropped (the
     // shell calls it on every polling swap); additive — callers that ignore
     // it keep the previous behavior minus the leak.
-    dispose() { for (const note of ownedNotes) note.remove?.(); ownedNotes.length = 0; recordsNote = null; },
+    dispose() { spike.closeExpandedMap(); for (const note of ownedNotes.values()) note.remove?.(); ownedNotes.clear(); recordsNote = null; },
     getStats() {
       return {
         docId: fixture.docId,

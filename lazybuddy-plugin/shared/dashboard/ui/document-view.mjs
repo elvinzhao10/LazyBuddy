@@ -12,7 +12,7 @@ const MODES = Object.freeze(['rendered', 'source']);
  * T15 editors embed it as their rendered pane.
  */
 export function createDocumentView({ markdown, title = 'Document', mode = 'rendered',
-  mermaidRenderer = null, onModeChange = null, chrome = true } = {}) {
+  mermaidRenderer = null, onModeChange = null, chrome = true, headingOffset = 0 } = {}) {
   if (!MODES.includes(mode)) throw new TypeError('Document mode must be rendered or source');
   let source = String(markdown ?? '');
   let currentMode = mode;
@@ -81,7 +81,7 @@ export function createDocumentView({ markdown, title = 'Document', mode = 'rende
       pre.append(code); body.append(pre);
       return;
     }
-    const rendered = renderMarkdown(source, { mermaidRenderer });
+    const rendered = renderMarkdown(source, { mermaidRenderer, headingOffset });
     const layout = element('div', 'document-reading-layout');
     layout.append(outlineNode(rendered.outline), rendered.element);
     body.append(layout);

@@ -4,11 +4,13 @@ export class LiveProjectError extends Error {
 
 const currentWorktree = project => project.worktrees?.entries?.find(entry => entry.current) ?? null;
 
-export function overviewBundle(project) {
+export function overviewBundle(project, telemetry = null) {
   if (!project || typeof project !== 'object' || !Array.isArray(project.plans)) throw new LiveProjectError('INVALID_PROJECT');
   const worktree = currentWorktree(project);
   return {
     snapshot: project,
+    telemetry,
+    usage: telemetry?.usage ?? null,
     project_name: project.project_id,
     readiness: {},
     planEdges: [],
@@ -22,10 +24,23 @@ export function createLiveProjectAdapter({ connection }) {
     throw new TypeError('A dashboard connection with project reads is required');
   }
   let project = null;
+  let telemetry = null;
   return {
     get current() { return project; },
     async read() {
-      try { project = (await connection.project()).project; return project; }
+      try {
+        project = (await connection.project()).project;
+        telemetry = null;
+        if (typeof connection.projectDetail === 'function') {
+          try { telemetry = await connection.projectDetail('telemetry'); }
+          catch (error) { telemetry = { unavailable: true, code: error.body?.code ?? 'TELEMETRY_READ_FAILED' }; }
+          if (telemetry && !telemetry.unavailable && telemetry.project_revision !== undefined && telemetry.project_revision !== project.revision) {
+            project = (await connection.project()).project;
+            if (telemetry.project_revision !== project.revision) telemetry = { unavailable: true, code: 'TELEMETRY_REVISION_CHANGED' };
+          }
+        }
+        return project;
+      }
       catch (error) {
         if (error?.body?.code === 'PROJECT_NOT_INITIALIZED') { project = null; return null; }
         throw new LiveProjectError(error?.body?.code ?? error?.message ?? 'PROJECT_READ_FAILED', error?.status ?? 0);
@@ -33,6 +48,7 @@ export function createLiveProjectAdapter({ connection }) {
     },
     source(sourceId) { return connection.projectSource(sourceId); },
     detail(kind) { return connection.projectDetail(kind); },
+    health() { return connection.projectDetail('health'); },
     async command(command) {
       try { return await connection.projectCommand(command); }
       catch (error) { throw new LiveProjectError(error?.body?.reason ?? error?.body?.code ?? error?.message ?? 'PROJECT_COMMAND_FAILED', error?.status ?? 0); }
@@ -41,6 +57,6 @@ export function createLiveProjectAdapter({ connection }) {
       return connection.assessProjectTransition({ plan_id: planId, to_lifecycle: toLifecycle, payload });
     },
     previewArtifact(artifactId) { return connection.projectEvidencePreview(artifactId); },
-    bundle() { return project ? overviewBundle(project) : null; },
+    bundle() { return project ? overviewBundle(project, telemetry) : null; },
   };
 }

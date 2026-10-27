@@ -6,6 +6,14 @@
    prefers-reduced-motion. */
 
 .project-spike { container-type: inline-size; }
+.spike-expanded-dialog[open] { display: block; inset: 0; margin: 0; padding: 0; inline-size: 100dvw; block-size: 100dvh; max-inline-size: none; max-block-size: none; border: 0; background: var(--bg); color: var(--text); overflow: hidden; }
+.spike-expanded-dialog::backdrop { background: var(--backdrop); }
+.project-spike[data-expanded='true'] { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3); block-size: 100%; min-block-size: 0; background: var(--bg); overflow: auto; }
+.project-spike[data-expanded='true'] .spike-body { flex: 1; min-block-size: 0; }
+.project-spike[data-expanded='true'] .spike-graph-wrap { block-size: 100%; min-block-size: 0; }
+.project-spike[data-expanded='true'] .spike-graph-viewport { max-block-size: none; min-block-size: 0; block-size: 100%; }
+.spike-expanded-hint { display: none; }
+.project-spike[data-expanded='true'] .spike-expanded-hint { display: block; flex-basis: 100%; margin: 0; }
 .spike-head .cluster { flex-wrap: wrap; }
 .spike-subtitle { margin: 0; }
 .spike-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); max-inline-size: none; }
@@ -13,6 +21,12 @@
 .spike-clause[aria-pressed='true'] { background: var(--selected); }
 .spike-status { min-block-size: var(--control); display: flex; align-items: center; }
 .spike-toolbar { justify-content: space-between; }
+.spike-viewport-controls { gap: var(--s1); }
+.spike-gesture-hint { flex-basis: 100%; margin: 0; font-size: var(--caption); }
+.spike-map-search { flex: 1 1 14rem; max-inline-size: 24rem; font-size: var(--caption); }
+.spike-toolbar [role='status'] { min-block-size: 0; }
+.project-spike[data-mode='list'] .spike-gesture-hint { display: none; }
+.project-spike[data-mode='list'] .spike-viewport-controls { display: none; }
 .spike-legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
 .spike-legend li { display: inline-flex; align-items: center; gap: var(--s2); }
 .spike-legend li::before { content: ''; inline-size: var(--s5); block-size: 0; border-block-start: 2px solid var(--muted); }
@@ -23,7 +37,7 @@
 .spike-legend .edge-history::before { border-block-start-style: dotted; border-block-start-color: var(--stale-ink); }
 
 .spike-graph-wrap { display: grid; gap: var(--s2); min-inline-size: 0; }
-.spike-graph-viewport { min-block-size: 25rem; max-block-size: min(70dvb, 48rem); overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--surface); overscroll-behavior: contain; cursor: grab; }
+.spike-graph-viewport { min-block-size: 25rem; max-block-size: min(70dvb, 48rem); overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-card); background: var(--inset); overscroll-behavior: contain; cursor: grab; touch-action: none; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .spike-graph-viewport.is-panning { cursor: grabbing; user-select: none; }
 .spike-graph { display: block; max-inline-size: none; }
 .spike-graph-viewport:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
@@ -69,10 +83,13 @@
 .spike-reason { margin: 0; }
 .spike-action { justify-self: start; }
 
-@container (max-width: 44rem) {
+@container (max-width: 32rem) {
   .spike-graph-wrap { display: none; }
   .spike-list[hidden] { display: grid; }
   .spike-toolbar .view-switcher { display: none; }
+  .spike-toolbar .spike-viewport-controls { display: none; }
+  .spike-gesture-hint { display: none; }
+  [data-expand-map] { display: none; }
   .spike-row { grid-template-columns: minmax(0, 1fr); }
 }
 

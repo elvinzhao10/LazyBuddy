@@ -74,6 +74,7 @@ async function refreshProject({ force = false } = {}) {
           onOpenPlan: planId => projectShell?.openPlan(planId) });
       }
       projectShell = createProjectShell({ projectionProvider: () => projectAdapter.bundle(), product: { name: project?.runtime ?? 'LazySeries' },
+        statusElement: connectionStatus,
         views: projectViews?.views ?? {}, callbacks: { onPlanDrill({ nodeId, drill }) {
           const planId = project?.plans.some(plan => plan.id === nodeId) ? nodeId : drill;
           if (planId) projectShell.openPlan(planId);

@@ -19,6 +19,51 @@ globalThis.document = dom.document;
 const { collectProjectHealth } = await import('../adapters/health.mjs');
 const { createHealthView, HEALTH_VIEW_SCHEMA } = await import('../ui/health-view.mjs');
 
+test('malformed component inventory fails closed instead of crashing or claiming healthy package state', () => {
+  const view = createHealthView();
+  for (const inventory of [{ entries: [null], coverage: [] }, { entries: [], coverage: [null] }, { entries: [], coverage: {} }]) {
+    view.update({ schema: HEALTH_VIEW_SCHEMA, sections: [], summary: { ok: 0, warn: 0, unavailable: 0 }, inventory });
+    assert.match(view.element.textContent, /HEALTH_INVENTORY_MALFORMED/);
+    assert.equal(view.element.querySelectorAll('[data-component-id]').length, 0);
+  }
+});
+
+test('health component filters preserve explicit package and unobserved runtime states', () => {
+  const snapshot = { schema: HEALTH_VIEW_SCHEMA, sections: [], summary: { ok: 0, warn: 0, unavailable: 0 },
+    inventory: { runtime: 'LazyBuddy', entries: [
+      { id: 'skill:search', name: 'search', kind: 'skill', path: 'skills/search/SKILL.md', package_state: 'present', detail: 'Package only' },
+      { id: 'mcp:ledger', name: 'ledger', kind: 'mcp', path: '.mcp.json', package_state: 'declared', detail: 'Package only' },
+    ], coverage: [{ kind: 'skill', state: 'observed', total: 1 }, { kind: 'mcp', state: 'observed', total: 1 }] } };
+  const view = createHealthView(); view.update(snapshot);
+  assert.equal(view.element.querySelectorAll('[data-component-id]').length, 2);
+  const input = view.element.querySelector('input[type="search"]'); input.value = 'ledger'; input.dispatchEvent({ type: 'input' });
+  input.focus();
+  assert.equal(view.element.querySelectorAll('[data-component-id]').length, 1);
+  assert.match(view.element.textContent, /Package declared/);
+  assert.match(view.element.textContent, /Host activity unobserved/);
+  view.update(snapshot);
+  assert.equal(view.element.querySelector('input[type="search"]').value, 'ledger');
+  assert.equal(document.activeElement, view.element.querySelector('input[type="search"]'), 'refreshing inventory preserves active filter focus');
+  assert.equal(view.element.querySelectorAll('[data-component-id]').length, 1);
+});
+
+test('explicit health refresh rereads the adapter and reports a recoverable failure', async () => {
+  let calls = 0;
+  const view = createHealthView({ adapter: { read: async () => {
+    calls += 1;
+    if (calls === 2) throw new Error('offline');
+    return { schema: HEALTH_VIEW_SCHEMA, sections: [], observed_at: new Date().toISOString(), summary: { ok: 0, warn: 0, unavailable: 0 } };
+  } } });
+  await view.refresh();
+  assert.equal(calls, 1, 'concurrent refresh joins the in-flight request');
+  await view.refresh();
+  assert.match(view.element.textContent, /Health could not refresh/);
+  await view.refresh();
+  assert.equal(calls, 3);
+  assert.equal(view.getStats().snapshotObserved, true);
+  assert.match(view.element.textContent, /Health observations refreshed/);
+});
+
 const pluginRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const repoRoot = dirname(pluginRoot);
 const runtimed = process.version; // the probe must observe exactly this

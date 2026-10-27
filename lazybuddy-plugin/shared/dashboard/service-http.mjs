@@ -62,7 +62,7 @@ export async function listen(options, control) {
         }
         const detailRoute = { '/api/project/architecture': 'readProjectArchitecture',
           '/api/project/git': 'readProjectGit', '/api/project/evidence': 'readProjectEvidence',
-          '/api/project/health': 'readProjectHealth' }[request.url];
+          '/api/project/health': 'readProjectHealth', '/api/project/telemetry': 'readProjectTelemetry' }[request.url];
         if (request.method === 'GET' && detailRoute) {
           try { send(response, await authorityFor(options)[detailRoute](options, actor)); }
           catch (error) { throw projectFailure(error); }

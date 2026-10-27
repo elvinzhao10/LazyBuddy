@@ -122,7 +122,8 @@ export function presentationModel(fixture, { collapsed } = {}) {
     nodes.push({ ...node, summary: isCollapsedGroup ? gateSummary(node) : node.summary, collapsedGroup: isCollapsedGroup, expandable: Boolean(node.children?.length), children: undefined });
   }
   const byId = new Map(nodes.map(node => [node.id, node]));
-  const layoutEdges = fixture.edges.filter(edge => LAYERING_EDGE_KINDS.has(edge.kind)).map(edge => ({ ...edge }));
+  const layoutEdges = fixture.edges.filter(edge => LAYERING_EDGE_KINDS.has(edge.kind)
+    || (fixture.level === 'project' && edge.kind === 'group')).map(edge => ({ ...edge }));
   const edges = fixture.edges.map(edge => ({ ...edge }));
   for (const node of nodes) {
     if (node.layoutAfter && byId.has(node.layoutAfter)) {
@@ -152,10 +153,25 @@ export function layoutProjectGraph(model) {
     if (!columns[node.layer]) columns[node.layer] = [];
     columns[node.layer].push(node.id);
   }
+  const organic = model.level === 'project';
+  if (organic && columns.length === 1 && columns[0].length > 2) {
+    const independent = columns.pop();
+    const count = Math.ceil(Math.sqrt(independent.length));
+    independent.forEach((id, index) => { (columns[index % count] ??= []).push(id); });
+  }
+  const extent = column => column.reduce((total, id) => total + measures.get(id).height, 0) + Math.max(0, column.length - 1) * CARD.gap.row;
+  const tallest = Math.max(0, ...columns.map(extent));
   const placed = new Map();
   let x = CARD.canvasPadding;
-  for (const column of columns) {
-    let y = CARD.canvasPadding;
+  for (const [index, column] of columns.entries()) {
+    if (organic && index > 0) column.sort((a, b) => {
+      const center = id => {
+        const neighbors = model.layoutEdges.filter(edge => edge.to === id).map(edge => placed.get(edge.from)).filter(Boolean);
+        return neighbors.length ? neighbors.reduce((sum, node) => sum + node.y + node.height / 2, 0) / neighbors.length : tallest / 2;
+      };
+      return center(a) - center(b) || a.localeCompare(b);
+    });
+    let y = CARD.canvasPadding + (organic ? (tallest - extent(column)) / 2 + (index % 2) * CARD.gap.row : 0);
     for (const id of column) {
       const measure = measures.get(id);
       placed.set(id, { id, x, y, width: measure.width, height: measure.height, layer: engine.nodes.find(node => node.id === id).layer });

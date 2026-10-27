@@ -10,6 +10,20 @@
 .health-view { display: grid; gap: var(--space-3); }
 .health-head { display: grid; gap: var(--space-1); }
 .health-head h2 { margin: 0; }
+.health-inventory-counts { gap: var(--space-1); }
+.health-inventory-filters { align-items: end; }
+.health-inventory-filters label { flex: 1 1 12rem; }
+.health-inventory-filters input,.health-inventory-filters select { inline-size: 100%; min-inline-size: 0; }
+.health-component { border: var(--line) solid var(--hairline); border-radius: var(--radius-sm); background: var(--surface); }
+.health-component > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding: var(--space-2); cursor: pointer; min-block-size: var(--density-control); }
+.health-component > summary::before { content: '›'; color: var(--subtle); }
+.health-component[open] > summary::before { content: '⌄'; }
+.health-component > summary strong { flex: 1 1 12rem; overflow-wrap: anywhere; }
+.health-component-body { padding: var(--space-2); border-block-start: var(--line) solid var(--hairline); }
+.health-component-body code { overflow-wrap: anywhere; }
+.health-component-body button { justify-self: start; }
+.health-inventory [role='status'],.health-refresh [role='status'] { min-block-size: 0; margin: 0; }
+.health-checks > summary { min-block-size: var(--density-control); padding: var(--space-2); cursor: pointer; }
 .health-lead { font-size: var(--type-md-size); line-height: var(--type-md-lh); max-inline-size: var(--measure); margin: 0; }
 .health-sections { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--measure)), 1fr)); align-items: start; }
 
@@ -19,7 +33,7 @@
 .health-section-head .meta { font-variant-numeric: var(--numeric); margin: 0; }
 .health-item-list { display: grid; gap: var(--space-half); margin: 0; padding: 0; list-style: none; }
 
-.health-item { display: grid; grid-template-columns: auto auto 1fr; gap: var(--space-1); align-items: baseline; padding: var(--space-half) 0; }
+.health-item { display: grid; grid-template-columns: auto minmax(0,1fr) minmax(0,1fr); gap: var(--space-1); align-items: baseline; padding: var(--space-half) 0; }
 .health-item-label { font-size: var(--type-sm-size); line-height: var(--type-sm-lh); }
 .health-item-observed code { font-size: var(--type-sm-size); overflow-wrap: anywhere; font-variant-numeric: var(--numeric); }
 .health-item-observed .meta { margin: 0; color: var(--subtle); }
@@ -27,7 +41,7 @@
 
 /* A warned row keeps its structural edge visible without turning the whole
    section red — the chip owns the state, the row owns the fact. */
-.health-item[data-status='warn'] { border-block-start: var(--line) solid var(--active-ink); }
+.health-item[data-status='warn'] { background: var(--warn-bg); }
 .health-item[data-status='unavailable'] { border-block-start: var(--line) dashed var(--border); }
 
 /* The honest unavailable banner (no adapter, failed adapter, refused

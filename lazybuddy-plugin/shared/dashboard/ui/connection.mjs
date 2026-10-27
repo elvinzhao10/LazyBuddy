@@ -46,7 +46,7 @@ export function createDashboardConnection({ fetchImpl = globalThis.fetch } = {})
     },
     async projectDetail(kind) {
       if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
-      if (!['architecture', 'git', 'evidence'].includes(kind)) throw new DashboardRequestError(0, { code: 'INVALID_PROJECT_DETAIL' });
+      if (!['architecture', 'git', 'evidence', 'health', 'telemetry'].includes(kind)) throw new DashboardRequestError(0, { code: 'INVALID_PROJECT_DETAIL' });
       return decode(await fetchImpl(`/api/project/${kind}`, { headers: headers() }));
     },
     async projectSource(sourceId) {

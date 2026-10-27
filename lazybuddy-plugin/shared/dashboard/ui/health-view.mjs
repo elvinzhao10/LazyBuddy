@@ -6,7 +6,7 @@
 // T18 panes): absent or malformed snapshots render an explicit unavailable
 // surface — never zero-as-healthy, never an invented "all good" row; nothing
 // in this view collects anything (read-only projection of the snapshot).
-import { element, statusChip } from './components.mjs';
+import { button, element, statusChip } from './components.mjs';
 
 const CHIP_STATE = Object.freeze({ ok: 'verified', warn: 'attention', unavailable: 'unavailable' });
 const ITEM_STATUSES = Object.freeze(['ok', 'warn', 'unavailable']);
@@ -82,9 +82,8 @@ function leadSentence(snapshot) {
   if (!counts || typeof counts.ok !== 'number') return 'Plugin self-health snapshot unobserved.';
   const observedAt = typeof snapshot.observed_at === 'string'
     && !Number.isNaN(Date.parse(snapshot.observed_at)) ? snapshot.observed_at : 'unknown time';
-  return `Observed ${observedAt} by ${typeof snapshot.collector === 'string' ? snapshot.collector : 'unknown collector'}: `
-    + `${counts.ok} item(s) ok · ${counts.warn} warn · ${counts.unavailable} unobserved. `
-    + 'Every row is an observed fact; unobserved stays explicit and never reads as healthy.';
+  return `${counts.ok} package checks passed · ${counts.warn} warning${counts.warn === 1 ? '' : 's'} · ${counts.unavailable} checks need observation. `
+    + `Updated ${observedAt === 'unknown time' ? observedAt : new Date(observedAt).toLocaleString()}.`;
 }
 
 /** Renders the honest not-yet-observed surface: no ok rows, an explicit
@@ -117,6 +116,17 @@ function assertSnapshot(snapshot) {
     if (section === null || typeof section !== 'object' || typeof section.id !== 'string'
       || !Array.isArray(section.items)) return 'HEALTH_SECTION_MALFORMED';
   }
+  if (snapshot.inventory != null) {
+    const inventory = snapshot.inventory;
+    const kinds = ['skill', 'mcp', 'hook', 'subagent'];
+    if (!Array.isArray(inventory.entries) || !Array.isArray(inventory.coverage)
+      || !inventory.entries.every(entry => entry && kinds.includes(entry.kind)
+        && ['id', 'name', 'path', 'detail'].every(key => typeof entry[key] === 'string')
+        && ['present', 'declared', 'missing'].includes(entry.package_state))
+      || !inventory.coverage.every(entry => entry && kinds.includes(entry.kind)
+        && ['observed', 'unavailable'].includes(entry.state)
+        && (entry.state !== 'observed' || Number.isSafeInteger(entry.total) && entry.total >= 0))) return 'HEALTH_INVENTORY_MALFORMED';
+  }
   return null;
 }
 
@@ -131,8 +141,82 @@ export function createHealthView({ adapter } = {}) {
   root.dataset.testid = 'health-view';
   let snapshot = null;
   let loadError = null;
+  let pending = null;
+  let inventoryQuery = ''; let inventoryKind = 'all'; let inventoryState = 'all';
+  const inventoryFeedback = element('p', 'meta'); inventoryFeedback.setAttribute('role', 'status');
 
-  function render() {
+  function inventoryPanel(inventory) {
+    const panel = element('section', 'stack health-inventory');
+    panel.dataset.testid = 'health-inventory';
+    panel.append(element('h3', '', 'Harness components'));
+    if (!inventory || !Array.isArray(inventory.entries)) {
+      panel.append(element('p', 'meta', 'Component inventory is not reported by this adapter.')); return panel;
+    }
+    panel.append(element('p', 'meta', 'Definitions in the serving package. Host-installed extras, enablement, connections and running agents need a matching host-session observation.'));
+    const counts = element('div', 'cluster health-inventory-counts');
+    for (const [kind, label] of [['skill', 'Skills'], ['mcp', 'MCP servers'], ['hook', 'Hooks'], ['subagent', 'Subagents']]) {
+      const coverage = inventory.coverage?.find(entry => entry.kind === kind);
+      counts.append(statusChip({ state: coverage?.state === 'observed' ? 'neutral' : 'unavailable',
+        label: `${label}: ${coverage?.state === 'observed' ? coverage.total : 'not observed'}` }));
+    }
+    const filters = element('div', 'cluster health-inventory-filters');
+    const searchLabel = element('label', '', 'Find a component');
+    const search = element('input', ''); search.type = 'search'; search.value = inventoryQuery;
+    search.dataset.healthFilter = 'query';
+    search.placeholder = 'Name or source path'; searchLabel.append(search);
+    const kindLabel = element('label', '', 'Component kind'); const kind = element('select', '');
+    kind.dataset.healthFilter = 'kind';
+    for (const [value, label] of [['all', 'All components'], ['skill', 'Skills'], ['mcp', 'MCP servers'], ['hook', 'Hooks'], ['subagent', 'Subagents']]) {
+      const option = element('option', '', label); option.value = value; kind.append(option);
+    }
+    kind.value = inventoryKind; kindLabel.append(kind);
+    const stateLabel = element('label', '', 'Package state'); const state = element('select', '');
+    state.dataset.healthFilter = 'state';
+    for (const value of ['all', 'present', 'declared', 'missing']) {
+      const option = element('option', '', value === 'all' ? 'All package states' : value); option.value = value; state.append(option);
+    }
+    state.value = inventoryState; stateLabel.append(state);
+    filters.append(searchLabel, kindLabel, stateLabel);
+    const results = element('div', 'stack');
+    const resultCount = element('p', 'meta'); resultCount.setAttribute('role', 'status');
+    const renderResults = () => {
+      const entries = inventory.entries.filter(entry => (inventoryKind === 'all' || entry.kind === inventoryKind)
+        && (inventoryState === 'all' || entry.package_state === inventoryState)
+        && `${entry.name} ${entry.path}`.toLocaleLowerCase().includes(inventoryQuery.trim().toLocaleLowerCase()));
+      resultCount.textContent = `${entries.length} of ${inventory.entries.length} package components`;
+      results.replaceChildren();
+      if (!entries.length) results.append(element('p', 'meta', 'No components match these filters.'));
+      for (const entry of entries) {
+        const row = element('details', 'health-component'); row.dataset.componentId = entry.id;
+        const summary = element('summary', '');
+        summary.append(element('strong', '', entry.name), element('span', 'meta', entry.kind),
+          statusChip({ state: entry.package_state === 'missing' ? 'attention' : 'neutral', label: `Package ${entry.package_state}` }));
+        const body = element('div', 'stack health-component-body');
+        body.append(element('code', '', entry.path), statusChip({ state: 'unavailable', label: 'Host activity unobserved' }),
+          element('p', 'meta', entry.detail));
+        const copy = button('Copy maintenance context', async () => {
+          const context = `Inspect ${entry.kind} ${entry.name} in ${inventory.runtime}.\nPackage source: ${entry.path}\nPackage state: ${entry.package_state}\nHost activity: unobserved. Verify in the current host session before changing configuration.\nRequested change: `;
+          try { await navigator.clipboard.writeText(context); inventoryFeedback.textContent = 'Copied. Paste into your agent chat and describe the change; nothing was sent.'; }
+          catch { const text = element('textarea', ''); text.value = context; text.readOnly = true; text.setAttribute('aria-label', 'Maintenance context'); body.append(text); text.focus(); text.select?.(); inventoryFeedback.textContent = 'Select and copy the context manually.'; }
+        });
+        body.append(copy); row.append(summary, body); results.append(row);
+      }
+    };
+    search.addEventListener('input', () => { inventoryQuery = search.value; renderResults(); });
+    kind.addEventListener('change', () => { inventoryKind = kind.value; renderResults(); });
+    state.addEventListener('change', () => { inventoryState = state.value; renderResults(); });
+    const clear = button('Clear filters', () => { inventoryQuery = ''; inventoryKind = 'all'; inventoryState = 'all';
+      search.value = ''; kind.value = 'all'; state.value = 'all'; renderResults(); search.focus(); });
+    filters.append(clear); renderResults();
+    const limited = inventory.coverage?.filter(entry => entry.shown != null && entry.shown < entry.total) ?? [];
+    panel.append(counts, filters, resultCount, inventoryFeedback, results);
+    if (limited.length) panel.append(element('p', 'meta', `Inventory limit: ${limited.map(entry => `${entry.kind} ${entry.shown} of ${entry.total}`).join(', ')}. Narrow the serving package to inspect more.`));
+    return panel;
+  }
+  const refreshControl = button('Refresh health', () => refresh());
+  const refreshStatus = element('p', 'meta'); refreshStatus.setAttribute('role', 'status');
+
+  function renderContent() {
     if (loadError) { renderUnobserved(root, 'the health adapter failed to deliver a snapshot', loadError); return; }
     if (!snapshot) {
       renderUnobserved(root, adapter ? 'no snapshot observed yet — the adapter has not answered' : 'no health adapter is connected to this view');
@@ -145,34 +229,62 @@ export function createHealthView({ adapter } = {}) {
       element('p', 'health-lead', leadSentence(snapshot)));
     const subject = element('p', 'meta');
     subject.dataset.testid = 'health-subject';
-    subject.textContent = `plugin ${snapshot.subject?.plugin ?? 'unknown'}`
-      + (snapshot.subject?.root ? ` at ${snapshot.subject.root}` : '');
+    subject.textContent = `Serving package: ${snapshot.subject?.plugin ?? 'unknown'}. Package checks do not establish native host readiness.`;
     const wrap = element('div', 'stack health-sections');
     wrap.dataset.testid = 'health-sections';
     for (const section of snapshot.sections) wrap.append(sectionPanel(section));
-    root.replaceChildren(head, subject, wrap);
+    const checks = element('details', 'health-checks');
+    checks.append(element('summary', '', 'Package diagnostics and runtime checks'), wrap);
+    if (snapshot.subject?.root) checks.append(element('p', 'meta', `Package location: ${snapshot.subject.root}`));
+    root.replaceChildren(head, subject, inventoryPanel(snapshot.inventory), checks);
     root.dataset.viewRevision = String(Number(root.dataset.viewRevision ?? 0) + 1);
     root.dataset.snapshotObserved = 'true';
   }
 
+  function render() {
+    renderContent();
+    if (adapter && typeof adapter.read === 'function') {
+      const actions = element('div', 'cluster health-refresh'); actions.append(refreshControl, refreshStatus); root.prepend(actions);
+    }
+  }
+
   function update(next) {
+    const focused = root.contains(document.activeElement) ? document.activeElement : null;
+    const filter = focused?.dataset?.healthFilter;
+    const selection = filter === 'query' ? [focused.selectionStart, focused.selectionEnd] : null;
     loadError = null;
     snapshot = next;
     render();
+    if (filter) {
+      const current = [...root.querySelectorAll('[data-health-filter]')].find(control => control.dataset.healthFilter === filter);
+      current?.focus();
+      if (selection && Number.isInteger(selection[0])) current?.setSelectionRange?.(...selection);
+    }
+  }
+
+  function refresh() {
+    if (pending) return pending;
+    if (!adapter || typeof adapter.read !== 'function') return Promise.resolve();
+    let restoreFocus = document.activeElement === refreshControl;
+    refreshControl.disabled = true; refreshStatus.textContent = 'Checking current package health…';
+    pending = Promise.resolve().then(() => adapter.read()).then(next => {
+      restoreFocus = restoreFocus && (document.activeElement === refreshControl || document.activeElement === document.body);
+      update(next); refreshStatus.textContent = 'Health observations refreshed.';
+    }, error => {
+      loadError = typeof error?.code === 'string' && /^[A-Z][A-Z0-9_]{0,127}$/.test(error.code)
+        ? error.code : 'ADAPTER_READ_FAILED';
+      render(); refreshStatus.textContent = 'Health could not refresh. Retry when the service is available.';
+    }).finally(() => { pending = null; refreshControl.disabled = false; if (restoreFocus) refreshControl.focus(); });
+    return pending;
   }
 
   render();
-  if (adapter && typeof adapter.read === 'function') {
-    adapter.read().then(update, error => {
-      loadError = typeof error?.code === 'string' && /^[A-Z][A-Z0-9_]{0,127}$/.test(error.code)
-        ? error.code : 'ADAPTER_READ_FAILED';
-      render();
-    });
-  }
+  if (adapter && typeof adapter.read === 'function') refresh();
 
   return {
     element: root,
     update,
+    refresh,
     getStats() {
       return { snapshotObserved: Boolean(snapshot) && assertSnapshot(snapshot) === null,
         viewRevision: Number(root.dataset.viewRevision ?? 0) };

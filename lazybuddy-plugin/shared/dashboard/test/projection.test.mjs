@@ -15,6 +15,19 @@ const criterion = (overrides = {}) => ({ id: 'c1', task_id: 'task-1', version: 1
 const event = (eventId, payload = {}, timestamp = '2026-10-04T10:00:00Z') => ({ schema_version: 1, event_id: eventId,
   run_id: 'run-1', event: 'observation', event_payload: payload, ts: timestamp });
 const source = (records, kind = 'runtime', id = kind) => ({ kind, id, generation: '1', text: records.map(item => JSON.stringify(item) + '\n').join('') });
+
+test('known advisory hook summaries remain readable, sanitized and unverified; unknown or cross-run envelopes still fail closed', () => {
+  const tool = { tool: 'mcp__docs__search', timestamp: '2026-10-27T12:00:00Z', files: ['/private/file'], ai_slop_comment: 'line 2' };
+  const value = input(); value.sources = [source([tool, { ...tool, status: 'failure', error: 'private-error', suggestion: 'private-suggestion' },
+    { event: 'stop_failure', reason: 'private-reason', timestamp: tool.timestamp }], 'legacy')];
+  const snapshot = projectSnapshot(value);
+  assert.deepEqual(snapshot.observations.map(entry => entry.event), ['post-tool-use', 'post-tool-use-failure', 'stop-failure']);
+  assert.ok(snapshot.tasks.every(task => task.verification !== 'verified'));
+  assert.ok(!JSON.stringify(snapshot.observations).includes('private-'));
+  for (const invalid of [{ ...tool, run_id: 'elsewhere' }, { ...tool, event: 'attempt_result', verification: 'verified' }, { ...tool, arbitrary: true }]) {
+    assert.throws(() => projectSnapshot({ ...input(), sources: [source([invalid], 'legacy')] }), /RUN_ID_MISMATCH/);
+  }
+});
 const attempt = (overrides = {}) => ({ id: 'a1', task_id: 'task-1', criterion_id: 'c1', criterion_version: 1,
   plan_revision: 1, consumed_plan_revision: null, worker_id: null, parent_task_id: null, source_revision: null,
   execution: 'finished', verification: 'verified', started_at: null, finished_at: null, evidence: [], ...overrides });

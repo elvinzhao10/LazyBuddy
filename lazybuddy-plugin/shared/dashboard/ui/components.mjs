@@ -1380,7 +1380,7 @@ export function createTabs({ tabs = [], current = null, onChange = null } = {}) 
 //                             A persisted-open dock restores WITHOUT focus
 //                             at creation; the explicit `open: true` option
 //                             keeps its focused first-open behavior.
-export function createDockPanel({ title, content, footer = null, open: initiallyOpen = false, onClose, onOpen = null, persistKey = null, storage = globalThis.sessionStorage, description, trapFocus = true } = {}) {
+export function createDockPanel({ title, content, footer = null, open: initiallyOpen = false, onClose, onOpen = null, persistKey = null, storage = globalThis.sessionStorage, description, trapFocus = true, closeLabel = 'Collapse dock', fallbackFocus = null } = {}) {
   const dock = element('aside', 'lb-dock');
   dock.dataset.testid = 'dock-panel';
   dock.hidden = true;
@@ -1391,7 +1391,7 @@ export function createDockPanel({ title, content, footer = null, open: initially
   dock.setAttribute('aria-labelledby', headingId);
   if (trapFocus) dock.setAttribute('data-native-trap', 'true');
   wirePanelDescription(dock, description, PANEL_DISMISSAL_NOTE);
-  const closeControl = button('Collapse dock', () => api.close('button'));
+  const closeControl = button(closeLabel, () => api.close('button'));
   closeControl.dataset.testid = 'dock-panel-close';
   const header = element('header', 'cluster spread');
   header.append(heading, closeControl);
@@ -1413,12 +1413,18 @@ export function createDockPanel({ title, content, footer = null, open: initially
   const writePersisted = value => { try { if (persistKey) storage?.setItem?.(persistKey, String(value)); } catch { /* blocked storage: the session keeps the in-memory state only */ } };
   const api = {
     element: dock,
+    setTitle(value) { heading.textContent = value; body.setAttribute('aria-label', `${value} content`); },
+    setModal(value) {
+      dock.setAttribute('role', value ? 'dialog' : 'complementary');
+      if (value) { dock.setAttribute('aria-modal', 'true'); dock.setAttribute('data-native-trap', 'true'); }
+      else { dock.removeAttribute('aria-modal'); dock.removeAttribute('data-native-trap'); }
+    },
     open(invoker = null, { focus = true } = {}) {
       if (invoker) trigger = invoker;
       openState = true;
       dock.hidden = false;
       dock.dataset.open = 'true';
-      overlayStack.push(api);
+      if (!overlayStack.includes(api)) overlayStack.push(api);
       if (persistKey) writePersisted(true);
       describeOnOpen(dock); // V2-T9: dynamic icon-only content inside gets described
       if (focus) closeControl.focus();
@@ -1437,7 +1443,8 @@ export function createDockPanel({ title, content, footer = null, open: initially
       const target = connected ? trigger : null;
       trigger = null;
       onClose?.(reason);
-      target?.focus();
+      const visible = target && (typeof target.getClientRects !== 'function' || target.getClientRects().length > 0);
+      (visible ? target : fallbackFocus?.())?.focus();
       return true;
     },
     toggle(invoker = null, options = {}) { return openState ? api.close('toggle') : (api.open(invoker, options), true); },
