@@ -8,7 +8,7 @@ availability must be observed in the selected host.
 | --- | --- | --- |
 | `run-ledger` | Run/evidence ledger access. | Does not prove a host launched it. |
 | `verification` | Local verification information. | Result scope remains package/local. |
-| `status-dashboard` | Local status dashboard; since v1.4.0 also `dashboard_service` and `copy_task_context`. | Dashboard state is not host proof; `open` labels native host loading unobserved. |
+| `status-dashboard` | Four status views plus `dashboard_service`, `copy_task_context`, and typed `project` operations (seven tools). | Dashboard state is not host proof; `open` labels native host loading unobserved. |
 | `context-graph` | Grep-based context heuristic. | Not semantic CodeGraph analysis. |
 | `code-intel` | Local code-intelligence bridge. | Read-only capability; host availability is separate. |
 | `docs` | Registry package-documentation resolver. | Fixed npm/PyPI registry requests only; no metadata URL fetches or redirects. |
@@ -28,7 +28,7 @@ For host routes, read [host routes](host-routes.md).
 | --- | --- | --- | --- |
 | `run-ledger` | `mcp/run-ledger/server.sh` | Creates/reads run state, events, tasks, and checkpoints through `scripts/state/`. | Run IDs and paths are validated; it is not a general file writer. |
 | `verification` | `mcp/verification/server.sh` | Reads verification matrix, records gate events, creates repair tasks, summarizes state. | It records and classifies checks; it does not prove a host executed a feature. |
-| `status-dashboard` | `mcp/status-dashboard/server.sh` | Calculates run/task/gate summaries from local state; `dashboard_service` manages the owned loopback browser dashboard and `copy_task_context` copies a validated producer context. | A rendered status is not a completion or host-integration claim; queue edits never start work. |
+| `status-dashboard` | `mcp/status-dashboard/server.sh` | Calculates run/task/gate summaries from local state; `dashboard_service` manages the owned loopback browser dashboard `copy_task_context` copies a validated producer context, and `project` uses the typed project command route. | A rendered status is not a completion or host-integration claim; queue edits never start work. |
 | `context-graph` | `mcp/context-graph/server.py` | Runs `rg`/`grep` heuristics for imports, symbols, references, and overview. | Comments/strings and language syntax can produce approximate results. |
 | `code-intel` | `mcp/code-intel/server.py` | Provides package-local code-intelligence helpers. | It remains local/read-only; semantic LSP availability is separate. |
 | `docs` | `mcp/docs/server.py` | Validates a package name and fetches fixed npm/PyPI registry metadata. | No arbitrary URL, redirect, homepage, or repository fetch. |

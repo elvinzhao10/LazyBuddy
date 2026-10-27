@@ -1,5 +1,86 @@
 # Design-system pattern adoption (V2-T9) — dependency-free
 
+## Detail panel and app adaptation follow-up, 22 October 2026
+
+The sidebar now owns its retract/expand button, including a working temporary
+expansion in narrow panels. Its redundant product/authority footer is removed.
+Native thin scrollbars retain keyboard and overflow access. Details is a
+labeled action: a wide workspace reserves an adjacent panel, while a narrow
+workspace uses a modal drawer with Close, Escape and return focus. A selection
+shows either projected object details or contributing records. It no longer
+shows prototype rename/run/accept controls. Dismissal survives polling;
+retained records resolve against the new projection rather than stale totals.
+The optional agent-context disclosure prepares a copyable item/revision
+reference without sending a message or claiming execution.
+
+Live-service QA found and repaired three Health integration gaps: the static
+asset allowlist, the authenticated connection's detail allowlist/reader, and
+the five sibling service routes. Buddy retains its detailed collector; the
+other runtimes expose package versions and declared dashboard capabilities
+with native host activation explicitly unobserved. Refresh health repeats the
+read and provides retry feedback. Embedded plan/research documents preserve
+source bytes and anchor IDs while using the shell's heading hierarchy. The
+live connection status shares the compact shell bar instead of consuming an
+extra header row.
+
+### Installed clients and current upstream evidence
+
+These are read-only local observations, not upgrade or activation receipts.
+The six local LazySeries dashboard packages are 1.4.0. Shared UI and endpoint
+updates do not install a host client or transfer credentials between clients.
+
+| Adapter | Observed local host | Current evidence and treatment |
+| --- | --- | --- |
+| LazyBuddy | CodeBuddy CLI 2.124.0; CodeBuddy CN app 4.12.0; WorkBuddy 5.6.2 | The official npm package reports CLI 2.173.0. Current [plugin documentation](https://www.codebuddy.ai/docs/cli/plugins-reference) supports skills, agents, hooks, MCP and LSP. Existing package routes remain distinct from a fresh host activation check. |
+| LazyTrae | traecli 0.120.52; Trae CN app 3.3.99 | [Current CLI 2.0 documentation](https://docs.trae.cn/cli_tools-and-extensions) describes plugins, skills and MCP. The installed legacy CLI is not silently relabeled as CLI 2.0; its dashboard adapter and Health route are updated independently. |
+| LazyQoder | Qoder CN app 1.10.0; no qoder/qodercli executable found on PATH | [Current CLI hooks](https://docs.qoder.com/cli/hooks) and [app hooks](https://docs.qoder.com/qoder/hooks) describe native lifecycle integration. The app and CLI require separate observation; the dashboard package does not infer either from installation alone. |
+| LazyZCode | ZCode app 3.15.3 | [Current hooks documentation](https://zcode.z.ai/en/docs/hooks) retains plugin hooks, permission/tool events and bounded Stop continuation. The package preserves those boundaries; no newest desktop build or fresh session activation is claimed from this version read. |
+| LazyKimi | Kimi CLI 0.27.0; Kimi app 3.2.3 | The official kimi-code npm package reports 1.0.11. [The migration guide](https://www.kimi.com/code/docs/en/kimi-code-cli/guides/migration.html) describes the Node.js rewrite and explicitly excludes old plugins and authorizations from migration. Automatic migration would not establish current plugin readiness. |
+| LazyDeepSeek | dsh 0.2.0-rc.2 installed | [Upstream 0.2.1-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2) adds current model and Search/Fetch support. The LazyDeepSeek source package now pins that version and passed its real SDK configuration/registration checks in an isolated install. The installed host remains separate; no credentials or profile were changed. |
+
+The isolated authenticated QA workspace uses native queue activation, original
+source registration and a linked native run. Browser inspection exercised the
+live Health collector and Refresh, original plan reader, linked-run navigation,
+and the retained verification/editing controls. It remains a disposable QA
+workspace rather than the user's actual project status or a native host
+activation receipt.
+
+## Dashboard usability follow-up, 22 October 2026
+
+The open standalone `project-shell.html` is a recorded projection preview. It
+does not mount the authenticated service's Project, Plans, Health, Execution,
+Git, Evidence or Research adapters. Those explicit unavailable states are not
+proof that the live implementation is absent. `reachability-matrix.md` names
+the existing live entry points; current native-host readiness still requires
+observation in the selected host.
+
+The follow-up repairs the overview's decision path: current status, three
+actionable attention records with remaining-count disclosure, a readable map,
+then lifecycle and supporting metrics. Historical plans stay in the map but
+execution-readiness blockers no longer crowd the action queue. Known blocker
+codes have plain-language explanations; unknown codes remain visible. Visible
+zoom, actual-size and Fit actions complement keyboard navigation. The map
+starts at 100% rather than shrinking labels to fit a tall graph. Metadata and
+the edge legend use disclosure, and reload closes an inspector whose selected
+record was not restored. The app frame also removes inherited section/header
+margins that wasted vertical space.
+
+| Resource considered | Suitable adoption for this dashboard |
+| --- | --- |
+| [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Use its accessibility, responsive-layout and interaction checklists as review inputs. Validate outcomes on real dashboard states rather than choosing a generic dashboard template. |
+| [Awesome Design Tools](https://github.com/goabstract/Awesome-Design-Tools) | A discovery index for a specific unresolved need; it is not itself a component system to install. |
+| [shadcn/ui](https://ui.shadcn.com/docs) | Keep owned, composable components and consistent token-driven variants. The existing DOM factories already provide that ownership model. |
+| [Radix accessibility guidance](https://www.radix-ui.com/primitives/docs/overview/accessibility) | Carry keyboard navigation, accessible state and focus management into the existing native controls. Verify Escape and return focus on the actual inspector. |
+| [daisyUI](https://daisyui.com/docs/install/) | Its Tailwind plugin would add a styling pipeline to this offline ESM package. Retain the existing shared tokens and component classes. |
+| [Mantine](https://mantine.dev/getting-started/) | Its React component stack would require a framework migration. There is no demonstrated dashboard requirement that warrants that migration in this repair. |
+
+Verification for this follow-up: 461 dashboard tests pass with Python 3.12 on
+PATH; 32 browser captures cover eight destinations at 390px and 1440px in both
+themes without document overflow. The preview reports no browser console
+errors. These checks establish local package behavior and preview usability;
+they do not establish live-host activation, live project freshness, or a new
+authenticated end-to-end run.
+
 **Date:** 2026-10-22. **Scope:** the shared component layer only
 (`lazybuddy-plugin/shared/dashboard/ui/components.mjs`, `style.css`, `views.css`,
 `tokens.css` value-level additions, `showcase.mjs`). Every adoption below is a
@@ -105,7 +186,42 @@ backlog)**
 
 ## Adoption rule (recorded)
 
+### Harness control dashboard continuation
+
+The macro map retains its component and canvas across polling. Revision-only updates do not re-layout or interrupt dragging; changed graph records update the same component while retaining presentation state. Project maps center dependency ranks, follow declared membership edges, and stagger disconnected nodes without inventing relationships. Search reveals nodes without hiding graph data. A full-window HTML dialog, background/middle-button drag, wheel scrolling, Shift-wheel horizontal navigation, pointer-centered Ctrl/Meta-wheel zoom, keyboard controls and the readable-size reset share one viewport state. The dialog provides native modal focus behavior and Escape within embedded browsers; it does not depend on browser-level fullscreen.
+
+Health now inventories individual serving-package skills, MCP declarations, hook definitions and subagent definitions. Kind/name/package-state filters and per-component source disclosures keep the inventory inspectable. Package presence is separate from host enablement, connection and activity; those remain unobserved without matching session receipts. No commands, environment values or credentials are returned from MCP configuration. Maintenance context copies locally and never sends or installs anything. Existing revision-checked Project editing remains the mutation route.
+
+Every native adapter serves authenticated `/api/project/telemetry`. It projects the bound run's tasks, recorded agent attempts, failures, blocked work, source problems and usage reports. Structured provider accounting uses `payload.usage_record` on a native recorded event, in the existing `normalizeUsage` format (`id`, physical `request_id`, accounting `kind`, UTC `observed_at`, numeric/null `usage`, optional request `status`). A final-value record replaces earlier deltas; cached/reasoning subsets and parent aggregates never add twice. No structured records means unreported usage, not zero. Counters describe reported requests in the bound run; they do not claim account-wide spend or host-wide activity. Input/output totals require both fields, while an explicit `total_tokens` is accepted. Malformed records surface as problems.
+
+The existing native append-event path is integration-tested end to end through the authenticated telemetry route: 123 input + 21 output tokens reports 144, with cached input excluded from the addition. Runtime summaries link to Project editing, Plans, Execution/verification, Health, Git and Evidence. Rendering and edits retain the existing authority boundaries.
+
 Port the pattern, cite the code, keep the constraint: no runtime packages, no
 build steps, no new colors outside `tokens.css`, no motion beyond the token
 ladder, aliases preserved so vendored siblings never break. Every adopted row
 above is enforced by at least one named test.
+# Long-run visibility audit continuation
+
+The current dashboard extends the established token-driven, dependency-free components. The existing [list-detail spatial contract](https://github.com/changeroa/StyleGallery/blob/main/patterns/split-sidebar/list-detail.md) remains the Plans/Research layout: index before detail, minimum inline constraints, one shell page scroll, bounded desktop index and narrow stacking. No component-library migration is needed for these native controls and source-backed SVG charts.
+
+Implemented: separate execution/required-verification progress, recorded activity and token trends with shared UTC intervals and selectable window, exact-value tables, step/resource provenance, retained-run duration/tool/rerun/rework graphs, scoped cost-history reads across all six native adapters, plan checkpoint/evidence navigation and attention sorting, research search/filter/capture, web references and hash-bound evidence registration. Identical telemetry retains its DOM, and project reads retry once if telemetry and project revisions differ. Local filters and research drafts survive polling.
+
+Provider usage still uses physical-request normalization. Tokens are assigned to each request's latest accounting timestamp, with parent aggregates excluded and cached/reasoning subsets never added. Missing bins stay unknown. Activity means recorded ledger events, not provider calls. Cost outcomes use retained record order because the existing store has no timestamps; fixture validation, execution and unclassified records have separate filters. No efficiency or quality improvement is inferred from a lower duration or call count.
+
+## Producer integration
+
+The authenticated telemetry reader consumes existing native run snapshots; it never scans private host registries or enables hooks. Bound normalized host observations expose tool/MCP, agent, hook and configuration identities where their envelopes report them. A producer can emit the following payload through its native append-event route to associate observations with a task/attempt (append-only and without changing completion authority):
+
+```json
+{"runtime_trace":{"kind":"mcp","name":"search","server_name":"docs","task_id":"T1","attempt_id":"attempt:1","worker_id":"worker:1","model":"reported-model-id","settings_profile":"profile:strict","status":"completed","duration_ms":250}}
+```
+
+Allowed kinds: `tool`, `mcp`, `agent`, `skill`, `hook`, `settings`. Only bounded identifiers, declared result, nonnegative duration and native ledger provenance reach the UI. Raw prompts, tool arguments, configuration values, environment and credentials are omitted. Missing task/attempt/model/profile identities remain explicitly unlinked or unreported. The latest 200 trace rows and first 200 task summaries are exposed with full counts, while time bins cover the captured run observations. Native ledger retention remains authoritative; the browser does not manufacture a second history.
+
+The existing cost tracker writes `.PRODUCT/state/telemetry/cost-outcomes.json`, retaining at most 20 records. Its present built-in cost producer uses `measurement_scope: fixture-validation`. Real execution producers must explicitly report `execution` and measured values; the dashboard does not relabel fixture data. Reads use each native adapter's bounded, symlink-refusing file authority and expose allowlisted fields only. The store is workspace-scoped, distinct from the bound-run usage series.
+
+## Preservation and remaining scope
+
+Research findings are durable project records. Plan evidence trails use explicit plan/run observation subjects and artifact IDs; title similarity does not create links. Artifact registration retains a reference and hash, not a file copy. Agents should write immutable, versioned artifacts, register them and bind checkpoint observations before compacting or retiring a run. Web references need a retained local artifact when reproducibility matters.
+
+Host event production, enabled/connected components, complete model/settings attribution and account-wide usage still require corresponding runtime evidence. The dashboard cannot reconstruct unrecorded tool use, private settings, overwritten source versions or historical progress states from the latest snapshot. These remain explicit coverage gaps rather than invented healthy states or guessed graphs.

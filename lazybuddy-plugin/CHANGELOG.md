@@ -1,5 +1,9 @@
 # LazyBuddy Plugin Changelog
 
+## [1.4.0] - 2026-10-27 — official platform audit
+
+Compare current official release indexes and feature contracts; document host-version observations and the IDE change-list limitation. Package checks do not establish host activation. See the platform audit in the release root.
+
 ## [1.4.0] - Vendored dashboard core and authenticated browser service
 
 - Vendor the family's portable dashboard core (`shared/dashboard/`) with a hash-pinned `shared/dashboard.vendor.json`; distribute it with `scripts/vendor-dashboard.mjs` and guard family drift in CI.

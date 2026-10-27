@@ -56,13 +56,14 @@ Two boundaries are load-bearing:
   and `reorder_queued_plan` target the independent project queue and never
   dispatch execution or consume a plan revision. No endpoint executes tasks.
 
-## The six-tool status-dashboard MCP server
+## The seven-tool status-dashboard MCP server
 
 | Tool | Boundary |
 | --- | --- |
 | `show_run_status` / `show_task_graph` / `show_verification_matrix` / `show_pending_approvals` | Read-only status views over local run state; a rendered status is not a completion or host-integration claim. |
 | `dashboard_service` | `start`, `status`, `stop`, or `open` for the owned loopback browser service. `open` returns the browser entry and labels native host loading unobserved. |
 | `copy_task_context` | Copies a validated producer context binding without executing it, consuming a revision, or verifying work. |
+| `project` | Typed project reads and command operations; an uninitialized project returns a hint rather than being initialized by the tool. |
 
 ## Honest capability labels
 

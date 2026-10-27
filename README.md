@@ -13,7 +13,7 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-[Platform status](docs/reference/platform-status-2026-10-02.md) · [Get started](#recommended-install-with-ai-help) · [Host routes](#choose-one-route) ·
+[Platform status](docs/reference/platform-status-2026-10-27.md) · [Get started](#recommended-install-with-ai-help) · [Host routes](#choose-one-route) ·
 [1.4.0 notes](RELEASE_NOTES.md) · [Family](#lazyseries-family) · [Docs](docs/)
 
 > **Current package version: v1.4.0. HOST READINESS: PENDING.** Local checks and release
@@ -23,7 +23,7 @@ session.
 ## What's in 1.4.0
 
 - The family's portable dashboard core is vendored in `lazybuddy-plugin/shared/dashboard/` and pinned byte-identically in `lazybuddy-plugin/shared/dashboard.vendor.json`; this package is the family's vendoring source.
-- The `status-dashboard` MCP server gains two tools: `dashboard_service` (start, inspect, stop, or return the local browser entry) and `copy_task_context` (copy a validated producer context without executing or consuming it).
+- The `status-dashboard` MCP server offers `dashboard_service` (start, inspect, stop, or return the local browser entry), `copy_task_context` (copy a validated producer context without executing or consuming it), and typed `project` operations alongside four status views.
 - An authenticated loopback browser dashboard offers Work, Verification, and Plan-edit views with a task inspector, evidence preview, and queue planning; queue edits never start work.
 - The completion pass redesigned the project dashboard end to end: design tokens v2 dark-first family language, a de-tabbed shell with a static retractable sidebar and in-place navigation, six audited views, navigation guards, measured-and-held performance budgets, and a comprehension re-measure that passes both targets; per-repo dashboard isolation and the canonical observe bridge landed beside it.
 - Honest capability labels are documented: browser, transactional edits, project queue, context copy, and observations are available; host embedding, chat handoff, and wake are unobserved; native host readiness stays pending.
@@ -43,7 +43,7 @@ token-saving or cost claim is made.
 | v1.3.4 maintenance | Transactional run integrity, safer lifecycle and native adapter repairs. |
 | v1.3.5 repairs | Real runtime exercises, bounded hooks, dependency updates and current platform guidance. |
 | v1.4.0 dashboard | Vendored portable dashboard core, authenticated loopback browser UI, two new status-dashboard tools, queue planning and honest capability labels. |
-| v1.4.0 completion | Redesigned project dashboard (dark-first family language, sidebar shell, in-place navigation), per-repo isolation, canonical observe bridge, family repin at `bb696092`. |
+| v1.4.0 completion | Redesigned project dashboard (dark-first family language, sidebar shell, in-place navigation), per-repo isolation and canonical observe bridge. |
 
 ### Just ask, or use a command — both work
 
@@ -103,16 +103,16 @@ persistent project layer is vendored the same way as a second family tree:
 `lazybuddy-plugin/shared/project/` is pinned in
 `lazybuddy-plugin/shared/project.vendor.json` (31 files — the portable runtime
 modules and QA harness; tests, native-identity QA, and fault hooks stay
-Buddy-side by recorded decision), checked with `--family project`; after the
-T21–T25 ports, the completion repin and the V2 refinement repin (V2-T7), all
-six sibling roots carry both trees byte-identically (dashboard tree
-`97c14d4d…` — 81 files, the V2 refinement chrome plus the health page —
-project tree `16561f3…`, source revision `9b8aa932`), and the drift job
-requires all six roots complete for both families.
+Buddy-side by recorded decision), checked with `--family project`. The
+current source tree includes the long-run monitor, research capture, Health
+view and reported-usage telemetry. The dashboard vendor manifest records the
+source tree digest; family synchronization must be checked independently and
+is not implied by this source checkout.
 
-The `status-dashboard` MCP server exposes six tools: the four status views plus
-`dashboard_service` (`start`, `status`, `stop`, `open`) and `copy_task_context`,
-which copies a validated producer context without executing or consuming it.
+The `status-dashboard` MCP server exposes seven tools: four status views,
+`dashboard_service` (`start`, `status`, `stop`, `open`), `copy_task_context`,
+and `project`. Context copying does not execute or consume work; project
+operations use the typed shared command route.
 The browser dashboard binds literal `127.0.0.1` on an owned loopback port,
 requires an access key stored in a protected credential file, and offers Work,
 Verification, and Plan-edit views with a task inspector, evidence preview, and

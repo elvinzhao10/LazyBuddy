@@ -4,6 +4,10 @@ A feature release across the six LazySeries siblings: the family's portable
 dashboard core is vendored byte-identically into every package, and LazyBuddy
 is the vendoring source that distributes and drift-guards it.
 
+## Official platform audit (2026-10-27)
+
+The current official Chinese release indexes list CodeBuddy CLI 2.177.0, CodeBuddy IDE 4.12.2 and WorkBuddy 5.9.2. The [feature audit](docs/reference/platform-status-2026-10-27.md) separates these documented releases from local inventory and pending current-session host activation. IDE change lists omit terminal-indirect changes, so completion still requires inspecting actual artifacts. No new performance or cost claim is made.
+
 ## Completion pass (2026-10-19)
 
 A scoped completion pass over the 1.4.0 surfaces; every bullet cites the

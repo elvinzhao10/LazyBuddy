@@ -2,9 +2,9 @@
 
 ## v1.4.0 package
 
-v1.4.0 makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
+v1.4.0 includes the local browser dashboard with a long-run monitor, research capture and Health view. It makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
 
-The current package version is v1.4.0. Package readiness does not establish host readiness.
+The current package version is v1.4.0. Package readiness does not establish host readiness. The `status-dashboard` server declares seven tools, including typed `project` operations; the package declares six MCP servers. The 2026-10-27 platform audit in the release root records documented releases and pending host proof.
 
 ## Durable installation
 

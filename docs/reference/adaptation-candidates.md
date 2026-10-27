@@ -3,7 +3,7 @@
 Canonical family document (held in LazyBuddy). Delta-only rescan of the six
 host families' official changelogs and reference docs for changes published
 since the 2026-10-18 rescans (run 1p4p0-completion-ux-20261018, tasks T4–T9;
-per-host snapshots: [platform status 2026-10-18](platform-status-2026-10-18.md)). Observed
+per-host snapshots: [platform status 2026-10-27](platform-status-2026-10-27.md) and [2026-10-18](platform-status-2026-10-18.md)). Observed
 2026-10-19. This page lists **features that could be adapted next**, with the
 source each finding came from and the seam an adaptation would require. It
 records documentation, not authenticated execution; vendor pages were treated
