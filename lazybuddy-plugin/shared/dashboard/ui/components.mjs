@@ -1,4 +1,8 @@
 /** Text-only DOM primitives. The caller owns data validation and authority. */
+function escapeSelector(value) {
+  try { return CSS.escape(String(value)); } catch { return String(value).replace(/[^a-zA-Z0-9_-]/g, character => `\\${character}`); }
+}
+
 export function element(tag, className = '', text = '') {
   const node = document.createElement(tag);
   node.className = className;
@@ -17,18 +21,24 @@ const glyphs = {
   unavailable: ['circle', { cx: 12, cy: 12, r: 8, 'stroke-dasharray': '3 3' }],
 };
 
+// Draws one stroke-based 24x24 icon from [[tag, attrs], ...] shape lists.
+function svgIcon(shapes) {
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  for (const [tag, attributes] of shapes) {
+    const shape = document.createElementNS(icon.namespaceURI, tag);
+    for (const [key, value] of Object.entries(attributes)) shape.setAttribute(key, value);
+    icon.append(shape);
+  }
+  return icon;
+}
+
 export function statusChip({ state = 'neutral', label }) {
   if (!Object.hasOwn(glyphs, state)) throw new TypeError('Unknown status role');
   const chip = element('span', 'status');
   chip.dataset.state = state;
-  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  icon.setAttribute('viewBox', '0 0 24 24');
-  icon.setAttribute('aria-hidden', 'true');
-  const [tag, attributes] = glyphs[state];
-  const shape = document.createElementNS(icon.namespaceURI, tag);
-  for (const [key, value] of Object.entries(attributes)) shape.setAttribute(key, value);
-  icon.append(shape);
-  chip.append(icon, document.createTextNode(label));
+  chip.append(svgIcon([glyphs[state]]), document.createTextNode(label));
   return chip;
 }
 
@@ -70,24 +80,489 @@ export function taskCard({ id, title, execution, verification, progress, selecte
   return control;
 }
 
-export function field({ label, name, value = '', multiline = false }) {
-  const wrapper = element('label', '', label);
-  const input = element(multiline ? 'textarea' : 'input');
-  input.name = name;
-  input.value = value;
-  input.defaultValue = value;
-  if (multiline) input.rows = 3;
-  wrapper.append(input);
-  return wrapper;
+/* ======================================================================
+   T11 native platform experience layer
+   ======================================================================
+
+   Keyboard-first, macOS-native interaction plumbing shared by every view.
+   Views opt in with data attributes only; the layer installs once per
+   document (installNativeExperience, booted from theme-init.js) and never
+   owns data or authority.
+
+   Focus system (installFocusSystem) — one document-level keydown listener:
+     - Tab ring: every interactive control keeps native tab order; the
+       visible ring is :focus-visible { box-shadow: var(--focus-ring) }
+       (style.css). Keyboard focus is always visible; pointer focus is not.
+     - j / k  move focus forward/backward through the focusable items of
+       the nearest list scope ([data-native-list], ol, ul, .task-list,
+       .graph-viewport, .queue, .attention-list, dialog) with wrap-around.
+       Ignored while typing in inputs.
+     - /      focuses the first filter/search input
+       (input[type='search'] or [data-native-filter]) when one exists.
+     - Escape closes the topmost native overlay (focus returns to the
+       invoking control) or the open inspector dialog (focus returns via
+       the dialog close handler). Never moves focus without input.
+   Segmented controls ([data-native-segmented], built by segmentedControl):
+     ArrowLeft/ArrowRight/Home/End activate the previous/next/first/last
+       enabled segment and focus it; the current segment carries
+       aria-pressed='true' and data-current for styling.
+   Density is INTERNAL since V2-T1: the compact/regular user setting and its
+     persisted storage key are gone. data-density on the root now follows
+     the collapsed rail automatically (sidebarNav.setCollapsed applies
+     'compact' when the rail retracts, 'regular' when it expands), and the
+     --density-gutter token bridge keeps consuming it.
+   Theme (createThemeToggle): the V2-T1 icon toggle — one icon-only button
+     cycling light -> dark -> system, persisted under 'lazyseries-theme'
+     (blocked storage degrades to the session only), glyph sun/moon/monitor,
+     aria-pressed reflecting the resolved dark state, no <select>.
+   Overlays (createOverlayPanel): elevated non-modal panels; Escape or the
+       Close button hides the panel and returns focus to the invoker.
+   V2-T9 pattern adoptions (dependency-free; docs/design/pattern-adoption.md):
+     - Radix FocusScope loop: Tab wraps inside data-native-trap overlays while
+       focus is already within them (non-modal flow preserved outside).
+     - Radix Dialog.Description: every panel/dialog carries aria-describedby.
+     - Radix RovingTabIndex: segmented groups keep exactly one tab stop.
+     - Mantine factory hooks: createCard / createStatusChip / createDataTable
+       add value/defaultValue + on*Change + get/set parity (DESIGN.md §10).
+   Tooltips (installTooltips): status chips and icon-only buttons get a
+   title plus an aria-describedby note in a clipped .native-note node;
+   overlay open() re-describes its subtree for dynamically rendered content.
+   Announcements (announce): one polite [role='status'] region dedicated
+   to the layer (never the application status line). */
+
+const THEME_KEY = 'lazyseries-theme';
+export const THEME_STORAGE_KEY = THEME_KEY;
+export const THEME_MODES = Object.freeze(['light', 'dark', 'system']);
+const FOCUSABLE_TAGS = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'];
+const LIST_SCOPES = '[data-native-list], ol, ul, .task-list, .graph-viewport, .spike-graph-viewport, .architecture-graph-viewport, .execution-graph-viewport, .execution-timeline-viewport, .queue, .attention-list, dialog, .native-overlay';
+const FILTER_INPUT = 'input[type=search], input[data-native-filter]';
+
+function closestMatch(node, selector) {
+  let current = node;
+  while (current) {
+    if (current.matches?.(selector)) return current;
+    current = current.parentNode;
+  }
+  return null;
 }
 
-export function createInspector({ title, content }) {
+// Same walk starting AT the node (component-local; the native layer keeps
+// its own closestMatch with the exclusive-starts-at-parent semantics).
+function closestAncestor(node, selector) {
+  let current = node;
+  while (current) {
+    if (current.nodeType === 1 && current.matches?.(selector)) return current;
+    current = current.parentNode;
+  }
+  return null;
+}
+
+function hasHiddenAncestor(node, boundary) {
+  let current = node?.parentNode;
+  while (current && current !== boundary) {
+    if (current.hidden) return true;
+    current = current.parentNode;
+  }
+  return false;
+}
+
+function isFocusable(node, boundary) {
+  if (!node || node.nodeType !== 1 || node.disabled || node.hidden) return false;
+  if (hasHiddenAncestor(node, boundary)) return false;
+  if (node.tagName === 'A' && !node.hasAttribute('href')) return false;
+  if (FOCUSABLE_TAGS.includes(node.tagName)) return true;
+  const index = Number(node.tabIndex);
+  return Number.isFinite(index) && index >= 0;
+}
+
+function collectFocusables(scope) {
+  const found = [];
+  const visit = node => {
+    for (const child of node.children) {
+      if (isFocusable(child, scope)) found.push(child);
+      visit(child);
+    }
+  };
+  visit(scope);
+  return found;
+}
+
+function isEditable(target) {
+  return Boolean(target) && (FOCUSABLE_TAGS.slice(1, 5).includes(target.tagName) || target.isContentEditable);
+}
+
+const overlayStack = [];
+let overlaySequence = 0;
+
+/* -- V2-T9 pattern adoptions (Radix-style, dependency-free) ----------------
+
+   wirePanelDescription: every overlay panel (overlay / inspector / dock /
+   dialog) carries an aria-describedby note — Radix Dialog's Description
+   contract — rendered as a clipped .native-note INSIDE the panel (it dies
+   with the panel, never leaks ids). The default text states the honest
+   dismissal contract; pass `description: ''` to opt out, or any string to
+   override.
+
+   The focus system's Tab branch adds FocusScope-style loop containment for
+   panels marked data-native-trap='true' (all three overlay factories opt
+   in): Tab from the last focusable wraps to the first (Shift+Tab mirrors).
+   Containment only engages while focus is already INSIDE the panel — these
+   are non-modal overlays, so tabbing from the page keeps its native flow.
+   The <dialog>-based inspector needs no loop: showModal() traps natively.
+
+   activeDescriber: the tooltip describer installed by installTooltips
+   registers itself module-side; every overlay open() re-describes its own
+   subtree so icon-only buttons and chips rendered DYNAMICALLY inside a panel
+   (polling refreshes, drill-down content) get their aria-describedby notes
+   too — the one-shot describe at install time covered only first paint. */
+let descriptionSequence = 0;
+let activeDescriber = null;
+
+function wirePanelDescription(panel, description, fallback) {
+  const text = description ?? fallback;
+  if (!text) return;
+  const note = element('span', 'native-note');
+  note.id = `native-panel-note-${++descriptionSequence}`;
+  note.textContent = text;
+  panel.append(note);
+  panel.setAttribute('aria-describedby', note.id);
+}
+
+const PANEL_DISMISSAL_NOTE = 'Dialog. Press Escape to close; focus returns to the control that opened it.';
+
+function describeOnOpen(panel) {
+  try { activeDescriber?.(panel); } catch { /* describing is best-effort, never fatal */ }
+}
+
+export function createOverlayPanel({ title, content, invoker = null, onClose, description, trapFocus = true } = {}) {
+  const panel = element('aside', 'native-overlay');
+  const heading = element('h2', '', title);
+  const headingId = `native-overlay-${++overlaySequence}`;
+  heading.id = headingId;
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-labelledby', headingId);
+  if (trapFocus) panel.setAttribute('data-native-trap', 'true');
+  panel.dataset.testid = 'native-overlay';
+  const closeControl = button('Close overlay', () => api.close('button'));
+  closeControl.dataset.testid = 'native-overlay-close';
+  const header = element('header', 'cluster spread');
+  header.append(heading, closeControl);
+  panel.append(header, content);
+  wirePanelDescription(panel, description, PANEL_DISMISSAL_NOTE);
+  panel.hidden = true;
+  let trigger = invoker;
+  let open = false;
+  const api = {
+    element: panel,
+    open(nextInvoker = null) {
+      trigger = nextInvoker ?? trigger;
+      open = true;
+      panel.hidden = false;
+      panel.dataset.nativeOverlay = 'open';
+      overlayStack.push(api);
+      describeOnOpen(panel);
+      const focusables = collectFocusables(panel);
+      (focusables.find(node => node !== closeControl) ?? closeControl).focus();
+      return panel;
+    },
+    close(reason = 'api') {
+      if (!open) return false;
+      open = false;
+      panel.hidden = true;
+      panel.removeAttribute('data-native-overlay');
+      const index = overlayStack.indexOf(api);
+      if (index !== -1) overlayStack.splice(index, 1);
+      const connected = trigger ? (trigger.isConnected ?? globalThis.document?.body?.contains?.(trigger) ?? false) : false;
+      const target = connected ? trigger : null;
+      trigger = null;
+      onClose?.(reason);
+      target?.focus();
+      return true;
+    },
+    isOpen: () => open,
+  };
+  return api;
+}
+
+export function installFocusSystem({ root = globalThis.document } = {}) {
+  if (!root?.addEventListener) return { detach() {} };
+  function handler(event) {
+    if (event.defaultPrevented || typeof event.key !== 'string') return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target;
+    if (event.key === 'Escape') {
+      const overlay = overlayStack.at(-1);
+      if (overlay) { event.preventDefault(); overlay.close('escape'); return; }
+      const dialog = root.querySelector?.("dialog[open]");
+      if (dialog && typeof dialog.close === 'function') { event.preventDefault(); dialog.close(); }
+      return;
+    }
+    // V2-T9 Radix FocusScope-style Tab loop: when focus is inside the topmost
+    // overlay that opted into trapping (data-native-trap), Tab wraps within
+    // the panel instead of escaping to the page behind it. Non-modal honesty
+    // is preserved: the loop only engages while focus is already inside the
+    // panel; tabbing from the page keeps the native flow.
+    if (event.key === 'Tab') {
+      const overlay = [...overlayStack].reverse().find(entry => entry.element && (entry.element === target || entry.element.contains?.(target)));
+      if (!overlay || overlay.element.getAttribute('data-native-trap') !== 'true') return;
+      const focusables = collectFocusables(overlay.element);
+      if (focusables.length === 0) return;
+      event.preventDefault();
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const index = focusables.indexOf(target);
+      if (event.shiftKey) (index <= 0 ? last : focusables[Math.max(0, index - 1)]).focus();
+      else (index === -1 || index === focusables.length - 1 ? first : focusables[index + 1]).focus();
+      return;
+    }
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      const group = closestMatch(target, '[data-native-segmented]');
+      if (!group || isEditable(target)) return;
+      const controls = [...group.querySelectorAll('button')].filter(control => !control.disabled);
+      if (controls.length < 2 || target.tagName !== 'BUTTON') return;
+      event.preventDefault();
+      const index = controls.indexOf(target);
+      let next;
+      if (event.key === 'Home') next = controls[0];
+      else if (event.key === 'End') next = controls[controls.length - 1];
+      else {
+        const delta = event.key === 'ArrowRight' ? 1 : -1;
+        const base = index === -1 ? (delta === 1 ? -1 : 0) : index;
+        next = controls[(base + delta + controls.length) % controls.length];
+      }
+      next.focus();
+      next.click();
+      const live = (root.contains?.(group) ? group : null) ?? root.querySelector?.('[data-native-segmented]');
+      const current = live?.querySelector?.("button[aria-pressed='true']");
+      if (current && current !== root.activeElement && !current.disabled) current.focus();
+      // V2-T9 roving tabindex parity (Radix RovingTabIndex): after every
+      // activation exactly one segment — the current one — stays in the tab
+      // ring. segmentedControl() ships this from paint; the layer normalizes
+      // hand-wired [data-native-segmented] groups here on each interaction.
+      for (const control of group.querySelectorAll('button')) {
+        control.tabIndex = control.getAttribute('aria-pressed') === 'true' ? 0 : -1;
+      }
+      return;
+    }
+    if (event.key === 'j' || event.key === 'k') {
+      if (isEditable(target)) return;
+      let scope = null;
+      let items = [];
+      let ancestor = target;
+      while (ancestor && ancestor !== root) {
+        if (ancestor.matches?.(LIST_SCOPES)) {
+          const candidates = collectFocusables(ancestor);
+          if (candidates.length >= 2) { scope = ancestor; items = candidates; break; }
+        }
+        ancestor = ancestor.parentNode;
+      }
+      if (!scope || !items.includes(target)) {
+        // the focused element may be the list surface itself (e.g. the graph
+        // viewport): traversal starts from the surface, before its items
+        if (scope === target && isFocusable(target, root)) items = [target, ...items];
+        else return;
+      }
+      event.preventDefault();
+      const index = items.indexOf(target);
+      const delta = event.key === 'j' ? 1 : -1;
+      items[(index + delta + items.length) % items.length].focus();
+      return;
+    }
+    if (event.key === '/' && !isEditable(target)) {
+      const filter = root.querySelector?.(FILTER_INPUT);
+      if (filter && !filter.disabled) {
+        event.preventDefault();
+        filter.focus();
+        filter.select?.();
+      }
+    }
+  }
+  root.addEventListener('keydown', handler);
+  return { detach() { root.removeEventListener('keydown', handler); } };
+}
+
+export function segmentedControl({ label, options, current, onChange, tooltip = false }) {
+  if (!Array.isArray(options) || options.length === 0) throw new TypeError('Segmented control requires options');
+  // V2-T9 daisyUI one-class-one-meaning: `.lb-segmented` is the canonical
+  // component class; the legacy `.view-switcher` name stays as a pure alias
+  // (both hooks below) so existing view wiring never breaks.
+  const group = element('div', 'lb-segmented view-switcher native-segmented');
+  group.dataset.nativeSegmented = 'true';
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', label);
+  if (tooltip) group.title = label;
+  const known = option => options.some(entry => entry.value === option.value);
+  let active = known({ value: current }) ? current : options[0].value;
+  for (const option of options) {
+    const control = button(option.label, () => set(option.value));
+    control.dataset.segment = option.value;
+    if (option.disabled) control.disabled = true;
+    group.append(control);
+  }
+  function sync() {
+    for (const control of group.querySelectorAll('button')) {
+      const isCurrent = control.dataset.segment === active;
+      control.setAttribute('aria-pressed', String(isCurrent));
+      // V2-T9 roving tabindex (Radix RovingTabIndex): the current segment is
+      // the group's single tab stop; arrows (layer) move within the group —
+      // the same contract createTabs already ships.
+      control.tabIndex = isCurrent ? 0 : -1;
+      if (isCurrent) control.setAttribute('data-current', 'true');
+      else control.removeAttribute('data-current');
+    }
+  }
+  function set(value, { notify = true } = {}) {
+    if (!options.some(option => option.value === value)) return active;
+    if (value !== active) active = value;
+    sync();
+    if (notify) onChange?.(active);
+    return active;
+  }
+  sync();
+  return { element: group, setCurrent: value => set(value, { notify: false }), get: () => active };
+}
+
+// V2-T1 theme icon toggle. One icon-only button cycling light -> dark ->
+// system (the glyph mirrors the current mode: sun/moon/monitor); the stored
+// 'lazyseries-theme' preference wins at creation, changes persist, and a
+// blocked storage degrades to the session only. aria-pressed reflects the
+// RESOLVED dark state (dark or system-resolved-dark = pressed), so the
+// button stays honest without a <select>.
+const themeGlyphs = {
+  light: [['circle', { cx: 12, cy: 12, r: 4 }], ['path', { d: 'M12 2v2 M12 20v2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M2 12h2 M20 12h2 M4.9 19.1l1.4-1.4 M17.7 6.3l1.4-1.4' }]],
+  dark: [['path', { d: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z' }]],
+  system: [['path', { d: 'M2 13h20' }], ['rect', { x: 5, y: 3, width: 14, height: 10, rx: 2 }], ['path', { d: 'M8 21h8 M12 17v4' }]],
+};
+
+export function createThemeToggle({ storage = globalThis.localStorage, media = null, onAnnounce } = {}) {
+  const systemQuery = media ?? (() => { try { return globalThis.matchMedia?.('(prefers-color-scheme: dark)') ?? null; } catch { return null; } })();
+  let mode = 'dark'; // the T20-RF dark-first default when nothing valid is stored
+  try {
+    const stored = storage?.getItem?.(THEME_KEY);
+    if (THEME_MODES.includes(stored)) mode = stored;
+  } catch { /* storage unavailable (blocked/private mode): session-only */ }
+  const control = button('', () => set(THEME_MODES[(THEME_MODES.indexOf(mode) + 1) % THEME_MODES.length]));
+  control.className = 'lb-theme-toggle';
+  control.dataset.testid = 'shell-theme-toggle';
+  const resolved = () => (mode === 'system' ? (systemQuery ? (systemQuery.matches ? 'dark' : 'light') : 'dark') : mode);
+  function paint() {
+    control.dataset.mode = mode;
+    control.replaceChildren(svgIcon(themeGlyphs[mode]));
+    control.setAttribute('aria-pressed', String(resolved() === 'dark'));
+    const next = THEME_MODES[(THEME_MODES.indexOf(mode) + 1) % THEME_MODES.length];
+    control.setAttribute('aria-label', `Theme: ${mode}`);
+    control.title = `Theme: ${mode} — switch to ${next}`;
+    const root = control.ownerDocument ?? globalThis.document;
+    try { root?.documentElement?.setAttribute?.('data-theme', resolved()); } catch { /* detached root */ }
+  }
+  function set(next, { persist = true } = {}) {
+    if (!THEME_MODES.includes(next)) return mode;
+    mode = next;
+    if (persist) { try { storage?.setItem?.(THEME_KEY, mode); } catch { /* session-only */ } }
+    paint();
+    onAnnounce?.(`Theme set to ${mode}`);
+    return mode;
+  }
+  systemQuery?.addEventListener?.('change', paint);
+  paint();
+  return { element: control, get: () => mode, set, resolved };
+}
+
+export function announce(message, { root = globalThis.document } = {}) {
+  if (!root?.body) return null;
+  let region = root.body.querySelector('[data-native-announcer]');
+  if (!region) {
+    region = element('div', 'native-announcer');
+    region.dataset.nativeAnnouncer = 'true';
+    region.setAttribute('role', 'status');
+    region.setAttribute('aria-live', 'polite');
+    root.body.append(region);
+  }
+  region.textContent = '';
+  region.textContent = String(message);
+  return region;
+}
+
+let tooltipNoteSequence = 0;
+
+export function installTooltips({ root = globalThis.document } = {}) {
+  function describe(scope) {
+    if (!scope?.querySelectorAll) return 0;
+    let added = 0;
+    const attachNote = (node, text) => {
+      const note = element('span', 'native-note');
+      note.id = `native-note-${++tooltipNoteSequence}`;
+      note.textContent = text;
+      root.body?.append(note);
+      node.setAttribute('aria-describedby', note.id);
+      if (!node.getAttribute('title')) node.setAttribute('title', text);
+      node.setAttribute('data-native-noted', 'true');
+      node.removeAttribute('data-native-unlabeled');
+      added += 1;
+    };
+    const chips = [...scope.querySelectorAll('.status')];
+    const iconButtons = [...scope.querySelectorAll('button')].filter(control => {
+      // icon-only: no word characters in the label (empty or pure glyphs)
+      const text = String(control.textContent).trim();
+      return !/[\w]/.test(text);
+    });
+    for (const node of [...chips, ...iconButtons]) {
+      if (node.hasAttribute('aria-describedby') || node.hasAttribute('data-native-noted')) continue;
+      if (chips.includes(node)) {
+        const label = String(node.textContent).trim();
+        if (!label) continue;
+        attachNote(node, `Status ${node.dataset.state || 'neutral'}: ${label}`);
+        continue;
+      }
+      // V2-T9 coverage parity: an icon-only button is described from whichever
+      // naming source it carries (aria-label first, then title, then an
+      // aria-labelledby target). An icon-only button with NO accessible name
+      // is flagged data-native-unlabeled instead of skipped silently — the
+      // layer never invents text, but the gap stays auditable.
+      const labelledBy = node.getAttribute('aria-labelledby');
+      const named = node.getAttribute('aria-label')
+        || node.title
+        || (labelledBy ? labelledBy.split(/\s+/).map(id => root.getElementById?.(id)?.textContent ?? '').join(' ').trim() : '');
+      if (named) attachNote(node, named);
+      else node.setAttribute('data-native-unlabeled', 'true');
+    }
+    return added;
+  }
+  activeDescriber = describe; // V2-T9: overlay open() re-describes its subtree through this
+  return { describe };
+}
+
+export function installNativeExperience({ root = globalThis.document, storage = globalThis.localStorage, mount = null } = {}) {
+  if (!root?.documentElement || root.documentElement.dataset.nativeExperience === 'true') return null;
+  root.documentElement.dataset.nativeExperience = 'true';
+  const report = message => announce(message, { root });
+  report(''); // the polite region exists from first paint, before any message
+  // V2-T1: no density control mounts here — compact/regular stopped being a
+  // user setting; data-density follows the collapsed rail (sidebarNav). The
+  // installer still seeds the internal token state when a page carries none
+  // (real pages resolve it pre-paint in theme-init.js).
+  try { if (!root.documentElement.hasAttribute('data-density')) root.documentElement.setAttribute('data-density', 'regular'); } catch { /* detached root */ }
+  const focus = installFocusSystem({ root });
+  const tooltips = installTooltips({ root });
+  tooltips.describe(root.body);
+  return {
+    focus, tooltips,
+    announce: report,
+    overlay: createOverlayPanel,
+    detach() { focus.detach(); root.documentElement.removeAttribute('data-native-experience'); },
+  };
+}
+
+export function createInspector({ title, content, description } = {}) {
   const dialog = element('dialog', 'stack');
   dialog.dataset.testid = 'task-inspector';
   const heading = element('h2', '', title);
   const titleId = `inspector-${++createInspector.sequence}`;
   heading.id = titleId;
   dialog.setAttribute('aria-labelledby', titleId);
+  // V2-T9: aria-describedby on the dialog itself (Radix Dialog.Description);
+  // the modal <dialog> already traps Tab natively through showModal().
+  wirePanelDescription(dialog, description, PANEL_DISMISSAL_NOTE);
   const header = element('header', 'cluster spread');
   const close = button('Close inspector', () => dialog.close());
   header.append(heading, close);
@@ -100,11 +575,882 @@ export function createInspector({ title, content }) {
   dialog.addEventListener('close', () => {
     let target = trigger;
     if (!target?.isConnected && returnIdentity?.taskId) {
-      const view = returnIdentity.view ? `[data-view="${CSS.escape(returnIdentity.view)}"]` : '';
-      target = document.querySelector(`${view}[data-task-id="${CSS.escape(returnIdentity.taskId)}"]`);
+      const view = returnIdentity.view ? `[data-view="${escapeSelector(returnIdentity.view)}"]` : '';
+      target = document.querySelector(`${view}[data-task-id="${escapeSelector(returnIdentity.taskId)}"]`);
     }
     target?.focus();
   });
   return { element: dialog, open(invoker) { trigger = invoker; returnIdentity = { taskId: invoker?.dataset.taskId, view: invoker?.dataset.view }; dialog.showModal(); close.focus(); } };
 }
 createInspector.sequence = 0;
+
+/* ======================================================================
+   T12 shared component library on tokens v2
+
+   The primitives every later view redesign (T14–T19) composes from.
+   Same contract as the originals: text-only DOM, no fetch, no authority;
+   dynamic strings go through textContent; the caller owns data. Every
+   visual decision lives in style.css/views.css on the v2 token names —
+   components.mjs never carries a color, size or duration.
+
+     card            header/body/footer slots, density-driven padding,
+                     data-elevation resting|raised
+     dataTable       sticky header, hairline zebra-free rows, tabular
+                     numerals on data-numeric columns
+     rowList         hairline list rows (title + meta + trailing slot)
+     formField       label + control + help + inline error slots with
+                     aria-invalid / aria-describedby wiring (field keeps
+                     the original two-slot signature on top of it)
+     destructiveAction  danger styling plus a bounded undo affordance
+                     (injectable clock; commits immediately, undo window
+                     reverts via onUndo, expiry restores the rest state)
+     graphNode       state-driven size/border node card, ellipsized title
+                     that keeps the full text in the title attribute,
+                     selected/blocked/stale treatments
+     timelineTrack / timelineChart / assignSublanes
+                     swimlane track that is overlap-honest: overlapping
+                     intervals stack into sublanes instead of painting
+                     over each other (adjacent intervals share a lane)
+     inspectorPanel  header/content/footer side panel, elevation-2
+                     overlay, Escape + focus-return through the T11
+                     overlay stack
+     skeleton        static loading placeholder (aria-busy container,
+                     aria-hidden bars; no shimmer loop by design rule)
+     emptyState      icon + title + optional detail line + action
+     metricTile      tabular value + label + coverage chip, hollow
+                     unavailable variant
+   ====================================================================== */
+
+export const STATUS_STATES = Object.freeze(Object.keys(glyphs));
+
+function appendSlot(parent, slot, className) {
+  if (slot == null) return;
+  const holder = element('div', className);
+  if (Array.isArray(slot)) holder.append(...slot.filter(Boolean));
+  else holder.append(slot);
+  parent.append(holder);
+}
+
+export function card({ title = null, meta = null, body = null, footer = null, elevation = 'resting', testid } = {}) {
+  if (!['resting', 'raised'].includes(elevation)) throw new TypeError('Card elevation must be resting or raised');
+  const node = element('article', 'lb-card');
+  node.dataset.elevation = elevation;
+  if (testid) node.dataset.testid = testid;
+  if (title != null || meta != null) {
+    const header = element('header', 'lb-card-head');
+    if (title != null) header.append(element('h3', 'lb-card-title', title));
+    if (meta != null) header.append(element('p', 'lb-card-meta meta', meta));
+    node.append(header);
+  }
+  appendSlot(node, body, 'lb-card-body');
+  appendSlot(node, footer, 'lb-card-foot');
+  return node;
+}
+
+export function dataTable({ columns, rows = [], caption = '', testid } = {}) {
+  if (!Array.isArray(columns) || columns.length === 0) throw new TypeError('Data table requires columns');
+  const scroll = element('div', 'lb-table-scroll');
+  const table = element('table', 'lb-table');
+  if (testid) table.dataset.testid = testid;
+  if (caption) table.append(element('caption', 'lb-table-caption meta', caption));
+  const headRow = element('tr');
+  const head = element('thead');
+  for (const column of columns) {
+    const label = column.label ?? String(column.key ?? '');
+    const cell = element('th', column.numeric ? 'lb-num' : '', label);
+    cell.setAttribute('scope', 'col');
+    if (column.numeric) cell.dataset.numeric = 'true';
+    headRow.append(cell);
+  }
+  head.append(headRow);
+  const body = element('tbody');
+  for (const row of rows) {
+    const rowNode = element('tr');
+    const cells = Array.isArray(row) ? row : columns.map(column => row?.[column.key]);
+    cells.forEach((cell, index) => {
+      const column = columns[index];
+      const cellNode = element('td', column.numeric ? 'lb-num' : '');
+      if (column.numeric) cellNode.dataset.numeric = 'true';
+      cellNode.append(cell?.nodeType ? cell : document.createTextNode(String(cell ?? '')));
+      rowNode.append(cellNode);
+    });
+    body.append(rowNode);
+  }
+  table.append(head, body);
+  scroll.append(table);
+  return scroll;
+}
+
+export function rowList({ items = [], testid } = {}) {
+  const list = element('ul', 'lb-rows');
+  if (testid) list.dataset.testid = testid;
+  for (const item of items) {
+    const row = element('li', 'lb-row');
+    const main = element('span', 'lb-row-main');
+    main.append(element('span', 'lb-row-title', item?.title ?? ''));
+    if (item?.meta) main.append(element('span', 'lb-row-meta meta', item.meta));
+    row.append(main);
+    if (item?.trailing) row.append(item.trailing.nodeType ? item.trailing : statusChip({ state: item.trailing.state ?? 'neutral', label: item.trailing.label ?? '' }));
+    list.append(row);
+  }
+  return list;
+}
+
+let fieldSequence = 0;
+
+export function formField({ label, name, value = '', multiline = false, help = '', error = '', required = false, testid, control = null } = {}) {
+  const wrapper = element('label', 'lb-field');
+  const labelText = element('span', 'lb-field-label', label);
+  if (required) labelText.dataset.required = 'true';
+  wrapper.append(labelText);
+  const input = control ?? element(multiline ? 'textarea' : 'input');
+  input.name = name;
+  input.value = value;
+  input.defaultValue = value;
+  if (multiline) input.rows = 3;
+  if (required) input.required = true;
+  wrapper.append(input);
+  const described = [];
+  if (help) {
+    const id = `lb-field-help-${++fieldSequence}`;
+    const node = element('span', 'lb-field-help meta', help);
+    node.id = id;
+    wrapper.append(node);
+    described.push(id);
+  }
+  if (error) {
+    const id = `lb-field-error-${++fieldSequence}`;
+    const node = element('span', 'lb-field-error', error);
+    node.id = id;
+    node.dataset.testid = 'field-error';
+    wrapper.append(node);
+    described.push(id);
+    wrapper.dataset.invalid = 'true';
+    input.setAttribute('aria-invalid', 'true');
+  }
+  if (described.length) input.setAttribute('aria-describedby', described.join(' '));
+  if (testid) wrapper.dataset.testid = testid;
+  return wrapper;
+}
+
+export function field({ label, name, value = '', multiline = false }) {
+  return formField({ label, name, value, multiline });
+}
+
+export function destructiveAction({ label, onCommit = null, onUndo = null, undoLabel = 'Undo', windowMs = 8000, schedule = null, cancel = null, onAnnounce = null } = {}) {
+  const scheduleFn = schedule ?? ((task, ms) => setTimeout(task, ms));
+  const cancelFn = cancel ?? (handle => clearTimeout(handle));
+  const control = button(label, null, {});
+  control.classList.add('lb-destructive');
+  control.dataset.testid = 'destructive-action';
+  let mode = 'rest';
+  let expiry = null;
+  function rest() {
+    if (expiry != null) cancelFn(expiry);
+    expiry = null;
+    mode = 'rest';
+    control.removeAttribute('data-undo');
+    control.textContent = label;
+  }
+  control.addEventListener('click', () => {
+    if (mode === 'undo') {
+      rest();
+      onUndo?.();
+      onAnnounce?.(`${label} undone`);
+      return;
+    }
+    onCommit?.();
+    if (typeof onUndo !== 'function') return;
+    mode = 'undo';
+    control.dataset.undo = 'true';
+    control.textContent = undoLabel;
+    expiry = scheduleFn(rest, windowMs);
+    onAnnounce?.(`${label} applied — ${undoLabel} available`);
+  });
+  return control;
+}
+
+export function graphNode({ id, title, state = 'neutral', detail = '', selected = false, badge = null, onSelect } = {}) {
+  if (!Object.hasOwn(glyphs, state)) throw new TypeError('Unknown status role');
+  const control = button('', onSelect);
+  control.className = 'lb-graph-node';
+  control.dataset.testid = 'graph-node';
+  control.dataset.nodeId = id;
+  control.dataset.state = state;
+  control.setAttribute('aria-pressed', String(selected));
+  const heading = element('span', 'lb-graph-node-title', title);
+  heading.title = title; // the full label stays available when the node ellipsizes
+  const head = element('span', 'lb-graph-node-head');
+  head.append(heading);
+  if (badge) head.append(badge.nodeType ? badge : statusChip({ state: badge.state ?? state, label: badge.label ?? '' }));
+  control.append(head);
+  if (detail) control.append(element('span', 'lb-graph-node-detail meta', detail));
+  return control;
+}
+
+export function assignSublanes(intervals) {
+  const items = (Array.isArray(intervals) ? intervals : []).map(interval => ({
+    start: Number(interval?.start), end: Number(interval?.end),
+    label: interval?.label ?? '', state: interval?.state ?? 'neutral', lane: 0,
+  }));
+  for (const item of items) {
+    if (!Number.isFinite(item.start) || !Number.isFinite(item.end) || item.end < item.start) throw new TypeError('Timeline intervals need numeric start <= end');
+  }
+  const sorted = [...items].sort((left, right) => left.start - right.start || left.end - right.end);
+  const laneEnds = [];
+  for (const item of sorted) {
+    let lane = laneEnds.findIndex(end => end <= item.start);
+    if (lane === -1) { lane = laneEnds.length; laneEnds.push(item.end); }
+    else laneEnds[lane] = item.end;
+    item.lane = lane;
+  }
+  return { intervals: sorted, lanes: Math.max(1, laneEnds.length) };
+}
+
+export function timelineTrack({ label, intervals = [], testid } = {}) {
+  const laid = assignSublanes(intervals);
+  const row = element('div', 'lb-lane');
+  if (testid) row.dataset.testid = testid;
+  row.append(element('span', 'lb-lane-label meta', label));
+  const track = element('div', 'lb-track');
+  track.dataset.lanes = String(laid.lanes);
+  track.setAttribute('role', 'img');
+  track.setAttribute('aria-label', `${label}: ${laid.intervals.length} observed interval${laid.intervals.length === 1 ? '' : 's'}${laid.lanes > 1 ? ', overlapping intervals stacked' : ''}`);
+  for (const item of laid.intervals) {
+    const segment = element('span', 'lb-interval', item.label);
+    segment.dataset.state = item.state;
+    segment.dataset.lane = String(item.lane);
+    if (item.label) segment.title = item.label;
+    // Percent positions on the shared axis; the lane index stacks overlaps
+    // into separate rows instead of letting bars paint over each other.
+    segment.setAttribute('style', `--lb-lane-index: ${item.lane}; inset-inline-start: ${item.start}%; inline-size: ${Math.max(item.end - item.start, 2)}%;`);
+    track.append(segment);
+  }
+  row.append(track);
+  return row;
+}
+
+export function timelineChart({ tracks = [], testid } = {}) {
+  const chart = element('div', 'lb-timeline');
+  if (testid) chart.dataset.testid = testid;
+  const axis = element('div', 'lb-axis');
+  axis.append(element('span', 'lb-axis-label meta', ''));
+  const ticks = element('span', 'lb-axis-ticks');
+  for (const tick of [0, 25, 50, 75, 100]) {
+    const mark = element('span', 'lb-axis-tick meta', `${tick}%`);
+    mark.dataset.numeric = 'true';
+    ticks.append(mark);
+  }
+  axis.append(ticks);
+  chart.append(axis);
+  for (const track of tracks) chart.append(timelineTrack(track));
+  return chart;
+}
+
+let inspectorPanelSequence = 0;
+
+export function inspectorPanel({ title, content, footer = null, onClose, description, trapFocus = true } = {}) {
+  const panel = element('aside', 'lb-inspector');
+  panel.dataset.testid = 'inspector-panel';
+  panel.hidden = true;
+  const heading = element('h2', '', title);
+  const headingId = `lb-inspector-${++inspectorPanelSequence}`;
+  heading.id = headingId;
+  panel.setAttribute('role', 'region');
+  panel.setAttribute('aria-labelledby', headingId);
+  if (trapFocus) panel.setAttribute('data-native-trap', 'true');
+  wirePanelDescription(panel, description, PANEL_DISMISSAL_NOTE);
+  const closeControl = button('Close panel', () => api.close('button'));
+  closeControl.dataset.testid = 'inspector-panel-close';
+  const header = element('header', 'cluster spread');
+  header.append(heading, closeControl);
+  const body = element('div', 'lb-inspector-body');
+  if (content) body.append(content);
+  body.tabIndex = 0;
+  body.setAttribute('role', 'region');
+  body.setAttribute('aria-label', `${title} content`);
+  panel.append(header, body);
+  if (footer != null) {
+    const foot = element('footer', 'lb-inspector-foot');
+    if (Array.isArray(footer)) foot.append(...footer.filter(Boolean));
+    else foot.append(footer);
+    panel.append(foot);
+  }
+  let trigger = null;
+  let open = false;
+  const api = {
+    element: panel,
+    open(invoker = null) {
+      if (invoker) trigger = invoker;
+      open = true;
+      panel.hidden = false;
+      panel.dataset.open = 'true';
+      overlayStack.push(api);
+      describeOnOpen(panel); // V2-T9: dynamic icon-only content inside gets described
+      closeControl.focus();
+      return panel;
+    },
+    close(reason = 'api') {
+      if (!open) return false;
+      open = false;
+      panel.hidden = true;
+      panel.removeAttribute('data-open');
+      const index = overlayStack.indexOf(api);
+      if (index !== -1) overlayStack.splice(index, 1);
+      const connected = trigger ? (trigger.isConnected ?? globalThis.document?.body?.contains?.(trigger) ?? false) : false;
+      const target = connected ? trigger : null;
+      trigger = null;
+      onClose?.(reason);
+      target?.focus();
+      return true;
+    },
+    isOpen: () => open,
+  };
+  return api;
+}
+
+export function skeleton({ lines = 3, testid, label = 'Loading' } = {}) {
+  const count = Math.max(1, Number.isFinite(lines) ? lines : 3);
+  const node = element('div', 'lb-skeleton');
+  node.setAttribute('aria-busy', 'true');
+  node.setAttribute('aria-label', label);
+  if (testid) node.dataset.testid = testid;
+  for (let index = 0; index < count; index += 1) {
+    const bar = element('span', 'lb-skeleton-line');
+    bar.setAttribute('aria-hidden', 'true');
+    bar.dataset.line = String(index);
+    node.append(bar);
+  }
+  return node;
+}
+
+const emptyGlyphs = {
+  inbox: [
+    ['path', { d: 'M22 12h-6l-2 3h-4l-2-3H2' }],
+    ['path', { d: 'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z' }],
+  ],
+  search: [
+    ['circle', { cx: 11, cy: 11, r: 8 }],
+    ['path', { d: 'm21 21-4.3-4.3' }],
+  ],
+  list: [
+    ['path', { d: 'M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01' }],
+  ],
+};
+
+export function emptyState({ icon = 'inbox', title, detail = '', action = null, testid } = {}) {
+  if (!Object.hasOwn(emptyGlyphs, icon)) throw new TypeError('Unknown empty-state icon');
+  const node = element('div', 'lb-empty');
+  if (testid) node.dataset.testid = testid;
+  node.append(svgIcon(emptyGlyphs[icon]));
+  node.append(element('h3', 'lb-empty-title', title));
+  if (detail) node.append(element('p', 'lb-empty-detail meta', detail));
+  if (action != null) {
+    // V2-T9 clarity: an empty-state action MUST say what it does — the vague
+    // one-word fallback is gone. Node actions pass through; config actions
+    // without a label are a caller error, not a mystery button.
+    let control;
+    if (action.nodeType) control = action;
+    else {
+      if (!action.label) throw new TypeError('Empty-state action requires a label');
+      control = button(action.label, action.onClick ?? null, { primary: action.primary ?? false });
+    }
+    control.classList.add('lb-empty-action');
+    node.append(control);
+  }
+  return node;
+}
+
+export function metricTile({ value, label, coverage = null, unavailable = false, testid } = {}) {
+  const node = element('div', 'lb-metric');
+  if (testid) node.dataset.testid = testid;
+  if (unavailable) node.dataset.unavailable = 'true';
+  const figure = element('span', 'lb-metric-value', unavailable ? '—' : String(value));
+  figure.dataset.numeric = 'true';
+  node.append(figure, element('span', 'lb-metric-label meta', label));
+  if (coverage != null) node.append(coverage.nodeType ? coverage : statusChip({ state: coverage.state ?? 'neutral', label: coverage.label ?? '' }));
+  return node;
+}
+
+/* -- V2-T9 factory hooks (Mantine use-* conventions, dependency-free) -------
+
+   The one-shot renderers above stay the static contract. For the three
+   most-composed components (card, statusChip, dataTable) the create*
+   factories add the controlled/uncontrolled parity Mantine's hooks are known
+   for, in vanilla form:
+
+     value prop      the owner-managed initial value (`state`, `selected`,
+                     `rows`) — the owner keeps updating it through api.set
+     defaultValue    the uncontrolled initial (`defaultState`,
+                     `defaultSelected`, `defaultRows`) — the component owns
+                     the state from there on
+     on*Change       notified on every state change the FACTORY applies
+                     (clicks/keys); programmatic set(value, { notify: false })
+                     is silent, exactly like setCurrent on segmentedControl
+     api             { element, get(), set(value, { notify }) } — one handle,
+                     DOM kept in sync, no re-render protocol needed
+
+   Full conventions in ui/DESIGN.md §10 (additive). */
+
+export function createStatusChip({ state, defaultState, label = '', defaultLabel, onStateChange } = {}) {
+  let current = state ?? defaultState ?? 'neutral';
+  let currentLabel = label ?? defaultLabel ?? '';
+  const chip = statusChip({ state: current, label: currentLabel });
+  function set(nextState, nextLabel, { notify = true } = {}) {
+    const requested = typeof nextState === 'object' && nextState !== null ? nextState : { state: nextState, label: nextLabel };
+    if (!Object.hasOwn(glyphs, requested.state ?? current)) throw new TypeError('Unknown status role');
+    current = requested.state ?? current;
+    if (requested.label !== undefined && requested.label !== null) currentLabel = requested.label;
+    chip.dataset.state = current;
+    chip.replaceChildren(svgIcon([glyphs[current]]), document.createTextNode(currentLabel));
+    if (notify) onStateChange?.(current, currentLabel);
+    return current;
+  }
+  return { element: chip, get: () => current, getLabel: () => currentLabel, set };
+}
+
+export function createCard({ selected, defaultSelected = false, onSelect, ...slots } = {}) {
+  const node = card(slots);
+  let current = Boolean(selected ?? defaultSelected);
+  let controlled = selected !== undefined;
+  function apply(next, { notify = true } = {}) {
+    current = Boolean(next);
+    if (onSelect) {
+      node.dataset.selected = String(current);
+      node.setAttribute('aria-pressed', String(current));
+    }
+    if (notify) onSelect?.(current);
+    return current;
+  }
+  if (onSelect) {
+    // the selection affordances exist only on interactive cards — a display
+    // card is plain markup (no aria-pressed on a non-control)
+    node.dataset.interactive = 'true';
+    node.dataset.selected = String(current);
+    node.setAttribute('aria-pressed', String(current));
+    node.tabIndex = 0;
+    const toggle = () => {
+      // controlled cards (created with `selected`) only notify — the owner
+      // re-applies the new value through set(); uncontrolled cards toggle
+      // themselves (the defaultSelected route)
+      if (controlled) { onSelect?.(!current); return; }
+      apply(!current);
+    };
+    node.addEventListener('click', toggle);
+    node.addEventListener('keydown', event => {
+      if (event.key !== ' ' && event.key !== 'Enter') return;
+      event.preventDefault?.();
+      toggle();
+    });
+  }
+  return { element: node, get: () => current, set: (next, options) => apply(next, options) };
+}
+
+export function createDataTable({ columns, rows, defaultRows, caption, testid } = {}) {
+  let current = rows ?? defaultRows ?? [];
+  const scroll = dataTable({ columns, rows: current, caption, testid });
+  function setRows(nextRows, { notify = true } = {}) {
+    current = Array.isArray(nextRows) ? nextRows : [];
+    const body = scroll.querySelector('tbody');
+    const freshBody = dataTable({ columns, rows: current }).querySelector('tbody');
+    body.parentNode.insertBefore(freshBody, body); // head + caption survive in place
+    body.remove();
+    if (notify) api.onRowsChange?.(current);
+    return current;
+  }
+  const api = { element: scroll, get: () => current, setRows, onRowsChange: null };
+  return api;
+}
+
+/* -- App shell (T12 addendum): sidebar rail, tabbed workspace, dock ------- */
+
+// Destination glyphs (Lucide geometry, ISC) for the icon rail — the T20-RF
+// reference set: grid, box, list-checks, git-branch-activity, git-branch,
+// file-check, flask.
+const destinationGlyphs = {
+  overview: [['rect', { x: 3, y: 3, width: 7, height: 7, rx: 1.5 }], ['rect', { x: 14, y: 3, width: 7, height: 7, rx: 1.5 }], ['rect', { x: 3, y: 14, width: 7, height: 7, rx: 1.5 }], ['rect', { x: 14, y: 14, width: 7, height: 7, rx: 1.5 }]],
+  project: [['path', { d: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z' }], ['path', { d: 'M3.3 7 12 12l8.7-5 M12 22V12' }]],
+  plans: [['path', { d: 'M3 5h12 M3 12h12 M3 19h9 M17 15l2 2 4-4' }]],
+  execution: [['circle', { cx: 5, cy: 4, r: 2.4 }], ['circle', { cx: 5, cy: 20, r: 2.4 }], ['path', { d: 'M5 6.4v2.6' }], ['path', { d: 'M5 9l2.5 2.5L10 6l3 9 3-7 2 4.5h3' }], ['path', { d: 'M5 15v2.6' }]],
+  git: [['circle', { cx: 6, cy: 6, r: 3 }], ['circle', { cx: 6, cy: 18, r: 3 }], ['circle', { cx: 18, cy: 12, r: 3 }], ['path', { d: 'M6 9v6 M9 18h3a3 3 0 0 0 3-3V9' }]],
+  evidence: [['path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' }], ['path', { d: 'M14 2v6h6 M9 15l2 2 4-4' }]],
+  research: [['path', { d: 'M10 2v7.31 M14 9.3V2' }], ['path', { d: 'M8.5 2h7' }], ['path', { d: 'M14 9.3l4.7 8.66A2 2 0 0 1 17 21H7a2 2 0 0 1-1.7-3.04L10 9.3' }], ['path', { d: 'M6.9 15h10.2' }]],
+};
+
+// Common action glyphs (Lucide chevrons + panel geometry, ISC): the rail
+// collapse control swaps between the chevrons instead of text arrows; the
+// V2-T1 top-bar dock trigger uses the panel glyph.
+const actionGlyphs = {
+  'collapse-left': [['path', { d: 'm15 18-6-6 6-6' }]],
+  'collapse-right': [['path', { d: 'm9 18 6-6-6-6' }]],
+  dock: [['rect', { x: 3, y: 4, width: 18, height: 16, rx: 2 }], ['path', { d: 'M15 4v16' }]],
+};
+
+export const SIDEBAR_ACTION_ICONS = Object.freeze(Object.keys(actionGlyphs));
+
+// Draws one of the sidebar action glyphs (the « / » collapse chevrons) — the
+// V2-T1 top bar builds its collapse control from the same geometry the rail
+// uses, so both homes always agree.
+export function sidebarActionIcon(name) {
+  if (!Object.hasOwn(actionGlyphs, name)) throw new TypeError('Unknown sidebar action icon');
+  return svgIcon(actionGlyphs[name]);
+}
+
+export const SIDEBAR_DESTINATION_ICONS = Object.freeze(Object.keys(destinationGlyphs));
+
+// T20a additive extensions (the flat `destinations` contract is unchanged):
+//   groups            [{ label, destinations: [...] }] renders small section
+//                     headers (uppercase via CSS) over the same destination
+//                     rows, inside the single j/k-traversable list
+//   identityPosition  'footer' moves the product identity block into the
+//                     footer region (the shell's identity footer)
+//   destination.count T20-RF count badge: a finite whole number > 0 renders
+//                     a pill badge after the label (fed by the caller's
+//                     projection); 0, absent or malformed never renders a
+//                     badge — counts are never fabricated.
+// Collapsing to the icon rail also gives every destination a native title
+// tooltip, following the T11 clipped-note contract (visible label when
+// expanded, title + aria-label when the label is hidden).
+// V2-T1: collapseControl accepts an EXTERNALLY built button (the shell top
+// bar relocates the control there); the rail then never mounts its own, and
+// setCollapsed keeps the external control's aria-expanded/label/glyph in
+// step. Collapsing also drives the root data-density: compact follows the
+// retracted rail automatically (internal token state, no user setting).
+export function sidebarNav({ product = 'LazySeries', runtime = 'LazyBuddy', destinations = [], groups = null, identityPosition = 'header', tree = null, footer = null, current = null, collapsed = false, collapseControl = null, onNavigate = null, onCollapse = null, testid } = {}) {
+  const rail = element('aside', 'lb-sidebar');
+  rail.dataset.testid = testid ?? 'sidebar-nav';
+  const ownsCollapse = collapseControl == null;
+  const railCollapse = ownsCollapse ? button('', null) : collapseControl;
+  if (ownsCollapse) railCollapse.className = 'lb-sidebar-collapse';
+  railCollapse.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  railCollapse.setAttribute('aria-expanded', String(!collapsed));
+  railCollapse.append(svgIcon(actionGlyphs[collapsed ? 'collapse-right' : 'collapse-left']));
+  const identity = element(identityPosition === 'footer' ? 'div' : 'header', 'lb-sidebar-identity');
+  const badge = element('span', 'lb-sidebar-product', product);
+  badge.dataset.product = runtime; // the per-product accent wash, identity only
+  identity.append(badge, element('span', 'lb-sidebar-runtime meta', runtime));
+  const list = element('ul', 'lb-sidebar-destinations');
+  list.dataset.nativeList = 'true'; // j/k traversal through the T11 focus layer
+  // T20-RF badge honesty: only a finite whole number > 0 paints a badge, and
+  // the accessible name carries the count so it is never color-only.
+  const paintCount = (control, count) => {
+    const whole = Number.isFinite(count) && Number.isInteger(count) && count > 0 ? count : 0;
+    const label = control.querySelector('.lb-sidebar-destination-label')?.textContent ?? control.dataset.destination;
+    control.querySelector('.lb-sidebar-badge')?.remove();
+    if (whole > 0) {
+      const countBadge = element('span', 'lb-sidebar-badge', String(whole));
+      countBadge.dataset.count = String(whole);
+      control.append(countBadge);
+    }
+    if (whole > 0) control.setAttribute('aria-label', `${label} (${whole})`);
+    else control.setAttribute('aria-label', label);
+    // the collapsed rail leans on the native title: keep it in step
+    if (control.getAttribute('title') && rail.dataset.collapsed === 'true') control.setAttribute('title', control.getAttribute('aria-label'));
+  };
+  const destinationItem = destination => {
+    const item = element('li', '');
+    const control = button('', () => { api.navigate(destination.id); onNavigate?.(destination.id); });
+    control.className = 'lb-sidebar-destination';
+    control.dataset.destination = destination.id;
+    const icon = destinationGlyphs[destination.icon ?? destination.id] ?? destinationGlyphs.overview;
+    control.append(svgIcon(icon));
+    control.append(element('span', 'lb-sidebar-destination-label', destination.label ?? destination.id));
+    if (destination.id === current) control.setAttribute('aria-current', 'page');
+    if (destination.count != null) paintCount(control, Number(destination.count));
+    else control.setAttribute('aria-label', destination.label ?? destination.id);
+    item.append(control);
+    return item;
+  };
+  if (Array.isArray(groups) && groups.length > 0) {
+    for (const group of groups) {
+      const section = element('li', 'lb-sidebar-group');
+      section.append(element('span', 'lb-sidebar-group-label', group.label ?? ''));
+      const members = element('ul', 'lb-sidebar-group-items');
+      members.setAttribute('role', 'group');
+      if (group.label) members.setAttribute('aria-label', group.label);
+      for (const destination of group.destinations ?? []) members.append(destinationItem(destination));
+      section.append(members);
+      list.append(section);
+    }
+  } else {
+    for (const destination of destinations) list.append(destinationItem(destination));
+  }
+  if (identityPosition === 'footer') {
+    // the shell's footer-identity rail carries no in-rail collapse control
+    // when the owner relocated it (V2-T1 top bar); a standalone footer rail
+    // without an external control keeps its own affordance
+    if (ownsCollapse) rail.append(railCollapse);
+    rail.append(list);
+  } else rail.append(railCollapse, identity, list);
+  if (tree != null) {
+    const treeRegion = element('nav', 'lb-sidebar-tree');
+    treeRegion.setAttribute('aria-label', 'Context objects');
+    treeRegion.append(tree);
+    rail.append(treeRegion);
+  }
+  const footerRegion = element('footer', 'lb-sidebar-footer cluster');
+  if (identityPosition === 'footer') footerRegion.append(identity);
+  if (footer != null) (Array.isArray(footer) ? footer : [footer]).forEach(node => footerRegion.append(node));
+  rail.append(footerRegion);
+  const api = {
+    element: rail,
+    navigate(id) {
+      for (const control of list.querySelectorAll('.lb-sidebar-destination')) {
+        if (control.dataset.destination === id) control.setAttribute('aria-current', 'page');
+        else control.removeAttribute('aria-current');
+      }
+    },
+    // T20-RF: the projection refreshes a destination's count in place; 0 or
+    // a non-number removes the badge (never fake, never stale).
+    setCount(id, count) {
+      const control = list.querySelector(`.lb-sidebar-destination[data-destination="${escapeSelector(id)}"]`);
+      if (control) paintCount(control, Number(count));
+      return control ? (control.querySelector('.lb-sidebar-badge')?.dataset.count ?? null) : undefined;
+    },
+    setCollapsed(next, { notify = true } = {}) {
+      const value = Boolean(next);
+      rail.dataset.collapsed = String(value);
+      railCollapse.setAttribute('aria-expanded', String(!value));
+      railCollapse.setAttribute('aria-label', value ? 'Expand sidebar' : 'Collapse sidebar');
+      railCollapse.replaceChildren(svgIcon(actionGlyphs[value ? 'collapse-right' : 'collapse-left']));
+      for (const control of list.querySelectorAll('.lb-sidebar-destination')) {
+        // T20a rail tooltips: the visible label disappears with the rail, so
+        // the collapsed rows carry their label as a native title (the T11
+        // describe pass never strips an existing title).
+        if (value) { if (!control.getAttribute('title')) control.setAttribute('title', control.getAttribute('aria-label')); }
+        else control.removeAttribute('title');
+      }
+      // V2-T1: density follows the rail automatically — compact is the
+      // retracted-rail layout state, never a persisted user choice.
+      const rootDocument = rail.ownerDocument ?? globalThis.document;
+      try { rootDocument?.documentElement?.setAttribute?.('data-density', value ? 'compact' : 'regular'); } catch { /* detached: in-memory only */ }
+      if (notify) onCollapse?.(value);
+      return value;
+    },
+    toggle() { return api.setCollapsed(rail.dataset.collapsed !== 'true'); },
+    isCollapsed: () => rail.dataset.collapsed === 'true',
+  };
+  railCollapse.addEventListener('click', () => api.toggle());
+  api.setCollapsed(collapsed, { notify: false }); // the initial state is not a user action
+  return api;
+}
+
+export function createTabs({ tabs = [], current = null, onChange = null } = {}) {
+  const tablist = element('div', 'lb-tabs');
+  tablist.setAttribute('role', 'tablist');
+  tablist.dataset.testid = 'tab-strip';
+  const panels = element('div', 'lb-tabpanels');
+  panels.dataset.testid = 'tab-panels';
+  const workspace = element('div', 'lb-tabbed');
+  workspace.append(tablist, panels);
+  const registry = new Map();
+  let sequence = 0;
+  function paint() {
+    const order = [...tablist.children];
+    for (const tab of order) {
+      const active = tab.dataset.tabId === activeId;
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+      if (active) tab.setAttribute('data-active', 'true'); else tab.removeAttribute('data-active');
+      const panel = registry.get(tab.dataset.tabId)?.panel;
+      if (panel) panel.hidden = !active; // hide, never destroy: view state survives switches and polling
+    }
+  }
+  let activeId = null;
+  function select(id, { notify = true, focus = false } = {}) {
+    if (!registry.has(id)) return activeId;
+    activeId = id;
+    paint();
+    if (focus) registry.get(id)?.tab.focus();
+    if (notify) onChange?.(id, 'select');
+    return activeId;
+  }
+  function openTab({ id, title, content, pinned = false, closable = !pinned }) {
+    if (id == null) id = `tab-${++sequence}`;
+    if (registry.has(id)) return select(id);
+    const tabId = `lb-tab-${id}-${++sequence}`;
+    const panelId = `lb-tabpanel-${id}-${sequence}`;
+    const tab = element('div', 'lb-tab');
+    tab.dataset.testid = 'tab';
+    tab.dataset.tabId = id;
+    tab.dataset.pinned = String(pinned);
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', 'false');
+    tab.tabIndex = -1;
+    tab.setAttribute('aria-controls', panelId);
+    tab.setAttribute('aria-label', String(title));
+    tab.append(element('span', 'lb-tab-label', String(title)));
+    if (closable) {
+      const closeControl = button('', event => { event.stopPropagation?.(); closeTab(id); });
+      closeControl.className = 'lb-tab-close';
+      closeControl.setAttribute('aria-label', `Close ${title}`);
+      closeControl.textContent = '×';
+      tab.append(closeControl);
+    } else tab.classList.add('lb-tab-pinned');
+    const panel = element('section', 'lb-tabpanel');
+    panel.dataset.testid = 'tab-panel';
+    panel.dataset.tabId = id;
+    panel.id = panelId;
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', tabId);
+    panel.hidden = true;
+    if (content) panel.append(content);
+    tab.id = tabId;
+    registry.set(id, { tab, panel, pinned, closable });
+    tablist.append(tab);
+    panels.append(panel);
+    if (activeId == null) select(id, { notify: false });
+    else paint();
+    onChange?.(id, 'open');
+    return id;
+  }
+  function closeTab(id) {
+    const entry = registry.get(id);
+    if (!entry || entry.pinned || !entry.closable) return false;
+    const order = [...tablist.children].map(node => node.dataset.tabId);
+    const index = order.indexOf(id);
+    entry.tab.remove();
+    entry.panel.remove(); // callers that need persistence keep content themselves via openTab re-adding
+    registry.delete(id);
+    if (activeId === id) {
+      const next = order[index + 1] ?? order[index - 1];
+      if (next != null && registry.has(next)) select(next, { focus: true });
+      else { activeId = null; paint(); }
+    }
+    onChange?.(id, 'close');
+    return true;
+  }
+  tablist.addEventListener('click', event => {
+    const tab = closestAncestor(event.target, '.lb-tab');
+    if (tab?.dataset?.tabId) select(tab.dataset.tabId, { focus: false });
+  });
+  tablist.addEventListener('keydown', event => {
+    if (event.defaultPrevented || typeof event.key !== 'string') return;
+    const order = [...tablist.querySelectorAll('.lb-tab')];
+    if (order.length === 0) return;
+    const digits = /^Digit([1-9])$/.exec(event.code ?? '');
+    if ((event.metaKey || event.ctrlKey) && digits) {
+      const target = order[Number(digits[1]) - 1];
+      if (!target) return;
+      event.preventDefault?.();
+      select(target.dataset.tabId, { focus: true });
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const index = order.findIndex(node => node.dataset.tabId === activeId);
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault?.();
+      const delta = event.key === 'ArrowRight' ? 1 : -1;
+      const next = order[(index + delta + order.length) % order.length];
+      select(next.dataset.tabId, { focus: true }); // activate-on-focus, like the segmented control
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault?.();
+      const next = event.key === 'Home' ? order[0] : order[order.length - 1];
+      select(next.dataset.tabId, { focus: true });
+    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+      const tab = closestAncestor(event.target, '.lb-tab');
+      if (tab && registry.get(tab.dataset.tabId)?.closable) { event.preventDefault?.(); closeTab(tab.dataset.tabId); }
+    }
+  });
+  for (const tab of tabs) openTab(tab);
+  if (current != null && registry.has(current)) select(current, { notify: false });
+  return {
+    element: workspace, tablist, panels,
+    openTab, closeTab, select,
+    getActive: () => activeId,
+    tabs: () => [...tablist.querySelectorAll('.lb-tab')].map(node => node.dataset.tabId),
+  };
+}
+
+// V2-T4 rework: the dock is a FLOATING OVERLAY inspector, not a layout
+// column — elevation-3 rounded panel floating over the right edge with a
+// capped height and an internally scrolling body, so opening it NEVER
+// resizes the main content (geometry lives in the sheets: the base .lb-dock
+// in style.css stays the fixed-overlay baseline; the project shell layers
+// the floating 380–420px treatment plus the narrow-only scrim on top).
+// Contract unchanged and additive: testids, dataset.open, Escape through the
+// T11 overlay stack with focus return, toggle, footer slot. New pieces:
+//   open(invoker, { focus })  a session-restore open passes focus: false so
+//                             the reopened dock never steals focus on mount
+//   onOpen                    announced with the close side (the shell syncs
+//                             its dock chrome from both)
+//   persistKey + storage      the open state persists per session under the
+//                             key ('true'/'false'); a blocked or absent
+//                             storage degrades to the in-memory session.
+//                             A persisted-open dock restores WITHOUT focus
+//                             at creation; the explicit `open: true` option
+//                             keeps its focused first-open behavior.
+export function createDockPanel({ title, content, footer = null, open: initiallyOpen = false, onClose, onOpen = null, persistKey = null, storage = globalThis.sessionStorage, description, trapFocus = true, closeLabel = 'Collapse dock', fallbackFocus = null } = {}) {
+  const dock = element('aside', 'lb-dock');
+  dock.dataset.testid = 'dock-panel';
+  dock.hidden = true;
+  const heading = element('h2', '', title);
+  const headingId = `lb-dock-${++inspectorPanelSequence}`;
+  heading.id = headingId;
+  dock.setAttribute('role', 'region');
+  dock.setAttribute('aria-labelledby', headingId);
+  if (trapFocus) dock.setAttribute('data-native-trap', 'true');
+  wirePanelDescription(dock, description, PANEL_DISMISSAL_NOTE);
+  const closeControl = button(closeLabel, () => api.close('button'));
+  closeControl.dataset.testid = 'dock-panel-close';
+  const header = element('header', 'cluster spread');
+  header.append(heading, closeControl);
+  const body = element('div', 'lb-dock-body');
+  if (content) body.append(content);
+  body.tabIndex = 0;
+  body.setAttribute('role', 'region');
+  body.setAttribute('aria-label', `${title} content`);
+  dock.append(header, body);
+  if (footer != null) {
+    const foot = element('footer', 'lb-dock-foot');
+    if (Array.isArray(footer)) foot.append(...footer.filter(Boolean));
+    else foot.append(footer);
+    dock.append(foot);
+  }
+  let trigger = null;
+  let openState = false;
+  const readPersisted = () => { try { return persistKey ? storage?.getItem?.(persistKey) === 'true' : false; } catch { return false; } };
+  const writePersisted = value => { try { if (persistKey) storage?.setItem?.(persistKey, String(value)); } catch { /* blocked storage: the session keeps the in-memory state only */ } };
+  const api = {
+    element: dock,
+    setTitle(value) { heading.textContent = value; body.setAttribute('aria-label', `${value} content`); },
+    setModal(value) {
+      dock.setAttribute('role', value ? 'dialog' : 'complementary');
+      if (value) { dock.setAttribute('aria-modal', 'true'); dock.setAttribute('data-native-trap', 'true'); }
+      else { dock.removeAttribute('aria-modal'); dock.removeAttribute('data-native-trap'); }
+    },
+    open(invoker = null, { focus = true } = {}) {
+      if (invoker) trigger = invoker;
+      openState = true;
+      dock.hidden = false;
+      dock.dataset.open = 'true';
+      if (!overlayStack.includes(api)) overlayStack.push(api);
+      if (persistKey) writePersisted(true);
+      describeOnOpen(dock); // V2-T9: dynamic icon-only content inside gets described
+      if (focus) closeControl.focus();
+      onOpen?.();
+      return dock;
+    },
+    close(reason = 'api') {
+      if (!openState) return false;
+      openState = false;
+      dock.hidden = true;
+      dock.removeAttribute('data-open');
+      const index = overlayStack.indexOf(api);
+      if (index !== -1) overlayStack.splice(index, 1);
+      if (persistKey) writePersisted(false);
+      const connected = trigger ? (trigger.isConnected ?? globalThis.document?.body?.contains?.(trigger) ?? false) : false;
+      const target = connected ? trigger : null;
+      trigger = null;
+      onClose?.(reason);
+      const visible = target && (typeof target.getClientRects !== 'function' || target.getClientRects().length > 0);
+      (visible ? target : fallbackFocus?.())?.focus();
+      return true;
+    },
+    toggle(invoker = null, options = {}) { return openState ? api.close('toggle') : (api.open(invoker, options), true); },
+    isOpen: () => openState,
+  };
+  if (persistKey && readPersisted()) api.open(null, { focus: false }); // the session-restore open never moves focus
+  else if (initiallyOpen) api.open();
+  return api;
+}

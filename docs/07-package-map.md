@@ -36,7 +36,7 @@ The six declarations in `.mcp.json` launch package-local services:
 | --- | --- | --- |
 | `run-ledger` | shell launcher + state scripts | Read/write durable workflow records. |
 | `verification` | shell launcher + verifier | Report bounded package checks. |
-| `status-dashboard` | launcher + static dashboard | Display package/run status. |
+| `status-dashboard` | launcher + static dashboard | Four status views, browser service, context copy, and typed project operations. |
 | `context-graph` | Python heuristic | Local grep-based relationships, not semantic CodeGraph. |
 | `code-intel` | Python service | Local code-oriented helpers. |
 | `docs` | Python registry client | Fixed-registry documentation lookup with SSRF boundaries. |

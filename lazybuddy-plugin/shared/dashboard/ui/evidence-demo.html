@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries 1.4.0 evidence and research views (T19). Data is the recorded T19 fixture; no live run is connected.">
+  <title>Evidence and research</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+  <script src="./theme-init.js"></script>
+  <script>
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The evidence view could not load. Reload this page to try again. No live run is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./evidence.css">
+  <script id="evidence-module" type="module" src="./evidence-page.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / T19 evidence and research</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Evidence — indexed artifacts and research records</h1>
+      <p>Filterable index, honest pagination and distinct access states over the artifact index, with safe previews in the reading pane. A research note never grants verification and never accepts a requirement.</p>
+      <p class="fixture-label">Recorded evidence fixture · No live run, no file access, no commands</p>
+      <p id="load-status" role="status">Loading evidence fixture…</p>
+      <p id="proposal-note" class="meta" role="status">The research-to-proposal affordance reports here.</p>
+    </header>
+    <!-- This page's module applies the theme control's value at boot, so the
+         control is synced to the pre-paint preference here (inline scripts run
+         before deferred modules) — the applied theme always matches the
+         resolved dark-first/stored choice, never the select's HTML default. -->
+    <script>
+      (function () {
+        var select = document.getElementById('theme');
+        if (!select) return;
+        var stored = null;
+        try { stored = localStorage.getItem('lazyseries-theme'); } catch (error) { /* storage unavailable */ }
+        select.value = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark';
+      })();
+    </script>
+    <div id="evidence-root" class="stack"></div>
+    <footer>T19 evidence view. Previews are sanitized data rendered as text; totals and truncation come from the artifact package; the filter narrows recorded pages only.</footer>
+  </main>
+</body>
+</html>

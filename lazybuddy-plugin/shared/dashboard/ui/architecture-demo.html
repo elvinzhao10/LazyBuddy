@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries 1.4.0 architecture lenses (T17). Data is the recorded T17 fixture; no live run is connected.">
+  <title>Architecture lenses</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme. -->
+  <script src="./theme-init.js"></script>
+  <script>
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The architecture view could not load. Reload this page to try again. No live run is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./architecture.css">
+  <script id="architecture-module" type="module" src="./architecture-page.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / T17 architecture lenses</span><span class="cluster" id="shell-controls"><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></span></div>
+      <h1>Architecture — Current, Planned and Change lenses</h1>
+      <p>One segmented lens control over one component identity set, inside the sidebar + tab shell; component detail opens in the dock. Switching lens, perspective or mode preserves the selected component and never changes a status.</p>
+      <p class="fixture-label">Recorded projection fixture · No live run, no scheduler authority, no commands</p>
+      <p id="load-status" role="status">Loading architecture fixture…</p>
+    </header>
+    <div id="architecture-root" class="stack"></div>
+    <footer>T17 architecture view. Intent, observation and verification stay separate; authored and inferred relationships stay distinct; nothing here edits the project record.</footer>
+  </main>
+</body>
+</html>

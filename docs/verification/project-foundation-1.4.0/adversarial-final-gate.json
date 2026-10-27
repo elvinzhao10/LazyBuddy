@@ -1,0 +1,21 @@
+{
+  "captured_at": "2026-10-05T17:05:36.020455+00:00",
+  "command": [
+    "node",
+    "--test",
+    "--test-reporter=tap",
+    "lazybuddy-plugin/shared/project/test/project-adversarial.test.mjs"
+  ],
+  "exit_code": 0,
+  "counts": {
+    "tests": 15,
+    "pass": 15,
+    "fail": 0,
+    "skipped": 0
+  },
+  "change": "Removed one extra final blank line to satisfy git diff --check; no production change",
+  "prior_test_sha256": "de0aa79229ddfa7f472f27956a6f323bdf449fac0be5ebb359c840ad0769f97b",
+  "tested_source_hashes": {
+    "lazybuddy-plugin/shared/project/test/project-adversarial.test.mjs": "f683e8d7d2db2a9e0c5a821d0390abe7bfabbee85627301bfb7b2f8787f1f65e"
+  }
+}

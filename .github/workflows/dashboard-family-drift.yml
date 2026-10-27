@@ -66,13 +66,23 @@ jobs:
           ref: ${{ inputs.lazydeepseek_ref }}
           path: LazyDeepSeek
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
       - name: Reject dashboard family drift
         working-directory: LazyBuddy
         run: >-
           node scripts/vendor-dashboard.mjs --check
+          --root LazyBuddy="$GITHUB_WORKSPACE/LazyBuddy"
+          --root LazyTrae="$GITHUB_WORKSPACE/LazyTrae"
+          --root LazyQoder="$GITHUB_WORKSPACE/LazyQoder"
+          --root LazyZCode="$GITHUB_WORKSPACE/LazyZCode"
+          --root LazyKimi="$GITHUB_WORKSPACE/LazyKimi"
+          --root LazyDeepSeek="$GITHUB_WORKSPACE/LazyDeepSeek"
+      - name: Reject project family drift (all six roots required)
+        working-directory: LazyBuddy
+        run: >-
+          node scripts/vendor-dashboard.mjs --check --family project --require-complete
           --root LazyBuddy="$GITHUB_WORKSPACE/LazyBuddy"
           --root LazyTrae="$GITHUB_WORKSPACE/LazyTrae"
           --root LazyQoder="$GITHUB_WORKSPACE/LazyQoder"

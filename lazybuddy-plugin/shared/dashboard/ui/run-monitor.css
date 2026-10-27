@@ -1,0 +1,32 @@
+.run-monitor { min-inline-size: 0; }
+.monitor-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-1); }
+.monitor-heading h2,.monitor-chart p { margin: 0; }
+.monitor-figures { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-variant-numeric: var(--numeric); }
+.monitor-progress,.monitor-charts { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(20rem,100%),1fr)); gap: var(--space-2); align-items: start; }
+.monitor-progress progress { inline-size: 100%; block-size: var(--space-1); accent-color: var(--active-ink); }
+.monitor-states { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.monitor-chart { min-inline-size: 0; margin: 0; padding: var(--space-2); background: var(--inset); border-radius: var(--radius-md); gap: var(--space-1); }
+.monitor-chart figcaption { font-weight: var(--weight-strong); }
+.monitor-chart svg { inline-size: 100%; block-size: auto; min-block-size: var(--space-7); }
+.monitor-gridline { stroke: var(--border); stroke-width: 1; }
+.monitor-line { fill: none; stroke: var(--active-ink); stroke-width: 2; }
+.monitor-point { fill: var(--active-ink); }
+.monitor-axis { display: flex; justify-content: space-between; gap: var(--space-2); }
+.monitor-axis span { overflow-wrap: anywhere; min-inline-size: 0; }
+.monitor-axis span:last-child { text-align: end; }
+.monitor-scale,.monitor-values { font-variant-numeric: var(--numeric); }
+.monitor-table { overflow: auto; max-inline-size: 100%; scrollbar-width: thin; }
+.monitor-table table { inline-size: 100%; border-collapse: collapse; font-size: var(--type-sm-size); font-variant-numeric: var(--numeric); }
+.monitor-table th,.monitor-table td { padding: var(--space-1); text-align: start; vertical-align: top; border-block-end: var(--line) solid var(--border); overflow-wrap: anywhere; min-inline-size: 6rem; }
+.monitor-table th { color: var(--muted); }
+.monitor-step { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding-block: var(--space-1); border-block-end: var(--line) solid var(--border); }
+.monitor-filters { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-block: var(--space-1); }
+.monitor-filters input { flex: 1 1 14rem; min-inline-size: 0; }
+.monitor-filters select { flex: 0 1 auto; }
+.monitor-efficiency > select { margin-block: var(--space-1); max-inline-size: 100%; }
+.monitor-efficiency { container-type: inline-size; }
+.monitor-efficiency .monitor-charts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.monitor-efficiency .monitor-charts > .monitor-table { grid-column: 1 / -1; }
+@container (max-width: 42rem) { .monitor-efficiency .monitor-charts { grid-template-columns: minmax(0,1fr); } }
+.monitor-empty { padding-block: var(--space-2); }
+.run-monitor summary { min-block-size: var(--density-control); align-content: center; cursor: pointer; }

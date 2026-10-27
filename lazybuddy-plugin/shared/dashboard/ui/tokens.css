@@ -1,16 +1,130 @@
+/* ======================================================================
+   LazySeries design tokens v2 — one family design language (T10)
+   T20-RF reference-fidelity pass: dark-first depth system (tinted canvas,
+   stepped surfaces, hairline edges, soft elevation), same token names.
+
+   Layer order (each later section may reference earlier ones):
+     1. Semantic color roles      light values on :root
+     2. Type, spacing, radii      theme-independent scales
+     3. Elevation, focus, motion, density
+     4. v1 compatibility aliases  the full alias SET is frozen — T20-RF
+                                  refreshed the palette values in lockstep
+                                  (see test/design-tokens.test.mjs); names
+                                  and structure never change, later tasks
+                                  migrate views to the v2 names above
+     5. Dark theme overrides      :root[data-theme='dark']
+     6. Per-product accents       [data-product='<runtime>'] (RUNTIMES
+                                  from shared/project/contract.mjs)
+     7. Reduced motion            collapses every duration to 0ms
+
+   Invariants enforced by test/design-tokens.test.mjs:
+     - the v1 alias set resolves in both themes with the T20-RF values
+     - the --space-* scale is an 8-pt grid (4px half-step aside)
+     - the 5-step type scale is monotonic with paired line-heights
+     - every readable role pair meets WCAG AA (>=4.5:1)
+     - every per-product accent pair passes AA on its intended surfaces
+     - prefers-reduced-motion zeroes all --motion-* durations
+   ====================================================================== */
+
 :root {
   color-scheme: light;
-  --canvas: #f5f6f8; --surface: #ffffff; --raised: #ffffff;
-  --hover: #f0f1f4; --selected: #e5e7ec; --text: #20242b;
-  --muted: #59616e; --border: #c7cbd3; --focus: #225bb5;
+
+  /* -- 1. Semantic color roles (light) -------------------------------- */
+  --bg: #eef1f6;              /* tinted app canvas behind everything */
+  --surface: #ffffff;         /* resting cards, panels, controls */
+  --elevated: #ffffff;        /* popovers, sticky rails, dialogs */
+  --inset: #eceff5;           /* recessed wells, code blocks, quiet fills */
+  --border: #c6cdda;          /* quiet structural outlines */
+  --hairline: #e1e5ee;        /* internal dividers, table rules */
+  --text: #1e2430;            /* primary ink */
+  --subtle: #59637a;          /* secondary ink, captions, meta */
+  --accent: #2b54d9;          /* family accent (LazyBuddy cobalt) */
+  --accent-contrast: #ffffff; /* ink on an accent fill */
+  --accent-soft: #e8edfc;     /* tinted accent wash for identity chips */
+  --success: #16613b;  --success-bg: var(--verified-fill);
+  --warn: #795000;     --warn-bg: var(--attention-fill);
+  --danger: #a02a35;   --danger-bg: var(--failed-fill);
+  --info: #184a96;     --info-bg: var(--active-fill);
+  --edge-highlight: inset 0 1px 0 rgba(255,255,255,.55);
+  --backdrop: #10131a66;      /* modal scrim */
+
+  /* -- 2. Type: five steps, metrics are tabular ----------------------- */
+  --type-xs-size: .75rem;   --type-xs-lh: 1.5;    /* micro labels     */
+  --type-sm-size: .8125rem; --type-sm-lh: 1.5;    /* captions, chips  */
+  --type-md-size: .9375rem; --type-md-lh: 1.55;   /* body copy        */
+  --type-lg-size: 1.25rem;  --type-lg-lh: 1.3;    /* section titles   */
+  --type-xl-size: 1.75rem;  --type-xl-lh: 1.22;   /* page heading     */
+  --numeric: tabular-nums;  /* apply to every metric, count and clock */
+  --weight-regular: 400; --weight-strong: 600;
+
+  /* -- 2. Spacing: 8-pt grid (--space-half is the only 4px step) ------ */
+  --space-half: .25rem;  /*  4px icon-to-label nudge */
+  --space-1: .5rem;      /*  8px */
+  --space-2: 1rem;       /* 16px */
+  --space-3: 1.5rem;     /* 24px */
+  --space-4: 2rem;       /* 32px */
+  --space-5: 2.5rem;     /* 40px */
+  --space-6: 3rem;       /* 48px */
+  --space-7: 4rem;       /* 64px */
+
+  /* -- 2. Radii -------------------------------------------------------- */
+  --radius-xs: 4px;    /* tags, chips inside controls */
+  --radius-sm: 6px;    /* controls */
+  --radius-md: 10px;   /* cards, panels */
+  --radius-lg: 14px;   /* dialogs, large media */
+  --radius-full: 999px;/* status pills, nav rows */
+
+  /* -- 3. Elevation ladder (soft layered shadows; borders still
+     carry the resting edge, shadows carry the lift) --------------------- */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px #10131a14, 0 1px 3px #10131a0d;
+  --elevation-2: 0 4px 12px #10131a14, 0 2px 4px #10131a0d;
+  --elevation-3: 0 16px 48px #10131a29, 0 4px 12px #10131a14;
+  --focus-ring: 0 0 0 3px #225bb5;
+
+  /* -- 3. Motion -------------------------------------------------------- */
+  --motion-instant: 80ms;                        /* hover feedback   */
+  --motion-fast: 120ms;                          /* fades, opacity   */
+  --motion-base: 200ms;                          /* panels, sheets   */
+  --motion-slow: 320ms;                          /* large surfaces   */
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);     /* decelerate in    */
+  --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* -- 3. Density -------------------------------------------------------- */
+  --density-compact: .5rem;         /* tight tables, dense lists   */
+  --density-regular: 1rem;          /* default card/control gutters */
+  --density-control: 2.75rem;       /* 44px minimum target (HIG)     */
+  --density-control-compact: 2rem;  /* 32px compact target           */
+
+  /* -- 3c. T20-RF reference-fidelity additions (ADDITIVE) ----------------
+     Nav icon metrics, sidebar count badges and the frosted sticky page
+     header. Values only; nothing above changes meaning. */
+  --icon-nav: 1.125rem;        /* 18px sidebar destination glyphs    */
+  --badge-min: calc(var(--space-2) + var(--space-half)); /* badge pill floor */
+  --veil: #ffffffd6;           /* translucent sticky-header wash      */
+  --veil-blur: 14px;           /* backdrop blur of the sticky header  */
+
+  /* -- 3d. V2-T9 pattern-adoption additions (ADDITIVE, values only) -------
+     shadcn-style small-caps section labels: the tracking metric for the
+     uppercase micro-label treatment (table captions, sidebar group labels).
+     Nothing above changes meaning or value. */
+  --tracking-caps: .08em;      /* letter-spacing of small-caps labels */
+
+  /* -- 4. v1 compatibility aliases (SET frozen — do not renumber) --------
+     --surface, --border and --text are declared once above: the v1 names
+     and the v2 roles are the same token by design. T20-RF refreshed the
+     palette in lockstep with test/design-tokens.test.mjs. */
+  --canvas: #eef1f6; --raised: #ffffff;
+  --hover: #f2f4f9; --selected: #e2e8f4;
+  --muted: #59637a; --focus: #225bb5;
   --control-edge: #59616e; --primary-hover: #424852; --pressed-opacity: .75;
-  --neutral-ink: #424852; --neutral-fill: #eef0f3;
+  --neutral-ink: #424852; --neutral-fill: #eceff5;
   --active-ink: #184a96; --active-fill: #e9f0ff;
   --verified-ink: #16613b; --verified-fill: #e4f4e9;
   --attention-ink: #795000; --attention-fill: #fff2cf;
   --failed-ink: #a02a35; --failed-fill: #ffecef;
   --stale-ink: #68409b; --stale-fill: #f3eaff;
-  --shadow: 0 12px 40px #10131a33; --backdrop: #10131a66;
+  --shadow: 0 16px 48px #10131a29, 0 4px 12px #10131a14;
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', monospace;
   --caption: .8125rem; --body: .9375rem; --title: 1.25rem; --heading: 1.75rem;
@@ -19,22 +133,81 @@
   --s5: 1.5rem; --s6: 2rem; --s7: 3rem; --s8: 4rem;
   --control: 2.75rem; --icon: 1rem; --line: 1px;
   --focus-width: 3px; --focus-offset: 2px;
-  --radius-control: 6px; --radius-card: 8px; --radius-pill: 999px;
+  --radius-control: 6px; --radius-card: 10px; --radius-pill: 999px;
   --content: 76rem; --measure: 65ch; --card-min: 17rem; --inspector: 30rem;
   --fast: 120ms; --ease: ease-out;
+
+  /* -- 3b. Product accent (default: the family accent) ----------------- */
+  --product-accent: var(--accent);
+  --product-accent-soft: var(--accent-soft);
+  --product-accent-contrast: var(--accent-contrast);
+
+  /* -- 4c. T12 component layout aliases (ADDITIVE) ----------------------
+     Layout constants the shared component library needs and no earlier
+     token covers. Values are theme-independent; nothing above changes. */
+  --table-min-inline: 54rem;  /* wide verification/data table scroll floor */
+  --lane-label: 13rem;        /* timeline swimlane label column            */
 }
+
+/* -- 5. Dark theme (the T20-RF reference surface: deep tinted canvas,
+   stepped surfaces, hairline edges, soft black elevation) ---------------- */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --canvas: #14161a; --surface: #1c1f25; --raised: #242831;
-  --hover: #2c3039; --selected: #353b46; --text: #f1f3f7;
-  --muted: #b0b7c4; --border: #515966; --focus: #adcaff;
-  --control-edge: #919baa; --primary-hover: #d4d8df;
-  --neutral-ink: #d4d8df; --neutral-fill: #282c34;
-  --active-ink: #adcaff; --active-fill: #202f49;
-  --verified-ink: #a4e2bd; --verified-fill: #203a2b;
-  --attention-ink: #f5d58b; --attention-fill: #3d321e;
-  --failed-ink: #ffb9c0; --failed-fill: #45272e;
-  --stale-ink: #d7bbff; --stale-fill: #352943;
-  --shadow: 0 12px 40px #00000066;
+  --bg: #0f1115; --surface: #171b22; --elevated: #1e242e;
+  --inset: #12151c; --hairline: #262c37;
+  --subtle: #a7b0bf;
+  --success: #9fe0b8; --warn: #f2d28a; --danger: #ffb3bc; --info: #9fb9ff;
+  --accent: #8ea8ff; --accent-contrast: #0d1220; --accent-soft: #252d4d;
+  --edge-highlight: inset 0 1px 0 rgba(255,255,255,.05);
+  --elevation-1: 0 1px 2px #000000a3, 0 1px 3px #0000008c;
+  --elevation-2: 0 4px 12px #000000a3, 0 2px 4px #0000008c;
+  --elevation-3: 0 16px 48px #000000cc, 0 4px 12px #000000a3;
+  --focus-ring: 0 0 0 3px #8ea8ff;
+  --veil: #0f1115c4;
+  /* v1 aliases (SET frozen; T20-RF palette refresh; --surface/--border/
+     --text as above) */
+  --canvas: #0f1115; --raised: #1e242e;
+  --hover: #212734; --selected: #2a3240; --text: #f2f4f9;
+  --muted: #a7b0bf; --border: #363e4c; --focus: #8ea8ff;
+  --control-edge: #8f9aa9; --primary-hover: #d6dbe4;
+  --neutral-ink: #d6dbe4; --neutral-fill: #212631;
+  --active-ink: #9fb9ff; --active-fill: #1f2c46;
+  --verified-ink: #9fe0b8; --verified-fill: #1d3629;
+  --attention-ink: #f2d28a; --attention-fill: #3a301c;
+  --failed-ink: #ffb3bc; --failed-fill: #432530;
+  --stale-ink: #d5b8ff; --stale-fill: #33284a;
+  --shadow: 0 16px 48px #000000cc, 0 4px 12px #000000a3;
 }
-@media (prefers-reduced-motion: reduce) { :root { --fast: 0ms; } }
+
+/* -- 6. Per-product accents ----------------------------------------------
+   Keyed by the exact runtime name (shared/project/contract.mjs RUNTIMES).
+   Per theme: --product-accent (ink + fill), --product-accent-soft (wash),
+   --product-accent-contrast (ink on an accent fill). Light blocks match
+   the attribute anywhere; dark blocks cover root-or-descendant placement. */
+[data-product='LazyBuddy']    { --product-accent: #2b54d9; --product-accent-soft: #e8edfc; --product-accent-contrast: #ffffff; }
+[data-product='LazyTrae']     { --product-accent: #0e7490; --product-accent-soft: #e3f5f9; --product-accent-contrast: #ffffff; }
+[data-product='LazyQoder']    { --product-accent: #6d28d9; --product-accent-soft: #ede9fc; --product-accent-contrast: #ffffff; }
+[data-product='LazyZCode']    { --product-accent: #b8470e; --product-accent-soft: #fdefe5; --product-accent-contrast: #ffffff; }
+[data-product='LazyKimi']     { --product-accent: #b81d5d; --product-accent-soft: #fbe4ee; --product-accent-contrast: #ffffff; }
+[data-product='LazyDeepSeek'] { --product-accent: #4338ca; --product-accent-soft: #e7e7fb; --product-accent-contrast: #ffffff; }
+
+:root[data-theme='dark'][data-product='LazyBuddy'],
+:root[data-theme='dark'] [data-product='LazyBuddy']    { --product-accent: #8ea8ff; --product-accent-soft: #252d4d; --product-accent-contrast: #0d1220; }
+:root[data-theme='dark'][data-product='LazyTrae'],
+:root[data-theme='dark'] [data-product='LazyTrae']     { --product-accent: #53c6d8; --product-accent-soft: #24363e; --product-accent-contrast: #0d1220; }
+:root[data-theme='dark'][data-product='LazyQoder'],
+:root[data-theme='dark'] [data-product='LazyQoder']    { --product-accent: #a98bff; --product-accent-soft: #302e44; --product-accent-contrast: #0d1220; }
+:root[data-theme='dark'][data-product='LazyZCode'],
+:root[data-theme='dark'] [data-product='LazyZCode']    { --product-accent: #ff9c66; --product-accent-soft: #3c312e; --product-accent-contrast: #0d1220; }
+:root[data-theme='dark'][data-product='LazyKimi'],
+:root[data-theme='dark'] [data-product='LazyKimi']     { --product-accent: #ff87b3; --product-accent-soft: #3c2e39; --product-accent-contrast: #0d1220; }
+:root[data-theme='dark'][data-product='LazyDeepSeek'],
+:root[data-theme='dark'] [data-product='LazyDeepSeek'] { --product-accent: #8f95ff; --product-accent-soft: #2c3044; --product-accent-contrast: #0d1220; }
+
+/* -- 7. Reduced motion --------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0ms; --motion-fast: 0ms; --motion-base: 0ms; --motion-slow: 0ms;
+    --fast: 0ms;
+  }
+}

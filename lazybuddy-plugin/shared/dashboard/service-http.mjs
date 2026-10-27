@@ -16,6 +16,15 @@ function send(response, value, status = 200) {
   response.writeHead(status, { ...security, 'content-type': 'application/json', 'content-length': bytes.length });
   response.end(bytes);
 }
+function projectFailure(error) {
+  if (error instanceof ServiceError && Number.isInteger(error.status) && error.status >= 400 && error.status <= 599) return error;
+  if (error?.code === 'PROJECT_NOT_INITIALIZED') return new ServiceError(error.code, 404);
+  if (error?.code === 'UNKNOWN_SOURCE' || error?.code === 'UNKNOWN_ARTIFACT') return new ServiceError(error.code, 404);
+  if (typeof error?.code === 'string' && /^[A-Z][A-Z0-9_]{0,127}$/.test(error.code)) {
+    return new ServiceError(error.code, 422);
+  }
+  return error;
+}
 export async function listen(options, control) {
   const auth = authentication(control.credential); const sockets = new Set(); let active = 0; let closing = false;
   let origin;
@@ -46,14 +55,98 @@ export async function listen(options, control) {
           return;
         }
         const actor = auth.session(request);
+        if (request.method === 'GET' && request.url === '/api/project') {
+          try { send(response, { project: await authorityFor(options).readProject(options, actor) }); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        const detailRoute = { '/api/project/architecture': 'readProjectArchitecture',
+          '/api/project/git': 'readProjectGit', '/api/project/evidence': 'readProjectEvidence',
+          '/api/project/health': 'readProjectHealth', '/api/project/telemetry': 'readProjectTelemetry' }[request.url];
+        if (request.method === 'GET' && detailRoute) {
+          try { send(response, await authorityFor(options)[detailRoute](options, actor)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        const sourceRoute = /^\/api\/project\/sources\/((?:[A-Za-z0-9._:@-]|%[0-9A-Fa-f]{2}){1,768})$/.exec(request.url);
+        if (request.method === 'GET' && sourceRoute) {
+          let sourceId;
+          try { sourceId = decodeURIComponent(sourceRoute[1]); } catch { throw new ServiceError('INVALID_SOURCE_ID'); }
+          if (!/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(sourceId)) throw new ServiceError('INVALID_SOURCE_ID');
+          try { send(response, await authorityFor(options).readProjectSource(options, actor, sourceId)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'POST' && request.url === '/api/project/commands') {
+          const command = await readBody(request);
+          if (!command || typeof command !== 'object' || Array.isArray(command)
+            || command.project_id !== options.projectId) throw new ServiceError('COMMAND_BINDING_MISMATCH', 409);
+          try {
+            const result = await authorityFor(options).commandProject(options, actor, command);
+            send(response, result, result.receipt?.status === 'conflict' ? 409 : 200);
+          } catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'POST' && request.url === '/api/project/plan-transition-assessment') {
+          const requestBody = await readBody(request);
+          if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
+            || typeof requestBody.plan_id !== 'string' || typeof requestBody.to_lifecycle !== 'string'
+            || (requestBody.payload !== undefined && (typeof requestBody.payload !== 'object' || Array.isArray(requestBody.payload)))) {
+            throw new ServiceError('INVALID_TRANSITION_ASSESSMENT');
+          }
+          try { send(response, await authorityFor(options).assessProjectTransition(options, actor, requestBody)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'POST' && request.url === '/api/project/admission-recheck') {
+          const requestBody = await readBody(request);
+          if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
+            || Object.keys(requestBody).sort().join(',') !== 'facts,graphs,plan_id,task_id') {
+            throw new ServiceError('INVALID_ADMISSION_RECHECK');
+          }
+          try { send(response, await authorityFor(options).recheckProjectAdmission(options, actor, requestBody)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'GET' && request.url === '/api/project/observations') {
+          try { send(response, await authorityFor(options).readProjectObservations(options, actor)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'POST' && request.url === '/api/project/observations') {
+          const requestBody = await readBody(request);
+          if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
+            || Object.keys(requestBody).length !== 1 || !Array.isArray(requestBody.observations)) {
+            throw new ServiceError('INVALID_OBSERVATION_BATCH');
+          }
+          try {
+            send(response, await authorityFor(options).recordProjectObservations(options, actor, requestBody.observations));
+          } catch (error) { throw projectFailure(error); }
+          return;
+        }
+        if (request.method === 'POST' && request.url === '/api/project/evidence/preview') {
+          const requestBody = await readBody(request);
+          if (!requestBody || typeof requestBody !== 'object' || Array.isArray(requestBody)
+            || Object.keys(requestBody).length !== 1
+            || typeof requestBody.artifact_id !== 'string'
+            || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(requestBody.artifact_id)) {
+            throw new ServiceError('INVALID_ARTIFACT_ID');
+          }
+          try { send(response, await authorityFor(options).readProjectEvidencePreview(options, actor, requestBody.artifact_id)); }
+          catch (error) { throw projectFailure(error); }
+          return;
+        }
         if (request.method === 'GET' && ['/api/snapshot', '/api/updates'].includes(request.url)) {
+          if (options.runId === null) throw new ServiceError('RUN_NOT_BOUND', 409);
           send(response, await capture(options, decodeCursor(request.headers['x-dashboard-cursor']))); return;
         }
         if (request.method === 'GET' && /^\/api\/evidence\/[a-f0-9]{64}$/.test(request.url)) {
+          if (options.runId === null) throw new ServiceError('RUN_NOT_BOUND', 409);
           const bytes = await evidence(options, request.url.slice('/api/evidence/'.length));
           response.writeHead(200, { ...security, 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="evidence.txt"', 'content-length': bytes.length }); response.end(bytes); return;
         }
         if (request.method === 'POST' && request.url === '/api/commands') {
+          if (options.runId === null) throw new ServiceError('RUN_NOT_BOUND', 409);
           const command = parseContract('command', await readBody(request));
           const queued = command.operation.endsWith('_queued_plan');
           const runId = queued ? null : options.runId;

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries 1.4.0 project composition spike (T03). All data is illustrative fixture data.">
+  <title>Project composition spike</title>
+  <script>
+    document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The spike could not load. Reload this page to try again. No live run is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./project-map-spike.css">
+  <script id="spike-module" type="module" src="./project-map-page.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <header class="stack">
+      <div class="cluster spread"><span class="meta">LazySeries / T03 project composition spike</span><label>Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+      <h1>Project, plan, batch, attempt</h1>
+      <p>Composition over the existing layout engine: layered graph, equivalent hierarchical list, keyboard traversal, revision-guarded layout replies.</p>
+      <p class="fixture-label">Fixture data only · No live run, no scheduler authority, no commands</p>
+      <p id="load-status" role="status">Loading spike…</p>
+      <nav class="cluster" aria-label="Spike levels"><span class="meta">Level</span></nav>
+    </header>
+    <div id="spike-root" class="stack"></div>
+    <footer>Spike for renderer decision DP-2. Execution, verification and editing authority stay with the runtime and command service; nothing here dispatches work.</footer>
+  </main>
+</body>
+</html>

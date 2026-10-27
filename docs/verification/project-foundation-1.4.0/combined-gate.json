@@ -1,0 +1,28 @@
+{
+  "captured_at": "2026-10-05T16:58:14.950115+00:00",
+  "base_head": "b4c38b5d4fbee28449001b7fc1e0ac1639393150",
+  "command": [
+    "node",
+    "--test",
+    "lazybuddy-plugin/shared/project/test/project-model.test.mjs",
+    "lazybuddy-plugin/shared/project/test/project-adversarial.test.mjs",
+    "lazybuddy-plugin/shared/project/test/project-cli.test.mjs",
+    "lazybuddy-plugin/shared/dashboard/test/projection.test.mjs",
+    "lazybuddy-plugin/shared/dashboard/test/proof-boundary.test.mjs"
+  ],
+  "exit_code": 0,
+  "runtime_node": "v24.19.0",
+  "runtime_python": "3.12.14",
+  "sources_unchanged_during_gate": true,
+  "tested_source_hashes": {
+    "lazybuddy-plugin/scripts/state/project-dashboard-bridge.py": "8c8448e1b0bbee85fae7271c5fbf28904cf56e62582506aea10059bab4898f2a",
+    "lazybuddy-plugin/shared/project/cli.mjs": "9e86da211bdc8079506144379c31d59d747273a755cc91d1cf0ca1c07361d003",
+    "lazybuddy-plugin/shared/project/contract.mjs": "7d90e407fd989fed8d00fbfa3be00b0903b47afbd47459381bea6027006804d9",
+    "lazybuddy-plugin/shared/project/history.mjs": "b9a524f41f9367bbfe35478d4a7cad00218cff07d02af976309390e0f2fbb851",
+    "lazybuddy-plugin/shared/project/model.mjs": "53199003e776f11edae1ec2c6fccd231cbe0c4e93070445cc4919769d8aa45a2",
+    "lazybuddy-plugin/shared/project/projection.mjs": "184ee9c5057a252a8ea346f62d8484d6874dbac329b74b0fb8e6775c2c0096a3",
+    "lazybuddy-plugin/shared/project/test/project-adversarial.test.mjs": "de0aa79229ddfa7f472f27956a6f323bdf449fac0be5ebb359c840ad0769f97b",
+    "lazybuddy-plugin/shared/project/test/project-cli.test.mjs": "b6a4958747cfd599401376b0b9d7ba087d417bbd37886fb5d1d4e573c6570b90",
+    "lazybuddy-plugin/shared/project/test/project-model.test.mjs": "730ef5f3b769658a59c44b8df696bd9c09c36c67a0aa1187d62ceab435dc228e"
+  }
+}

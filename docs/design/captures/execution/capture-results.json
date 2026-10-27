@@ -1,0 +1,81 @@
+{
+  "chrome": "Chrome/155.0.8059.82",
+  "base": "http://127.0.0.1:8797/execution-demo.html",
+  "capturedAt": "2026-10-19T16:11:20.232Z",
+  "probes": [
+    {
+      "name": "task-level glance states",
+      "value": "neutral,neutral,neutral,neutral,stale,stale,unavailable,verified,verified"
+    },
+    {
+      "name": "stacked lane",
+      "value": "2"
+    },
+    {
+      "name": "retry link present",
+      "value": true
+    },
+    {
+      "name": "no role=status duplicates",
+      "value": 0
+    },
+    {
+      "name": "dock open node",
+      "value": "attempt:executor:resumed"
+    },
+    {
+      "name": "dock step expanded",
+      "value": "true"
+    },
+    {
+      "name": "dock closed by Escape",
+      "value": true
+    },
+    {
+      "name": "join strip branches",
+      "value": "Fan-in gatesBlocked joins from the planned dependency DAG, not from recorded time. A blocked join is still waiting on branch verification.Blocked joinjoin:plan:execution-b:J waits on B (pending)Show join"
+    },
+    {
+      "name": "gate badge text",
+      "value": "1 confirmed"
+    },
+    {
+      "name": "polling tick preserved",
+      "value": {
+        "level": "task",
+        "focusId": "A",
+        "selectedId": "attempt:executor:resumed",
+        "collapsed": [],
+        "mode": "graph",
+        "viewport": {
+          "scale": 1,
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "timelineViewport": {
+          "scrollLeft": 0,
+          "scrollTop": 0
+        },
+        "selectedPreserved": true,
+        "viewRevision": 1,
+        "nodeCount": 9
+      }
+    },
+    {
+      "name": "selection after tick",
+      "value": "attempt:executor:resumed"
+    },
+    {
+      "name": "timeline viewport after tick",
+      "value": "0,0"
+    },
+    {
+      "name": "390 scrollWidth",
+      "value": 390
+    },
+    {
+      "name": "390 innerWidth",
+      "value": 390
+    }
+  ]
+}

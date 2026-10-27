@@ -1,0 +1,214 @@
+@import './overview.css';
+@import './health.css';
+
+/* T20a project shell — the static retractable sidebar + one cohesive
+   content surface. No tab strip: the sidebar is a fixed column that never
+   overlays content (it retracts to the 56px icon rail), the content region
+   scrolls independently, and one page-header pattern (back affordance +
+   destination/item title + context meta + dock trigger) leads every
+   destination. Tokens only; no animation, shared var(--fast) transitions
+   only. */
+
+.project-shell { display: grid; gap: var(--s4); }
+label[hidden]:has(> #theme) { display: none; }
+.project-shell[data-live='true'] { gap: var(--s2); margin-block-start: 0; }
+.project-shell section { margin-block-start: 0; }
+.project-shell .overview-hero[hidden] { display: none; }
+.project-shell section > header { margin-block-end: var(--s2); }
+.shell-title { overflow-wrap: anywhere; }
+.shell-context { flex-wrap: wrap; margin: 0; }
+.shell-context [data-testid='shell-title'] { font-weight: var(--strong); }
+
+/* -- App frame: sidebar static column, content scrolls on its own -------- */
+
+/* The initialized frame fills its host edge to edge (the hosts opt in via
+   :has in this file and live.css); the pre-init state keeps the padded
+   page flow. V2-T4: the root is the positioning context for the narrow-only
+   dock scrim (::after below). */
+.project-shell[data-initialized='true'] { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 0; min-block-size: 0; margin-block: 0; }
+.project-shell[data-initialized='true'] > .lb-topbar { margin: 0; }
+.project-shell[data-initialized='true'] .lb-shell { block-size: 100%; min-block-size: 0; align-items: stretch; background: var(--bg); }
+body:has(.project-shell[data-initialized='true']) { block-size: 100dvh; overflow: hidden; }
+body:has(.project-shell[data-initialized='true']) > main { display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; max-inline-size: none; padding: 0; }
+body:has(.project-shell[data-initialized='true']) > main > #shell-root { flex: 1 1 auto; min-block-size: 0; display: grid; }
+body:has(.project-shell[data-initialized='true']) > main > footer { flex: 0 0 auto; margin: 0; padding: var(--s2) var(--s4); border-block-start: var(--line) solid var(--border); }
+
+/* V2-T1 compact icon top bar: ONE <=48px row spanning the frame — product
+   badge + current destination/item title (single line, truncates) on the
+   left; theme icon-toggle, dock trigger and the rail collapse control on
+   the right. Frosted veil like the sticky page head. */
+.lb-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); block-size: calc(var(--space-1) * 6); min-inline-size: 0; padding-inline: var(--s3); border-block-end: var(--line) solid var(--border); background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); }
+.lb-topbar-lead { flex: 1 1 auto; min-inline-size: 0; gap: var(--s2); }
+.lb-topbar-badge { flex-shrink: 0; padding: var(--s1) var(--s2); border-radius: var(--radius-control); background: var(--product-accent-soft); color: var(--product-accent); font-size: var(--caption); font-weight: var(--strong); }
+.lb-topbar-title { flex: 1 1 auto; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--body); font-weight: var(--strong); }
+.lb-topbar-actions { flex: 0 0 auto; gap: var(--s1); }
+.lb-topbar-icon { min-inline-size: var(--density-control); padding: 0; justify-content: center; }
+.lb-topbar-icon svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lb-topbar-details { display: inline-flex; align-items: center; gap: var(--s2); }
+.lb-topbar-details svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; }
+.lb-topbar[hidden] { display: none; }
+
+/* The rail: a static column of the frame grid — never position:fixed, never
+   an overlay. Destinations scroll inside it; the identity footer pins. The
+   rail sits on the card surface over the tinted app canvas (T20-RF). The
+   collapse control lives in the top bar (V2-T1), not the rail. */
+.project-shell .lb-sidebar { position: static; block-size: 100%; display: flex; flex-direction: column; gap: var(--s2); overflow: hidden; border: none; border-inline-end: var(--line) solid var(--border); border-radius: 0; box-shadow: var(--elevation-2); }
+.shell-sidebar-head { min-block-size: var(--control); flex-shrink: 0; margin: 0; }
+.project-shell .lb-sidebar[data-collapsed='true'] .shell-sidebar-label { display: none; }
+.project-shell .lb-sidebar[data-collapsed='true'] .shell-sidebar-head { justify-content: center; }
+.project-shell :is(.lb-sidebar-destinations,.lb-shell-main,.lb-dock-body) { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.project-shell .lb-sidebar .lb-sidebar-destinations { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; margin-block-start: var(--s2); align-content: start; }
+.project-shell .lb-sidebar .lb-sidebar-footer { flex: 0 0 auto; display: grid; gap: var(--s2); border-block-start: var(--line) solid var(--border); padding-block-start: var(--s2); }
+.project-shell .lb-sidebar .lb-sidebar-identity { display: grid; gap: var(--s1); justify-items: start; }
+.project-shell .shell-footer-note { margin: 0; }
+.project-shell .lb-sidebar[data-collapsed='true'] .shell-footer-note,
+.project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-identity { display: none; }
+
+/* Grouped destinations: V2-T2 divider section headers — the small uppercase
+   label rides a thin hairline rule filling the trailing space (no boxed
+   header); icon+label rows keep every glyph visible, and the collapsed rail
+   drops the label for icon-only rows with native tooltips. The active row is
+   the accent-tinted pill with its left bar, and a projection-fed count badge
+   rides the trailing edge (T20-RF). */
+.project-shell .lb-sidebar-group + .lb-sidebar-group { margin-block-start: var(--s3); }
+.project-shell .lb-sidebar-group-label { display: flex; align-items: center; gap: var(--s2); padding-inline: var(--s2) 0; font-size: var(--caption); font-weight: var(--strong); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.project-shell .lb-sidebar-group-label::after { content: ''; flex: 1 1 auto; min-inline-size: var(--s2); border-block-start: var(--line) solid var(--hairline); }
+.project-shell .lb-sidebar-group-items { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.project-shell .lb-sidebar-destination { border-radius: var(--radius-pill); }
+.project-shell .lb-sidebar-destination[aria-current='page'] { background: var(--product-accent-soft); color: var(--product-accent); }
+.project-shell .lb-sidebar-destination[aria-current='page'] .lb-sidebar-badge { background: var(--product-accent); color: var(--product-accent-contrast); }
+
+/* The main side is ONE scroll container: the page header sticks to its top
+   edge as a frosted bar (translucent veil + backdrop blur) with the content
+   scrolling beneath it — the reference dashboard's sticky header. */
+.project-shell .lb-shell-main { display: block; padding: 0; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+.project-shell .shell-page-head { position: sticky; inset-block-start: 0; z-index: 4; display: grid; gap: var(--s2); padding: var(--s3) var(--s4); border-block-end: var(--line) solid var(--border); background: var(--veil); -webkit-backdrop-filter: blur(var(--veil-blur)); backdrop-filter: blur(var(--veil-blur)); box-shadow: var(--elevation-1); }
+.project-shell .shell-page-bar { gap: var(--s3); }
+.project-shell .shell-page-lead { gap: var(--s3); min-inline-size: 0; }
+.project-shell .shell-page-titles { gap: var(--s1); min-inline-size: 0; }
+.project-shell .shell-page-kicker { margin: 0; text-transform: uppercase; letter-spacing: .08em; }
+.project-shell .shell-page-title { margin: 0; font-size: var(--heading); font-weight: var(--strong); letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.project-shell .shell-page-meta { margin: 0; }
+.shell-context-summary { cursor: pointer; min-block-size: var(--control); align-content: center; }
+.shell-context[open] { overflow-wrap: anywhere; }
+@media (min-width: 64rem) {
+  .project-shell .shell-page-head { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; }
+  .project-shell .shell-page-head .shell-context { margin: 0; max-inline-size: var(--measure); }
+}
+.project-shell .overview-hero { padding: var(--s3); }
+.project-shell .overview-hero-head { display: none; }
+.project-shell .spike-legend-details > summary { cursor: pointer; min-block-size: var(--control); align-content: center; }
+.project-shell .spike-legend-details[open] { flex-basis: 100%; }
+.project-shell .overview-context > summary { cursor: pointer; min-block-size: var(--control); align-content: center; }
+.project-shell .lb-theme-toggle svg { inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.project-shell .shell-content { min-block-size: 0; padding: var(--s4); align-content: start; gap: var(--s4); }
+.project-shell[data-live='true'] .shell-content { gap: var(--s3); padding: var(--s3) var(--s4); }
+
+/* The docked regions lose their floating-card chrome inside the dock. */
+.project-shell .lb-dock .spike-inspector,
+.project-shell .lb-dock .overview-records { border: none; padding: 0; background: transparent; box-shadow: none; }
+.shell-dock-section + .shell-dock-section { border-block-start: var(--line) solid var(--border); padding-block-start: var(--s3); }
+.shell-dock-section:empty { display: none; }
+
+/* V2-T4 — the inspector dock is a FLOATING OVERLAY, never a layout column.
+   Geometry: elevation-3 rounded panel floating off the right edge, 380–420px
+   wide (clamped; narrower viewports subtract their own breathing room), top
+   anchored below the compact bar, capped height with the body scrolling
+   internally (the base .lb-dock in style.css already fixes the position and
+   the auto/1fr/auto rows; this layer floats it). Because the panel is out of
+   flow, opening it NEVER resizes the main content; the frame grid keeps its
+   static two-track columns. */
+.project-shell .lb-dock { inset-block: calc(var(--space-1) * 6) 0; inset-inline-end: 0; inline-size: min(var(--inspector),100%); max-block-size: calc(100dvh - var(--space-1) * 6); border: none; border-inline-start: var(--line) solid var(--border); border-radius: 0; box-shadow: var(--elevation-3); }
+.project-shell .lb-dock > header { align-items: start; }
+.project-shell .lb-dock h2 { font-size: var(--title); overflow-wrap: anywhere; min-inline-size: 0; flex: 1; }
+.project-shell .lb-dock [data-testid='dock-panel-close'] { flex-shrink: 0; }
+.shell-agent-context { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--s3); }
+.shell-agent-context textarea { inline-size: 100%; min-block-size: var(--control); resize: vertical; }
+.project-shell .shell-dock-section[hidden],.project-shell .shell-agent-context[hidden] { display: none; }
+.project-shell .lb-dock [hidden] { display: none; }
+.shell-agent-context > summary { cursor: pointer; min-block-size: var(--control); align-content: center; }
+@media (min-width: 75rem) {
+  .project-shell[data-dock-open='true'] .lb-shell { grid-template-columns: auto minmax(0,1fr) min(30vw,var(--inspector)); }
+  .project-shell .lb-dock { position: static; inline-size: auto; min-inline-size: 0; max-block-size: 100%; min-block-size: 0; box-shadow: none; }
+}
+/* Refined dock content: compact stacked blocks with icon headers; the
+   heading glyphs ride inline before the label, hairline-separated. */
+.project-shell .lb-dock .shell-dock-block { display: grid; gap: var(--s1); border-block-start: none; padding-block-start: 0; }
+.project-shell .lb-dock .shell-dock-block + .shell-dock-block { border-block-start: var(--line) solid var(--hairline); padding-block-start: var(--s2); }
+.project-shell .lb-dock .shell-dock-block :is(h2, h3, h4) { display: inline-flex; align-items: center; gap: var(--s1); margin: 0; font-size: var(--caption); font-weight: var(--strong); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.project-shell .lb-dock .shell-dock-block svg { flex: 0 0 auto; inline-size: var(--icon); block-size: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.project-shell .lb-dock .shell-dock-block p { margin: 0; }
+/* Narrow-only subtle scrim: the open floating dock dims the frame beneath
+   (the modal --backdrop token at reduced strength); pointer events land on
+   the root itself and the shell closes the dock on them. Wide viewports
+   never paint a scrim — the panel floats quietly beside the content. */
+@media (max-width: 74.99rem) {
+  .project-shell[data-dock-open='true']::after { content: ''; position: absolute; inset: 0; z-index: 40; background: var(--backdrop); opacity: .35; }
+}
+
+.plan-browser { display: grid; grid-template-columns: minmax(min(18rem, 100%), .7fr) minmax(0, 2fr); gap: var(--s4); align-items: start; }
+.plan-index { position: sticky; inset-block-start: var(--s4); max-block-size: calc(100dvh - var(--s8)); overflow: auto; }
+.plan-index button { display: grid; inline-size: 100%; text-align: start; gap: var(--s1); }
+.plan-index button[hidden] { display: none; }
+.plan-index button[aria-pressed='true'] { background: var(--selected); }
+.plan-filters { gap: var(--s3); }
+.plan-filters label { gap: var(--s1); font-size: var(--type-sm); color: var(--subtle); }
+.plan-filters input,.plan-filters select { inline-size: 100%; min-inline-size: 0; }
+.plan-index > [role='status'] { min-block-size: 0; margin: 0; }
+.plan-results:empty { display: none; }
+.plan-detail { min-inline-size: 0; }
+.research-workspace { min-inline-size: 0; }
+.research-capture label { gap: var(--space-1); }
+.research-capture :is(input,textarea) { inline-size: 100%; min-inline-size: 0; }
+.research-field > p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.research-capture > summary,.research-field > summary,.plan-checkpoints > summary,.plan-checkpoint > summary { min-block-size: var(--density-control); align-content: center; cursor: pointer; }
+.plan-checkpoint { padding: var(--space-1); background: var(--inset); border-radius: var(--radius-sm); }
+.project-record-list { margin: 0; padding: 0; list-style: none; }
+.project-record-list li + li { border-block-start: var(--line) solid var(--border); }
+.project-record { padding-block: var(--s3); min-inline-size: 0; }
+.project-records { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(18rem,100%),1fr)); gap: var(--s4); }
+.project-records > section { margin: 0; align-content: start; }
+.project-collection > .notice { margin-block-start: var(--s3); }
+.execution-live > header { margin-block-end: 0; }
+.project-shell[data-live='true'] .spike-sentence > .meta:last-child { display: none; }
+.project-shell[data-live='true'] .overview-view { gap: var(--s2); }
+.project-shell[data-live='true'] .overview-view section { margin-block-start: 0; }
+.project-shell[data-live='true'] .overview-head,.project-shell[data-live='true'] .overview-metrics,
+.project-shell[data-live='true'] .project-spike,.project-shell[data-live='true'] .overview-context { grid-column: 1; }
+.project-shell[data-live='true'] .overview-head { gap: var(--s2); }
+.project-shell[data-live='true'] .overview-sentence { gap: var(--s1); }
+.project-shell[data-live='true'] .overview-sentence h3,.project-shell[data-live='true'] .overview-metrics h3 { font-size: var(--body); }
+.project-shell[data-live='true'] .overview-metric-row { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); }
+.project-shell[data-live='true'] .overview-metric { min-inline-size: 0; max-inline-size: none; padding: var(--s1); }
+.project-shell[data-live='true'] .overview-metric [data-metric-id] { min-block-size: var(--control); padding: var(--s1) var(--s2); font-size: var(--caption); }
+.project-shell[data-live='true'] .overview-context summary { cursor: pointer; font-weight: var(--strong); }
+.project-shell[data-live='true'] .overview-context[open] summary { margin-block-end: var(--s3); }
+.project-shell[data-live='true'] .spike-legend-details { margin-inline-start: auto; }
+.project-shell[data-live='true'] .spike-legend-details > summary { cursor: pointer; font-size: var(--caption); }
+.project-shell[data-live='true'] .spike-legend-details[open] { flex-basis: 100%; }
+.project-shell[data-live='true'] .spike-toolbar { min-block-size: var(--control); }
+.project-shell[data-live='true'] .spike-toolbar .spike-status { min-block-size: auto; }
+.project-shell[data-live='true'] .spike-graph-wrap { position: relative; }
+.project-detail-loader > .architecture-view,.project-detail-loader > .git-metrics-view,.project-detail-loader > .evidence-view { margin-block-start: var(--s3); }
+.project-summary { --card-min: 9rem; }
+.project-summary > .panel { padding: var(--s3); }
+.project-source-details > summary { cursor: pointer; font-weight: var(--strong); }
+.project-source-details[open] > summary { margin-block-end: var(--s4); }
+
+/* Narrow: the rail retracts to its icon column and the surface stacks. */
+@media (max-width: 48rem) {
+  .project-shell .lb-shell { grid-template-columns: auto minmax(0, 1fr); }
+  .project-shell .lb-sidebar { padding-inline: var(--s1); }
+  .project-shell .lb-sidebar[data-collapsed='true'] { inline-size: var(--lb-rail-icon); }
+  .project-shell .lb-sidebar[data-collapsed='false'] { inline-size: min(var(--lb-rail),50vw); }
+  .project-shell .lb-sidebar[data-collapsed='true'] .lb-sidebar-destination { justify-content: center; padding-inline: 0; }
+  .project-shell .lb-sidebar .lb-sidebar-group + .lb-sidebar-group { margin-block-start: var(--s2); }
+  .project-shell .shell-content { padding: var(--s3); }
+  .plan-browser { grid-template-columns: minmax(0, 1fr); }
+  .plan-index { position: static; max-block-size: none; overflow: visible; }
+}
+
+@media (max-width: 44rem) {
+  .project-shell[data-live='true'] .overview-metric-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .project-shell .shell-page-bar { flex-wrap: wrap; }
+}

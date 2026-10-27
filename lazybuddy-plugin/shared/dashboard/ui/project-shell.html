@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LazySeries 1.4.0 project shell — the compact icon top bar, static retractable sidebar, single content surface and dock app frame (V2-T1). Destinations render only after initialization.">
+  <title>Project shell — app frame</title>
+  <!-- Same pre-paint appearance bootstrap as the served dashboard: dark-first
+       default, stored 'lazyseries-theme' preference wins, no flash-of-wrong-theme.
+       V2-T1: the compact icon top bar (theme icon-toggle, dock trigger, rail
+       collapse) is rendered by the shell itself; the theme <select> is gone. -->
+  <script src="./theme-init.js"></script>
+  <script>
+    function showLoadFailure() {
+      document.querySelector('#load-status').textContent = 'The project shell could not load. Reload this page to try again. No live run is connected.';
+    }
+    const loadTimeout = setTimeout(showLoadFailure, 5000);
+  </script>
+  <link rel="stylesheet" href="./project-shell.css">
+  <script id="shell-module" type="module" src="./project-shell-page.mjs" onload="clearTimeout(loadTimeout)" onerror="clearTimeout(loadTimeout); showLoadFailure()"></script>
+</head>
+<body>
+  <main>
+    <p id="load-status" role="status">Loading project shell…</p>
+    <div id="shell-root" class="stack"></div>
+    <footer>Preview · Recorded example data, not live project status. Open the authenticated dashboard service for current work and editing.</footer>
+  </main>
+</body>
+</html>

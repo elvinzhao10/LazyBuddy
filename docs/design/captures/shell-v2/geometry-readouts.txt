@@ -1,0 +1,10 @@
+t7-shell-light-1440 DOM-READOUT: MAIN=1200px DOCK=closed VW=1440 dockOpen=false SCROLL=1440&lt;=1440
+t7-shell-light-1440 DOM-READOUT: MAIN=${mainWidth}px DOCK=${dockRect ? `${Math.round(dockRect.width)}px@${Math.round(dockRect.left)}` : 'closed'} VW=${window.innerWidth} dockOpen=${shell.getStats().dockOpen} SCROLL=${document.scrollingElement.scrollWidth}
+t7-shell-dark-1440 DOM-READOUT: MAIN=1200px DOCK=closed VW=1440 dockOpen=false SCROLL=1440&lt;=1440
+t7-shell-dark-1440 DOM-READOUT: MAIN=${mainWidth}px DOCK=${dockRect ? `${Math.round(dockRect.width)}px@${Math.round(dockRect.left)}` : 'closed'} VW=${window.innerWidth} dockOpen=${shell.getStats().dockOpen} SCROLL=${document.scrollingElement.scrollWidth}
+t7-shell-light-390 DOM-READOUT: MAIN=334px DOCK=closed VW=390 dockOpen=false SCROLL=390&lt;=390
+t7-shell-light-390 DOM-READOUT: MAIN=${mainWidth}px DOCK=${dockRect ? `${Math.round(dockRect.width)}px@${Math.round(dockRect.left)}` : 'closed'} VW=${window.innerWidth} dockOpen=${shell.getStats().dockOpen} SCROLL=${document.scrollingElement.scrollWidth}
+t7-shell-dark-390 DOM-READOUT: MAIN=334px DOCK=closed VW=390 dockOpen=false SCROLL=390&lt;=390
+t7-shell-dark-390 DOM-READOUT: MAIN=${mainWidth}px DOCK=${dockRect ? `${Math.round(dockRect.width)}px@${Math.round(dockRect.left)}` : 'closed'} VW=${window.innerWidth} dockOpen=${shell.getStats().dockOpen} SCROLL=${document.scrollingElement.scrollWidth}
+t7-shell-dock-dark-1440 DOM-READOUT: MAIN=1200px DOCK=closed VW=1440 dockOpen=false SCROLL=1440&lt;=1440
+t7-shell-dock-dark-1440 DOM-READOUT: MAIN=${mainWidth}px DOCK=${dockRect ? `${Math.round(dockRect.width)}px@${Math.round(dockRect.left)}` : 'closed'} VW=${window.innerWidth} dockOpen=${shell.getStats().dockOpen} SCROLL=${document.scrollingElement.scrollWidth}

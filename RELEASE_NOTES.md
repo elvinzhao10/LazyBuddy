@@ -1,147 +1,90 @@
-# LazyBuddy v1.4.0 - vendored dashboard core and authenticated browser service
+# LazyBuddy v1.4.0
 
-A feature release across the six LazySeries siblings: the family's portable
-dashboard core is vendored byte-identically into every package, and LazyBuddy
-is the vendoring source that distributes and drift-guards it.
+LazyBuddy 1.4.0 adds the shared local project dashboard and persistent project
+record to the existing planning, execution and verification workflows.
 
-## Eval-driven fixes
+## Dashboard and project work
 
-- The portable dashboard core (projection, command/queue reducers, browser UI)
-  lives in `lazybuddy-plugin/shared/dashboard/`, pinned by the hash-pinned
-  `lazybuddy-plugin/shared/dashboard.vendor.json`; `scripts/vendor-dashboard.mjs`
-  vendors it and `.github/workflows/dashboard-family-drift.yml` rejects family
-  drift across the six sibling repositories.
-- The `status-dashboard` MCP server gains two tools for a total of six:
-  `dashboard_service` (start, inspect, stop, or return the local browser entry)
-  and `copy_task_context` (copy a validated producer context without executing
-  or consuming it). The four existing status views are unchanged.
-- The authenticated browser dashboard binds literal `127.0.0.1`, requests an
-  owned port, and requires an access key from a protected credential file. It
-  offers Work, Verification, and Plan-edit views with a task inspector,
-  evidence preview, and queue planning; queue edits never start work.
-- The marketplace route contract was regenerated with the repo's own generator
-  after the accepted dashboard payload changes: `file_count` stays 63 and only
-  the pinned inventory digest moved.
-- No-drift plan sync no longer rewrites run state or appends sync events for
-  cosmetic or fenced-example plan edits; a first revision snapshot or a
-  cosmetic edit adopts the revision without state or event writes.
+- An authenticated local dashboard with eight destinations: **Overview, Project,
+  Plans, Health, Execution, Git, Evidence and Research**.
+- A project record, editable plans, queue planning and research capture, with
+  source revisions and evidence references visible for review.
+- A run monitor that separates execution progress from verified completion,
+  plus reported token usage, resource activity and retained-run history.
+- A Health inventory of package components, separate from observed host activity.
 
-## Measured efficiency
+The collapsible sidebar, contextual Details and expandable pan/zoom maps keep
+navigation within the project. Source edits use authenticated native project
+binding and revision checks. Queue edits do not start work. Plans and research
+retain source revision and evidence references; these references are not
+immutable source copies or verification verdicts. Unknown usage stays unknown,
+and recorded comparisons do not establish efficiency savings.
 
-No latency, token, cost, or native-host performance improvement is claimed.
-The dashboard service binds an owned loopback port with an authentication
-boundary; queue edits never start work, so planning traffic cannot trigger
-execution. Host embedding, chat handoff, and wake remain unobserved.
+The `status-dashboard` MCP server exposes seven tools, including
+`dashboard_service`, `copy_task_context` and typed `project` operations.
+
+The dashboard and project cores are hash-pinned in the package's
+[vendor manifests](lazybuddy-plugin/shared/dashboard.vendor.json), with a separate
+[project manifest](lazybuddy-plugin/shared/project.vendor.json). See the
+[documentation index](docs/README.md) for package architecture and usage.
 
 ## Host capability matrix
 
-CodeBuddy CLI, CodeBuddy IDE, and WorkBuddy retain separate acceptance. The
-dashboard is package-owned local software: the browser, transactional edits,
-the project queue, context copy, and observations are available in the
-package, while host embedding, chat handoff, and wake are unobserved.
-`dashboard_service open` returns the loopback browser entry and labels native
-host loading unobserved. **HOST READINESS: PENDING** until the selected
-current client demonstrates discovery, skill/command execution, relevant
-hooks, and MCP connections.
-
-See [the dated platform audit](docs/reference/platform-status-2026-10-02.md)
-for the v1.3.5 historical snapshot; its boundaries are unchanged by this
-release.
-
-## Migration and upgrade
-
-Use the receipt-aware lifecycle update with an explicit project binding.
-Preserve populated run state, modified assets, unknown files, and host
-settings. Existing 1.3.5 tags and assets remain intact. Runs created before
-this release keep their state and events; the plan-sync repair only stops
-unnecessary rewrites of unaffected runs.
-
-Read [AGENTS.md](AGENTS.md), [README.md](README.md), and the selected host
-guide before following a native installation route.
+CodeBuddy CLI and IDE use the documented marketplace route when the CLI is
+available. WorkBuddy has a separate full-plugin route; Skills and manual MCP
+remain a recovery option. Historical macOS observations do not establish
+current-build compatibility. See the [platform audit](docs/reference/platform-status-2026-10-27.md)
+for the documented versions and the acceptance still needed.
 
 ## Known risks
 
-Authenticated current-client acceptance remains pending. A copied
-configuration, manifest validation, or isolated lifecycle fixture cannot
-establish host loading; the dashboard service does not prove that a host
-embedded it, handed off a chat, or woke from a host event. Optional providers
-must satisfy their own runtime floor. Native features added upstream are not
-automatically wired into the adapter.
+**HOST READINESS: PENDING.** Package checks do not prove plugin loading, hook
+execution, model selection or live MCP connections. Browser embedding, chat
+handoff and host wake remain unobserved. No current-session model selection or provider entitlement is established.
+
+## Migration and upgrade
+
+Use Node.js 24 LTS (recommended) or Node.js 22 LTS, Git and Python 3.10+.
+The core lifecycle and the pinned TypeScript language-server 5.3.0 provider
+retain Node.js 20 compatibility. Optional tooling stays separately enabled.
+
+Use the [installation guide](docs/03-install-and-host-verification.md) and
+[AGENTS.md](AGENTS.md) for the selected route. Update only receipt-owned assets
+and preserve modified or unknown files,
+project history and host settings. Do not combine a full-plugin route
+with its fallback. After updating, observe a fresh host session separately
+from package checks.
 
 ## Rollback
 
-Retain the previous release and receipts. Follow the scoped lifecycle removal
-or rollback plan, preserving user-modified and foreign assets. Stop the owned
-dashboard service with `dashboard_service stop` before rollback; host-managed
-registrations require their selected client's removal flow; never remove
-credentials, sessions, or entire shared configuration directories.
-
-## Prior release notes
-
-# LazyBuddy v1.3.5 - runtime verification and platform clarity
-
-A maintenance release across the six LazySeries siblings. It carries forward
-the workflow and run-integrity foundation from 1.3.0 through 1.3.4.
+Keep the previous release and its receipts. Rollback and removal remain
+receipt-scoped; follow the [removal guide](docs/08-safe-removal.md) instead of
+deleting host directories.
 
 ## Eval-driven fixes
 
-- Runtime-floor checks execute named package, installation and lifecycle tests.
-  Missing or unknown exercises and failed subprocesses cannot report PASS.
-- Optional TypeScript LSP installation is tested separately with engine-strict
-  dependency installation and the installed server executable.
-- Hook payloads are bounded before parsing and kept out of process arguments.
-  Invalid or oversized events preserve each adapter's exit and state contract.
-- Current product names, configuration scopes and native extension capabilities
-  are distinguished from legacy routes and unverified live integration.
+Source writes check the expected revision before mutation, and project stores
+reject a foreign runtime identity. Package verification covers these local
+boundaries separately from native host acceptance.
 
 ## Measured efficiency
 
-Hook boundary repairs avoid payload-sized process arguments and bound input
-memory. The first host-independent verification unit is vendored identically
-in sibling packages, with product-specific exercises in small adapters.
-No latency, token, cost or native-host performance improvement is claimed.
-Persistent LSP sessions and event-ledger compaction remain future measured work.
+Usage and retained-run comparisons display recorded inputs only. Missing usage
+is not zero, fixture measurements are not live host measurements, and this
+release makes no token, time, resource or cost-saving claim.
 
-## Host capability matrix
+## Release verification and distribution
 
-CodeBuddy CLI, CodeBuddy IDE and WorkBuddy retain separate acceptance. Native plugins and agent isolation are documented; the package does not establish a current authenticated host session.
-Agent memory declarations now use native `memory: project` for the librarian and orchestrator; other roles omit this optional field. The validator rejects obsolete Booleans and preserves worktree and tool restrictions.
+The [release workflow](.github/workflows/release.yml) checks the tag against the
+package version and gates publication on package verification and publication checks.
+It builds `lazybuddy-v1.4.0.tar.gz` for the selected tag and publishes it as a GitHub Release
+asset. Archive checks are part of that workflow; existing published assets
+are retained. This workflow does not publish to npm.
 
-See [the dated platform audit](docs/reference/platform-status-2026-10-02.md).
-**HOST READINESS: PENDING** until the selected current client demonstrates
-discovery, skill/command execution, relevant hooks and MCP connections.
-Official feature documentation and package tests are separate evidence.
+Final CI and release-job outcomes belong to the tagged commit's Actions run;
+these notes do not substitute for that result or for current-session host
+acceptance. Reproduction commands are in the
+[test and release guide](docs/09-test-and-release-verification.md).
 
-## Dependencies and runtime requirements
-
-Node.js 24 is recommended. Core lifecycle compatibility remains Node.js 20;
-LazyTrae's standalone CLI also retains its separate Node.js 18 compatibility
-tier. Optional TypeScript language-server 6.x requires Node.js 22.22.2 or later;
-5.x providers retain their own Node.js 20 requirement.
-Python language-server providers are aligned at basedpyright 1.40.1.
-LazyTrae uses fast-uri 4.2.1 directly and the patched 3.1.8 Ajv edge, with
-security and normalization regressions preserved.
-
-## Migration and upgrade
-
-Use the receipt-aware lifecycle update with an explicit project binding.
-Preserve populated run state, modified assets, unknown files and host settings.
-Select the exact client and version before following a native installation route.
-Kimi Code clients can share configuration; Kimi Work is a separate target.
-
-Read [AGENTS.md](AGENTS.md), [README.md](README.md) and the selected host guide.
-Use a newly versioned archive; existing 1.3.4 tags and assets remain intact.
-
-## Known risks
-
-Authenticated current-client acceptance remains pending. A copied configuration,
-manifest validation, or isolated lifecycle fixture cannot establish host loading.
-Optional providers must satisfy their own runtime floor.
-Native features added upstream are not automatically wired into the adapter.
-
-## Rollback
-
-Retain the previous release and receipts. Follow the scoped lifecycle removal
-or rollback plan, preserving user-modified and foreign assets. Host-managed
-registrations require their selected client's removal flow; never remove
-credentials, sessions or entire shared configuration directories.
+Historical release entries remain in [CHANGELOG.md](CHANGELOG.md) and dated
+platform audit documents.

@@ -1,0 +1,94 @@
+@import './tokens.css';
+
+/* T15 project and plan editors — redesigned on tokens v2 and the T12 library.
+   Every value resolves to a tokens.css v2 name (type scale, 8-pt spacing,
+   radii, elevation, motion) or one of the frozen aliases with no v2
+   equivalent (--line, --control, --icon, --measure). No color literals, no
+   size literals, no animation: the only transition in scope is the shared
+   button fade from style.css, which tokens.css zeroes under
+   prefers-reduced-motion. */
+
+.editor-root { container-type: inline-size; }
+.editor-root > header .cluster { flex-wrap: wrap; }
+.editor-status { min-block-size: var(--control); display: flex; align-items: center; }
+.editor-status[data-state='saved'] { color: var(--success); }
+.editor-status[data-state='valid'] { color: var(--info); }
+.editor-status[data-state='conflict'] { color: var(--stale-ink); }
+.editor-status[data-state='refused'], .editor-status[data-state='invalid'] { color: var(--danger); }
+.editor-status[data-state='pending'] { color: var(--subtle); }
+
+/* Toolbar: the segmented surface switch and the dock actions share one row;
+   both stay primary controls (44px targets come from the component styles). */
+.editor-toolbar { flex-wrap: wrap; row-gap: var(--space-1); padding-block: var(--space-1);
+  border-block: var(--line) solid var(--hairline); }
+.editor-toolbar .cluster { flex-wrap: wrap; }
+
+.editor-pane { min-block-size: var(--space-7); }
+.editor-pane[hidden] { display: none; }
+
+.editor-form-grid { display: grid; gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+.editor-field { max-inline-size: none; }
+.editor-field input, .editor-field select { inline-size: 100%; }
+
+.editor-facts { gap: var(--space-1); margin: 0; }
+.editor-facts .cluster { gap: var(--space-2); flex-wrap: wrap; }
+.editor-facts dt { font-size: var(--type-sm-size); color: var(--subtle); }
+.editor-facts dd { margin: 0; overflow-wrap: anywhere; }
+/* Revisions, counts and digest fragments are live-updating figures (TY-4). */
+.editor-facts dd, .editor-patch, .editor-diff-line { font-variant-numeric: var(--numeric); }
+
+/* Split view: registered original vs staged edit, both scroll locally. */
+.editor-split { display: grid; gap: var(--space-2); align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); }
+.editor-split-card { display: grid; gap: var(--space-1); margin: 0; padding: var(--lb-card-pad);
+  background: var(--surface); border: var(--line) solid var(--border); border-radius: var(--radius-md); }
+.editor-split-card figcaption { font-size: var(--type-sm-size); color: var(--subtle); }
+.editor-source-pre { margin: 0; max-block-size: 22rem; overflow: auto; padding: var(--space-2);
+  background: var(--inset); border-radius: var(--radius-sm);
+  font-family: var(--mono); font-size: var(--type-sm-size); line-height: var(--type-md-lh); white-space: pre; }
+
+/* Diff: paired original/edited columns through the library table; change ink
+   rides the status pairs (success/danger), never the product accent. */
+.editor-diff-line { font-family: var(--mono); font-size: var(--type-sm-size); overflow-wrap: anywhere; white-space: pre-wrap; }
+.editor-diff-line[data-change='removed'] { color: var(--danger); background: var(--danger-bg); }
+.editor-diff-line[data-change='added'] { color: var(--success); background: var(--success-bg); }
+.editor-diff-line[data-empty='true'] { color: var(--subtle); }
+
+.editor-patch { margin: 0; padding: var(--space-2); border: var(--line) solid var(--border); border-radius: var(--radius-md);
+  background: var(--inset); font-family: var(--mono); font-size: var(--type-sm-size); white-space: pre; overflow-x: auto; }
+
+.editor-tasklist { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.editor-tasklist li { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.editor-invalidations { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+.editor-invalidations ul { margin: 0; padding-inline-start: var(--space-4); }
+
+.editor-reasons { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-half); }
+.editor-reasons li { font-size: var(--type-sm-size); color: var(--subtle); overflow-wrap: anywhere; }
+
+/* Dirty dot on the hosting shell tab label: wayfinding for unsaved drafts.
+   Amber (the attention pair's ink) on the tab surface, never the accent. */
+.lb-tab-dirty { display: inline-block; inline-size: var(--space-1); block-size: var(--space-1);
+  border-radius: var(--radius-full); background: var(--warn); }
+.lb-tab-dirty[hidden] { display: none; }
+
+/* Native confirm dialogs (close guard, retirement confirm). */
+.editor-dialog { display: grid; gap: var(--space-2); }
+.editor-dialog[hidden] { display: none; }
+.editor-dialog-actions { justify-content: end; }
+
+/* Dock panel bodies sit inside the fixed dock; only spacing lives here. */
+.lb-dock .editor-form-grid { grid-template-columns: minmax(0, 1fr); }
+
+.editor-narrow-list { display: none; margin: 0; padding: 0; list-style: none; gap: var(--space-2); }
+.editor-root[data-narrow='true'] .editor-narrow-list { display: grid; }
+.editor-row { display: grid; gap: var(--space-1); padding: var(--space-2); border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.editor-row-control { text-align: start; max-inline-size: none; overflow-wrap: anywhere; }
+.editor-row .meta { font-size: var(--type-sm-size); }
+
+@media (max-width: 700px) {
+  .editor-root[data-narrow='true'] .editor-pane { display: none; }
+  .editor-field { max-inline-size: none; }
+}
+
+@media (prefers-reduced-motion: reduce) { .editor-root * { transition: none; } }
