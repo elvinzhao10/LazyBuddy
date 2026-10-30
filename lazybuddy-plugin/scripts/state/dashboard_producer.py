@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
+from pathlib import Path
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import TypedDict
@@ -28,9 +30,31 @@ ATTEMPT_FIELDS = {"id", "task_id", "criterion_id", "criterion_version", "plan_re
                   "execution", "verification", "started_at", "finished_at", "evidence"}
 
 
+def review_model(files: Files, snapshot: dict[str, Json], request: dict[str, Json], mode: str) -> dict[str, Json]:
+    reducer = Path(__file__).resolve().parents[2] / "shared/dashboard/commands.mjs"
+    result = subprocess.run([files.binding.node, str(reducer), "--review-model"],
+                            input=encoded({"snapshot": snapshot, "request": request, "mode": mode}),
+                            capture_output=True, timeout=10, check=False)
+    if result.returncode != 0:
+        raise TransactionError(result.stderr.decode().strip())
+    return json.loads(result.stdout)
+
+
+def review_request(request: dict[str, Json]) -> dict[str, Json]:
+    return {"review_id": request.get("review_id"), "subject": request.get("review_subject"),
+            "task_id": request["task_id"], "criterion_id": request["criterion_id"],
+            "attempt_id": request.get("attempt_id"), "worker_id": request.get("worker_id"),
+            "role": request.get("role"), "executor_attempt_id": request.get("executor_attempt_id")}
+
+
+def has_review(snapshot: dict[str, Json], request: dict[str, Json]) -> bool:
+    return any(review.get("task_id") == request["task_id"] and review.get("criterion_id") == request["criterion_id"]
+               for review in snapshot["state"].get("reviews", []))
+
+
 def producer_context(files: Files, request: Json, snapshot: dict[str, Json]) -> Json:
     required = {"parent_task_id", "task_id", "criterion_id", "plan_commands_file", "command_index"}
-    if not isinstance(request, dict) or set(request) != required:
+    if not isinstance(request, dict) or not required <= set(request) or set(request) - required - {"attempt_id", "worker_id", "role", "executor_attempt_id", "review_id", "review_subject"}:
         raise TransactionError("invalid producer context request")
     parent_id = _text(request["parent_task_id"], "parent_task_id")
     task_id = _text(request["task_id"], "task_id")
@@ -73,7 +97,8 @@ def producer_context(files: Files, request: Json, snapshot: dict[str, Json]) -> 
     argv = commands[command_index]
     if not argv or len(argv) > 128 or any(not isinstance(item, str) or not item or len(item) > 1024 for item in argv):
         raise TransactionError("producer command argv malformed")
-    return {"project_id": files.binding.project_id, "run_id": files.binding.run_id, "parent_task_id": parent_id,
+    review = review_model(files, snapshot, review_request(request), "inspect")["binding"] if has_review(snapshot, request) else None
+    return {**({"review": review} if review is not None else {}), "project_id": files.binding.project_id, "run_id": files.binding.run_id, "parent_task_id": parent_id,
             "task_id": task_id, "criterion_id": criterion_id, "criterion_version": criterion.get("version"),
             "revision": snapshot["revision"], "plan_revision": snapshot["plan_revision"],
             "plan_digest": snapshot["plan_digest"], "source_revision": snapshot["source_revision"],
@@ -141,6 +166,12 @@ def publish_attempt(files: Files, request: Json, snapshot: dict[str, Json], even
     phase = "start" if attempt["execution"] == "running" else "terminal"
     if phase == "start" and (attempt["finished_at"] is not None or not isinstance(invocation.get("runner_pid"), int)):
         raise TransactionError("producer start is not observed")
+    if phase == "start" and has_review(snapshot, attempt):
+        binding = invocation.get("review") or {}
+        review_model(files, snapshot, {"review_id": binding.get("review_id"), "subject": binding.get("subject"),
+                     "task_id": attempt["task_id"], "criterion_id": attempt["criterion_id"],
+                     "attempt_id": attempt["id"], "worker_id": attempt["worker_id"], "role": invocation.get("role"),
+                     "executor_attempt_id": binding.get("executor_attempt_id")}, "observe")
     if phase == "terminal":
         start = json.loads(files.read(_attempt_path(_text(attempt["id"], "attempt_id"), "start")))
         if start.get("context_sha256") != invocation.get("context_sha256") or start.get("runner_pid") != invocation.get("runner_pid"):

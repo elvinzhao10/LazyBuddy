@@ -589,3 +589,34 @@ wait "$lock_holder"
 echo "PASS lock-timeout=bounded elapsed_seconds=$timeout_elapsed"
 
 echo 'PASS: state transaction crash recovery, idempotency, dependency, and corruption cases'
+
+new_run "$PROJECT" review-record
+CWD="$PROJECT" bash "$STATE_DIR/update-task.sh" review-record T1 done >/dev/null
+CWD="$PROJECT" bash "$STATE_DIR/append-event.sh" review-record review_verdict '{"event_id":"review:accepted","verdict":"accept","dimensions":"7/7","reviewer_agent_id":"independent:reviewer"}'
+python3 - "$PROJECT/.lazybuddy/runs/review-record/state.json" <<'PY'
+import json,sys
+state=json.load(open(sys.argv[1]))
+assert state['review_status']=='accepted', state['review_status']
+assert state['tasks'][0]['status']=='done', state['tasks'][0]
+PY
+CWD="$PROJECT" bash "$STATE_DIR/append-event.sh" review-record review_verdict '{"event_id":"review:revised","verdict":"revise","dimensions":"6/7","reviewer_agent_id":"independent:reviewer"}'
+CWD="$PROJECT" bash "$STATE_DIR/append-event.sh" review-record review_verdict '{"event_id":"review:accepted","verdict":"accept","dimensions":"7/7","reviewer_agent_id":"independent:reviewer"}'
+python3 - "$PROJECT/.lazybuddy/runs/review-record/state.json" <<'PY'
+import json,sys
+assert json.load(open(sys.argv[1]))['review_status']=='revise'
+PY
+if CWD="$PROJECT" bash "$STATE_DIR/append-event.sh" review-record review_verdict '{"verdict":"invented"}' >/dev/null 2>&1; then
+    echo 'invalid review verdict accepted' >&2; exit 1
+fi
+if CWD="$PROJECT" bash "$STATE_DIR/update-task.sh" review-record T1 review >/dev/null 2>&1; then
+    echo 'invalid task review status accepted' >&2; exit 1
+fi
+echo 'PASS: review verdict atomically updates run state without corrupting tasks or replaying old approval'
+
+if CWD="$PROJECT" bash "$STATE_DIR/update-task.sh" review-record T1 done status=review >/dev/null 2>&1; then
+    echo 'optional field bypassed task status validation' >&2; exit 1
+fi
+if CWD="$PROJECT" bash "$STATE_DIR/update-task.sh" review-record T1 done id=other >/dev/null 2>&1; then
+    echo 'optional field changed task identity' >&2; exit 1
+fi
+echo 'PASS: optional metadata cannot override task identity or execution status'

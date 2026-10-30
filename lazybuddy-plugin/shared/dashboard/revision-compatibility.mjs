@@ -3,7 +3,8 @@ import { parseContract, ContractError, requireRevision, stableJSON } from './con
 export function authorityBinding(input) {
   return stableJSON({ project_id: input.project_id, run_id: input.run_id, revision: input.revision,
     plan_revision: input.plan_revision, state: input.state, sources: input.sources,
-    source_revision: input.source_revision ?? null, plan_digest: input.plan_digest ?? null });
+    source_revision: input.source_revision ?? null, plan_digest: input.plan_digest ?? null,
+    review_content_sha256: input.review_content_sha256 ?? null, review_plan_current: input.review_plan_current ?? null });
 }
 export function validateTransitions(input) {
   const records = input.state.dashboard_plan_transitions ?? [];

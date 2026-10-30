@@ -44,6 +44,10 @@ export function createDashboardConnection({ fetchImpl = globalThis.fetch } = {})
       if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
       return decode(await fetchImpl('/api/project', { headers: headers() }));
     },
+    async historyQuery(request) {
+      if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
+      return decode(await fetchImpl('/api/history/query', { method: 'POST', headers: headers({ 'content-type': 'application/json' }), body: JSON.stringify(request) }));
+    },
     async projectDetail(kind) {
       if (!token) throw new DashboardRequestError(0, { code: 'NOT_CONNECTED' });
       if (!['architecture', 'git', 'evidence', 'health', 'telemetry'].includes(kind)) throw new DashboardRequestError(0, { code: 'INVALID_PROJECT_DETAIL' });
