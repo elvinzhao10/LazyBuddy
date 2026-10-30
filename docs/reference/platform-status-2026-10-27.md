@@ -1,5 +1,7 @@
 # Platform status — 2026-10-27
 
+Historical snapshot: see [the 2026-10-30 audit](platform-status-2026-10-30.md) for current documentation and compatibility changes.
+
 This is a documentation audit of LazyBuddy 1.4.0, not a claim that any host
 loaded it. Public release indexes differ by locale: the current Chinese
 indexes name newer versions than the English mirrors. The latest entries found

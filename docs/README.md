@@ -2,7 +2,7 @@
 
 The current package version is [v1.4.0](../RELEASE_NOTES.md). Package
 verification and fresh native-host acceptance are separate; host acceptance
-remains pending. See the [2026-10-27 platform audit](reference/platform-status-2026-10-27.md) for the latest documented host versions and feature boundaries.
+remains pending. See the [2026-10-30 platform audit](reference/platform-status-2026-10-30.md) for the latest documented host versions and feature boundaries.
 
 This tree explains how LazyBuddy is built. It is a source-reading guide, not
 an installation manual: each page names the executable boundary, the data it
@@ -80,3 +80,11 @@ boundary reference](reference/dependency-and-host-boundaries.md).
 For a complete source-family index, including hooks, loop state, helper
 libraries, provider lifecycle, and release checks, read the [runtime subsystem
 reference](reference/runtime-subsystems.md).
+
+## Development milestone
+
+[Combined verification, history and scale work](verification/1.4.1-verification-history.md) describes the local 1.4.1 development scope and its acceptance boundaries.
+
+## Unreleased 1.4.1 documentation
+
+[Completion and validation](verification/1.4.1-completion.md) · [Verification/history usage](verification/1.4.1-verification-history.md) · [Platform audit](reference/platform-status-2026-10-30.md). Live-host testing is deferred by the maintainer; package readiness and host acceptance remain separate.
