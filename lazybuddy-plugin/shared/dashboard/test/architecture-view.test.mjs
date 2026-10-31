@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
+import { createEvidenceDirectory } from './evidence-directory.mjs';
 
 // T17 interface under test: architecture lenses over T13's three views. The
 // fixture is REAL end to end — a disposable git repository with two tracked
@@ -31,8 +32,6 @@ const projectCLI = fileURLToPath(new URL('../../project/cli.mjs', import.meta.ur
 const PROJECT_ID = 'project:t17';
 const ACTOR = 'local:t17-test';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const evidenceDirectory = process.env.T17_EVIDENCE_DIR
-  ?? '/Users/Admin/Desktop/lazyseries/.omo/evidence/lazyseries-1.4.0-project-platform/T17';
 
 const ARCHITECTURE_DOC = `# Architecture
 
@@ -257,7 +256,7 @@ function chipStates(control) {
   return chipsInOrder.map(chipNode => ({ state: chipNode.dataset.state, label: chipNode.textContent }));
 }
 
-test('architecture lenses render the real fixture with shared identities and stable statuses', async () => {
+test('architecture lenses render the real fixture with shared identities and stable statuses', async t => {
   const gitFacts = await collectLocalGitFacts({ repositoryRoot: fixture.root, sourceScope: ['src/'] });
   assert.equal(gitFacts.status, 'observed', 'the real collector observed the disposable repository');
   assert.equal(gitFacts.head, runGit(fixture.root, ['rev-parse', 'HEAD']).trim());
@@ -569,6 +568,7 @@ test('architecture lenses render the real fixture with shared identities and sta
   assert.equal(after.viewRevision > before.viewRevision, true);
 
   // The exact consumed fixture is exported for the browser proof (same data path).
+  const evidenceDirectory = createEvidenceDirectory(t, process.env.T17_EVIDENCE_DIR);
   mkdirSync(evidenceDirectory, { recursive: true });
   writeFileSync(join(evidenceDirectory, 'architecture-fixture.json'), `${JSON.stringify({
     writtenAt: new Date().toISOString(), projectId: PROJECT_ID,
