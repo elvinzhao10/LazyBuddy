@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { processCall } from './command-fixture.mjs';
 import { producerAttemptObservations } from '../producers.mjs';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
+import { createEvidenceDirectory } from './evidence-directory.mjs';
 
 // T16 interface under test: nested execution drill-down (plan -> batch -> task,
 // where entering a level changes aggregation) plus the actual run timeline over
@@ -41,8 +42,6 @@ const PROJECT_ID = 'project:t16';
 const ACTOR = 'chat:t16';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const settle = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const evidenceDirectory = process.env.T16_EVIDENCE_DIR
-  ?? '/Users/Admin/Desktop/lazyseries/.omo/evidence/lazyseries-1.4.0-project-platform/T16';
 
 async function waitForFile(file, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
@@ -206,7 +205,7 @@ const BATCHES = {
   'plan:execution-b': [{ id: 'batch:branches-b', title: 'Batch — two branches with a join', taskIds: ['A', 'B', 'J'] }],
 };
 
-test('nested execution and timeline render the two required fixtures from real recorded observations', async () => {
+test('nested execution and timeline render the two required fixtures from real recorded observations', async t => {
   const root = fixture.root; const run = fixture.run;
   let recorded; let observedState; let snapshot; let attempts; let model; let composed;
   try {
@@ -691,6 +690,7 @@ test('nested execution and timeline render the two required fixtures from real r
     'an expanded group carries no collapsed badges; its checks render instead');
 
   // 13. The exact consumed fixture is exported for the browser proof (same data path).
+  const evidenceDirectory = createEvidenceDirectory(t, process.env.T16_EVIDENCE_DIR);
   mkdirSync(evidenceDirectory, { recursive: true });
   const laterAsOf = new Date(Date.now() + 60000).toISOString();
   const laterRecords = await producerAttemptObservations({

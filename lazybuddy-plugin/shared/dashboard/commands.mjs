@@ -4,6 +4,7 @@ import { parseContract, ContractError } from './contracts/parse.mjs';
 import { reduceCommand } from './command-reducer.mjs';
 import { executeQueueCommand, queueBridge } from './queue.mjs';
 import { authorityBinding, crossesCompatibleRevisions, validateTransitions } from './revision-compatibility.mjs';
+import { reviewAdmission } from './review-admission.mjs';
 
 const bridge = fileURLToPath(new URL('../../scripts/state/dashboard-bridge.py', import.meta.url));
 const limit = 8 * 1024 * 1024;
@@ -55,7 +56,8 @@ export function capturedCompletion(input) {
 }
 export function consumeRevision(options) {
   if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
-  return invoke('consume', options, { expected_revision: options.expectedRevision, plan_revision: options.planRevision });
+  return invoke('consume', options, { expected_revision: options.expectedRevision, plan_revision: options.planRevision,
+    ...(options.review ? { review: options.review } : {}) });
 }
 export function publishAttempt(options) {
   if (!options.actor) throw new ContractError('TRUSTED_ACTOR_REQUIRED');
@@ -76,6 +78,7 @@ async function stdin() {
 }
 async function main(argv) {
   if (argv[0] === '--reduce') return reduceCommand(await stdin());
+  if (argv[0] === '--review-model') return reviewAdmission(await stdin());
   const [action, ...args] = argv;
   const names = { '--project-root': 'projectRoot', '--project-id': 'projectId', '--run-id': 'runId', '--actor': 'actor', '--python': 'python' };
   const options = {};
@@ -87,7 +90,7 @@ async function main(argv) {
   switch (action) {
     case 'command': return executeCommand({ ...options, command: await stdin() });
     case 'read': return readInput(options);
-    case 'consume': { const value = await stdin(); return consumeRevision({ ...options, expectedRevision: value.expected_revision, planRevision: value.plan_revision }); }
+    case 'consume': { const value = await stdin(); return consumeRevision({ ...options, expectedRevision: value.expected_revision, planRevision: value.plan_revision, review: value.review }); }
     default: throw new ContractError('UNKNOWN_ACTION');
   }
 }

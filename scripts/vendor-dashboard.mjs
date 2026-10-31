@@ -25,7 +25,7 @@ const families = Object.freeze({
     license: Object.freeze({ spdx: 'MIT', files: Object.freeze(['LICENSE', 'NOTICE', 'ui/icons.LICENSE']) }),
     portableFiles: Object.freeze(new Set([
       'LICENSE', 'NOTICE', 'command-reducer.mjs', 'projection.mjs',
-      'queue-reducer.mjs', 'revision-compatibility.mjs', 'adapters/host.mjs',
+      'queue-reducer.mjs', 'revision-compatibility.mjs', 'review-admission.mjs', 'adapters/host.mjs',
       'adapters/ledger.mjs', 'adapters/runtime.mjs', 'adapters/state.mjs', 'adapters/package-health.mjs', 'adapters/telemetry.mjs',
     ])),
     portableTrees: Object.freeze(['contracts', 'ui']),

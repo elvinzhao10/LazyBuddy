@@ -1,4 +1,4 @@
-# Persistent project record: first implementation slice
+# Persistent project record
 
 This directory implements a project record that survives individual plans and
 agent sessions. It registers existing Markdown, imports stable baseline items,
@@ -342,7 +342,7 @@ views and native chat routes live in the dashboard layer, this tree ships as
 the byte-pinned project vendor family (siblings receive it verbatim through
 `project.vendor.json` at their plugin's `shared/project`), and each sibling's
 native adapter is port-authored outside this tree. Those dashboard-layer view
-modules are not yet exposed by the production served dashboard navigation
-(run-scoped asset-manifest routes only). Conflict assessment remains
+modules are exposed through the production served dashboard's project navigation
+after explicit project initialization. Conflict assessment remains
 deterministic only — no language-level semantic analysis is built. The runtime
 enums above are still not evidence of sibling native integration.

@@ -55,6 +55,12 @@ export async function listen(options, control) {
           return;
         }
         const actor = auth.session(request);
+        if (request.method === 'POST' && request.url === '/api/history/query') {
+          if (options.runId === null) throw new ServiceError('RUN_NOT_BOUND', 409);
+          try { send(response, await authorityFor(options).readHistory(options, await readBody(request))); }
+          catch (error) { throw new ServiceError(/^[A-Z_]+$/.test(error.message) ? error.message : 'HISTORY_UNAVAILABLE', 422); }
+          return;
+        }
         if (request.method === 'GET' && request.url === '/api/project') {
           try { send(response, { project: await authorityFor(options).readProject(options, actor) }); }
           catch (error) { throw projectFailure(error); }

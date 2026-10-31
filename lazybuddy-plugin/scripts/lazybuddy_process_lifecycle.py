@@ -106,7 +106,10 @@ class OwnershipTracker:
                 children: dict[int, list[ProcessRecord]] = {}
                 for record in values:
                     children.setdefault(record.parent_pid, []).append(record)
-                pending = [self.root.pid, *tracked]
+                current = {record.pid: record for record in values}
+                pending = [pid for pid, record in tracked.items()
+                           if pid in current and current[pid].started == record.started
+                           and (pid != self.root.pid or root_continuous)]
                 visited: set[int] = set()
                 while pending:
                     parent = pending.pop()
@@ -114,7 +117,9 @@ class OwnershipTracker:
                         continue
                     visited.add(parent)
                     for child in children.get(parent, []):
-                        tracked.setdefault(child.pid, child)
+                        if child.pid == self.root.pid:
+                            continue
+                        tracked[child.pid] = child
                         pending.append(child.pid)
                 if root_continuous:
                     for record in values:
@@ -147,6 +152,8 @@ def _current_owned(
         if observed is None:
             continue
         if observed.started != tracked.started:
+            if tracked.pid != tracker.root.pid and observed.group_id != tracker.root.group_id:
+                continue
             identity_changed = True
         elif observed.group_id == tracker.root.group_id:
             owned.append(observed)
@@ -221,9 +228,7 @@ def cleanup_owned_processes(
             return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "tracked descendant left owned group")
         if not remaining:
             return _receipt(CleanupStatus.VERIFIED_ABSENT, tracker)
-        if refused_detail:
-            return _receipt(CleanupStatus.SIGNAL_REFUSED, tracker, refused_detail)
-        if signal_number == signal.SIGKILL:
+        if signal_number == signal.SIGKILL or refused_detail:
             settle_deadline = time.monotonic() + 0.5
             while time.monotonic() < settle_deadline:
                 time.sleep(0.02)
@@ -242,6 +247,10 @@ def cleanup_owned_processes(
                     return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "tracked descendant left owned group")
                 if not remaining:
                     return _receipt(CleanupStatus.VERIFIED_ABSENT, tracker)
+        if refused_detail:
+            break
+    if refused_detail:
+        return _receipt(CleanupStatus.SIGNAL_REFUSED, tracker, refused_detail)
     return _receipt(CleanupStatus.VERIFIED_REMAINING, tracker, "owned process survived TERM and KILL")
 
 

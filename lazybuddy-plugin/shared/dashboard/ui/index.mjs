@@ -53,10 +53,13 @@ function apply(next) {
       onCommand: async command => { const result = await connection.command(command); schedule(80); return result; } });
     const callbacks = { onSelect({ taskId, trigger }) { editor.select(taskId); inspector.open(taskId, trigger); }, onLayoutChange() { state('Layout changed locally. No authority command sent.', 'neutral'); }, onModeChange({ mode: nextMode }) { localStorage.setItem('lazybuddy-work-mode', nextMode); } };
     work = createWorkView({ snapshot: next.snapshot, callbacks, context: { ...viewContext, mode } });
-    verification = createVerificationView({ snapshot: next.snapshot, callbacks, context: { evidenceHref, openEvidence } });
+    verification = createVerificationView({ snapshot: next.snapshot, callbacks, context: { evidenceHref, openEvidence },
+      onHistoryQuery: request => connection.historyQuery(request),
+      onCommand: async command => { const result = await connection.command(command); schedule(80); return result; } });
     roots.work.append(work.element); roots.verification.append(verification.element); roots.editing.append(editor.element); tabs.hidden = false; runDashboard.hidden = false;
   } else { work.update(next.snapshot); verification.update(next.snapshot); inspector.update(next.snapshot); }
   editor.update(next.snapshot, { readOnlyReason });
+  verification.update(next.snapshot, { readOnlyReason });
   projectViews?.updateRun(next.snapshot);
 }
 async function refreshProject({ force = false } = {}) {
@@ -110,7 +113,7 @@ async function poll() {
     // focus restore silently died on any disconnect-then-401 sequence).
     const focusedField = document.activeElement?.dataset?.field ?? null;
     if (focusedField) lastFocusedField = focusedField;
-    if (envelope) { work.update(envelope.snapshot); editor.update(envelope.snapshot, { readOnlyReason: 'DISCONNECTED' }); }
+    if (envelope) { work.update(envelope.snapshot); editor.update(envelope.snapshot, { readOnlyReason: 'DISCONNECTED' }); verification.update(envelope.snapshot, { readOnlyReason: 'DISCONNECTED' }); }
     if (error.status === 401) { resumeField = document.activeElement?.dataset?.field ?? lastFocusedField ?? resumeField; connection.disconnect(); connectForm.hidden = false; accessKey.focus(); }
     schedule(1200);
   }

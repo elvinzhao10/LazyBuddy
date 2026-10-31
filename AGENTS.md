@@ -2,7 +2,7 @@
 
 LazyBuddy supports its documented CLI and IDE/app hosts. Automated package checks run in CI on Ubuntu and macOS as defined by the workflows; the supplied live-host reports are historical macOS observations. No current-session host activation is established. Package files, host settings, credentials, marketplace state, and live sessions remain separate authorities.
 
-See [the current platform audit](docs/reference/platform-status-2026-10-27.md)
+See [the current platform audit](docs/reference/platform-status-2026-10-30.md)
 for version-specific native features and legacy route limits.
 
 ## Current documentation release: v1.4.0

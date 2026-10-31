@@ -26,7 +26,15 @@
 .task-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(var(--card-min),100%),1fr)); gap: var(--density-gutter); }
 .task-list .task { border: var(--line) solid var(--control-edge); border-radius: var(--radius-md); box-shadow: var(--elevation-1); }
 .next-panel .queue { margin: 0; }
-.verification-view { display: grid; gap: var(--space-2); }
+.verification-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.verification-view > div { min-inline-size: 0; }
+.verification-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.verification-toolbar label, .verification-history { min-inline-size: 0; overflow-wrap: anywhere; }
+.verification-history input, .verification-history textarea, .verification-toolbar input, .verification-toolbar select { inline-size: 100%; min-inline-size: 0; }
+.verification-history details { padding-block: var(--space-1); }
+.verification-checkpoints { min-inline-size: 0; }
+.verification-checkpoints pre { white-space: pre-wrap; overflow-wrap: anywhere; max-inline-size: 100%; }
+@media (max-width: 44rem) { .verification-toolbar { grid-template-columns: minmax(0, 1fr); } }
 .table-scroll { max-inline-size: 100%; overflow: auto; border: var(--line) solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elevation-1); }
 .verification-table { inline-size: 100%; min-inline-size: var(--table-min-inline); border-collapse: collapse; }
 .verification-table th,.verification-table td { padding: var(--lb-table-pad-block) var(--space-2); border-block-end: var(--line) solid var(--hairline); text-align: start; vertical-align: top; }
