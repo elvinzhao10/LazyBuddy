@@ -84,12 +84,12 @@ pass 'package documentation stays inside the copied plugin root'
 
 for doc in \
     "$PLUGIN_ROOT/docs/verification-matrix.md" \
-    "$PLUGIN_ROOT/README.md" \
     "$(cd "$PLUGIN_ROOT/.." && pwd -P)/docs/reference/host-routes.md" \
     "$(cd "$PLUGIN_ROOT/.." && pwd -P)/docs/reference/verification-contract.md"; do
     grep -Fq 'manual-skills-mcp-fallback' "$doc" || fail "missing manual fallback vocabulary: $doc"
     grep -Fq 'unsupported' "$doc" || fail "missing coexistence warning: $doc"
 done
+grep -Fq 'docs/reference/host-routes.md' "$PLUGIN_ROOT/README.md" || fail 'package README must link to the canonical host setup guide'
 pass 'readiness and route docs define the collision boundary'
 
 printf 'v1.0.3 readiness-claims regression: PASS\n'
