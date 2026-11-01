@@ -111,7 +111,7 @@ function classify(root) {
   else {
     const notes = fs.readFileSync(notesPath, 'utf8');
     if (!notes.startsWith(`# ${'LazyBuddy'} v${RELEASE_VERSION}`)) failures.push('CURRENT_VERSION_DRIFT_TEXT RELEASE_NOTES.md:1');
-    const currentNotes = notes.split('## Prior release notes')[0];
+    const currentNotes = notes.split(/^## (?:Prior|Previous)\b.*$/m)[0].split(/\n# /)[0];
     for (const section of REQUIRED_RELEASE_NOTE_SECTIONS) {
       if (!currentNotes.includes(`## ${section}`)) failures.push(`MISSING_RELEASE_NOTE_SECTION ${section}`);
     }
