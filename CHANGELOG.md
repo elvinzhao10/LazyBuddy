@@ -4,9 +4,9 @@
 
 Prepare the combined verification/history/scale release, align package/runtime versions, document current native app routes and preserve deferred live acceptance. CodeBuddy uses its native marketplace/plugin manifests. WorkBuddy full-plugin behavior remains build-specific; its recovery route is Skills plus manually configured MCP. Do not equate the two applications.
 
-## Unreleased 1.4.1 — verification, history and scale
+### Verification, history and scale
 
-The combined former 1.4.1 and 1.4.2 scope is implemented in this development branch. Package metadata and the published baseline remain **1.4.0**; this PR does not publish a release. Live-host acceptance is **deferred by the maintainer as of 2026-10-30**, and remains pending.
+The combined former 1.4.1 and 1.4.2 scope is implemented in this development branch. Package metadata is prepared as **1.4.1**; the published baseline remains 1.4.0. This PR does not publish a release. Live-host acceptance is **deferred by the maintainer as of 2026-10-30**, and remains pending.
 
 - Retain versioned verification scenarios, compare attempts by their source/criterion/plan subject, and promote an observed failure into an unverified regression scenario.
 - Bind rerun review to the exact plan, criterion and captured source. Pending, rejected, stale and used approvals cannot authorize another native attempt; independent verification remains required.
