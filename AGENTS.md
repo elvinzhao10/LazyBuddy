@@ -5,7 +5,7 @@ LazyBuddy supports its documented CLI and IDE/app hosts. Automated package check
 See [the current platform audit](docs/reference/platform-status-2026-10-30.md)
 for version-specific native features and legacy route limits.
 
-## Current documentation release: v1.4.1 (release candidate)
+## Current documentation release: v1.4.1
 
 This v1.4.1 guide names current human-facing boundaries only. It does not
 publish a package or promote package evidence to host proof. The route IDs are

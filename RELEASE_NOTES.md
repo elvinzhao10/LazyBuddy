@@ -1,6 +1,6 @@
 # LazyBuddy v1.4.1
 
-**Release candidate — prepared, not published.** The former 1.4.1 and 1.4.2 scopes are combined in this release.
+**Release date: 2026-11-01.** The former 1.4.1 and 1.4.2 scopes are combined in this release.
 
 ## Eval-driven fixes
 
