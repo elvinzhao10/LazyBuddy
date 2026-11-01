@@ -4,7 +4,7 @@ Verification and bounded execution require **Python 3.11 or newer**.
 
 ![LazyBuddy](lazybuddy-banner.jpg)
 
-[![Package 1.4.0](https://img.shields.io/badge/package-1.4.0-7ce8d1)](RELEASE_NOTES.md)
+[![Package 1.4.1](https://img.shields.io/badge/package-1.4.1-7ce8d1)](RELEASE_NOTES.md)
 [![MIT License](https://img.shields.io/badge/license-MIT-silver)](LICENSE)
 [![LazySeries family](https://img.shields.io/badge/LazySeries-6_siblings-7ce8d1)](#lazyseries-family)
 
@@ -15,16 +15,16 @@ CLI**, **CodeBuddy IDE**, and **WorkBuddy**. It prepares local package assets
 and guidance; a host is only considered ready after it is observed in a fresh
 session.
 
-[Platform status](docs/reference/platform-status-2026-10-30.md) · [Get started](#recommended-install-with-ai-help) · [Host routes](#choose-one-route) ·
-[1.4.0 notes](RELEASE_NOTES.md) · [Family](#lazyseries-family) · [Docs](docs/)
+[1.4.1 native integration](docs/reference/native-integration-1.4.1.md) · [Platform status](docs/reference/platform-status-2026-10-30.md) · [Get started](#recommended-install-with-ai-help) · [Host routes](#choose-one-route) ·
+[1.4.1 notes](RELEASE_NOTES.md) · [Family](#lazyseries-family) · [Docs](docs/)
 
-> **Current package version: v1.4.0. HOST READINESS: PENDING.** Local checks and release
+> **Current package version: v1.4.1 (release candidate). HOST READINESS: PENDING.** Local checks and release
 > archives prove package behavior; a fresh host session must prove loading,
 > command/skill execution and MCP connections.
 
-## Unreleased 1.4.1 — verification, history and scale
+## 1.4.1 release candidate — verification, history and scale
 
-The combined former 1.4.1 and 1.4.2 scope is implemented in this development branch. Package metadata and the published baseline remain **1.4.0**; this PR does not publish a release. Live-host acceptance is **deferred by the maintainer as of 2026-10-30**, and remains pending.
+The combined former 1.4.1 and 1.4.2 scope is implemented in this development branch. Package metadata is prepared as **1.4.1**; the published baseline remains 1.4.0. This PR does not publish a release. Live-host acceptance is **deferred by the maintainer as of 2026-10-30**, and remains pending.
 
 - Retain versioned verification scenarios, compare attempts by their source/criterion/plan subject, and promote an observed failure into an unverified regression scenario.
 - Bind rerun review to the exact plan, criterion and captured source. Pending, rejected, stale and used approvals cannot authorize another native attempt; independent verification remains required.
@@ -34,7 +34,7 @@ The combined former 1.4.1 and 1.4.2 scope is implemented in this development bra
 
 See the [1.4.1 completion and validation record](docs/verification/1.4.1-completion.md) and [usage/contracts](docs/verification/1.4.1-verification-history.md).
 
-## What's in 1.4.0
+## Included capabilities
 
 - An authenticated local dashboard with eight destinations: **Overview, Project,
   Plans, Health, Execution, Git, Evidence and Research**.
@@ -52,7 +52,7 @@ workflows described below. No speed, token-saving or cost improvement is
 claimed. See the [release notes](RELEASE_NOTES.md) for compatibility and upgrade
 boundaries; historical changes remain in `CHANGELOG.md`.
 
-## Browser dashboard (v1.4.0)
+## Browser dashboard
 
 After explicit project initialization, the dashboard provides **Overview,
 Project, Plans, Health, Execution, Git, Evidence and Research** in a collapsible
@@ -150,7 +150,7 @@ You do not need to manually work through every setup detail. Open an AI coding
 assistant in your project and paste this:
 
 > Help me install LazyBuddy from https://github.com/elvinzhao10/LazyBuddy for
-> this project. Use v1.4.0 and follow AGENTS.md and the current install guide. Run safe package checks first,
+> this project. Use v1.4.1 and follow AGENTS.md and the current install guide. Run safe package checks first,
 > explain each step plainly, and ask me before changing marketplace, plugin,
 > Skills, MCP, account, credential, or trust settings.
 
@@ -159,7 +159,7 @@ The assistant can guide onboarding, but you approve every host-managed change.
 ## Manual setup
 
 Manual setup is available when you prefer complete control. You need
-**Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**, plus **Python 3.10+** available as `python3`. The lifecycle also accepts Node.js LTS 20 for compatibility. Start from the verified origin
+**Node.js LTS 24 (recommended) or 22 (supported alternative)** and **Git**, plus **Python 3.11+** available as `python3`. The lifecycle also accepts Node.js LTS 20 for compatibility. Start from the verified origin
 `https://github.com/elvinzhao10/LazyBuddy` and follow the
 [installation guide](docs/03-install-and-host-verification.md).
 

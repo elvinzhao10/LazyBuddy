@@ -1,3 +1,33 @@
+# LazyBuddy v1.4.1
+
+**Release candidate — prepared, not published.** The former 1.4.1 and 1.4.2 scopes are combined in this release.
+
+## Eval-driven fixes
+
+Versioned verification scenarios, source/criterion-bound attempt comparisons, failure-to-regression promotion, revision-bound rerun review, retained decision/checkpoint history, transactional deduplication and recovery. Native adapter and portability repairs retain the original evidence and failed attempts.
+
+## Measured efficiency
+
+Replay and review-source capture improvements are measured local cases; they do not establish end-to-end speed, token or cost savings. Simple tasks retain direct handling.
+
+## Host capability matrix
+
+CodeBuddy uses its native marketplace/plugin manifests. WorkBuddy full-plugin behavior remains build-specific; its recovery route is Skills plus manually configured MCP. Do not equate the two applications. See [native integration and proof boundaries](docs/reference/native-integration-1.4.1.md).
+
+## Migration and upgrade
+
+Use the existing receipt-aware update route with the reviewed 1.4.1 artifact or pinned commit. Preserve project history, local settings and credentials. Activate changes through the selected app's reload/new-session route; package validation does not replace live acceptance.
+
+## Known risks
+
+Model-driven live acceptance remains deferred by the maintainer. Unsupported host control, embedding and wake are not silently enabled. Native component loading is distinct from tool execution and provider success.
+
+## Rollback
+
+Use the existing receipt-owned rollback/offboard route for the selected installation. Preserve modified or unknown files and project evidence; do not delete another application's settings.
+
+## Prior 1.4.0 documentation
+
 # LazyBuddy v1.4.0
 
 ## Unreleased 1.4.1 — verification, history and scale
