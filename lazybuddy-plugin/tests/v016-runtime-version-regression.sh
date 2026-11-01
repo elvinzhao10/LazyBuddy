@@ -61,6 +61,7 @@ if marketplace_path.is_file():
     assert entry["version"] == expected, f"marketplace reported {entry['version']!r}"
 
 current_release_patterns = (
+    r"\bCurrent release\s+v(\d+\.\d+\.\d+)\b",
     r"\bCurrent package version:\s*v(\d+\.\d+\.\d+)\b",
     r"\bLazyBuddy\s+v(\d+\.\d+\.\d+)\b",
     r"\bCurrent documentation release:\s*v(\d+\.\d+\.\d+)\b",
@@ -99,5 +100,11 @@ assert {
     for pattern in current_release_patterns
     for match in re.findall(pattern, misleading_identity, flags=re.IGNORECASE)
 } == {"1.0.2"}, "misleading current-release prose must remain detectable"
+stale_badge = "[![Current release v1.0.2](https://img.shields.io/badge/release-1.0.2-0d9488)]"
+assert {
+    match
+    for pattern in current_release_patterns
+    for match in re.findall(pattern, stale_badge, flags=re.IGNORECASE)
+} == {"1.0.2"}, "stale public release badges must remain detectable"
 PY
 printf 'v1.4.1 runtime version regression: PASS\n'
