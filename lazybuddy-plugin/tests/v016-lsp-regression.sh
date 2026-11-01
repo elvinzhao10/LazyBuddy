@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+node --test "$PLUGIN_ROOT/tests/python-provider-package-contract.test.js"
 LIFECYCLE="$PLUGIN_ROOT/scripts/lazybuddy-tooling.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-lsp.XXXXXX")"
 TMP="$(cd "$TMP" && pwd -P)"
