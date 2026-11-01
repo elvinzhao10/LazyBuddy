@@ -67,7 +67,7 @@ check_active_documentation_policy() {
         while IFS= read -r -d '' policy_file; do
             for pattern in "${forbidden_patterns[@]}"; do
                 if [ "$policy_file" = "${PLUGIN_ROOT}/README.md" ] && \
-                    { [ "$pattern" = 'lazycodex' ] || [ "$pattern" = '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)' ]; }; then
+                    { [ "$pattern" = 'lazycodex' ] || [ "$pattern" = '(^|[^[:alnum:]_])omo([^[:alnum:]_]|$)' ] || [ "$pattern" = 'docs/reference/' ]; }; then
                     continue
                 fi
                 if grep -Eiq "$pattern" "$policy_file"; then

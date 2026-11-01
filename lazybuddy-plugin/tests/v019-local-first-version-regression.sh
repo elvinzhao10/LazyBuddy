@@ -71,18 +71,26 @@ def assert_durable_lifecycle_docs(root, package_root):
             raise AssertionError(f"{name} mislabels a v1.0.3 gap as a future release")
         if re.search(r"release folder as the source of truth", contents, re.IGNORECASE):
             raise AssertionError(f"{name} makes a removable source checkout authoritative")
-        if not re.search(r"Node\.js LTS (?:24|20)", contents, re.IGNORECASE):
-            raise AssertionError(f"{name} omits the Node.js prerequisite")
-        if not re.search(r"\bGit\b", contents):
-            raise AssertionError(f"{name} omits the Git prerequisite")
-        if not re.search(r"https://github\.com/elvinzhao10/LazyBuddy(?:\.git)?", contents):
-            raise AssertionError(f"{name} omits the verified official origin")
-        if "launcher.js" not in contents:
-            raise AssertionError(f"{name} omits the stable durable launcher")
-        if not re.search(r"\b(onboard|update|status|offboard)\b", contents):
-            raise AssertionError(f"{name} omits lifecycle commands")
-        if not re.search(r"HOST\s+READINESS:\s*PENDING", contents, re.IGNORECASE):
-            raise AssertionError(f"{name} can imply host readiness without observation")
+        if path in (root / "README.md", package_root / "README.md"):
+            # Public entry pages link to the canonical setup contract below.
+            for target in ("docs/03-install-and-host-verification.md", "docs/reference/host-routes.md"):
+                if target not in contents:
+                    raise AssertionError(f"{name} omits the canonical setup guide: {target}")
+            if not re.search(r"fresh\s+(?:host\s+)?session", contents, re.IGNORECASE):
+                raise AssertionError(f"{name} omits fresh-session verification")
+        else:
+            if not re.search(r"Node\.js LTS (?:24|20)", contents, re.IGNORECASE):
+                raise AssertionError(f"{name} omits the Node.js prerequisite")
+            if not re.search(r"\bGit\b", contents):
+                raise AssertionError(f"{name} omits the Git prerequisite")
+            if not re.search(r"https://github\.com/elvinzhao10/LazyBuddy(?:\.git)?", contents):
+                raise AssertionError(f"{name} omits the verified official origin")
+            if "launcher.js" not in contents:
+                raise AssertionError(f"{name} omits the stable durable launcher")
+            if not re.search(r"\b(onboard|update|status|offboard)\b", contents):
+                raise AssertionError(f"{name} omits lifecycle commands")
+            if not re.search(r"HOST\s+READINESS:\s*PENDING", contents, re.IGNORECASE):
+                raise AssertionError(f"{name} can imply host readiness without observation")
         actionable = "\n".join(
             line for line in contents.splitlines()
             if not re.search(r"\b(do not|never)\b", line, re.IGNORECASE)
