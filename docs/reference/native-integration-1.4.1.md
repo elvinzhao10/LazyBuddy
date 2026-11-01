@@ -1,6 +1,6 @@
 # LazyBuddy 1.4.1 native integration
 
-Release preparation: 2026-11-01. Package metadata is 1.4.1; no tag, merge or publication is implied.
+Release 1.4.1: 2026-11-01. The maintainer authorized final audit and publication; published tags and release assets are the distribution authority.
 
 CodeBuddy uses its native marketplace/plugin manifests. WorkBuddy full-plugin behavior remains build-specific; its recovery route is Skills plus manually configured MCP. Do not equate the two applications.
 
@@ -12,6 +12,6 @@ The app owns plugin discovery, native tools, user settings, model/provider selec
 
 - Package: version classification, load/contract checks, relevant adapter regressions and extracted-archive validation.
 - Host: record exact client/build/route, verify one command/Skill, roles/hooks as applicable and six project-bound MCP connections. These model-driven tests remain deferred; absent evidence stays pending.
-- Release: green CI at the exact PR head, matching 1.4.1 runtime/manifests, self-contained archives and recorded digests. Leave PRs open; do not merge, tag, dispatch publication or enable auto-merge.
+- Release: green CI at the exact PR head, matching 1.4.1 runtime/manifests, self-contained archives and recorded digests. After maintainer authorization, merge the verified head, tag the merged revision, run the gated release workflow and verify the published asset. Keep auto-merge disabled and do not bypass failed gates.
 
 See [platform audit](platform-status-2026-10-30.md) for first-party documentation, build distinctions and known limits; [host capability matrix](../10-host-capability-matrix.md) for route-specific contracts; and [release notes](../../RELEASE_NOTES.md) for the complete combined scope. Historical dated records retain their original version and observations.
