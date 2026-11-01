@@ -161,6 +161,7 @@ test('real producer executions record honest agent/session/attempt/step activity
     const k = launch(root, ['execute', '--context-file', ctxK, '--artifact-path', '.lazybuddy/runs/probe/killed.txt',
       '--timeout', '3']);
     await waitForFile(join(run, 'producer-attempts', digest('executor:killed'), 'start.json'));
+    await waitForFile(fixture.markerK);
     k.child.kill('SIGKILL');
     await k.done;
     await settle(150);
