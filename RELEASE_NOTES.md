@@ -1,4 +1,46 @@
+# LazyBuddy v1.4.1
+
+**Release date: 2026-11-01.** The former 1.4.1 and 1.4.2 scopes are combined in this release.
+
+## Eval-driven fixes
+
+Versioned verification scenarios, source/criterion-bound attempt comparisons, failure-to-regression promotion, revision-bound rerun review, retained decision/checkpoint history, transactional deduplication and recovery. Native adapter and portability repairs retain the original evidence and failed attempts.
+
+## Measured efficiency
+
+Replay and review-source capture improvements are measured local cases; they do not establish end-to-end speed, token or cost savings. Simple tasks retain direct handling.
+
+## Host capability matrix
+
+CodeBuddy uses its native marketplace/plugin manifests. WorkBuddy full-plugin behavior remains build-specific; its recovery route is Skills plus manually configured MCP. Do not equate the two applications. See [native integration and proof boundaries](docs/reference/native-integration-1.4.1.md).
+
+## Migration and upgrade
+
+Use the existing receipt-aware update route with the reviewed 1.4.1 artifact or pinned commit. Preserve project history, local settings and credentials. Activate changes through the selected app's reload/new-session route; package validation does not replace live acceptance.
+
+## Known risks
+
+Model-driven live acceptance remains deferred by the maintainer. Unsupported host control, embedding and wake are not silently enabled. Native component loading is distinct from tool execution and provider success.
+
+## Rollback
+
+Use the existing receipt-owned rollback/offboard route for the selected installation. Preserve modified or unknown files and project evidence; do not delete another application's settings.
+
+## Prior 1.4.0 documentation
+
 # LazyBuddy v1.4.0
+
+## Unreleased 1.4.1 — verification, history and scale
+
+The combined former 1.4.1 and 1.4.2 scope is implemented in this development branch. Package metadata and the published baseline remain **1.4.0**; this PR does not publish a release. Live-host acceptance is **deferred by the maintainer as of 2026-10-30**, and remains pending.
+
+- Retain versioned verification scenarios, compare attempts by their source/criterion/plan subject, and promote an observed failure into an unverified regression scenario.
+- Bind rerun review to the exact plan, criterion and captured source. Pending, rejected, stale and used approvals cannot authorize another native attempt; independent verification remains required.
+- Inspect checkpoint/decision history through authenticated, paginated reads. Deduplicate identical runtime events with transactional recovery while retaining the original ledger and failed attempts.
+- Preserve first-review plan bytes, correct legacy review-state updates, and harden owned-process cleanup against PID reuse and exit races.
+- Reduce repeated replay and unnecessary review-source capture in measured local cases. These measurements do not establish whole-task latency, token or cost savings.
+
+See the [1.4.1 completion and validation record](docs/verification/1.4.1-completion.md) and [usage/contracts](docs/verification/1.4.1-verification-history.md).
 
 LazyBuddy 1.4.0 adds the shared local project dashboard and persistent project
 record to the existing planning, execution and verification workflows.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# lazybuddy-verify.sh — Master verification runner (v1.4.0)
+# lazybuddy-verify.sh — Master verification runner (v1.4.1)
 #
 # Runs all health-check scripts in sequence and emits a compact JSON summary.
 # Exit code 0 when all_pass is true; exit code 1 otherwise.
@@ -46,7 +46,7 @@ PYTHON_REQUEST="${LAZYBUDDY_PYTHON:-python3}"
 if ! PYTHON_BIN="$(command -v -- "$PYTHON_REQUEST" 2>/dev/null)" \
     || [ ! -f "$PYTHON_BIN" ] \
     || [ ! -x "$PYTHON_BIN" ]; then
-    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    printf 'ERROR: LazyBuddy requires Python 3.11 or newer. Install Python 3.11+ and make it available as python3.\n' >&2
     exit 2
 fi
 PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(sys.version_info[0], sys.version_info[1])' 2>/dev/null || true)"
@@ -54,8 +54,8 @@ read -r PYTHON_MAJOR PYTHON_MINOR _ <<<"$PYTHON_VERSION"
 
 if ! [[ "$PYTHON_MAJOR" =~ ^[0-9]+$ && "$PYTHON_MINOR" =~ ^[0-9]+$ ]] \
     || [ "$PYTHON_MAJOR" -lt 3 ] \
-    || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
-    printf 'ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.\n' >&2
+    || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]; }; then
+    printf 'ERROR: LazyBuddy requires Python 3.11 or newer. Install Python 3.11+ and make it available as python3.\n' >&2
     exit 2
 fi
 

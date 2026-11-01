@@ -4,7 +4,7 @@ LazyBuddy deliberately aligns policy and package safety across hosts while keepi
 
 ## Onboarding baseline
 
-## Current v1.4.0 evidence boundary
+## Current v1.4.1 evidence boundary
 
 This v1.4.0 documentation covers `codebuddy-cli`, `codebuddy-ide`, and
 `workbuddy`; no current host activation is claimed. Marketplace is the default full-plugin route for CodeBuddy IDE and

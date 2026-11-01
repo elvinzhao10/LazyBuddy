@@ -1,10 +1,22 @@
 # LazyBuddy Plugin
 
-## v1.4.0 package
+## 1.4.1 release — verification, history and scale
 
-v1.4.0 includes the local browser dashboard with a long-run monitor, research capture and Health view. It makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
+Release **1.4.1** combines the former 1.4.1 and 1.4.2 verification, history and scale scope. Live-host acceptance is **deferred by the maintainer as of 2026-10-30**, and remains pending.
 
-The current package version is v1.4.0. Package readiness does not establish host readiness. The `status-dashboard` server declares seven tools, including typed `project` operations; the package declares six MCP servers. The 2026-10-27 platform audit in the release root records documented releases and pending host proof.
+- Retain versioned verification scenarios, compare attempts by their source/criterion/plan subject, and promote an observed failure into an unverified regression scenario.
+- Bind rerun review to the exact plan, criterion and captured source. Pending, rejected, stale and used approvals cannot authorize another native attempt; independent verification remains required.
+- Inspect checkpoint/decision history through authenticated, paginated reads. Deduplicate identical runtime events with transactional recovery while retaining the original ledger and failed attempts.
+- Preserve first-review plan bytes, correct legacy review-state updates, and harden owned-process cleanup against PID reuse and exit races.
+- Reduce repeated replay and unnecessary review-source capture in measured local cases. These measurements do not establish whole-task latency, token or cost savings.
+
+See the [1.4.1 completion and validation record](docs/verification/1.4.1-completion.md) and [usage/contracts](docs/verification/1.4.1-verification-history.md).
+
+## v1.4.1 package
+
+v1.4.1 includes the local browser dashboard with a long-run monitor, research capture and Health view. It makes run updates transactional, preserves checkpoints and concurrent plan edits, and reports blocked, failed and exhausted work explicitly. Use the durable installation instructions below.
+
+The current package version is v1.4.1. Package readiness does not establish host readiness. The `status-dashboard` server declares seven tools, including typed `project` operations; the package declares six MCP servers. The 2026-10-30 platform audit in the release root records documented releases and pending host proof.
 
 ## Durable installation
 
@@ -250,7 +262,7 @@ user-observed host result.
 `scripts/lazybuddy-verify.sh` requires Python 3.10 or newer before it starts
 any Python helper. The canonical `all` suite also requires pytest. When
 `python3` resolves to an older interpreter, it exits
-with `ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.`
+with `ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.11+ and make it available as python3.`
 Set `LAZYBUDDY_PYTHON` to an explicit supported interpreter when `python3`
 cannot be updated system-wide.
 

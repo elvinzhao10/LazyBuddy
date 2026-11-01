@@ -1,10 +1,14 @@
 import { parseContract, ContractError, stableJSON } from './contracts/parse.mjs';
 import { adaptState } from './adapters/state.mjs';
+import { projectSnapshot } from './projection.mjs';
+import { reviewIsCurrent } from './ui/verification-history.mjs';
+import { adaptRuntime } from './adapters/runtime.mjs';
+import { digest } from './adapters/ledger.mjs';
 
 const fail = code => { throw new ContractError(code); };
 const find = (items, id, code) => items.find(item => item.id === id) ?? fail(code);
 function archive(criterion) {
-  criterion.history.push({ version: criterion.version, requirement: criterion.requirement, result_ids: [...criterion.result_ids] });
+  criterion.history.push({ version: criterion.version, requirement: criterion.requirement, result_ids: [...criterion.result_ids], scenarios: structuredClone(criterion.scenarios) });
   criterion.version += 1;
   criterion.result_ids = [];
   criterion.verification = 'unverified';
@@ -39,8 +43,12 @@ function decisionChange(state, command) {
   } else if (replacement.supersedes !== null) fail('INVALID_DECISION_TRANSITION');
   state.decisions.push(replacement);
 }
-function apply(state, command) {
+function apply(state, command, input) {
   const { operation, payload, target } = command;
+  if (operation === 'compact_history') {
+    if (target.id !== state.run_id) fail('INVALID_HISTORY_TARGET');
+    return false;
+  }
   if (operation.endsWith('queued_plan')) fail('QUEUE_AUTHORITY_REQUIRED');
   if (operation === 'propose_decision' || operation === 'supersede_decision') {
     if (target.id !== state.run_id) fail('INVALID_DECISION_TARGET');
@@ -48,6 +56,30 @@ function apply(state, command) {
   }
   const task = find(state.tasks, target.id, 'UNKNOWN_TASK');
   task.criteria ??= []; task.depends_on ??= [];
+  if (['request_review', 'resolve_review', 'consume_review'].includes(operation)) {
+    state.reviews ??= [];
+    if (operation === 'request_review') {
+      if (state.reviews.some(review => review.id === payload.review_id)) fail('DUPLICATE_REVIEW');
+      const criterion = find(task.criteria, payload.criterion_id, 'UNKNOWN_CRITERION');
+      const review = { id: payload.review_id, task_id: task.id, criterion_id: criterion.id, action: payload.action,
+        subject: payload.subject, state: 'pending', requested_by: input.actor, decided_by: null, rationale: null, consumed_by: null };
+      if (!reviewIsCurrent(review, input, criterion)) fail('STALE_REVIEW_SUBJECT');
+      state.reviews.push(review);
+    } else {
+      const review = find(state.reviews, payload.review_id, 'UNKNOWN_REVIEW');
+      if (review.task_id !== task.id) fail('REVIEW_TASK_MISMATCH');
+      const criterion = find(task.criteria, review.criterion_id, 'UNKNOWN_CRITERION');
+      if (stableJSON(review.subject) !== stableJSON(payload.subject) || !reviewIsCurrent(review, input, criterion)) fail('STALE_REVIEW_SUBJECT');
+      if (operation === 'resolve_review') {
+        if (review.state !== 'pending') fail('REVIEW_ALREADY_DECIDED');
+        review.state = payload.decision; review.rationale = payload.rationale; review.decided_by = input.actor;
+      } else {
+        if (review.state !== 'approved' || payload.action !== review.action) fail('REVIEW_NOT_APPROVED');
+        review.state = 'consumed'; review.consumed_by = input.actor;
+      }
+    }
+    return false;
+  }
   let semantic = true;
   switch (operation) {
     case 'amend_task':
@@ -79,6 +111,19 @@ function apply(state, command) {
       else criterion.scenarios[index] = payload.scenario;
       break;
     }
+    case 'promote_failure': {
+      const criterion = find(task.criteria, payload.criterion_id, 'UNKNOWN_CRITERION');
+      if (criterion.version !== payload.expected_version) fail('CRITERION_VERSION_CONFLICT');
+      const observed = projectSnapshot(input).tasks.find(item => item.id === task.id);
+      const attempt = observed.attempts.find(item => item.id === payload.attempt_id && item.criterion_id === criterion.id);
+      if (!attempt || attempt.execution !== 'failed' || attempt.criterion_version === null) fail('FAILED_ATTEMPT_REQUIRED');
+      if (payload.scenario.origin) fail('REGRESSION_ORIGIN_IS_OBSERVED');
+      if (criterion.scenarios.some(item => item.id === payload.scenario.id)) fail('DUPLICATE_SCENARIO');
+      archive(criterion);
+      criterion.scenarios.push({ ...payload.scenario, origin: { attempt_id: attempt.id, criterion_version: attempt.criterion_version,
+        plan_revision: attempt.plan_revision, source_revision: attempt.source_revision } });
+      break;
+    }
     case 'attach_evidence': {
       find(task.criteria, payload.criterion_id, 'UNKNOWN_CRITERION');
       state.evidence_submissions ??= [];
@@ -90,7 +135,7 @@ function apply(state, command) {
   for (const criterion of task.criteria) {
     if (new Set(criterion.scenarios.map(item => item.id)).size !== criterion.scenarios.length) fail('DUPLICATE_SCENARIO');
   }
-  if (semantic) invalidate(state, task.id, ['amend_criterion', 'add_scenario', 'amend_scenario'].includes(operation) ? payload.criterion_id : null);
+  if (semantic) invalidate(state, task.id, ['amend_criterion', 'add_scenario', 'amend_scenario', 'promote_failure'].includes(operation) ? payload.criterion_id : null);
   adaptState(state, state.run_id);
   return semantic;
 }
@@ -111,7 +156,28 @@ export function reduceCommand(input) {
   if (command.expected_revision !== revision) return { result, replay: true };
   adaptState(state, runId);
   const historical = structuredClone(state);
-  const semantic = apply(state, command);
+  let compaction;
+  if (command.operation === 'compact_history') {
+    const sources = input.sources.filter(source => source.kind === 'runtime');
+    if (sources.length !== 1) fail('RUNTIME_SOURCE_REQUIRED');
+    const source = sources[0];
+    if (digest(source.text) !== command.payload.source_sha256) fail('STALE_HISTORY_SOURCE');
+    const ledger = adaptRuntime(source, runId);
+    if (ledger.issues.length) fail('INCOMPLETE_HISTORY_SOURCE');
+    const seen = new Map(); const lines = source.text.split('\n'); const retained = [];
+    for (const [index, record] of ledger.records.entries()) {
+      const old = seen.get(record.dedup_key);
+      if (old && old !== record.identity) fail('EVENT_ID_COLLISION');
+      if (!old) { seen.set(record.dedup_key, record.identity); retained.push(lines[index]); }
+    }
+    const text = retained.length ? `${retained.join('\n')}\n` : '';
+    compaction = { source_id: source.id, before_sha256: digest(source.text), after_sha256: digest(text),
+      text, before_events: ledger.records.length, after_events: retained.length };
+    const generation = state.dashboard_ledger_generation ?? 0;
+    if (!Number.isSafeInteger(generation) || generation < 0 || generation >= Number.MAX_SAFE_INTEGER) fail('INVALID_LEDGER_GENERATION');
+    state.dashboard_ledger_generation = generation + 1;
+  }
+  const semantic = apply(state, command, input);
   state.dashboard_project_id = projectId;
   state.plan_revision = (state.plan_revision ?? 0) + (semantic ? 1 : 0);
   if (semantic) {
@@ -133,5 +199,5 @@ export function reduceCommand(input) {
   state.dashboard_commands.push({ command, actor: input.actor, result: structuredClone(result) });
   state.acknowledgements.push(structuredClone(result));
   parseContract('acknowledgement', result);
-  return { state, historical, result, replay: false, semantic };
+  return { state, historical, result, replay: false, semantic, ...(compaction ? { compaction } : {}) };
 }

@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Union
 
-from state_transaction import TransactionError, Write, commit, commit_locked, locked, recover, recover_locked, snapshot_revision
+from state_transaction import TransactionError, Write, checked_target, commit, commit_locked, locked, recover, recover_locked, snapshot_revision
 
 EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$")
 EVENT_TYPE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -102,10 +102,20 @@ def append_event(request: EventRequest) -> None:
         if mirror is None:
             event_values.append(mirrored)
         if existing is None or mirror is None:
-            commit_locked(run_dir, "append_event", (
-                Write("canonical-events.jsonl", encoded_ledger(canonical_values)),
-                Write("events.jsonl", encoded_ledger(event_values)),
-            ))
+            writes = [Write("canonical-events.jsonl", encoded_ledger(canonical_values)),
+                      Write("events.jsonl", encoded_ledger(event_values))]
+            if event_type == "review_verdict" and existing is None:
+                statuses = {"accept": "accepted", "revise": "revise", "reject": "rejected"}
+                verdict = safe_payload.get("verdict")
+                if not isinstance(verdict, str) or verdict not in statuses:
+                    raise TransactionError("invalid review verdict")
+                state = json.loads(checked_target(run_dir, "state.json").read_text())
+                if not isinstance(state, dict) or state.get("run_id") != run_id:
+                    raise TransactionError("review run identity mismatch")
+                state["review_status"] = statuses[verdict]
+                state["updated_at"] = now
+                writes.append(Write("state.json", (json.dumps(state, indent=2) + "\n").encode()))
+            commit_locked(run_dir, "append_event", writes)
 
 
 def parse_write(value: str) -> Write:

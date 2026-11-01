@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": {
     "repository": "https://github.com/elvinzhao10/LazyBuddy",
-    "revision": "7124d4ee4085073ef271ab4cb1b2c7feb0035c8a",
+    "revision": "28f9976d2758f859a85089942f999e2e5db9506d",
     "path": "lazybuddy-plugin/shared/dashboard",
-    "treeSha256": "9aa188df1b58f204c481d1001435762e3a005ce5f9708a5e7a618935a5b090cd"
+    "treeSha256": "838fc1c82967b0800da5124d58222225231597731e209f0df2a8663e959fb48e"
   },
   "boundary": {
     "hostAdapter": "not-included",
@@ -57,13 +57,13 @@
     },
     {
       "path": "command-reducer.mjs",
-      "bytes": 7690,
-      "sha256": "8b7587ac76e8b5ed3709eccb316133ec0ef0b72fa00824e413a17a06a25c9fc8"
+      "bytes": 12044,
+      "sha256": "7c381f6364eb6bfffaa422310e60a825fd4bddfa217b4de07be5b5b9f58df050"
     },
     {
       "path": "contracts/lazyseries-dashboard.v1.schema.json",
-      "bytes": 65883,
-      "sha256": "3c018551e3aa336aa4eaeeb4aefa0c310588defb3f0916357097ecd4115791d9"
+      "bytes": 86569,
+      "sha256": "749bde854859af8816c148f0d82e987201046e9fb405d0d0fb8790a52dbd5525"
     },
     {
       "path": "contracts/parse.mjs",
@@ -72,8 +72,8 @@
     },
     {
       "path": "contracts/schema.mjs",
-      "bytes": 8330,
-      "sha256": "1f9e0ca48a2ca47e4b7a750124343a5dd21bc8c6d43c0a60ccc78ffa0d988039"
+      "bytes": 10374,
+      "sha256": "7c1dafc6790a6d2fa67f5e93fe98a7ca41bfa0421d00c53e2e7dfe8d1ed77722"
     },
     {
       "path": "LICENSE",
@@ -87,8 +87,8 @@
     },
     {
       "path": "projection.mjs",
-      "bytes": 8414,
-      "sha256": "b49a1a674f1678e8c8664bdf1194d6491244235a3f153e056bf39dcc5100f314"
+      "bytes": 10246,
+      "sha256": "6d3c2822b39444c0d04e4a6461b4b8dc8157528c9a68735f36bceb9a44cb6bb2"
     },
     {
       "path": "queue-reducer.mjs",
@@ -96,9 +96,14 @@
       "sha256": "30f25c2ee22173ed890999d2cda7ff8bf84e61b0c09b4e58304449d740165830"
     },
     {
+      "path": "review-admission.mjs",
+      "bytes": 3389,
+      "sha256": "7f50ea1c816ec7c7579d60da8dbc3901a0dbf8526f299c704254417cb9b29b88"
+    },
+    {
       "path": "revision-compatibility.mjs",
-      "bytes": 2908,
-      "sha256": "ce5c73c74dc6d3cb02398bf32fde7273fa69e278b891b3cc3e8b3c92ab2449ef"
+      "bytes": 3028,
+      "sha256": "97c4c11ab078fdbc2e90c768af69fb4fec26bf06c71a654a64202eff0a9e5171"
     },
     {
       "path": "ui/architecture-demo.html",
@@ -127,8 +132,18 @@
     },
     {
       "path": "ui/asset-manifest.json",
-      "bytes": 4818,
-      "sha256": "c2a80731c22ae0fca1a0619630e0f205821bf10b8ee2d6f66a279458db1486b0"
+      "bytes": 6341,
+      "sha256": "f2fb86b777a2cca400e9d56681b7f8d00509d147b4858465da70fe324c07d594"
+    },
+    {
+      "path": "ui/checkpoint-history.mjs",
+      "bytes": 3474,
+      "sha256": "c75cd9b581f63d4a99b376d6b7fa9ef374a0421c539d56e7229c2358c568a7d3"
+    },
+    {
+      "path": "ui/checkpoint-view.mjs",
+      "bytes": 4392,
+      "sha256": "1f5cc8a34eb01ee3452ccd564b55f419148b73325c3eefd0240758862af03b6a"
     },
     {
       "path": "ui/component-demo.html",
@@ -147,13 +162,13 @@
     },
     {
       "path": "ui/connection.mjs",
-      "bytes": 4800,
-      "sha256": "7cf40e15a23a1c1b878ff7572e42fd8ec1603314a94b01fdf725bd08d4172240"
+      "bytes": 5091,
+      "sha256": "3a00a15e520adbb35f622a2e8301c7fa7c802f1d3f20f09b964c1da2d28ae91a"
     },
     {
       "path": "ui/DESIGN.md",
-      "bytes": 26949,
-      "sha256": "b8b9d9af1670ab85f1fb7e710ca00105c8a0eeae577a7c98d26ef0b257972817"
+      "bytes": 27818,
+      "sha256": "565ed923411851ffd3526dabec17effa4fa761c4ca3f69a8a28c38cba35683f2"
     },
     {
       "path": "ui/document-view.css",
@@ -297,8 +312,8 @@
     },
     {
       "path": "ui/index.mjs",
-      "bytes": 10061,
-      "sha256": "a3e144c5ca66bc0da85adc474079dbb0bb059b8ec73459dea572c9cf5fdef586"
+      "bytes": 10380,
+      "sha256": "87a3de4c5cdd6e76a1c27a4652aa445cc0f6618f82c551cda209959b8b17a308"
     },
     {
       "path": "ui/inspector-view.mjs",
@@ -466,14 +481,19 @@
       "sha256": "e887deeaf5e3a331831d2f33133ea127452f7f37bd9481ca7b9e7fbd2baca358"
     },
     {
+      "path": "ui/verification-history.mjs",
+      "bytes": 4198,
+      "sha256": "27d96b77f694d081869b5973e9a8dcbf627562796f05ff408e3ec8d8c3a8bcdf"
+    },
+    {
       "path": "ui/verification-view.mjs",
-      "bytes": 4481,
-      "sha256": "82e4b6db03dff02893e38d2fb6055c5cbfa1241eb030f492c23ea0ad96dc2306"
+      "bytes": 16229,
+      "sha256": "536c4d29c9f1176e08af3a48519e08b20b2e19653aaf9019bf27a490c2375c60"
     },
     {
       "path": "ui/views.css",
-      "bytes": 4343,
-      "sha256": "f05174f67e1663a368b0a718f61b4c7457eb66105152217287179c8fb139973e"
+      "bytes": 5120,
+      "sha256": "1b63bdbaa7a097de47adf666b3529b6bb8d37d25b99f03af61f3d16d249d717b"
     },
     {
       "path": "ui/work-view.mjs",

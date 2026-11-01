@@ -16,11 +16,11 @@ from pathlib import Path
 from dashboard_files import Binding, Files, Json, LIMIT, encoded
 from dashboard_history import preserve
 from dashboard_completion import capture_completion
-from dashboard_producer import producer_context, publish_attempt, publish_completion
+from dashboard_producer import producer_context, publish_attempt, publish_completion, review_model
 from state_transaction import TransactionError, Write, commit_locked, locked, read_revision, recover_locked
 
 
-def capture(files: Files) -> dict[str, Json]:
+def capture(files: Files, include_review_source: bool = True) -> dict[str, Json]:
     state = json.loads(files.read("state.json"))
     binding = files.binding
     if state.get("run_id") != binding.run_id or state.get("dashboard_project_id", binding.project_id) != binding.project_id:
@@ -28,15 +28,22 @@ def capture(files: Files) -> dict[str, Json]:
     sources = []
     for name, kind in [("canonical-events.jsonl", "runtime"), ("events.jsonl", "legacy")]:
         text = files.read(name).decode()
-        sources.append({"id": kind, "kind": kind, "generation": "1", "text": text})
+        sources.append({"id": kind, "kind": kind, "generation": str(1 + state.get("dashboard_ledger_generation", 0)) if kind == "runtime" else "1", "text": text})
     files.read(".revision")
     head = subprocess.run(["git", "-C", str(binding.root), "rev-parse", "HEAD"], capture_output=True, timeout=5, check=False)
+    source_reader = Path(__file__).resolve().parents[2] / "shared/project/review-source.mjs"
+    source_capture = subprocess.run([binding.node, str(source_reader), str(binding.root)], capture_output=True, timeout=15, check=True) if include_review_source or state.get("reviews") else None
     reference = state.get("plan_reference", "")
-    editable = isinstance(reference, str) and reference.startswith(f".lazybuddy/runs/{binding.run_id}/")
+    native_prefix = f".lazybuddy/runs/{binding.run_id}/"
+    editable = isinstance(reference, str) and reference.startswith(native_prefix)
+    approved = state.get("_approved_plan_sha256")
+    review_plan_current = editable and isinstance(approved, str) and bool(approved) and hashlib.sha256(files.read(reference[len(native_prefix):])).hexdigest() == approved
     return {"project_id": binding.project_id, "run_id": binding.run_id,
             "revision": read_revision(binding.run), "plan_revision": state.get("plan_revision", 0),
             "state": state, "sources": sources, "source_revision": head.stdout.decode().strip() if head.returncode == 0 else None,
             "plan_digest": state.get("_approved_plan_sha256"),
+            "review_content_sha256": json.loads(source_capture.stdout) if source_capture is not None else None,
+            "review_plan_current": review_plan_current,
             "editability": {"supported": editable, "reason": None if editable else "EXTERNAL_PLAN_READ_ONLY"}}
 
 
@@ -50,9 +57,9 @@ def event_write(files: Files, event: dict[str, Json]) -> Write:
 
 
 def consume(files: Files, request: dict[str, Json]) -> Json:
-    snapshot = capture(files)
+    snapshot = capture(files, include_review_source=False)
     state = snapshot["state"]
-    if set(request) != {"expected_revision", "plan_revision"} or any(type(value) is not int or value < 0 for value in request.values()):
+    if set(request) not in ({"expected_revision", "plan_revision"}, {"expected_revision", "plan_revision", "review"}) or any(type(request.get(key)) is not int or request[key] < 0 for key in ("expected_revision", "plan_revision")):
         raise TransactionError("invalid consumption request")
     if request["expected_revision"] != snapshot["revision"] or request["plan_revision"] != snapshot["plan_revision"]:
         raise TransactionError("stale consumption revision")
@@ -63,6 +70,10 @@ def consume(files: Files, request: dict[str, Json]) -> Json:
     plan = files.read(reference[len(prefix):])
     if plan != files.read("checkpoints/plan-revision.md") or hashlib.sha256(plan).hexdigest() != state.get("_approved_plan_sha256"):
         raise TransactionError("consumption plan changed without reconciliation")
+    admission = {"changed": False}
+    if request.get("review") is not None:
+        admission = review_model(files, snapshot, request["review"], "admit")
+        state["reviews"] = admission["reviews"]
     acknowledgements = state.get("acknowledgements", [])
     applied = []
     for acknowledgement in acknowledgements:
@@ -70,7 +81,7 @@ def consume(files: Files, request: dict[str, Json]) -> Json:
             acknowledgement["status"] = "applied"
             acknowledgement["consumed_plan_revision"] = request["plan_revision"]
             applied.append(acknowledgement["command_id"])
-    if not applied:
+    if not applied and not admission["changed"]:
         return {"revision": snapshot["revision"], "applied": []}
     event = {"schema_version": 1, "event_id": f"consumed:{snapshot['revision'] + 1}", "ts": datetime.now(timezone.utc).isoformat(),
              "run_id": files.binding.run_id, "event": "plan_revision_consumed",
@@ -119,16 +130,25 @@ def command(files: Files, request: Json) -> Json:
     marker = b"\n<!-- lazybuddy-dashboard-authority -->\n"
     if plan.count(marker) > 1:
         raise TransactionError("ambiguous dashboard plan section")
-    base = plan.split(marker)[0]
-    view = {"plan_revision": state["plan_revision"], "tasks": state["tasks"], "decisions": state.get("decisions", [])}
-    rendered = encoded(view).replace(b"<", b"\\u003c").replace(b">", b"\\u003e").replace(b"`", b"\\u0060")
-    plan = base + marker + b"```json\n" + rendered + b"```\n"
+    if request["operation"] not in {"request_review", "resolve_review", "consume_review"}:
+        base = plan.split(marker)[0]
+        view = {"plan_revision": state["plan_revision"], "tasks": state["tasks"], "decisions": state.get("decisions", [])}
+        rendered = encoded(view).replace(b"<", b"\\u003c").replace(b">", b"\\u003e").replace(b"`", b"\\u0060")
+        plan = base + marker + b"```json\n" + rendered + b"```\n"
     state["_approved_plan_sha256"] = hashlib.sha256(plan).hexdigest()
     event = {"schema_version": 1, "event_id": f"command:{revision}", "ts": datetime.now(timezone.utc).isoformat(),
              "run_id": files.binding.run_id, "event": "dashboard_command_saved",
              "event_payload": {"command": request, "actor": files.binding.actor, "acknowledgement": reduction["result"]}}
+    ledger_write = event_write(files, event)
+    if "compaction" in reduction:
+        compacted = reduction["compaction"]
+        source = files.read("canonical-events.jsonl")
+        if hashlib.sha256(source).hexdigest() != compacted["before_sha256"]:
+            raise TransactionError("history source changed during compaction")
+        writes.append(files.immutable(prefix + "/compaction.json", encoded({key: value for key, value in compacted.items() if key != "text"})))
+        ledger_write = files.write("canonical-events.jsonl", compacted["text"].encode() + encoded(event))
     writes.extend([files.write("state.json", encoded(state)), files.write(plan_name, plan),
-                   files.write("checkpoints/plan-revision.md", plan), event_write(files, event)])
+                   files.write("checkpoints/plan-revision.md", plan), ledger_write])
     if len(writes) > 1024 or any(len(write.content) > LIMIT for write in writes):
         raise TransactionError("dashboard transaction exceeds bounded inputs")
     commit_locked(files.binding.run, "dashboard_command", writes)
@@ -148,9 +168,9 @@ def main(argv: list[str]) -> Json:
         files = Files(binding)
         actions = {"read": lambda: {**capture(files), "_completion_capture": capture_completion(files)},
                    "command": lambda: command(files, request), "consume": lambda: consume(files, request),
-                   "attempt": lambda: publish_attempt(files, request, capture(files), event_write),
-                   "complete": lambda: publish_completion(files, request, capture(files)),
-                   "producer-context": lambda: producer_context(files, request, capture(files))}
+                   "attempt": lambda: publish_attempt(files, request, capture(files, include_review_source=False), event_write),
+                   "complete": lambda: publish_completion(files, request, capture(files, include_review_source=False)),
+                   "producer-context": lambda: producer_context(files, request, capture(files, include_review_source=False))}
         return actions[argv[1]]()
 
 

@@ -133,6 +133,7 @@ const itemsOf = (view, id) => [...view.element.querySelectorAll(`[data-section-i
 test('a real collector snapshot renders sections, observed facts and honest unavailable rows', async () => {
   const source = { pluginRoot: join(fixture.root, 'repo/lazybuddy-plugin'), repoRoot: join(fixture.root, 'repo'),
     project: fixture.project };
+  const expectedVersion = JSON.parse(await readFile(join(source.pluginRoot, '.workbuddy-plugin/plugin.json'), 'utf8')).version;
   const snapshot = await collect(source);
   assert.equal(snapshot.schema, HEALTH_VIEW_SCHEMA);
 
@@ -152,7 +153,7 @@ test('a real collector snapshot renders sections, observed facts and honest unav
   // --version, the store identity and revision all come from the snapshot.
   const manifestItem = view.element.querySelector('[data-item-id="plugin-manifest"]');
   assert.equal(manifestItem.dataset.status, 'ok');
-  assert.equal(manifestItem.querySelector('[data-testid="health-item-observed"] code').textContent, '1.4.0');
+  assert.equal(manifestItem.querySelector('[data-testid="health-item-observed"] code').textContent, expectedVersion);
   const nodeItem = view.element.querySelector('[data-item-id="runtime:node"]');
   assert.equal(nodeItem.querySelector('[data-testid="health-item-observed"] code').textContent, runtimed);
   const stateItem = view.element.querySelector('[data-item-id="store:state"]');

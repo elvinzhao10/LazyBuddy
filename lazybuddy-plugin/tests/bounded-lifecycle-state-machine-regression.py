@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = []
 # ///
 # ─── How to run ───
@@ -95,6 +95,7 @@ cleanup_case(
     (runner.SignalResult.refused("eperm"),),
     "signal-refused",
     [4100],
+    repeat_last=True,
 )
 cleanup_case(
     "TERM and KILL leave verified survivor",
@@ -146,3 +147,23 @@ assert not runner.persistence_allowed(0, False, True, True, runner.CleanupStatus
 assert not runner.persistence_allowed(0, True, False, True, runner.CleanupStatus.VERIFIED_ABSENT)
 assert not runner.persistence_allowed(0, True, True, False, runner.CleanupStatus.VERIFIED_ABSENT)
 print("PASS: exhaustive persistence boundary")
+
+foreign_replacement = record(4101, 1, 6100, "foreign-start")
+foreign_child = record(4102, 4101, 6100, "foreign-child-start")
+replacement_tracker = runner.OwnershipTracker.establish(root, available(root, child))
+replacement_tracker = replacement_tracker.observe(available(foreign_replacement, foreign_child))
+assert 4102 not in {value.pid for value in replacement_tracker.tracked}, replacement_tracker
+replacement_signaler = RecordingSignaler()
+replacement_receipt = runner.cleanup_owned_processes(replacement_tracker, SequenceInspector(available(foreign_replacement, foreign_child)), replacement_signaler)
+assert replacement_receipt.status.value == "verified-absent", replacement_receipt
+assert replacement_signaler.groups == []
+print("PASS: recycled foreign child PID cannot lend ownership to unrelated descendants")
+
+fresh_child = record(4101, 4100, 4100, "fresh-owned-start")
+fresh_tracker = runner.OwnershipTracker.establish(root, available(root, child)).observe(available(root, fresh_child))
+assert next(value for value in fresh_tracker.tracked if value.pid == 4101).started == "fresh-owned-start"
+print("PASS: a current matched parent proves a fresh child identity")
+
+changed_root = record(4100, 1, 6100, "foreign-root-start")
+cleanup_case("root PID replacement remains refused", (available(changed_root),), (), "identity-changed", [])
+cleanup_case("refused signal followed by observed exit", (available(child), available(child), available()), (runner.SignalResult.refused("exiting"),), "verified-absent", [4100])

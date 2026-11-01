@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 // criteria, worker != verifier, approved review).
 const PLUGIN = fileURLToPath(new URL('../../..', import.meta.url));
 const CLI = join(PLUGIN, 'shared/project/cli.mjs');
+const PACKAGE_VERSION = JSON.parse(readFileSync(join(PLUGIN, '.codebuddy-plugin/plugin.json'), 'utf8')).version;
 const CREATE_RUN = join(PLUGIN, 'scripts/state/create-run.sh');
 const PROJECT_ID = 'project:completion-gate';
 const ACTOR = 'mcp:status-dashboard';
@@ -96,13 +97,13 @@ function completionRecords(root, runId, { worker = 'executor:1', verifier = 'rev
   const run = `.lazybuddy/runs/${runId}`;
   const review = { verdict, verifier: { identity: verifier } };
   const evidence = { schema_version: 'lazyseries.completion-evidence.v1', run_id: runId, task_id: 'T',
-    criterion_id: 'C1', repo_head: head, package_version: '1.4.0', command: 'fixture-gate', exit_code: 0,
+    criterion_id: 'C1', repo_head: head, package_version: PACKAGE_VERSION, command: 'fixture-gate', exit_code: 0,
     started_at: '2026-10-06T10:00:00Z', finished_at: '2026-10-06T10:00:01Z',
     artifact: { path: `${run}/actual.txt`, sha256: hash('observable\n') },
     executor: { identity: worker }, verifier: { identity: verifier },
     review: { verdict, source_sha256: hash(JSON.stringify(review)) } };
   const authority = { schema_version: 'lazyseries.completion-authority.v1', run_id: runId, repo_head: head,
-    package_version: '1.4.0', plan: { id: 'plan-1', path: `${run}/plan.md`, sha256: hash(PLAN) },
+    package_version: PACKAGE_VERSION, plan: { id: 'plan-1', path: `${run}/plan.md`, sha256: hash(PLAN) },
     criteria: [{ task_id: 'T', criterion_id: 'C1', applicable: true, status: 'complete',
       evidence_path: `${run}/receipts/evidence.json`, review_path: `${run}/review/review.json` }] };
   put(root, `${run}/actual.txt`, 'observable\n');

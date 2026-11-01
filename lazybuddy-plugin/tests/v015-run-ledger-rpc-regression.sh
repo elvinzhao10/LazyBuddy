@@ -100,11 +100,12 @@ import sys
 path = sys.argv[1]
 with open(path) as handle:
     state = json.load(handle)
-state["tasks"] = [{"id": "task\"safe", "status": "todo"}]
+state["tasks"] = [{"id": "task\"safe", "status": "queued"}]
 with open(path, "w") as handle:
     json.dump(state, handle)
 PYEOF
-expect_result 'update_task serializes quoted result values' "$(request 9 update_task '{"run_id":"safe","task_id":"task\"safe","status":"done\"safe"}')" new_status
+expect_error 'update_task rejects invalid quoted execution status' "$(request 9 update_task '{"run_id":"safe","task_id":"task\"safe","status":"done\"safe"}')"
+expect_result 'update_task serializes quoted result values' "$(request 9 update_task '{"run_id":"safe","task_id":"task\"safe","status":"done"}')" new_status
 
 echo "Passed: $PASS"
 echo "Failed: $FAIL"

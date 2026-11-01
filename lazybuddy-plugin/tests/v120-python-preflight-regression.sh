@@ -6,7 +6,7 @@ RUNNER="$PLUGIN_ROOT/scripts/lazybuddy-bounded-run.py"
 VERIFY="$PLUGIN_ROOT/scripts/lazybuddy-verify.sh"
 PYTHON_BIN="$(command -v "${LAZYBUDDY_TEST_PYTHON:-${LAZYBUDDY_PYTHON:-python3}}")"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/lazybuddy-python-preflight.XXXXXX")"
-REMEDIATION='ERROR: LazyBuddy requires Python 3.10 or newer. Install Python 3.10+ and make it available as python3.'
+REMEDIATION='ERROR: LazyBuddy requires Python 3.11 or newer. Install Python 3.11+ and make it available as python3.'
 
 cleanup() {
     rm -rf "$TMP"
@@ -78,13 +78,13 @@ PY
 
 printf 'PASS: supported Python reaches the existing bounded runner\n'
 
-mkdir -p "$TMP/python-3.9-bin" "$TMP/python-3.12-bin"
-cat >"$TMP/python-3.9-bin/python3" <<'SH'
+mkdir -p "$TMP/python-3.10-bin" "$TMP/python-3.12-bin"
+cat >"$TMP/python-3.10-bin/python3" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 
 if [ "${1:-}" = "-c" ]; then
-    printf '3 9\n'
+    printf '3 10\n'
     exit 0
 fi
 if [ "${1:-}" = "$LAZYBUDDY_RUNNER_PATH" ]; then
@@ -93,24 +93,24 @@ if [ "${1:-}" = "$LAZYBUDDY_RUNNER_PATH" ]; then
 fi
 exec "$LAZYBUDDY_TEST_PYTHON" "$@"
 SH
-chmod +x "$TMP/python-3.9-bin/python3"
+chmod +x "$TMP/python-3.10-bin/python3"
 
 set +e
-python_39_output="$(
-    PATH="$TMP/python-3.9-bin:$PATH" \
+python_310_output="$(
+    PATH="$TMP/python-3.10-bin:$PATH" \
     LAZYBUDDY_PYTHON=python3 \
     LAZYBUDDY_RUNNER_PATH="$RUNNER" \
-    LAZYBUDDY_RUNNER_SENTINEL="$TMP/python-3.9-ran-runner" \
+    LAZYBUDDY_RUNNER_SENTINEL="$TMP/python-3.10-ran-runner" \
     LAZYBUDDY_TEST_PYTHON="$PYTHON_BIN" \
     LAZYBUDDY_VERIFY_SUITE=core \
     LAZYBUDDY_VERIFY_REGRESSION_DEPTH=1 \
     bash "$VERIFY" 2>&1
 )"
-python_39_status=$?
+python_310_status=$?
 set -e
-test "$python_39_status" -eq 2 || fail 'Python 3.9 did not return the preflight status'
-test "$python_39_output" = "$REMEDIATION" || fail 'Python 3.9 did not return the stable remediation'
-test ! -e "$TMP/python-3.9-ran-runner" || fail 'Python 3.9 reached the bounded runner'
+test "$python_310_status" -eq 2 || fail 'Python 3.10 did not return the preflight status'
+test "$python_310_output" = "$REMEDIATION" || fail 'Python 3.10 did not return the stable remediation'
+test ! -e "$TMP/python-3.10-ran-runner" || fail 'Python 3.10 reached the bounded runner'
 
 set +e
 missing_output="$(LAZYBUDDY_PYTHON="$TMP/missing-python" bash "$VERIFY" 2>&1)"
@@ -119,11 +119,11 @@ set -e
 test "$missing_status" -eq 2 || fail 'missing selected Python did not return the preflight status'
 test "$missing_output" = "$REMEDIATION" || fail 'missing selected Python did not return the stable remediation'
 
-assert_supported_version_reaches_runner 3.10
+assert_supported_version_reaches_runner 3.11
 assert_supported_version_reaches_runner 3.12
 assert_supported_version_reaches_runner 4.0
 
-printf 'PASS: Python preflight rejects 3.9 before parsing and admits Python 3.10+\n'
+printf 'PASS: Python preflight rejects 3.10 before parsing and admits Python 3.11+\n'
 
 AGGREGATE_FIXTURE="$TMP/aggregate-fixture"
 AGGREGATE_TMP="$TMP/aggregate-tmp"

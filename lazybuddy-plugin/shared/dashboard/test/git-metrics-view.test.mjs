@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
+import { createEvidenceDirectory } from './evidence-directory.mjs';
 
 // T18 interface under test: the REDESIGNED Git detail pane (segmented
 // worktrees/commits master-detail, commit table with real parent OIDs and
@@ -30,8 +31,6 @@ const { gitDetailModel, metricsDetailModel } = await import('../ui/git-metrics-m
 const { createGitMetricsView } = await import('../ui/git-metrics-view.mjs');
 const { installFocusSystem } = await import('../ui/components.mjs');
 
-const evidenceDirectory = process.env.T18_EVIDENCE_DIR
-  ?? '/Users/Admin/Desktop/lazyseries/.omo/evidence/lazyseries-1.4.0-project-platform/T18';
 const SCOPE = ['docs/', 'src/'];
 const PROJECT_SCOPE = { repository: 'fixture:t18-git', runtime: 'LazyBuddy' };
 const WINDOW = { start: '2026-10-06T12:00:00Z', end: '2026-10-06T12:30:00Z' };
@@ -167,7 +166,7 @@ function commitRowOf(scope, oid) {
   return scope.querySelector(`[data-testid="git-commit-table"] [data-parent-count][data-commit-oid="${oid}"]`) ?? null;
 }
 
-test('git and metrics detail views render real T11 collections and T10 arithmetic exactly', async () => {
+test('git and metrics detail views render real T11 collections and T10 arithmetic exactly', async t => {
   // --- Real collections over the real fixture. ---
   const localBefore = await collectLocalGitFacts({ repositoryRoot: fixture.root, sourceScope: SCOPE });
   assert.equal(localBefore.status, 'observed');
@@ -561,6 +560,7 @@ test('git and metrics detail views render real T11 collections and T10 arithmeti
   assert.equal(view.element.querySelector('[data-testid="git-detail"] [data-testid="git-dirty-binding"]').dataset.digest, beforeLinked.binding.digest);
 
   // --- Export the exact consumed fixture for the browser proof (same data path). ---
+  const evidenceDirectory = createEvidenceDirectory(t, process.env.T18_EVIDENCE_DIR);
   mkdirSync(evidenceDirectory, { recursive: true });
   writeFileSync(join(evidenceDirectory, 'git-metrics-fixture.json'), `${JSON.stringify({
     writtenAt: new Date().toISOString(),

@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMiniDom } from './fixtures/mini-dom.mjs';
+import { createEvidenceDirectory } from './evidence-directory.mjs';
 
 // T19 interface under test: the redesigned evidence and research views over
 // the real T12 artifact index. The fixture is REAL end to end — a disposable
@@ -42,8 +43,6 @@ const projectCLI = fileURLToPath(new URL('../../project/cli.mjs', import.meta.ur
 const PROJECT_ID = 'project:t19';
 const ACTOR = 'local:t19-test';
 const digest = value => createHash('sha256').update(value).digest('hex');
-const evidenceDirectory = process.env.T19_EVIDENCE_DIR
-  ?? '/Users/Admin/Desktop/lazyseries/.omo/evidence/lazyseries-1.4.0-project-platform/T19';
 
 // THIS lane's own sanitization vectors (independent of T12's markers).
 const REPORT_MD = `# T19 verification report
@@ -328,7 +327,7 @@ test('model: cross-links are two-way and stay pinned to the T12 query surface', 
   }
 });
 
-test('evidence browser paginates honestly, shows distinct states, safe previews and inert research', async () => {
+test('evidence browser paginates honestly, shows distinct states, safe previews and inert research', async t => {
   const { index, composed } = await buildFixture();
 
   // --- Fixture composition over the real T12 index.
@@ -651,6 +650,7 @@ test('evidence browser paginates honestly, shows distinct states, safe previews 
     const entry = rebuilt.index.entries.find(candidate => candidate.id === id);
     previews[id] = await renderArtifactPreview(fixture.root, entry);
   }
+  const evidenceDirectory = createEvidenceDirectory(t, process.env.T19_EVIDENCE_DIR);
   mkdirSync(evidenceDirectory, { recursive: true });
   writeFileSync(join(evidenceDirectory, 'evidence-fixture.json'), `${JSON.stringify({
     writtenAt: new Date().toISOString(), projectId: PROJECT_ID,

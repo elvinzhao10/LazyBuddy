@@ -16,11 +16,14 @@ import { readProjectObservations, recordProjectObservations } from './adapters/o
 import { collectProjectHealth } from './adapters/health.mjs';
 import { runtimeTelemetry, attachCostHistory } from './adapters/telemetry.mjs';
 import { assertAdmissionForTransition, recheckProjectAdmission } from './adapters/admission.mjs';
+import { queryCheckpointHistory } from './ui/checkpoint-history.mjs';
 const packageMetadata = createRequire(import.meta.url)('../../tooling/package.json');
 
 export const buddyAuthority = Object.freeze({
   read: readInput,
   execute: executeCommand,
+  readHistory: async (options, request) => queryCheckpointHistory(await readInput(options), request,
+    async revision => JSON.parse(await safeRead(options.projectRoot, `.lazybuddy/runs/${options.runId}/history/dashboard-${revision}/state.json`))),
   project: input => projectSnapshot(input, readBuddyCompletion(input, { packageVersion: packageMetadata.version })),
   readProject: (options, actor) => readProject({ projectRoot: options.projectRoot, projectId: options.projectId, actor }),
   readProjectSource: (options, actor, sourceId) => readProjectSource(

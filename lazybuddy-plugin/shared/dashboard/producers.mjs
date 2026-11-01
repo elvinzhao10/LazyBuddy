@@ -15,7 +15,7 @@ const runner = fileURLToPath(new URL('../../scripts/lazybuddy-bounded-run.py', i
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const keys = new Set(['--project-root', '--project-id', '--run-id', '--actor', '--parent-task-id', '--task-id',
   '--criterion-id', '--attempt-id', '--worker-id', '--plan-commands-file', '--command-index', '--context-file',
-  '--artifact-path', '--executor-id', '--executor-attempt-id', '--cancel-file', '--python', '--timeout']);
+  '--role', '--artifact-path', '--executor-id', '--executor-attempt-id', '--cancel-file', '--python', '--timeout']);
 
 function options(argv) {
   const result = { action: argv[0] };
@@ -30,12 +30,16 @@ function options(argv) {
 
 const binding = value => ({ projectRoot: value['--project-root'], projectId: value['--project-id'], runId: value['--run-id'],
   actor: value['--actor'], python: value['--python'] });
-async function createContext(value) {
+async function createContext(value, expectedReview = null) {
   for (const name of ['--parent-task-id', '--task-id', '--criterion-id', '--attempt-id', '--worker-id', '--plan-commands-file', '--command-index'])
     if (!value[name]) throw new ContractError('MISSING_CONTEXT_ARGUMENT');
+  const role = value['--role'] ?? (value.action === 'verify' ? 'verifier' : 'worker');
+  if (!['worker', 'verifier'].includes(role)) throw new ContractError('INVALID_REVIEW_ROLE');
   const resolved = await readProducerContext(bridgeOptions(value, { request: { parent_task_id: value['--parent-task-id'],
     task_id: value['--task-id'], criterion_id: value['--criterion-id'], plan_commands_file: value['--plan-commands-file'],
-    command_index: Number(value['--command-index']) } }));
+    command_index: Number(value['--command-index']), attempt_id: value['--attempt-id'], worker_id: value['--worker-id'],
+    role, executor_attempt_id: value['--executor-attempt-id'] ?? null,
+    ...(expectedReview ? { review_id: expectedReview.review_id, review_subject: expectedReview.subject } : {}) } }));
   const commandIndex = Number(value['--command-index']);
   const argv = resolved.argv;
   const errors = commandErrors([{ argv }]);
@@ -45,7 +49,7 @@ async function createContext(value) {
     criterion_version: resolved.criterion_version, attempt_id: value['--attempt-id'], worker_id: value['--worker-id'], revision: resolved.revision,
     plan_revision: resolved.plan_revision, plan_digest: resolved.plan_digest, source_revision: resolved.source_revision,
     plan_commands_file: value['--plan-commands-file'], plan_commands_sha256: resolved.plan_commands_sha256,
-    command_index: commandIndex, argv, argv_sha256: hash(stableJSON(argv)) };
+    ...(resolved.review ? { review: resolved.review } : {}), command_index: commandIndex, argv, argv_sha256: hash(stableJSON(argv)) };
 }
 async function contextFromFile(value) {
   if (!value['--context-file']) throw new ContractError('CONTEXT_FILE_REQUIRED');
@@ -54,7 +58,7 @@ async function contextFromFile(value) {
   const context = JSON.parse(bytes);
   const fresh = await createContext({ ...value, '--parent-task-id': context.parent_task_id, '--task-id': context.task_id,
     '--criterion-id': context.criterion_id, '--attempt-id': context.attempt_id, '--worker-id': context.worker_id,
-    '--plan-commands-file': context.plan_commands_file ?? value['--plan-commands-file'], '--command-index': String(context.command_index) });
+    '--plan-commands-file': context.plan_commands_file ?? value['--plan-commands-file'], '--command-index': String(context.command_index), '--role': context.review?.role ?? value['--role'] }, context.review);
   if (stableJSON(context) !== stableJSON(fresh)) throw new ContractError('DISPATCH_CONTEXT_STALE');
   return context;
 }
@@ -68,7 +72,11 @@ async function artifactEvidence(root, relative) {
 }
 function bridgeOptions(value, extra = {}) { return { ...binding(value), ...extra }; }
 async function runBounded(value, context, mode) {
-  await consumeRevision(bridgeOptions(value, { expectedRevision: context.revision, planRevision: context.plan_revision }));
+  if (context.review && context.review.role !== (mode === 'verify' ? 'verifier' : 'worker')) throw new ContractError('REVIEW_ROLE_MISMATCH');
+  await consumeRevision(bridgeOptions(value, { expectedRevision: context.revision, planRevision: context.plan_revision,
+    ...(context.review ? { review: { review_id: context.review.review_id, subject: context.review.subject,
+      task_id: context.task_id, criterion_id: context.criterion_id, attempt_id: context.attempt_id,
+      worker_id: context.worker_id, role: context.review.role, executor_attempt_id: context.review.executor_attempt_id } } : {}) }));
   const contextSha256 = hash(stableJSON(context));
   const work = path.join(value['--project-root'], '.lazybuddy', 'runs', value['--run-id'], 'producer-work', hash(context.attempt_id));
   await mkdir(work, { recursive: true });
@@ -81,7 +89,11 @@ async function runBounded(value, context, mode) {
   args.push('--', ...context.argv);
   const startedAt = new Date().toISOString();
   const child = spawn(value['--python'] ?? 'python3', args, { cwd: value['--project-root'], stdio: ['ignore', 'pipe', 'pipe'] });
-  const startInvocation = { attempt_id: context.attempt_id, worker_id: context.worker_id, context_sha256: contextSha256,
+  const exited = new Promise(resolve => {
+    child.once('error', error => resolve({ error }));
+    child.once('close', (code, signal) => resolve({ code, signal }));
+  });
+  const startInvocation = { ...(context.review ? { review: context.review } : {}), attempt_id: context.attempt_id, worker_id: context.worker_id, context_sha256: contextSha256,
     task_id: context.task_id, criterion_id: context.criterion_id, criterion_version: context.criterion_version,
     plan_revision: context.plan_revision, source_revision: context.source_revision, runner_pid: child.pid,
     argv: context.argv, argv_sha256: context.argv_sha256, started_at: startedAt, input_sha256: hash(''),
@@ -94,8 +106,9 @@ async function runBounded(value, context, mode) {
       worker_id: context.worker_id, parent_task_id: context.parent_task_id, source_revision: context.source_revision,
       execution: 'running', verification: mode === 'verify' ? 'verifying' : 'unverified', started_at: startedAt,
       finished_at: null, evidence: [] }, invocation: startInvocation }));
-  } catch (error) { child.kill('SIGTERM'); throw error; }
-  const ended = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', (code, signal) => resolve({ code, signal })); });
+  } catch (error) { child.kill('SIGTERM'); await exited; throw error; }
+  const ended = await exited;
+  if (ended.error) throw ended.error;
   const finishedAt = new Date().toISOString();
   const [result, stdoutBytes, stderrBytes] = await Promise.all([readFile(resultFile, 'utf8').then(JSON.parse), readFile(stdout), readFile(stderr)]);
   let approved = mode !== 'verify';

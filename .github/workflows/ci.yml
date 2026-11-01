@@ -58,6 +58,8 @@ jobs:
 
       - name: Run package verification
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+      - name: Shared dashboard and project adapter regressions
+        run: node --test --test-concurrency=2 lazybuddy-plugin/shared/dashboard/test/*.test.mjs lazybuddy-plugin/shared/project/test/*.test.mjs
       - name: Run targeted execution isolation, model routing, and outcome evaluator contracts
         run: node --test lazybuddy-plugin/tests/execution-isolation.test.js lazybuddy-plugin/contracts/tests/model-routing.test.js lazybuddy-plugin/contracts/tests/outcome-evaluation.test.js lazybuddy-plugin/contracts/tests/completion-cost-contract.test.js
 
@@ -92,6 +94,8 @@ jobs:
 
       - name: Run package verification
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+      - name: Shared dashboard and project adapter regressions
+        run: node --test --test-concurrency=2 lazybuddy-plugin/shared/dashboard/test/*.test.mjs lazybuddy-plugin/shared/project/test/*.test.mjs
       - name: Run targeted execution isolation, model routing, and outcome evaluator contracts
         run: node --test lazybuddy-plugin/tests/execution-isolation.test.js lazybuddy-plugin/contracts/tests/model-routing.test.js lazybuddy-plugin/contracts/tests/outcome-evaluation.test.js lazybuddy-plugin/contracts/tests/completion-cost-contract.test.js
 
@@ -123,6 +127,8 @@ jobs:
 
       - name: Run timing-sensitive lifecycle regressions
         run: bash lazybuddy-plugin/scripts/lazybuddy-verify.sh
+      - name: Shared dashboard and project adapter regressions
+        run: node --test --test-concurrency=2 lazybuddy-plugin/shared/dashboard/test/*.test.mjs lazybuddy-plugin/shared/project/test/*.test.mjs
 
   integrity:
     name: Run integrity regressions

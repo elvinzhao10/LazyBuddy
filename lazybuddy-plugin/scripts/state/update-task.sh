@@ -54,10 +54,14 @@ if new_status == 'done':
     incomplete = [dependency for dependency in task.get('depends_on', []) if statuses.get(dependency) != 'done']
     if incomplete:
         raise SystemExit(f"Error: dependency {', '.join(incomplete)} must be done before task '{task_id}'")
+if new_status not in {'queued', 'running', 'done', 'failed', 'skipped'}:
+    raise SystemExit(f"Error: invalid task status '{new_status}'")
 task['status'] = new_status
 for arg in extra_fields:
     if '=' in arg:
         key, value = arg.split('=', 1)
+        if key in {'id', 'status'}:
+            raise SystemExit('Error: task id and status must use the command arguments')
         try:
             value = json.loads(value)
         except (json.JSONDecodeError, ValueError):
