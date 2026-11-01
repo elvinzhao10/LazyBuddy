@@ -2,7 +2,7 @@
 
 This page explains the deployment boundary in code terms. A plugin package contains files a host may load; it does not contain the host's marketplace database, session state, or connector process table.
 
-## Current v1.4.0 route and host status
+## Current v1.4.1 route and host status
 
 This documentation boundary covers `codebuddy-cli`, `codebuddy-ide`, and
 `workbuddy`; the current package version is v1.4.1. Marketplace is the default
